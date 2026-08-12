@@ -140,3 +140,17 @@ Regenerate via `make api`, `make config`, or `make all`; never hand-edit
   `docs:`, `test:`. Regenerated files belong in the same commit as
   their source.
 - Never commit real credentials in `configs/config.yaml`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical roles map to same-named labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.

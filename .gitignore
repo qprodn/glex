@@ -38,3 +38,4 @@ bin/
 .cache/
 .idea/
 *.swp
+RuoYi-Vue-Plus/*
