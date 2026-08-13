@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"glex/internal/data/ent/menu"
 	"glex/internal/data/ent/schema"
 	"glex/internal/data/ent/user"
 	"time"
@@ -12,6 +13,78 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	menuFields := schema.Menu{}.Fields()
+	_ = menuFields
+	// menuDescParentID is the schema descriptor for parent_id field.
+	menuDescParentID := menuFields[2].Descriptor()
+	// menu.DefaultParentID holds the default value on creation for the parent_id field.
+	menu.DefaultParentID = menuDescParentID.Default.(int64)
+	// menuDescOrderNum is the schema descriptor for order_num field.
+	menuDescOrderNum := menuFields[3].Descriptor()
+	// menu.DefaultOrderNum holds the default value on creation for the order_num field.
+	menu.DefaultOrderNum = menuDescOrderNum.Default.(int)
+	// menuDescPath is the schema descriptor for path field.
+	menuDescPath := menuFields[4].Descriptor()
+	// menu.DefaultPath holds the default value on creation for the path field.
+	menu.DefaultPath = menuDescPath.Default.(string)
+	// menuDescComponent is the schema descriptor for component field.
+	menuDescComponent := menuFields[5].Descriptor()
+	// menu.DefaultComponent holds the default value on creation for the component field.
+	menu.DefaultComponent = menuDescComponent.Default.(string)
+	// menuDescQueryParam is the schema descriptor for query_param field.
+	menuDescQueryParam := menuFields[6].Descriptor()
+	// menu.DefaultQueryParam holds the default value on creation for the query_param field.
+	menu.DefaultQueryParam = menuDescQueryParam.Default.(string)
+	// menuDescIsFrame is the schema descriptor for is_frame field.
+	menuDescIsFrame := menuFields[7].Descriptor()
+	// menu.DefaultIsFrame holds the default value on creation for the is_frame field.
+	menu.DefaultIsFrame = menuDescIsFrame.Default.(int8)
+	// menuDescIsCache is the schema descriptor for is_cache field.
+	menuDescIsCache := menuFields[8].Descriptor()
+	// menu.DefaultIsCache holds the default value on creation for the is_cache field.
+	menu.DefaultIsCache = menuDescIsCache.Default.(int8)
+	// menuDescVisible is the schema descriptor for visible field.
+	menuDescVisible := menuFields[10].Descriptor()
+	// menu.DefaultVisible holds the default value on creation for the visible field.
+	menu.DefaultVisible = menuDescVisible.Default.(int8)
+	// menuDescStatus is the schema descriptor for status field.
+	menuDescStatus := menuFields[11].Descriptor()
+	// menu.DefaultStatus holds the default value on creation for the status field.
+	menu.DefaultStatus = menuDescStatus.Default.(int8)
+	// menuDescPerms is the schema descriptor for perms field.
+	menuDescPerms := menuFields[12].Descriptor()
+	// menu.DefaultPerms holds the default value on creation for the perms field.
+	menu.DefaultPerms = menuDescPerms.Default.(string)
+	// menuDescIcon is the schema descriptor for icon field.
+	menuDescIcon := menuFields[13].Descriptor()
+	// menu.DefaultIcon holds the default value on creation for the icon field.
+	menu.DefaultIcon = menuDescIcon.Default.(string)
+	// menuDescActiveMenu is the schema descriptor for active_menu field.
+	menuDescActiveMenu := menuFields[14].Descriptor()
+	// menu.DefaultActiveMenu holds the default value on creation for the active_menu field.
+	menu.DefaultActiveMenu = menuDescActiveMenu.Default.(string)
+	// menuDescExt is the schema descriptor for ext field.
+	menuDescExt := menuFields[15].Descriptor()
+	// menu.DefaultExt holds the default value on creation for the ext field.
+	menu.DefaultExt = menuDescExt.Default.(string)
+	// menuDescCreateBy is the schema descriptor for create_by field.
+	menuDescCreateBy := menuFields[16].Descriptor()
+	// menu.DefaultCreateBy holds the default value on creation for the create_by field.
+	menu.DefaultCreateBy = menuDescCreateBy.Default.(int64)
+	// menuDescUpdateBy is the schema descriptor for update_by field.
+	menuDescUpdateBy := menuFields[17].Descriptor()
+	// menu.DefaultUpdateBy holds the default value on creation for the update_by field.
+	menu.DefaultUpdateBy = menuDescUpdateBy.Default.(int64)
+	// menuDescCreatedAt is the schema descriptor for created_at field.
+	menuDescCreatedAt := menuFields[18].Descriptor()
+	// menu.DefaultCreatedAt holds the default value on creation for the created_at field.
+	menu.DefaultCreatedAt = menuDescCreatedAt.Default.(func() time.Time)
+	// menuDescUpdatedAt is the schema descriptor for updated_at field.
+	menuDescUpdatedAt := menuFields[19].Descriptor()
+	// menu.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	menu.DefaultUpdatedAt = menuDescUpdatedAt.Default.(func() time.Time)
+	// menu.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	menu.UpdateDefaultUpdatedAt = menuDescUpdatedAt.UpdateDefault.(func() time.Time)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescNickName is the schema descriptor for nick_name field.

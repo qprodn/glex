@@ -6,6 +6,123 @@ info:
     title: ""
     version: 0.0.1
 paths:
+    /system/menu:
+        get:
+            tags:
+                - MenuService
+            description: |-
+                ListMenus returns the full menu tree. Not paginated (menus are small and
+                 tree-shaped). Supports AIP-160 filter and AIP-132 order.
+            operationId: MenuService_ListMenus
+            parameters:
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `menu_name` (e.g. `menu_name="系统"`)
+                       * `status` (e.g. `status=0`)
+                       * `visible` (e.g. `visible=0`)
+                       * `menu_type` (e.g. `menu_type=2`)
+                       * `parent_id` (e.g. `parent_id=0`)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: Optional. AIP-132 order, e.g. `order_num` or `parent_id, order_num`.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.menu.v1.MenuTree'
+        post:
+            tags:
+                - MenuService
+            description: CreateMenu creates a new menu.
+            operationId: MenuService_CreateMenu
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/system.menu.v1.Menu'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.menu.v1.Menu'
+    /system/menu/{menu.menu_id}:
+        patch:
+            tags:
+                - MenuService
+            description: UpdateMenu partially updates a menu (field-mask).
+            operationId: MenuService_UpdateMenu
+            parameters:
+                - name: menu.menu_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: updateMask
+                  in: query
+                  description: Required. Mask of fields to update.
+                  schema:
+                    type: string
+                    format: field-mask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/system.menu.v1.Menu'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.menu.v1.Menu'
+    /system/menu/{menuId}:
+        get:
+            tags:
+                - MenuService
+            description: GetMenu retrieves a menu by id.
+            operationId: MenuService_GetMenu
+            parameters:
+                - name: menuId
+                  in: path
+                  description: Required. The id of the menu to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.menu.v1.Menu'
+        delete:
+            tags:
+                - MenuService
+            description: DeleteMenu soft-deletes a menu by id; refused while it has children.
+            operationId: MenuService_DeleteMenu
+            parameters:
+                - name: menuId
+                  in: path
+                  description: Required. The id of the menu to delete.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
     /system/user:
         get:
             tags:
@@ -132,244 +249,86 @@ paths:
                 "200":
                     description: OK
                     content: {}
-    /v1/admins/create:
-        post:
-            tags:
-                - AdminService
-            description: CreateAdmin creates a new admin.
-            operationId: AdminService_CreateAdmin
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/kratos.admin.v1.Admin'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/kratos.admin.v1.Admin'
-    /v1/admins/current:
-        get:
-            tags:
-                - AdminService
-            description: Current returns the currently logged-in user.
-            operationId: AdminService_Current
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/kratos.admin.v1.Admin'
-    /v1/admins/list:
-        get:
-            tags:
-                - AdminService
-            description: ListAdmins returns a list of admins.
-            operationId: AdminService_ListAdmins
-            parameters:
-                - name: pageSize
-                  in: query
-                  description: Optional. The number of admins per page.
-                  schema:
-                    type: integer
-                    format: int32
-                - name: pageToken
-                  in: query
-                  description: Optional. The page token.
-                  schema:
-                    type: string
-                - name: filter
-                  in: query
-                  description: |-
-                    Optional. The standard list filter.
-                     Supported fields:
-                        * `name` (i.e. `name="John Doe"`)
-                        * `email` (i.e. `email="admin@go-kratos.dev"`)
-                        * `phone` (i.e. `phone="+1234567890"`)
-                        * `create_time` range (i.e. `timestamp>="2025-01-31T11:30:00-04:00"` where
-                        the timestamp is in RFC 3339 format)
-
-                     More detail in [AIP-160](https://google.aip.dev/160).
-                  schema:
-                    type: string
-                - name: orderBy
-                  in: query
-                  description: |-
-                    Optional. A comma-separated list of fields to order by, sorted in ascending
-                     order. Use "desc" after a field name for descending. Supported fields:
-                     - `create_time`
-
-                     Example: `create_time desc`.
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/kratos.admin.v1.AdminSet'
-    /v1/admins/login:
-        post:
-            tags:
-                - AdminService
-            description: Login a user and return the username.
-            operationId: AdminService_Login
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/kratos.admin.v1.LoginRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/kratos.admin.v1.Admin'
-    /v1/admins/logout:
-        post:
-            tags:
-                - AdminService
-            description: Logout the currently logged-in user.
-            operationId: AdminService_Logout
-            requestBody:
-                content:
-                    application/json: {}
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content: {}
-    /v1/admins/update:
-        put:
-            tags:
-                - AdminService
-            description: UpdateAdmin updates an existing admin.
-            operationId: AdminService_UpdateAdmin
-            parameters:
-                - name: updateMask
-                  in: query
-                  description: Required. Mask of fields to update.
-                  schema:
-                    type: string
-                    format: field-mask
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/kratos.admin.v1.Admin'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/kratos.admin.v1.Admin'
-    /v1/admins/{id}:
-        get:
-            tags:
-                - AdminService
-            description: GetAdmin retrieves an admin by ID.
-            operationId: AdminService_GetAdmin
-            parameters:
-                - name: id
-                  in: path
-                  description: The ID of the admin to retrieve.
-                  required: true
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/kratos.admin.v1.Admin'
-        delete:
-            tags:
-                - AdminService
-            description: DeleteAdmin deletes an admin by ID.
-            operationId: AdminService_DeleteAdmin
-            parameters:
-                - name: id
-                  in: path
-                  description: Required. The ID of the admin to delete.
-                  required: true
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content: {}
 components:
     schemas:
-        kratos.admin.v1.Admin:
+        system.menu.v1.Menu:
             type: object
             properties:
-                id:
+                menuId:
                     type: string
-                    description: The unique ID of the user.
-                name:
+                    description: Snowflake ID. Server-assigned on create.
+                menuName:
                     type: string
-                    description: The name of the user.
-                email:
+                parentId:
                     type: string
-                    description: The email of the user.
-                phone:
-                    type: string
-                    description: The phone number of the user.
-                avatar:
-                    type: string
-                    description: The avatar URL of the user.
-                access:
+                    description: Parent menu id; 0 = root.
+                orderNum:
+                    type: integer
+                    format: int32
+                path:
                     type: string
                     description: |-
-                        The access level of the user.
-                         Possible values are: "admin", "user", etc.
-                password:
+                        The routing fields below are inert until the auth module's getRouters
+                         consumes them.
+                component:
                     type: string
-                    description: The password of the user.
-                createTime:
+                queryParam:
                     type: string
-                    description: The timestamp at which the user was created.
+                isFrame:
+                    type: integer
+                    description: 0否 1是 (external link).
+                    format: int32
+                isCache:
+                    type: integer
+                    description: 0不缓存 1缓存.
+                    format: int32
+                menuType:
+                    type: integer
+                    format: enum
+                visible:
+                    type: integer
+                    description: 0显示 1隐藏.
+                    format: int32
+                status:
+                    type: integer
+                    description: 0正常 1停用.
+                    format: int32
+                perms:
+                    type: string
+                    description: Permission handle (e.g. "system:user:list"); enforced by the auth module.
+                icon:
+                    type: string
+                activeMenu:
+                    type: string
+                ext:
+                    type: string
+                createBy:
+                    type: string
+                    description: Audit; filled by the auth module.
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
                     format: date-time
-                updateTime:
+                updatedAt:
                     type: string
-                    description: The latest timestamp at which the user was updated.
                     format: date-time
-            description: Admin is the admin message.
-        kratos.admin.v1.AdminSet:
-            type: object
-            properties:
-                admins:
+                children:
                     type: array
                     items:
-                        $ref: '#/components/schemas/kratos.admin.v1.Admin'
-                    description: The set of admins.
-                nextPageToken:
-                    type: string
-                    description: The next page token.
-            description: AdminSet is the set of admins.
-        kratos.admin.v1.LoginRequest:
-            required:
-                - password
+                        $ref: '#/components/schemas/system.menu.v1.Menu'
+                    description: 'Read-only: populated by ListMenus (the tree), ignored on Create/Update.'
+            description: |-
+                Menu is a menu node (菜单), ported from RuoYi sys_menu. Back-office CRUD +
+                 tree only; route generation (getRouters) lives in the auth module.
+        system.menu.v1.MenuTree:
             type: object
             properties:
-                password:
-                    type: string
-                    description: Required. Password of the user.
-                username:
-                    type: string
-                email:
-                    type: string
-            description: LoginRequest is the request message for the Login method.
+                menus:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/system.menu.v1.Menu'
+            description: MenuTree is a forest of root menus, each nesting its descendants.
         system.user.v1.User:
             type: object
             properties:
@@ -436,7 +395,7 @@ components:
                     description: Opaque token for the next page; empty when on the last page.
             description: UserSet is a page of users.
 tags:
-    - name: AdminService
-      description: AdminService is the admin service definition.
+    - name: MenuService
+      description: MenuService is the system-menu CRUD + tree service.
     - name: UserService
       description: UserService is the system-user CRUD service.

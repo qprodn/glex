@@ -1,6 +1,7 @@
 package server
 
 import (
+	menuv1 "glex/api/system/menu/v1"
 	userv1 "glex/api/system/user/v1"
 	"glex/internal/conf"
 	"glex/internal/service"
@@ -11,7 +12,7 @@ import (
 )
 
 // NewGRPCServer new a gRPC server.
-func NewGRPCServer(c *conf.Server, user *service.UserService) *grpc.Server {
+func NewGRPCServer(c *conf.Server, user *service.UserService, menu *service.MenuService) *grpc.Server {
 	var opts = []grpc.ServerOption{
 		grpc.Middleware(
 			recovery.Recovery(),
@@ -29,5 +30,6 @@ func NewGRPCServer(c *conf.Server, user *service.UserService) *grpc.Server {
 	}
 	srv := grpc.NewServer(opts...)
 	userv1.RegisterUserServiceServer(srv, user)
+	menuv1.RegisterMenuServiceServer(srv, menu)
 	return srv
 }

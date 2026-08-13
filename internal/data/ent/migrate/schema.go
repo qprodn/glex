@@ -9,6 +9,36 @@ import (
 )
 
 var (
+	// SysMenuColumns holds the columns for the "sys_menu" table.
+	SysMenuColumns = []*schema.Column{
+		{Name: "menu_id", Type: field.TypeInt64, Increment: true},
+		{Name: "menu_name", Type: field.TypeString},
+		{Name: "parent_id", Type: field.TypeInt64, Default: 0},
+		{Name: "order_num", Type: field.TypeInt, Default: 0, SchemaType: map[string]string{"postgres": "integer"}},
+		{Name: "path", Type: field.TypeString, Default: ""},
+		{Name: "component", Type: field.TypeString, Default: ""},
+		{Name: "query_param", Type: field.TypeString, Default: ""},
+		{Name: "is_frame", Type: field.TypeInt8, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
+		{Name: "is_cache", Type: field.TypeInt8, Default: 1, SchemaType: map[string]string{"postgres": "smallint"}},
+		{Name: "menu_type", Type: field.TypeInt8, SchemaType: map[string]string{"postgres": "smallint"}},
+		{Name: "visible", Type: field.TypeInt8, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
+		{Name: "status", Type: field.TypeInt8, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
+		{Name: "perms", Type: field.TypeString, Default: ""},
+		{Name: "icon", Type: field.TypeString, Default: ""},
+		{Name: "active_menu", Type: field.TypeString, Default: ""},
+		{Name: "ext", Type: field.TypeString, Default: ""},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+	}
+	// SysMenuTable holds the schema information for the "sys_menu" table.
+	SysMenuTable = &schema.Table{
+		Name:       "sys_menu",
+		Columns:    SysMenuColumns,
+		PrimaryKey: []*schema.Column{SysMenuColumns[0]},
+	}
 	// SysUserColumns holds the columns for the "sys_user" table.
 	SysUserColumns = []*schema.Column{
 		{Name: "user_id", Type: field.TypeInt64, Increment: true},
@@ -37,11 +67,15 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		SysMenuTable,
 		SysUserTable,
 	}
 )
 
 func init() {
+	SysMenuTable.Annotation = &entsql.Annotation{
+		Table: "sys_menu",
+	}
 	SysUserTable.Annotation = &entsql.Annotation{
 		Table: "sys_user",
 	}

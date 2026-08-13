@@ -1,6 +1,7 @@
 package server
 
 import (
+	menuv1 "glex/api/system/menu/v1"
 	userv1 "glex/api/system/user/v1"
 	"glex/internal/conf"
 	"glex/internal/service"
@@ -14,7 +15,7 @@ import (
 //
 // No auth middleware yet — the template's pkg/auth was removed and will be
 // replaced by the real auth module. Endpoints are currently unauthenticated.
-func NewHTTPServer(c *conf.Server, user *service.UserService) *http.Server {
+func NewHTTPServer(c *conf.Server, user *service.UserService, menu *service.MenuService) *http.Server {
 	var opts = []http.ServerOption{
 		http.Middleware(
 			recovery.Recovery(),
@@ -32,5 +33,6 @@ func NewHTTPServer(c *conf.Server, user *service.UserService) *http.Server {
 	}
 	srv := http.NewServer(opts...)
 	userv1.RegisterUserServiceHTTPServer(srv, user)
+	menuv1.RegisterMenuServiceHTTPServer(srv, menu)
 	return srv
 }

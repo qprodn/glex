@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"glex/internal/data/ent/menu"
 	"glex/internal/data/ent/user"
 	"reflect"
 	"sync"
@@ -73,6 +74,7 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
+			menu.Table: menu.ValidColumn,
 			user.Table: user.ValidColumn,
 		})
 	})
