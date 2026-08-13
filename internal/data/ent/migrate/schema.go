@@ -3,33 +3,46 @@
 package migrate
 
 import (
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/schema/field"
 )
 
 var (
-	// AdminsColumns holds the columns for the "admins" table.
-	AdminsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt64, Increment: true},
-		{Name: "name", Type: field.TypeString, Default: ""},
-		{Name: "email", Type: field.TypeString, Default: ""},
-		{Name: "avatar", Type: field.TypeString, Default: ""},
-		{Name: "access", Type: field.TypeString, Default: ""},
+	// SysUserColumns holds the columns for the "sys_user" table.
+	SysUserColumns = []*schema.Column{
+		{Name: "user_id", Type: field.TypeInt64, Increment: true},
+		{Name: "user_name", Type: field.TypeString, Unique: true},
+		{Name: "nick_name", Type: field.TypeString, Default: ""},
+		{Name: "email", Type: field.TypeString, Unique: true, Nullable: true},
+		{Name: "phone_number", Type: field.TypeString, Unique: true, Nullable: true},
+		{Name: "gender", Type: field.TypeInt8, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
+		{Name: "status", Type: field.TypeInt8, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
 		{Name: "password", Type: field.TypeString, Default: ""},
-		{Name: "create_time", Type: field.TypeTime},
-		{Name: "update_time", Type: field.TypeTime},
+		{Name: "avatar", Type: field.TypeString, Nullable: true, Size: 256, Default: ""},
+		{Name: "remark", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "login_ip", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "login_date", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
 	}
-	// AdminsTable holds the schema information for the "admins" table.
-	AdminsTable = &schema.Table{
-		Name:       "admins",
-		Columns:    AdminsColumns,
-		PrimaryKey: []*schema.Column{AdminsColumns[0]},
+	// SysUserTable holds the schema information for the "sys_user" table.
+	SysUserTable = &schema.Table{
+		Name:       "sys_user",
+		Columns:    SysUserColumns,
+		PrimaryKey: []*schema.Column{SysUserColumns[0]},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
-		AdminsTable,
+		SysUserTable,
 	}
 )
 
 func init() {
+	SysUserTable.Annotation = &entsql.Annotation{
+		Table: "sys_user",
+	}
 }

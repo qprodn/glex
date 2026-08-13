@@ -1,7 +1,7 @@
 package server
 
 import (
-	v1 "glex/api/kratos/admin/v1"
+	userv1 "glex/api/system/user/v1"
 	"glex/internal/conf"
 	"glex/internal/service"
 	"glex/pkg/validate"
@@ -11,7 +11,7 @@ import (
 )
 
 // NewGRPCServer new a gRPC server.
-func NewGRPCServer(c *conf.Server, admin *service.AdminService) *grpc.Server {
+func NewGRPCServer(c *conf.Server, user *service.UserService) *grpc.Server {
 	var opts = []grpc.ServerOption{
 		grpc.Middleware(
 			recovery.Recovery(),
@@ -28,6 +28,6 @@ func NewGRPCServer(c *conf.Server, admin *service.AdminService) *grpc.Server {
 		opts = append(opts, grpc.Timeout(c.Grpc.Timeout.AsDuration()))
 	}
 	srv := grpc.NewServer(opts...)
-	v1.RegisterAdminServiceServer(srv, admin)
+	userv1.RegisterUserServiceServer(srv, user)
 	return srv
 }

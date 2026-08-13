@@ -3,46 +3,63 @@
 package ent
 
 import (
-	"time"
-
-	"glex/internal/data/ent/admin"
 	"glex/internal/data/ent/schema"
+	"glex/internal/data/ent/user"
+	"time"
 )
 
 // The init function reads all schema descriptors with runtime code
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
-	adminFields := schema.Admin{}.Fields()
-	_ = adminFields
-	// adminDescName is the schema descriptor for name field.
-	adminDescName := adminFields[1].Descriptor()
-	// admin.DefaultName holds the default value on creation for the name field.
-	admin.DefaultName = adminDescName.Default.(string)
-	// adminDescEmail is the schema descriptor for email field.
-	adminDescEmail := adminFields[2].Descriptor()
-	// admin.DefaultEmail holds the default value on creation for the email field.
-	admin.DefaultEmail = adminDescEmail.Default.(string)
-	// adminDescAvatar is the schema descriptor for avatar field.
-	adminDescAvatar := adminFields[3].Descriptor()
-	// admin.DefaultAvatar holds the default value on creation for the avatar field.
-	admin.DefaultAvatar = adminDescAvatar.Default.(string)
-	// adminDescAccess is the schema descriptor for access field.
-	adminDescAccess := adminFields[4].Descriptor()
-	// admin.DefaultAccess holds the default value on creation for the access field.
-	admin.DefaultAccess = adminDescAccess.Default.(string)
-	// adminDescPassword is the schema descriptor for password field.
-	adminDescPassword := adminFields[5].Descriptor()
-	// admin.DefaultPassword holds the default value on creation for the password field.
-	admin.DefaultPassword = adminDescPassword.Default.(string)
-	// adminDescCreateTime is the schema descriptor for create_time field.
-	adminDescCreateTime := adminFields[6].Descriptor()
-	// admin.DefaultCreateTime holds the default value on creation for the create_time field.
-	admin.DefaultCreateTime = adminDescCreateTime.Default.(func() time.Time)
-	// adminDescUpdateTime is the schema descriptor for update_time field.
-	adminDescUpdateTime := adminFields[7].Descriptor()
-	// admin.DefaultUpdateTime holds the default value on creation for the update_time field.
-	admin.DefaultUpdateTime = adminDescUpdateTime.Default.(func() time.Time)
-	// admin.UpdateDefaultUpdateTime holds the default value on update for the update_time field.
-	admin.UpdateDefaultUpdateTime = adminDescUpdateTime.UpdateDefault.(func() time.Time)
+	userFields := schema.User{}.Fields()
+	_ = userFields
+	// userDescNickName is the schema descriptor for nick_name field.
+	userDescNickName := userFields[2].Descriptor()
+	// user.DefaultNickName holds the default value on creation for the nick_name field.
+	user.DefaultNickName = userDescNickName.Default.(string)
+	// userDescGender is the schema descriptor for gender field.
+	userDescGender := userFields[5].Descriptor()
+	// user.DefaultGender holds the default value on creation for the gender field.
+	user.DefaultGender = userDescGender.Default.(int8)
+	// userDescStatus is the schema descriptor for status field.
+	userDescStatus := userFields[6].Descriptor()
+	// user.DefaultStatus holds the default value on creation for the status field.
+	user.DefaultStatus = userDescStatus.Default.(int8)
+	// userDescPassword is the schema descriptor for password field.
+	userDescPassword := userFields[7].Descriptor()
+	// user.DefaultPassword holds the default value on creation for the password field.
+	user.DefaultPassword = userDescPassword.Default.(string)
+	// userDescAvatar is the schema descriptor for avatar field.
+	userDescAvatar := userFields[8].Descriptor()
+	// user.DefaultAvatar holds the default value on creation for the avatar field.
+	user.DefaultAvatar = userDescAvatar.Default.(string)
+	// user.AvatarValidator is a validator for the "avatar" field. It is called by the builders before save.
+	user.AvatarValidator = userDescAvatar.Validators[0].(func(string) error)
+	// userDescRemark is the schema descriptor for remark field.
+	userDescRemark := userFields[9].Descriptor()
+	// user.DefaultRemark holds the default value on creation for the remark field.
+	user.DefaultRemark = userDescRemark.Default.(string)
+	// userDescCreateBy is the schema descriptor for create_by field.
+	userDescCreateBy := userFields[10].Descriptor()
+	// user.DefaultCreateBy holds the default value on creation for the create_by field.
+	user.DefaultCreateBy = userDescCreateBy.Default.(int64)
+	// userDescUpdateBy is the schema descriptor for update_by field.
+	userDescUpdateBy := userFields[11].Descriptor()
+	// user.DefaultUpdateBy holds the default value on creation for the update_by field.
+	user.DefaultUpdateBy = userDescUpdateBy.Default.(int64)
+	// userDescLoginIP is the schema descriptor for login_ip field.
+	userDescLoginIP := userFields[12].Descriptor()
+	// user.DefaultLoginIP holds the default value on creation for the login_ip field.
+	user.DefaultLoginIP = userDescLoginIP.Default.(string)
+	// userDescCreatedAt is the schema descriptor for created_at field.
+	userDescCreatedAt := userFields[14].Descriptor()
+	// user.DefaultCreatedAt holds the default value on creation for the created_at field.
+	user.DefaultCreatedAt = userDescCreatedAt.Default.(func() time.Time)
+	// userDescUpdatedAt is the schema descriptor for updated_at field.
+	userDescUpdatedAt := userFields[15].Descriptor()
+	// user.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
+	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	user.UpdateDefaultUpdatedAt = userDescUpdatedAt.UpdateDefault.(func() time.Time)
 }

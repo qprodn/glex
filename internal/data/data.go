@@ -8,12 +8,12 @@ import (
 	"glex/internal/conf"
 	"glex/internal/data/ent"
 	"glex/internal/data/ent/migrate"
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/google/wire"
 )
 
 // ProviderSet is data providers.
-var ProviderSet = wire.NewSet(NewData, NewAdminRepo)
+var ProviderSet = wire.NewSet(NewData, NewUserRepo)
 
 // Data is a struct that contains the database client.
 type Data struct {

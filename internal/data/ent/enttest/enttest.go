@@ -9,8 +9,9 @@ import (
 	// required by schema hooks.
 	_ "glex/internal/data/ent/runtime"
 
-	"entgo.io/ent/dialect/sql/schema"
 	"glex/internal/data/ent/migrate"
+
+	"entgo.io/ent/dialect/sql/schema"
 )
 
 type (

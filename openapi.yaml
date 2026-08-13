@@ -3,10 +3,135 @@
 
 openapi: 3.0.3
 info:
-    title: AdminService API
-    description: AdminService is the admin service definition.
+    title: ""
     version: 0.0.1
 paths:
+    /system/user:
+        get:
+            tags:
+                - UserService
+            description: ListUsers lists users with AIP filter/order/page-token.
+            operationId: UserService_ListUsers
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `user_name` (e.g. `user_name="admin"`)
+                       * `email` (e.g. `email="a@b.com"`)
+                       * `phone_number` (e.g. `phone_number="13800000000"`)
+                       * `status` (e.g. `status=0`)
+                       * `created_at` range (e.g. `created_at>="2026-01-01T00:00:00Z"`)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: Optional. AIP-132 order, e.g. `created_at desc` or `user_name`.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.user.v1.UserSet'
+        post:
+            tags:
+                - UserService
+            description: CreateUser creates a new system user.
+            operationId: UserService_CreateUser
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/system.user.v1.User'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.user.v1.User'
+    /system/user/{user.user_id}:
+        patch:
+            tags:
+                - UserService
+            description: UpdateUser partially updates a user (field-mask). Empty password = unchanged.
+            operationId: UserService_UpdateUser
+            parameters:
+                - name: user.user_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: updateMask
+                  in: query
+                  description: Required. Mask of fields to update.
+                  schema:
+                    type: string
+                    format: field-mask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/system.user.v1.User'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.user.v1.User'
+    /system/user/{userId}:
+        get:
+            tags:
+                - UserService
+            description: GetUser retrieves a user by id.
+            operationId: UserService_GetUser
+            parameters:
+                - name: userId
+                  in: path
+                  description: Required. The id of the user to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.user.v1.User'
+        delete:
+            tags:
+                - UserService
+            description: DeleteUser soft-deletes a user by id.
+            operationId: UserService_DeleteUser
+            parameters:
+                - name: userId
+                  in: path
+                  description: Required. The id of the user to delete.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
     /v1/admins/create:
         post:
             tags:
@@ -245,5 +370,73 @@ components:
                 email:
                     type: string
             description: LoginRequest is the request message for the Login method.
+        system.user.v1.User:
+            type: object
+            properties:
+                userId:
+                    type: string
+                    description: Snowflake ID. Server-assigned on create.
+                userName:
+                    type: string
+                    description: Login account. Unique.
+                nickName:
+                    type: string
+                    description: Display name.
+                email:
+                    type: string
+                    description: Email. Unique when set.
+                phoneNumber:
+                    type: string
+                    description: Phone number. Unique when set.
+                gender:
+                    type: integer
+                    description: 0男 1女 2未知 (per RuoYi).
+                    format: int32
+                password:
+                    type: string
+                    description: 'Write-only: accepted on create/update, never returned. Bcrypt-hashed.'
+                status:
+                    type: integer
+                    description: 0正常 1停用 (per RuoYi).
+                    format: int32
+                avatar:
+                    type: string
+                    description: Avatar URL. OSS upload is deferred; the column is a placeholder.
+                remark:
+                    type: string
+                createBy:
+                    type: string
+                    description: 'Audit: who created/updated. Filled by the auth module.'
+                updateBy:
+                    type: string
+                loginIp:
+                    type: string
+                    description: Last login IP/time. Written by the auth module, read-only here.
+                loginDate:
+                    type: string
+                    format: date-time
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                User is a system user (系统用户), ported from RuoYi sys_user. Back-office
+                 CRUD only — login/session lives in the auth module.
+        system.user.v1.UserSet:
+            type: object
+            properties:
+                users:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/system.user.v1.User'
+                nextPageToken:
+                    type: string
+                    description: Opaque token for the next page; empty when on the last page.
+            description: UserSet is a page of users.
 tags:
     - name: AdminService
+      description: AdminService is the admin service definition.
+    - name: UserService
+      description: UserService is the system-user CRUD service.

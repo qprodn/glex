@@ -1,4 +1,4 @@
-import { createAdminServiceClient } from "@/services/kratos/admin/v1";
+import { createUserServiceClient } from "@/services/system/user/v1";
 import { request } from "@umijs/max";
 
 type Request = {
@@ -29,7 +29,7 @@ function requestHandler({ path, method, body }: Request) {
 // per service is enough. Add a resource by adding one line here; call sites
 // keep importing `services` unchanged.
 export const services = {
-  admin: createAdminServiceClient(requestHandler),
+  user: createUserServiceClient(requestHandler),
 };
 
 /**
@@ -54,7 +54,5 @@ export function asServiceError(error: unknown): ServiceError | undefined {
   return data && typeof data === "object" ? (data as ServiceError) : undefined;
 }
 
-// Re-export DTOs so pages import types and clients from the same place. If a
-// second domain ever collides on a type name, switch to namespaced exports
-// (`export * as adminV1 from "@/services/kratos/admin/v1"`).
-export type * from "@/services/kratos/admin/v1";
+// Re-export DTOs so pages import types and clients from the same place.
+export type * from "@/services/system/user/v1";

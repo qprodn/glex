@@ -1,10 +1,9 @@
 package server
 
 import (
-	v1 "glex/api/kratos/admin/v1"
+	userv1 "glex/api/system/user/v1"
 	"glex/internal/conf"
 	"glex/internal/service"
-	"glex/pkg/auth"
 	"glex/pkg/validate"
 
 	"github.com/go-kratos/kratos/v3/middleware/recovery"
@@ -12,11 +11,11 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, admin *service.AdminService) *http.Server {
+//
+// No auth middleware yet — the template's pkg/auth was removed and will be
+// replaced by the real auth module. Endpoints are currently unauthenticated.
+func NewHTTPServer(c *conf.Server, user *service.UserService) *http.Server {
 	var opts = []http.ServerOption{
-		http.Filter(
-			auth.Middleware(),
-		),
 		http.Middleware(
 			recovery.Recovery(),
 			validate.Middleware(),
@@ -32,6 +31,6 @@ func NewHTTPServer(c *conf.Server, admin *service.AdminService) *http.Server {
 		opts = append(opts, http.Timeout(c.Http.Timeout.AsDuration()))
 	}
 	srv := http.NewServer(opts...)
-	v1.RegisterAdminServiceHTTPServer(srv, admin)
+	userv1.RegisterUserServiceHTTPServer(srv, user)
 	return srv
 }
