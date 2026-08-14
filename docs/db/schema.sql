@@ -64,3 +64,28 @@ create table if not exists sys_menu (
 -- No unique constraint on (parent_id, menu_name): enforced by a soft biz check.
 
 comment on table sys_menu is '菜单权限表';
+
+-- sys_role — roles (角色信息表), ported from RuoYi sys_role.
+-- Hand-written record of the production schema; keep aligned with
+-- internal/data/ent/schema/role.go (no auto drift guard — discipline, per ADR).
+-- PostgreSQL (ADR-0003). Single-tenant (ADR-0001). Snowflake PK. Soft delete
+-- via deleted_at (replaces RuoYi del_flag). No unique constraints — enforced
+-- by code checks against active rows; soft-deleted values are reusable
+-- (repo-wide convention, see .scratch/role/plan.md).
+
+create table if not exists sys_role (
+    role_id     bigint       not null,
+    role_name   varchar(256) not null,
+    role_key    varchar(256) not null,               -- permission string (no charset rule)
+    role_sort   integer      not null default 0,     -- display order
+    status      smallint     not null default 0,     -- 0正常 1停用
+    remark      varchar(256) not null default '',
+    create_by   bigint       not null default 0,     -- audit; auth module fills
+    update_by   bigint       not null default 0,
+    created_at  timestamptz  not null default now(),
+    updated_at  timestamptz  not null default now(),
+    deleted_at  timestamptz,                         -- soft delete; NULL = active
+    constraint sys_role_pkey primary key (role_id)
+);
+
+comment on table sys_role is '角色信息表';

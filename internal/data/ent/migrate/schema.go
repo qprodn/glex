@@ -39,6 +39,26 @@ var (
 		Columns:    SysMenuColumns,
 		PrimaryKey: []*schema.Column{SysMenuColumns[0]},
 	}
+	// SysRoleColumns holds the columns for the "sys_role" table.
+	SysRoleColumns = []*schema.Column{
+		{Name: "role_id", Type: field.TypeInt64, Increment: true},
+		{Name: "role_name", Type: field.TypeString},
+		{Name: "role_key", Type: field.TypeString},
+		{Name: "role_sort", Type: field.TypeInt, Default: 0, SchemaType: map[string]string{"postgres": "integer"}},
+		{Name: "status", Type: field.TypeInt8, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
+		{Name: "remark", Type: field.TypeString, Default: ""},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+	}
+	// SysRoleTable holds the schema information for the "sys_role" table.
+	SysRoleTable = &schema.Table{
+		Name:       "sys_role",
+		Columns:    SysRoleColumns,
+		PrimaryKey: []*schema.Column{SysRoleColumns[0]},
+	}
 	// SysUserColumns holds the columns for the "sys_user" table.
 	SysUserColumns = []*schema.Column{
 		{Name: "user_id", Type: field.TypeInt64, Increment: true},
@@ -68,6 +88,7 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		SysMenuTable,
+		SysRoleTable,
 		SysUserTable,
 	}
 )
@@ -75,6 +96,9 @@ var (
 func init() {
 	SysMenuTable.Annotation = &entsql.Annotation{
 		Table: "sys_menu",
+	}
+	SysRoleTable.Annotation = &entsql.Annotation{
+		Table: "sys_role",
 	}
 	SysUserTable.Annotation = &entsql.Annotation{
 		Table: "sys_user",

@@ -123,6 +123,130 @@ paths:
                 "200":
                     description: OK
                     content: {}
+    /system/role:
+        get:
+            tags:
+                - RoleService
+            description: ListRoles lists roles with AIP filter/order/page-token.
+            operationId: RoleService_ListRoles
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `role_name` (e.g. `role_name="超级管理员"`)
+                       * `role_key` (e.g. `role_key="superadmin"`)
+                       * `status` (e.g. `status=0`)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: Optional. AIP-132 order, e.g. `role_sort` or `role_sort, role_id`.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.role.v1.RoleSet'
+        post:
+            tags:
+                - RoleService
+            description: CreateRole creates a new role.
+            operationId: RoleService_CreateRole
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/system.role.v1.Role'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.role.v1.Role'
+    /system/role/{role.role_id}:
+        patch:
+            tags:
+                - RoleService
+            description: UpdateRole partially updates a role (field-mask).
+            operationId: RoleService_UpdateRole
+            parameters:
+                - name: role.role_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: updateMask
+                  in: query
+                  description: Required. Mask of fields to update.
+                  schema:
+                    type: string
+                    format: field-mask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/system.role.v1.Role'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.role.v1.Role'
+    /system/role/{roleId}:
+        get:
+            tags:
+                - RoleService
+            description: GetRole retrieves a role by id.
+            operationId: RoleService_GetRole
+            parameters:
+                - name: roleId
+                  in: path
+                  description: Required. The id of the role to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.role.v1.Role'
+        delete:
+            tags:
+                - RoleService
+            description: DeleteRole soft-deletes a role by id.
+            operationId: RoleService_DeleteRole
+            parameters:
+                - name: roleId
+                  in: path
+                  description: Required. The id of the role to delete.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
     /system/user:
         get:
             tags:
@@ -329,6 +453,56 @@ components:
                     items:
                         $ref: '#/components/schemas/system.menu.v1.Menu'
             description: MenuTree is a forest of root menus, each nesting its descendants.
+        system.role.v1.Role:
+            type: object
+            properties:
+                roleId:
+                    type: string
+                    description: Snowflake ID. Server-assigned on create.
+                roleName:
+                    type: string
+                    description: Role name. Required, non-blank; unique among active roles.
+                roleKey:
+                    type: string
+                    description: |-
+                        Permission string (e.g. "superadmin" or "data:scope:read"). Required,
+                         non-blank; unique among active roles. No charset rule.
+                roleSort:
+                    type: integer
+                    description: Display order. Defaults to 0; not required (0 is legal).
+                    format: int32
+                status:
+                    type: integer
+                    description: 0正常 1停用 (per RuoYi). Ordinary updatable field.
+                    format: int32
+                remark:
+                    type: string
+                createBy:
+                    type: string
+                    description: 'Audit: who created/updated. Filled by the auth module.'
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                Role is a named bundle of permissions (角色), ported from RuoYi sys_role.
+                 Back-office CRUD only — no associations with other tables yet: role↔menu,
+                 user↔role and data-scope links are deferred (see CONTEXT.md).
+        system.role.v1.RoleSet:
+            type: object
+            properties:
+                roles:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/system.role.v1.Role'
+                nextPageToken:
+                    type: string
+                    description: Opaque token for the next page; empty when on the last page.
+            description: RoleSet is a page of roles.
         system.user.v1.User:
             type: object
             properties:
@@ -397,5 +571,7 @@ components:
 tags:
     - name: MenuService
       description: MenuService is the system-menu CRUD + tree service.
+    - name: RoleService
+      description: RoleService is the system-role CRUD service.
     - name: UserService
       description: UserService is the system-user CRUD service.

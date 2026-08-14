@@ -2,6 +2,7 @@ package biz
 
 import (
 	menuv1 "glex/api/system/menu/v1"
+	rolev1 "glex/api/system/role/v1"
 	userv1 "glex/api/system/user/v1"
 	"github.com/go-kratos/kratos/v3/errors"
 )
@@ -28,4 +29,13 @@ var (
 	ErrMenuParentInvalid = errors.BadRequest(menuv1.ErrorReason_MENU_PARENT_INVALID.String(), "a menu cannot be its own parent")
 	// ErrMenuTypeInvalid: menu_type is not a valid MenuType.
 	ErrMenuTypeInvalid = errors.BadRequest(menuv1.ErrorReason_MENU_TYPE_INVALID.String(), "invalid menu_type")
+
+	// ErrRoleNotFound: the requested role does not exist.
+	ErrRoleNotFound = errors.NotFound(rolev1.ErrorReason_ROLE_NOT_FOUND.String(), "role not found")
+	// ErrRoleNameConflict: role_name already exists.
+	ErrRoleNameConflict = errors.Conflict(rolev1.ErrorReason_ROLE_NAME_CONFLICT.String(), "role_name already exists")
+	// ErrRoleKeyConflict: role_key already exists.
+	ErrRoleKeyConflict = errors.Conflict(rolev1.ErrorReason_ROLE_KEY_CONFLICT.String(), "role_key already exists")
+	// ErrRoleInvalid: role_name/role_key is blank.
+	ErrRoleInvalid = errors.BadRequest(rolev1.ErrorReason_ROLE_INVALID.String(), "role_name and role_key are required")
 )

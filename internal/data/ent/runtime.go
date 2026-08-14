@@ -4,6 +4,7 @@ package ent
 
 import (
 	"glex/internal/data/ent/menu"
+	"glex/internal/data/ent/role"
 	"glex/internal/data/ent/schema"
 	"glex/internal/data/ent/user"
 	"time"
@@ -85,6 +86,38 @@ func init() {
 	menu.DefaultUpdatedAt = menuDescUpdatedAt.Default.(func() time.Time)
 	// menu.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	menu.UpdateDefaultUpdatedAt = menuDescUpdatedAt.UpdateDefault.(func() time.Time)
+	roleFields := schema.Role{}.Fields()
+	_ = roleFields
+	// roleDescRoleSort is the schema descriptor for role_sort field.
+	roleDescRoleSort := roleFields[3].Descriptor()
+	// role.DefaultRoleSort holds the default value on creation for the role_sort field.
+	role.DefaultRoleSort = roleDescRoleSort.Default.(int)
+	// roleDescStatus is the schema descriptor for status field.
+	roleDescStatus := roleFields[4].Descriptor()
+	// role.DefaultStatus holds the default value on creation for the status field.
+	role.DefaultStatus = roleDescStatus.Default.(int8)
+	// roleDescRemark is the schema descriptor for remark field.
+	roleDescRemark := roleFields[5].Descriptor()
+	// role.DefaultRemark holds the default value on creation for the remark field.
+	role.DefaultRemark = roleDescRemark.Default.(string)
+	// roleDescCreateBy is the schema descriptor for create_by field.
+	roleDescCreateBy := roleFields[6].Descriptor()
+	// role.DefaultCreateBy holds the default value on creation for the create_by field.
+	role.DefaultCreateBy = roleDescCreateBy.Default.(int64)
+	// roleDescUpdateBy is the schema descriptor for update_by field.
+	roleDescUpdateBy := roleFields[7].Descriptor()
+	// role.DefaultUpdateBy holds the default value on creation for the update_by field.
+	role.DefaultUpdateBy = roleDescUpdateBy.Default.(int64)
+	// roleDescCreatedAt is the schema descriptor for created_at field.
+	roleDescCreatedAt := roleFields[8].Descriptor()
+	// role.DefaultCreatedAt holds the default value on creation for the created_at field.
+	role.DefaultCreatedAt = roleDescCreatedAt.Default.(func() time.Time)
+	// roleDescUpdatedAt is the schema descriptor for updated_at field.
+	roleDescUpdatedAt := roleFields[9].Descriptor()
+	// role.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	role.DefaultUpdatedAt = roleDescUpdatedAt.Default.(func() time.Time)
+	// role.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	role.UpdateDefaultUpdatedAt = roleDescUpdatedAt.UpdateDefault.(func() time.Time)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescNickName is the schema descriptor for nick_name field.
