@@ -42,10 +42,10 @@ var (
 	// SysUserColumns holds the columns for the "sys_user" table.
 	SysUserColumns = []*schema.Column{
 		{Name: "user_id", Type: field.TypeInt64, Increment: true},
-		{Name: "user_name", Type: field.TypeString, Unique: true},
+		{Name: "user_name", Type: field.TypeString},
 		{Name: "nick_name", Type: field.TypeString, Default: ""},
-		{Name: "email", Type: field.TypeString, Unique: true, Nullable: true},
-		{Name: "phone_number", Type: field.TypeString, Unique: true, Nullable: true},
+		{Name: "email", Type: field.TypeString, Nullable: true},
+		{Name: "phone_number", Type: field.TypeString, Nullable: true},
 		{Name: "gender", Type: field.TypeInt8, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
 		{Name: "status", Type: field.TypeInt8, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
 		{Name: "password", Type: field.TypeString, Default: ""},

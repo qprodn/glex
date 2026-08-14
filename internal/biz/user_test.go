@@ -185,3 +185,49 @@ func TestUpdateUser_HashesNewPassword(t *testing.T) {
 		t.Fatalf("updated password is not a valid bcrypt hash: %v", err)
 	}
 }
+
+func TestUpdateUser_UserNameConflict(t *testing.T) {
+	repo := newFakeUserRepo()
+	repo.byName["bob"] = &User{ID: 7, UserName: "bob"}
+	uc := NewUserUsecase(repo)
+
+	_, err := uc.UpdateUser(context.Background(), &User{ID: 2, UserName: "bob"})
+	if !errors.Is(err, ErrUserNameConflict) {
+		t.Fatalf("expected ErrUserNameConflict, got %v", err)
+	}
+}
+
+func TestUpdateUser_SameValuesPass(t *testing.T) {
+	// Updating a record while keeping its own unique values must pass: the
+	// check excludes the record being updated.
+	repo := newFakeUserRepo()
+	repo.byID[5] = &User{ID: 5, UserName: "alice"}
+	repo.byName["alice"] = repo.byID[5]
+	uc := NewUserUsecase(repo)
+
+	_, err := uc.UpdateUser(context.Background(), &User{ID: 5, UserName: "alice", Email: "a@b.com"})
+	if err != nil {
+		t.Fatalf("update keeping own values: %v", err)
+	}
+}
+
+func TestUpdateUser_EmailConflict(t *testing.T) {
+	repo := newFakeUserRepo()
+	repo.byEmail["a@b.com"] = &User{ID: 7, UserName: "someone", Email: "a@b.com"}
+	uc := NewUserUsecase(repo)
+
+	_, err := uc.UpdateUser(context.Background(), &User{ID: 2, UserName: "bob", Email: "a@b.com"})
+	if !errors.Is(err, ErrEmailConflict) {
+		t.Fatalf("expected ErrEmailConflict, got %v", err)
+	}
+}
+
+func TestUpdateUser_EmptyEmailNotChecked(t *testing.T) {
+	repo := newFakeUserRepo()
+	uc := NewUserUsecase(repo)
+
+	_, err := uc.UpdateUser(context.Background(), &User{ID: 1, UserName: "bob"})
+	if err != nil {
+		t.Fatalf("update without email: %v", err)
+	}
+}

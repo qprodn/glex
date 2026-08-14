@@ -8,8 +8,8 @@ create table if not exists sys_user (
     user_id      bigint       not null,
     user_name    varchar(256) not null,
     nick_name    varchar(256) not null default '',
-    email        varchar(256),                       -- nullable; unique when set
-    phone_number varchar(256),                       -- nullable; unique when set
+    email        varchar(256),                       -- nullable; NULL when unset
+    phone_number varchar(256),                       -- nullable; NULL when unset
     gender       smallint     not null default 0,    -- 0男 1女 2未知
     status       smallint     not null default 0,    -- 0正常 1停用
     password     varchar(256) not null,              -- bcrypt hash
@@ -22,11 +22,11 @@ create table if not exists sys_user (
     created_at   timestamptz  not null default now(),
     updated_at   timestamptz  not null default now(),
     deleted_at   timestamptz,                        -- soft delete; NULL = active
-    constraint sys_user_pkey primary key (user_id),
-    constraint sys_user_user_name_key unique (user_name),
-    constraint sys_user_email_key unique (email),
-    constraint sys_user_phone_number_key unique (phone_number)
+    constraint sys_user_pkey primary key (user_id)
 );
+-- No unique constraints on user_name/email/phone_number: enforced by code
+-- checks against active rows; soft-deleted values are reusable (repo-wide
+-- convention, see .scratch/role/plan.md).
 
 comment on table sys_user is '系统用户';
 

@@ -21,11 +21,14 @@ func (User) Fields() []ent.Field {
 		// Snowflake ID; stored in the RuoYi-style user_id column. Set by the repo
 		// on create (see data.newSnowflakeID).
 		field.Int64("id").StorageKey("user_id").Unique().Immutable(),
-		field.String("user_name").Unique(),
+		// Uniqueness is enforced in code (biz checks against active rows), not
+		// by DB constraints — repo-wide convention (see .scratch/role/plan.md).
+		// Soft-deleted values are reusable.
+		field.String("user_name"),
 		field.String("nick_name").Default(""),
-		// Nullable + unique: PG allows many NULLs, enforces uniqueness when set.
-		field.String("email").Optional().Nillable().Unique(),
-		field.String("phone_number").Optional().Nillable().Unique(),
+		// Nullable: NULL when unset; uniqueness enforced in code when set.
+		field.String("email").Optional().Nillable(),
+		field.String("phone_number").Optional().Nillable(),
 		// smallint in PG (RuoYi's char(1) enums made numeric).
 		field.Int8("gender").Default(0).SchemaType(map[string]string{
 			dialect.Postgres: "smallint",

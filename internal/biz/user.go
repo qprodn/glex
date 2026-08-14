@@ -51,13 +51,13 @@ func NewUserUsecase(repo UserRepo) *UserUsecase {
 }
 
 // CreateUser validates uniqueness, hashes the password, and persists a user.
-// Uniqueness is defense-in-depth: the DB also enforces unique indexes and the
-// repo maps a unique violation to the matching conflict error (covers races too).
+// Uniqueness is a code check against active rows (repo-wide convention; the DB
+// has no unique constraints) — racy under concurrent creates, accepted.
 func (uc *UserUsecase) CreateUser(ctx context.Context, u *User) (*User, error) {
 	if u.Password == "" {
 		return nil, ErrPasswordRequired
 	}
-	if err := uc.assertUnique(ctx, u); err != nil {
+	if err := uc.assertUnique(ctx, u, 0); err != nil {
 		return nil, err
 	}
 	hashed, err := hashPassword(u.Password)
@@ -69,9 +69,12 @@ func (uc *UserUsecase) CreateUser(ctx context.Context, u *User) (*User, error) {
 }
 
 // UpdateUser applies a partial update. Empty password means "leave unchanged";
-// a non-empty password is bcrypt-hashed before persisting. Uniqueness on update
-// is enforced by the DB (the repo maps a violation to a conflict error).
+// a non-empty password is bcrypt-hashed before persisting. Uniqueness is
+// checked in code, excluding the record being updated.
 func (uc *UserUsecase) UpdateUser(ctx context.Context, u *User) (*User, error) {
+	if err := uc.assertUnique(ctx, u, u.ID); err != nil {
+		return nil, err
+	}
 	if u.Password != "" {
 		hashed, err := hashPassword(u.Password)
 		if err != nil {
@@ -98,13 +101,15 @@ func (uc *UserUsecase) DeleteUser(ctx context.Context, id int64) error {
 }
 
 // assertUnique checks user_name (always) and email/phone_number (when set) are
-// not already taken. A not-found from the repo is the expected "available" case.
-func (uc *UserUsecase) assertUnique(ctx context.Context, u *User) error {
+// not already taken, ignoring the record with excludeID (0 = none). A
+// not-found from the repo is the expected "available" case. Checks run against
+// active rows only, so soft-deleted values are reusable.
+func (uc *UserUsecase) assertUnique(ctx context.Context, u *User, excludeID int64) error {
 	if existing, err := uc.repo.FindByUserName(ctx, u.UserName); err != nil {
 		if !errors.Is(err, ErrUserNotFound) {
 			return err
 		}
-	} else if existing != nil {
+	} else if existing != nil && existing.ID != excludeID {
 		return ErrUserNameConflict
 	}
 	if u.Email != "" {
@@ -112,7 +117,7 @@ func (uc *UserUsecase) assertUnique(ctx context.Context, u *User) error {
 			if !errors.Is(err, ErrUserNotFound) {
 				return err
 			}
-		} else if existing != nil {
+		} else if existing != nil && existing.ID != excludeID {
 			return ErrEmailConflict
 		}
 	}
@@ -121,7 +126,7 @@ func (uc *UserUsecase) assertUnique(ctx context.Context, u *User) error {
 			if !errors.Is(err, ErrUserNotFound) {
 				return err
 			}
-		} else if existing != nil {
+		} else if existing != nil && existing.ID != excludeID {
 			return ErrPhoneConflict
 		}
 	}

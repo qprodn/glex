@@ -2,12 +2,9 @@ package data
 
 import (
 	"context"
-	"errors"
-	"strings"
 	"time"
 
 	"github.com/go-kratos/aip-go/ents"
-	"github.com/jackc/pgx/v5/pgconn"
 	"glex/internal/biz"
 	"glex/internal/data/ent"
 	"glex/internal/data/ent/user"
@@ -143,7 +140,7 @@ func (r *userRepo) CreateUser(ctx context.Context, u *biz.User) (*biz.User, erro
 	}
 	po, err := b.Save(ctx)
 	if err != nil {
-		return nil, translatePGErr(err)
+		return nil, err
 	}
 	return toBiz(po), nil
 }
@@ -167,7 +164,7 @@ func (r *userRepo) UpdateUser(ctx context.Context, u *biz.User) (*biz.User, erro
 	}
 	po, err := upd.Save(ctx)
 	if err != nil {
-		return nil, translatePGErr(err)
+		return nil, err
 	}
 	return toBiz(po), nil
 }
@@ -180,25 +177,7 @@ func (r *userRepo) DeleteUser(ctx context.Context, id int64) error {
 		if ent.IsNotFound(err) {
 			return biz.ErrUserNotFound
 		}
-		return translatePGErr(err)
+		return err
 	}
 	return nil
-}
-
-// translatePGErr maps a PostgreSQL unique-violation into the matching biz
-// conflict error so callers never branch on the driver. Unknown errors are
-// returned unchanged.
-func translatePGErr(err error) error {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique_violation
-		switch {
-		case strings.Contains(pgErr.ConstraintName, "user_name"):
-			return biz.ErrUserNameConflict
-		case strings.Contains(pgErr.ConstraintName, "email"):
-			return biz.ErrEmailConflict
-		case strings.Contains(pgErr.ConstraintName, "phone"):
-			return biz.ErrPhoneConflict
-		}
-	}
-	return err
 }
