@@ -48,6 +48,9 @@ type MenuRepo interface {
 	FindByID(ctx context.Context, id int64) (*Menu, error)
 	FindByParentAndName(ctx context.Context, parentID int64, name string) (*Menu, error)
 	HasChildren(ctx context.Context, id int64) (bool, error)
+	// ListByIDs returns the menus with the given ids that exist and are not
+	// soft-deleted (used to validate Menu Grants).
+	ListByIDs(ctx context.Context, ids []int64) ([]*Menu, error)
 	ListMenus(ctx context.Context, opts ...ListOption) ([]*Menu, error)
 	CreateMenu(ctx context.Context, m *Menu) (*Menu, error)
 	UpdateMenu(ctx context.Context, m *Menu) (*Menu, error)

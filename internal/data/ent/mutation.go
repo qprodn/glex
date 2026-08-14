@@ -67,6 +67,9 @@ type MenuMutation struct {
 	updated_at    *time.Time
 	deleted_at    *time.Time
 	clearedFields map[string]struct{}
+	roles         map[int64]struct{}
+	removedroles  map[int64]struct{}
+	clearedroles  bool
 	done          bool
 	oldValue      func(context.Context) (*Menu, error)
 	predicates    []predicate.Menu
@@ -1117,6 +1120,60 @@ func (m *MenuMutation) ResetDeletedAt() {
 	delete(m.clearedFields, menu.FieldDeletedAt)
 }
 
+// AddRoleIDs adds the "roles" edge to the Role entity by ids.
+func (m *MenuMutation) AddRoleIDs(ids ...int64) {
+	if m.roles == nil {
+		m.roles = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.roles[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRoles clears the "roles" edge to the Role entity.
+func (m *MenuMutation) ClearRoles() {
+	m.clearedroles = true
+}
+
+// RolesCleared reports if the "roles" edge to the Role entity was cleared.
+func (m *MenuMutation) RolesCleared() bool {
+	return m.clearedroles
+}
+
+// RemoveRoleIDs removes the "roles" edge to the Role entity by IDs.
+func (m *MenuMutation) RemoveRoleIDs(ids ...int64) {
+	if m.removedroles == nil {
+		m.removedroles = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.roles, ids[i])
+		m.removedroles[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRoles returns the removed IDs of the "roles" edge to the Role entity.
+func (m *MenuMutation) RemovedRolesIDs() (ids []int64) {
+	for id := range m.removedroles {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RolesIDs returns the "roles" edge IDs in the mutation.
+func (m *MenuMutation) RolesIDs() (ids []int64) {
+	for id := range m.roles {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRoles resets all changes to the "roles" edge.
+func (m *MenuMutation) ResetRoles() {
+	m.roles = nil
+	m.clearedroles = false
+	m.removedroles = nil
+}
+
 // Where appends a list predicates to the MenuMutation builder.
 func (m *MenuMutation) Where(ps ...predicate.Menu) {
 	m.predicates = append(m.predicates, ps...)
@@ -1705,76 +1762,116 @@ func (m *MenuMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *MenuMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.roles != nil {
+		edges = append(edges, menu.EdgeRoles)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *MenuMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case menu.EdgeRoles:
+		ids := make([]ent.Value, 0, len(m.roles))
+		for id := range m.roles {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *MenuMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.removedroles != nil {
+		edges = append(edges, menu.EdgeRoles)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *MenuMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case menu.EdgeRoles:
+		ids := make([]ent.Value, 0, len(m.removedroles))
+		for id := range m.removedroles {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *MenuMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.clearedroles {
+		edges = append(edges, menu.EdgeRoles)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *MenuMutation) EdgeCleared(name string) bool {
+	switch name {
+	case menu.EdgeRoles:
+		return m.clearedroles
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *MenuMutation) ClearEdge(name string) error {
+	switch name {
+	}
 	return fmt.Errorf("unknown Menu unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *MenuMutation) ResetEdge(name string) error {
+	switch name {
+	case menu.EdgeRoles:
+		m.ResetRoles()
+		return nil
+	}
 	return fmt.Errorf("unknown Menu edge %s", name)
 }
 
 // RoleMutation represents an operation that mutates the Role nodes in the graph.
 type RoleMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int64
-	role_name     *string
-	role_key      *string
-	role_sort     *int
-	addrole_sort  *int
-	status        *int8
-	addstatus     *int8
-	remark        *string
-	create_by     *int64
-	addcreate_by  *int64
-	update_by     *int64
-	addupdate_by  *int64
-	created_at    *time.Time
-	updated_at    *time.Time
-	deleted_at    *time.Time
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*Role, error)
-	predicates    []predicate.Role
+	op                  Op
+	typ                 string
+	id                  *int64
+	role_name           *string
+	role_key            *string
+	role_sort           *int
+	addrole_sort        *int
+	status              *int8
+	addstatus           *int8
+	menu_check_strictly *bool
+	remark              *string
+	create_by           *int64
+	addcreate_by        *int64
+	update_by           *int64
+	addupdate_by        *int64
+	created_at          *time.Time
+	updated_at          *time.Time
+	deleted_at          *time.Time
+	clearedFields       map[string]struct{}
+	menus               map[int64]struct{}
+	removedmenus        map[int64]struct{}
+	clearedmenus        bool
+	done                bool
+	oldValue            func(context.Context) (*Role, error)
+	predicates          []predicate.Role
 }
 
 var _ ent.Mutation = (*RoleMutation)(nil)
@@ -2063,6 +2160,42 @@ func (m *RoleMutation) AddedStatus() (r int8, exists bool) {
 func (m *RoleMutation) ResetStatus() {
 	m.status = nil
 	m.addstatus = nil
+}
+
+// SetMenuCheckStrictly sets the "menu_check_strictly" field.
+func (m *RoleMutation) SetMenuCheckStrictly(b bool) {
+	m.menu_check_strictly = &b
+}
+
+// MenuCheckStrictly returns the value of the "menu_check_strictly" field in the mutation.
+func (m *RoleMutation) MenuCheckStrictly() (r bool, exists bool) {
+	v := m.menu_check_strictly
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMenuCheckStrictly returns the old "menu_check_strictly" field's value of the Role entity.
+// If the Role object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RoleMutation) OldMenuCheckStrictly(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMenuCheckStrictly is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMenuCheckStrictly requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMenuCheckStrictly: %w", err)
+	}
+	return oldValue.MenuCheckStrictly, nil
+}
+
+// ResetMenuCheckStrictly resets all changes to the "menu_check_strictly" field.
+func (m *RoleMutation) ResetMenuCheckStrictly() {
+	m.menu_check_strictly = nil
 }
 
 // SetRemark sets the "remark" field.
@@ -2362,6 +2495,60 @@ func (m *RoleMutation) ResetDeletedAt() {
 	delete(m.clearedFields, role.FieldDeletedAt)
 }
 
+// AddMenuIDs adds the "menus" edge to the Menu entity by ids.
+func (m *RoleMutation) AddMenuIDs(ids ...int64) {
+	if m.menus == nil {
+		m.menus = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.menus[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMenus clears the "menus" edge to the Menu entity.
+func (m *RoleMutation) ClearMenus() {
+	m.clearedmenus = true
+}
+
+// MenusCleared reports if the "menus" edge to the Menu entity was cleared.
+func (m *RoleMutation) MenusCleared() bool {
+	return m.clearedmenus
+}
+
+// RemoveMenuIDs removes the "menus" edge to the Menu entity by IDs.
+func (m *RoleMutation) RemoveMenuIDs(ids ...int64) {
+	if m.removedmenus == nil {
+		m.removedmenus = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.menus, ids[i])
+		m.removedmenus[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMenus returns the removed IDs of the "menus" edge to the Menu entity.
+func (m *RoleMutation) RemovedMenusIDs() (ids []int64) {
+	for id := range m.removedmenus {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// MenusIDs returns the "menus" edge IDs in the mutation.
+func (m *RoleMutation) MenusIDs() (ids []int64) {
+	for id := range m.menus {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMenus resets all changes to the "menus" edge.
+func (m *RoleMutation) ResetMenus() {
+	m.menus = nil
+	m.clearedmenus = false
+	m.removedmenus = nil
+}
+
 // Where appends a list predicates to the RoleMutation builder.
 func (m *RoleMutation) Where(ps ...predicate.Role) {
 	m.predicates = append(m.predicates, ps...)
@@ -2396,7 +2583,7 @@ func (m *RoleMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RoleMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.role_name != nil {
 		fields = append(fields, role.FieldRoleName)
 	}
@@ -2408,6 +2595,9 @@ func (m *RoleMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, role.FieldStatus)
+	}
+	if m.menu_check_strictly != nil {
+		fields = append(fields, role.FieldMenuCheckStrictly)
 	}
 	if m.remark != nil {
 		fields = append(fields, role.FieldRemark)
@@ -2443,6 +2633,8 @@ func (m *RoleMutation) Field(name string) (ent.Value, bool) {
 		return m.RoleSort()
 	case role.FieldStatus:
 		return m.Status()
+	case role.FieldMenuCheckStrictly:
+		return m.MenuCheckStrictly()
 	case role.FieldRemark:
 		return m.Remark()
 	case role.FieldCreateBy:
@@ -2472,6 +2664,8 @@ func (m *RoleMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldRoleSort(ctx)
 	case role.FieldStatus:
 		return m.OldStatus(ctx)
+	case role.FieldMenuCheckStrictly:
+		return m.OldMenuCheckStrictly(ctx)
 	case role.FieldRemark:
 		return m.OldRemark(ctx)
 	case role.FieldCreateBy:
@@ -2520,6 +2714,13 @@ func (m *RoleMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStatus(v)
+		return nil
+	case role.FieldMenuCheckStrictly:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMenuCheckStrictly(v)
 		return nil
 	case role.FieldRemark:
 		v, ok := value.(string)
@@ -2696,6 +2897,9 @@ func (m *RoleMutation) ResetField(name string) error {
 	case role.FieldStatus:
 		m.ResetStatus()
 		return nil
+	case role.FieldMenuCheckStrictly:
+		m.ResetMenuCheckStrictly()
+		return nil
 	case role.FieldRemark:
 		m.ResetRemark()
 		return nil
@@ -2720,49 +2924,85 @@ func (m *RoleMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RoleMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.menus != nil {
+		edges = append(edges, role.EdgeMenus)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *RoleMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case role.EdgeMenus:
+		ids := make([]ent.Value, 0, len(m.menus))
+		for id := range m.menus {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RoleMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.removedmenus != nil {
+		edges = append(edges, role.EdgeMenus)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *RoleMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case role.EdgeMenus:
+		ids := make([]ent.Value, 0, len(m.removedmenus))
+		for id := range m.removedmenus {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RoleMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.clearedmenus {
+		edges = append(edges, role.EdgeMenus)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *RoleMutation) EdgeCleared(name string) bool {
+	switch name {
+	case role.EdgeMenus:
+		return m.clearedmenus
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *RoleMutation) ClearEdge(name string) error {
+	switch name {
+	}
 	return fmt.Errorf("unknown Role unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *RoleMutation) ResetEdge(name string) error {
+	switch name {
+	case role.EdgeMenus:
+		m.ResetMenus()
+		return nil
+	}
 	return fmt.Errorf("unknown Role edge %s", name)
 }
 

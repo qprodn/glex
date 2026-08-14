@@ -21,20 +21,33 @@ const _ = http.SupportPackageIsVersion3
 const OperationRoleServiceCreateRole = "/system.role.v1.RoleService/CreateRole"
 const OperationRoleServiceDeleteRole = "/system.role.v1.RoleService/DeleteRole"
 const OperationRoleServiceGetRole = "/system.role.v1.RoleService/GetRole"
+const OperationRoleServiceListRoleMenus = "/system.role.v1.RoleService/ListRoleMenus"
 const OperationRoleServiceListRoles = "/system.role.v1.RoleService/ListRoles"
 const OperationRoleServiceUpdateRole = "/system.role.v1.RoleService/UpdateRole"
+const OperationRoleServiceUpdateRoleMenus = "/system.role.v1.RoleService/UpdateRoleMenus"
 
 type RoleServiceHTTPServer interface {
-	// CreateRole CreateRole creates a new role.
+	// CreateRole CreateRole creates a new role, optionally with its initial Menu Grant.
 	CreateRole(context.Context, *CreateRoleRequest) (*Role, error)
-	// DeleteRole DeleteRole soft-deletes a role by id.
+	// DeleteRole DeleteRole soft-deletes a role by id and removes its Menu Grant.
 	DeleteRole(context.Context, *DeleteRoleRequest) (*emptypb.Empty, error)
 	// GetRole GetRole retrieves a role by id.
 	GetRole(context.Context, *GetRoleRequest) (*Role, error)
+	// ListRoleMenus ListRoleMenus returns the role's granted menu ids (checkedKeys), shaped by
+	// menu_check_strictly: when on, a menu that is the parent of another granted
+	// menu is excluded (it shows as half-checked in the tree, not as a grant).
+	// Buttons are included. Soft-deleted menus are excluded.
+	ListRoleMenus(context.Context, *ListRoleMenusRequest) (*RoleMenus, error)
 	// ListRoles ListRoles lists roles with AIP filter/order/page-token.
 	ListRoles(context.Context, *ListRolesRequest) (*RoleSet, error)
-	// UpdateRole UpdateRole partially updates a role (field-mask).
+	// UpdateRole UpdateRole partially updates a role (field-mask). menu_check_strictly is
+	// ignored here — it is written only via UpdateRoleMenus.
 	UpdateRole(context.Context, *UpdateRoleRequest) (*Role, error)
+	// UpdateRoleMenus UpdateRoleMenus replaces the role's Menu Grant and its
+	// menu_check_strictly flag in one transaction (full replacement; empty
+	// menu_ids clears all grants). Unknown or soft-deleted menu ids are
+	// rejected with ROLE_MENU_NOT_FOUND; duplicates are silently deduped.
+	UpdateRoleMenus(context.Context, *UpdateRoleMenusRequest) (*RoleMenus, error)
 }
 
 func RegisterRoleServiceHTTPServer(s *http.Server, srv RoleServiceHTTPServer) {
@@ -44,6 +57,8 @@ func RegisterRoleServiceHTTPServer(s *http.Server, srv RoleServiceHTTPServer) {
 	r.Handle("GET", "/system/role", _RoleService_ListRoles0_HTTP_Handler(srv))
 	r.Handle("PATCH", "/system/role/{role.role_id}", _RoleService_UpdateRole0_HTTP_Handler(srv))
 	r.Handle("DELETE", "/system/role/{role_id}", _RoleService_DeleteRole0_HTTP_Handler(srv))
+	r.Handle("GET", "/system/role/{role_id}/menus", _RoleService_ListRoleMenus0_HTTP_Handler(srv))
+	r.Handle("PUT", "/system/role/{role_id}/menus", _RoleService_UpdateRoleMenus0_HTTP_Handler(srv))
 }
 
 func _RoleService_CreateRole0_HTTP_Handler(srv RoleServiceHTTPServer) func(ctx http.Context) error {
@@ -156,17 +171,72 @@ func _RoleService_DeleteRole0_HTTP_Handler(srv RoleServiceHTTPServer) func(ctx h
 	}
 }
 
+func _RoleService_ListRoleMenus0_HTTP_Handler(srv RoleServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListRoleMenusRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationRoleServiceListRoleMenus)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListRoleMenus(ctx, req.(*ListRoleMenusRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*RoleMenus)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _RoleService_UpdateRoleMenus0_HTTP_Handler(srv RoleServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in UpdateRoleMenusRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationRoleServiceUpdateRoleMenus)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.UpdateRoleMenus(ctx, req.(*UpdateRoleMenusRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*RoleMenus)
+		return ctx.Result(200, reply)
+	}
+}
+
 type RoleServiceHTTPClient interface {
-	// CreateRole CreateRole creates a new role.
+	// CreateRole CreateRole creates a new role, optionally with its initial Menu Grant.
 	CreateRole(ctx context.Context, req *CreateRoleRequest, opts ...http.CallOption) (rsp *Role, err error)
-	// DeleteRole DeleteRole soft-deletes a role by id.
+	// DeleteRole DeleteRole soft-deletes a role by id and removes its Menu Grant.
 	DeleteRole(ctx context.Context, req *DeleteRoleRequest, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
 	// GetRole GetRole retrieves a role by id.
 	GetRole(ctx context.Context, req *GetRoleRequest, opts ...http.CallOption) (rsp *Role, err error)
+	// ListRoleMenus ListRoleMenus returns the role's granted menu ids (checkedKeys), shaped by
+	// menu_check_strictly: when on, a menu that is the parent of another granted
+	// menu is excluded (it shows as half-checked in the tree, not as a grant).
+	// Buttons are included. Soft-deleted menus are excluded.
+	ListRoleMenus(ctx context.Context, req *ListRoleMenusRequest, opts ...http.CallOption) (rsp *RoleMenus, err error)
 	// ListRoles ListRoles lists roles with AIP filter/order/page-token.
 	ListRoles(ctx context.Context, req *ListRolesRequest, opts ...http.CallOption) (rsp *RoleSet, err error)
-	// UpdateRole UpdateRole partially updates a role (field-mask).
+	// UpdateRole UpdateRole partially updates a role (field-mask). menu_check_strictly is
+	// ignored here — it is written only via UpdateRoleMenus.
 	UpdateRole(ctx context.Context, req *UpdateRoleRequest, opts ...http.CallOption) (rsp *Role, err error)
+	// UpdateRoleMenus UpdateRoleMenus replaces the role's Menu Grant and its
+	// menu_check_strictly flag in one transaction (full replacement; empty
+	// menu_ids clears all grants). Unknown or soft-deleted menu ids are
+	// rejected with ROLE_MENU_NOT_FOUND; duplicates are silently deduped.
+	UpdateRoleMenus(ctx context.Context, req *UpdateRoleMenusRequest, opts ...http.CallOption) (rsp *RoleMenus, err error)
 }
 
 type RoleServiceHTTPClientImpl struct {
@@ -177,7 +247,7 @@ func NewRoleServiceHTTPClient(client *http.Client) RoleServiceHTTPClient {
 	return &RoleServiceHTTPClientImpl{client}
 }
 
-// CreateRole CreateRole creates a new role.
+// CreateRole CreateRole creates a new role, optionally with its initial Menu Grant.
 func (c *RoleServiceHTTPClientImpl) CreateRole(ctx context.Context, in *CreateRoleRequest, opts ...http.CallOption) (*Role, error) {
 	var out Role
 	pattern := "/system/role"
@@ -195,7 +265,7 @@ func (c *RoleServiceHTTPClientImpl) CreateRole(ctx context.Context, in *CreateRo
 	return &out, nil
 }
 
-// DeleteRole DeleteRole soft-deletes a role by id.
+// DeleteRole DeleteRole soft-deletes a role by id and removes its Menu Grant.
 func (c *RoleServiceHTTPClientImpl) DeleteRole(ctx context.Context, in *DeleteRoleRequest, opts ...http.CallOption) (*emptypb.Empty, error) {
 	var out emptypb.Empty
 	pattern := "/system/role/{role_id}"
@@ -229,6 +299,26 @@ func (c *RoleServiceHTTPClientImpl) GetRole(ctx context.Context, in *GetRoleRequ
 	return &out, nil
 }
 
+// ListRoleMenus ListRoleMenus returns the role's granted menu ids (checkedKeys), shaped by
+// menu_check_strictly: when on, a menu that is the parent of another granted
+// menu is excluded (it shows as half-checked in the tree, not as a grant).
+// Buttons are included. Soft-deleted menus are excluded.
+func (c *RoleServiceHTTPClientImpl) ListRoleMenus(ctx context.Context, in *ListRoleMenusRequest, opts ...http.CallOption) (*RoleMenus, error) {
+	var out RoleMenus
+	pattern := "/system/role/{role_id}/menus"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationRoleServiceListRoleMenus),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ListRoles ListRoles lists roles with AIP filter/order/page-token.
 func (c *RoleServiceHTTPClientImpl) ListRoles(ctx context.Context, in *ListRolesRequest, opts ...http.CallOption) (*RoleSet, error) {
 	var out RoleSet
@@ -246,7 +336,8 @@ func (c *RoleServiceHTTPClientImpl) ListRoles(ctx context.Context, in *ListRoles
 	return &out, nil
 }
 
-// UpdateRole UpdateRole partially updates a role (field-mask).
+// UpdateRole UpdateRole partially updates a role (field-mask). menu_check_strictly is
+// ignored here — it is written only via UpdateRoleMenus.
 func (c *RoleServiceHTTPClientImpl) UpdateRole(ctx context.Context, in *UpdateRoleRequest, opts ...http.CallOption) (*Role, error) {
 	var out Role
 	pattern := "/system/role/{role.role_id}"
@@ -258,6 +349,27 @@ func (c *RoleServiceHTTPClientImpl) UpdateRole(ctx context.Context, in *UpdateRo
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "PATCH", path, in.Role, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// UpdateRoleMenus UpdateRoleMenus replaces the role's Menu Grant and its
+// menu_check_strictly flag in one transaction (full replacement; empty
+// menu_ids clears all grants). Unknown or soft-deleted menu ids are
+// rejected with ROLE_MENU_NOT_FOUND; duplicates are silently deduped.
+func (c *RoleServiceHTTPClientImpl) UpdateRoleMenus(ctx context.Context, in *UpdateRoleMenusRequest, opts ...http.CallOption) (*RoleMenus, error) {
+	var out RoleMenus
+	pattern := "/system/role/{role_id}/menus"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationRoleServiceUpdateRoleMenus),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "PUT", path, in, &out, opts...)
 	if err != nil {
 		return nil, err
 	}

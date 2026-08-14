@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -21,6 +22,8 @@ const (
 	FieldRoleSort = "role_sort"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldMenuCheckStrictly holds the string denoting the menu_check_strictly field in the database.
+	FieldMenuCheckStrictly = "menu_check_strictly"
 	// FieldRemark holds the string denoting the remark field in the database.
 	FieldRemark = "remark"
 	// FieldCreateBy holds the string denoting the create_by field in the database.
@@ -33,8 +36,17 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
 	FieldDeletedAt = "deleted_at"
+	// EdgeMenus holds the string denoting the menus edge name in mutations.
+	EdgeMenus = "menus"
+	// MenuFieldID holds the string denoting the ID field of the Menu.
+	MenuFieldID = "menu_id"
 	// Table holds the table name of the role in the database.
 	Table = "sys_role"
+	// MenusTable is the table that holds the menus relation/edge. The primary key declared below.
+	MenusTable = "role_menus"
+	// MenusInverseTable is the table name for the Menu entity.
+	// It exists in this package in order to avoid circular dependency with the "menu" package.
+	MenusInverseTable = "sys_menu"
 )
 
 // Columns holds all SQL columns for role fields.
@@ -44,6 +56,7 @@ var Columns = []string{
 	FieldRoleKey,
 	FieldRoleSort,
 	FieldStatus,
+	FieldMenuCheckStrictly,
 	FieldRemark,
 	FieldCreateBy,
 	FieldUpdateBy,
@@ -51,6 +64,12 @@ var Columns = []string{
 	FieldUpdatedAt,
 	FieldDeletedAt,
 }
+
+var (
+	// MenusPrimaryKey and MenusColumn2 are the table columns denoting the
+	// primary key for the menus relation (M2M).
+	MenusPrimaryKey = []string{"role_id", "menu_id"}
+)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -67,6 +86,8 @@ var (
 	DefaultRoleSort int
 	// DefaultStatus holds the default value on creation for the "status" field.
 	DefaultStatus int8
+	// DefaultMenuCheckStrictly holds the default value on creation for the "menu_check_strictly" field.
+	DefaultMenuCheckStrictly bool
 	// DefaultRemark holds the default value on creation for the "remark" field.
 	DefaultRemark string
 	// DefaultCreateBy holds the default value on creation for the "create_by" field.
@@ -109,6 +130,11 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
 }
 
+// ByMenuCheckStrictly orders the results by the menu_check_strictly field.
+func ByMenuCheckStrictly(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMenuCheckStrictly, opts...).ToFunc()
+}
+
 // ByRemark orders the results by the remark field.
 func ByRemark(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRemark, opts...).ToFunc()
@@ -137,4 +163,25 @@ func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByDeletedAt orders the results by the deleted_at field.
 func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
+}
+
+// ByMenusCount orders the results by menus count.
+func ByMenusCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newMenusStep(), opts...)
+	}
+}
+
+// ByMenus orders the results by menus terms.
+func ByMenus(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newMenusStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newMenusStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(MenusInverseTable, MenuFieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, MenusTable, MenusPrimaryKey...),
+	)
 }

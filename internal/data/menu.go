@@ -156,16 +156,43 @@ func (r *menuRepo) UpdateMenu(ctx context.Context, m *biz.Menu) (*biz.Menu, erro
 	return toBizMenu(po), nil
 }
 
-// DeleteMenu soft-deletes the menu by setting deleted_at.
+// ListByIDs returns the active menus among the given ids (soft-deleted rows
+// are excluded, so the caller can detect unknown ids by length mismatch).
+func (r *menuRepo) ListByIDs(ctx context.Context, ids []int64) ([]*biz.Menu, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	pos, err := r.data.db.Menu.Query().
+		Where(menu.IDIn(ids...), menu.DeletedAtIsNil()).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*biz.Menu, 0, len(pos))
+	for _, po := range pos {
+		out = append(out, toBizMenu(po))
+	}
+	return out, nil
+}
+
+// DeleteMenu soft-deletes the menu and hard-deletes its role links in one
+// transaction: a deleted menu leaves no trace in sys_role_menu (RuoYi
+// parity, so the link table never dangles).
 func (r *menuRepo) DeleteMenu(ctx context.Context, id int64) error {
-	err := r.data.db.Menu.UpdateOneID(id).
+	tx, err := r.data.db.Tx(ctx)
+	if err != nil {
+		return err
+	}
+	err = tx.Menu.UpdateOneID(id).
 		SetDeletedAt(time.Now()).
+		ClearRoles().
 		Exec(ctx)
 	if err != nil {
+		_ = tx.Rollback()
 		if ent.IsNotFound(err) {
 			return biz.ErrMenuNotFound
 		}
 		return err
 	}
-	return nil
+	return tx.Commit()
 }

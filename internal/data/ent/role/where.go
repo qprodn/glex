@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 // ID filters vertices based on their ID field.
@@ -72,6 +73,11 @@ func RoleSort(v int) predicate.Role {
 // Status applies equality check predicate on the "status" field. It's identical to StatusEQ.
 func Status(v int8) predicate.Role {
 	return predicate.Role(sql.FieldEQ(FieldStatus, v))
+}
+
+// MenuCheckStrictly applies equality check predicate on the "menu_check_strictly" field. It's identical to MenuCheckStrictlyEQ.
+func MenuCheckStrictly(v bool) predicate.Role {
+	return predicate.Role(sql.FieldEQ(FieldMenuCheckStrictly, v))
 }
 
 // Remark applies equality check predicate on the "remark" field. It's identical to RemarkEQ.
@@ -312,6 +318,16 @@ func StatusLT(v int8) predicate.Role {
 // StatusLTE applies the LTE predicate on the "status" field.
 func StatusLTE(v int8) predicate.Role {
 	return predicate.Role(sql.FieldLTE(FieldStatus, v))
+}
+
+// MenuCheckStrictlyEQ applies the EQ predicate on the "menu_check_strictly" field.
+func MenuCheckStrictlyEQ(v bool) predicate.Role {
+	return predicate.Role(sql.FieldEQ(FieldMenuCheckStrictly, v))
+}
+
+// MenuCheckStrictlyNEQ applies the NEQ predicate on the "menu_check_strictly" field.
+func MenuCheckStrictlyNEQ(v bool) predicate.Role {
+	return predicate.Role(sql.FieldNEQ(FieldMenuCheckStrictly, v))
 }
 
 // RemarkEQ applies the EQ predicate on the "remark" field.
@@ -607,6 +623,29 @@ func DeletedAtIsNil() predicate.Role {
 // DeletedAtNotNil applies the NotNil predicate on the "deleted_at" field.
 func DeletedAtNotNil() predicate.Role {
 	return predicate.Role(sql.FieldNotNull(FieldDeletedAt))
+}
+
+// HasMenus applies the HasEdge predicate on the "menus" edge.
+func HasMenus() predicate.Role {
+	return predicate.Role(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, MenusTable, MenusPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasMenusWith applies the HasEdge predicate on the "menus" edge with a given conditions (other predicates).
+func HasMenusWith(preds ...predicate.Menu) predicate.Role {
+	return predicate.Role(func(s *sql.Selector) {
+		step := newMenusStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

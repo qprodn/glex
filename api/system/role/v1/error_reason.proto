@@ -21,4 +21,6 @@ enum ErrorReason {
   ROLE_KEY_CONFLICT = 3;
   // role_name/role_key is blank.
   ROLE_INVALID = 4;
+  // One or more menu ids in a Menu Grant do not exist (or are soft-deleted).
+  ROLE_MENU_NOT_FOUND = 5;
 }

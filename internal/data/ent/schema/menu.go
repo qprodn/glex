@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/entsql"
 	entschema "entgo.io/ent/schema"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
 
@@ -72,5 +73,13 @@ func (Menu) Fields() []ent.Field {
 func (Menu) Annotations() []entschema.Annotation {
 	return []entschema.Annotation{
 		entsql.Annotation{Table: "sys_menu"},
+	}
+}
+
+// Edges of the Menu. Inverse side of Role.menus (M2M); the join table is
+// sys_role_menu, owned/named by the Role schema's edge annotation.
+func (Menu) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.From("roles", Role.Type).Ref("menus"),
 	}
 }

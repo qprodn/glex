@@ -38,4 +38,7 @@ var (
 	ErrRoleKeyConflict = errors.Conflict(rolev1.ErrorReason_ROLE_KEY_CONFLICT.String(), "role_key already exists")
 	// ErrRoleInvalid: role_name/role_key is blank.
 	ErrRoleInvalid = errors.BadRequest(rolev1.ErrorReason_ROLE_INVALID.String(), "role_name and role_key are required")
+	// ErrRoleMenuNotFound: one or more menu ids in a Menu Grant do not exist
+	// (or are soft-deleted).
+	ErrRoleMenuNotFound = errors.BadRequest(rolev1.ErrorReason_ROLE_MENU_NOT_FOUND.String(), "one or more menu ids do not exist")
 )

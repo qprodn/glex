@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"glex/internal/data/ent/menu"
 	"glex/internal/data/ent/role"
 	"time"
 
@@ -58,6 +59,20 @@ func (_c *RoleCreate) SetStatus(v int8) *RoleCreate {
 func (_c *RoleCreate) SetNillableStatus(v *int8) *RoleCreate {
 	if v != nil {
 		_c.SetStatus(*v)
+	}
+	return _c
+}
+
+// SetMenuCheckStrictly sets the "menu_check_strictly" field.
+func (_c *RoleCreate) SetMenuCheckStrictly(v bool) *RoleCreate {
+	_c.mutation.SetMenuCheckStrictly(v)
+	return _c
+}
+
+// SetNillableMenuCheckStrictly sets the "menu_check_strictly" field if the given value is not nil.
+func (_c *RoleCreate) SetNillableMenuCheckStrictly(v *bool) *RoleCreate {
+	if v != nil {
+		_c.SetMenuCheckStrictly(*v)
 	}
 	return _c
 }
@@ -152,6 +167,21 @@ func (_c *RoleCreate) SetID(v int64) *RoleCreate {
 	return _c
 }
 
+// AddMenuIDs adds the "menus" edge to the Menu entity by IDs.
+func (_c *RoleCreate) AddMenuIDs(ids ...int64) *RoleCreate {
+	_c.mutation.AddMenuIDs(ids...)
+	return _c
+}
+
+// AddMenus adds the "menus" edges to the Menu entity.
+func (_c *RoleCreate) AddMenus(v ...*Menu) *RoleCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddMenuIDs(ids...)
+}
+
 // Mutation returns the RoleMutation object of the builder.
 func (_c *RoleCreate) Mutation() *RoleMutation {
 	return _c.mutation
@@ -195,6 +225,10 @@ func (_c *RoleCreate) defaults() {
 		v := role.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.MenuCheckStrictly(); !ok {
+		v := role.DefaultMenuCheckStrictly
+		_c.mutation.SetMenuCheckStrictly(v)
+	}
 	if _, ok := _c.mutation.Remark(); !ok {
 		v := role.DefaultRemark
 		_c.mutation.SetRemark(v)
@@ -230,6 +264,9 @@ func (_c *RoleCreate) check() error {
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Role.status"`)}
+	}
+	if _, ok := _c.mutation.MenuCheckStrictly(); !ok {
+		return &ValidationError{Name: "menu_check_strictly", err: errors.New(`ent: missing required field "Role.menu_check_strictly"`)}
 	}
 	if _, ok := _c.mutation.Remark(); !ok {
 		return &ValidationError{Name: "remark", err: errors.New(`ent: missing required field "Role.remark"`)}
@@ -289,6 +326,10 @@ func (_c *RoleCreate) createSpec() (*Role, *sqlgraph.CreateSpec) {
 		_spec.SetField(role.FieldStatus, field.TypeInt8, value)
 		_node.Status = value
 	}
+	if value, ok := _c.mutation.MenuCheckStrictly(); ok {
+		_spec.SetField(role.FieldMenuCheckStrictly, field.TypeBool, value)
+		_node.MenuCheckStrictly = value
+	}
 	if value, ok := _c.mutation.Remark(); ok {
 		_spec.SetField(role.FieldRemark, field.TypeString, value)
 		_node.Remark = value
@@ -312,6 +353,22 @@ func (_c *RoleCreate) createSpec() (*Role, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DeletedAt(); ok {
 		_spec.SetField(role.FieldDeletedAt, field.TypeTime, value)
 		_node.DeletedAt = &value
+	}
+	if nodes := _c.mutation.MenusIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   role.MenusTable,
+			Columns: role.MenusPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(menu.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }
@@ -422,6 +479,18 @@ func (u *RoleUpsert) UpdateStatus() *RoleUpsert {
 // AddStatus adds v to the "status" field.
 func (u *RoleUpsert) AddStatus(v int8) *RoleUpsert {
 	u.Add(role.FieldStatus, v)
+	return u
+}
+
+// SetMenuCheckStrictly sets the "menu_check_strictly" field.
+func (u *RoleUpsert) SetMenuCheckStrictly(v bool) *RoleUpsert {
+	u.Set(role.FieldMenuCheckStrictly, v)
+	return u
+}
+
+// UpdateMenuCheckStrictly sets the "menu_check_strictly" field to the value that was provided on create.
+func (u *RoleUpsert) UpdateMenuCheckStrictly() *RoleUpsert {
+	u.SetExcluded(role.FieldMenuCheckStrictly)
 	return u
 }
 
@@ -633,6 +702,20 @@ func (u *RoleUpsertOne) AddStatus(v int8) *RoleUpsertOne {
 func (u *RoleUpsertOne) UpdateStatus() *RoleUpsertOne {
 	return u.Update(func(s *RoleUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetMenuCheckStrictly sets the "menu_check_strictly" field.
+func (u *RoleUpsertOne) SetMenuCheckStrictly(v bool) *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.SetMenuCheckStrictly(v)
+	})
+}
+
+// UpdateMenuCheckStrictly sets the "menu_check_strictly" field to the value that was provided on create.
+func (u *RoleUpsertOne) UpdateMenuCheckStrictly() *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.UpdateMenuCheckStrictly()
 	})
 }
 
@@ -1025,6 +1108,20 @@ func (u *RoleUpsertBulk) AddStatus(v int8) *RoleUpsertBulk {
 func (u *RoleUpsertBulk) UpdateStatus() *RoleUpsertBulk {
 	return u.Update(func(s *RoleUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetMenuCheckStrictly sets the "menu_check_strictly" field.
+func (u *RoleUpsertBulk) SetMenuCheckStrictly(v bool) *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.SetMenuCheckStrictly(v)
+	})
+}
+
+// UpdateMenuCheckStrictly sets the "menu_check_strictly" field to the value that was provided on create.
+func (u *RoleUpsertBulk) UpdateMenuCheckStrictly() *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.UpdateMenuCheckStrictly()
 	})
 }
 

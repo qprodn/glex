@@ -96,24 +96,28 @@ func init() {
 	roleDescStatus := roleFields[4].Descriptor()
 	// role.DefaultStatus holds the default value on creation for the status field.
 	role.DefaultStatus = roleDescStatus.Default.(int8)
+	// roleDescMenuCheckStrictly is the schema descriptor for menu_check_strictly field.
+	roleDescMenuCheckStrictly := roleFields[5].Descriptor()
+	// role.DefaultMenuCheckStrictly holds the default value on creation for the menu_check_strictly field.
+	role.DefaultMenuCheckStrictly = roleDescMenuCheckStrictly.Default.(bool)
 	// roleDescRemark is the schema descriptor for remark field.
-	roleDescRemark := roleFields[5].Descriptor()
+	roleDescRemark := roleFields[6].Descriptor()
 	// role.DefaultRemark holds the default value on creation for the remark field.
 	role.DefaultRemark = roleDescRemark.Default.(string)
 	// roleDescCreateBy is the schema descriptor for create_by field.
-	roleDescCreateBy := roleFields[6].Descriptor()
+	roleDescCreateBy := roleFields[7].Descriptor()
 	// role.DefaultCreateBy holds the default value on creation for the create_by field.
 	role.DefaultCreateBy = roleDescCreateBy.Default.(int64)
 	// roleDescUpdateBy is the schema descriptor for update_by field.
-	roleDescUpdateBy := roleFields[7].Descriptor()
+	roleDescUpdateBy := roleFields[8].Descriptor()
 	// role.DefaultUpdateBy holds the default value on creation for the update_by field.
 	role.DefaultUpdateBy = roleDescUpdateBy.Default.(int64)
 	// roleDescCreatedAt is the schema descriptor for created_at field.
-	roleDescCreatedAt := roleFields[8].Descriptor()
+	roleDescCreatedAt := roleFields[9].Descriptor()
 	// role.DefaultCreatedAt holds the default value on creation for the created_at field.
 	role.DefaultCreatedAt = roleDescCreatedAt.Default.(func() time.Time)
 	// roleDescUpdatedAt is the schema descriptor for updated_at field.
-	roleDescUpdatedAt := roleFields[9].Descriptor()
+	roleDescUpdatedAt := roleFields[10].Descriptor()
 	// role.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	role.DefaultUpdatedAt = roleDescUpdatedAt.Default.(func() time.Time)
 	// role.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

@@ -17,16 +17,17 @@ import (
 // convertRole maps a biz.Role DO to the proto Role DTO.
 func convertRole(r *biz.Role) *rolev1.Role {
 	return &rolev1.Role{
-		RoleId:    r.ID,
-		RoleName:  r.RoleName,
-		RoleKey:   r.RoleKey,
-		RoleSort:  int32(r.RoleSort),
-		Status:    r.Status,
-		Remark:    r.Remark,
-		CreateBy:  r.CreateBy,
-		UpdateBy:  r.UpdateBy,
-		CreatedAt: timestamppb.New(r.CreatedAt),
-		UpdatedAt: timestamppb.New(r.UpdatedAt),
+		RoleId:            r.ID,
+		RoleName:          r.RoleName,
+		RoleKey:           r.RoleKey,
+		RoleSort:          int32(r.RoleSort),
+		Status:            r.Status,
+		MenuCheckStrictly: r.MenuCheckStrictly,
+		Remark:            r.Remark,
+		CreateBy:          r.CreateBy,
+		UpdateBy:          r.UpdateBy,
+		CreatedAt:         timestamppb.New(r.CreatedAt),
+		UpdatedAt:         timestamppb.New(r.UpdatedAt),
 	}
 }
 
@@ -45,16 +46,23 @@ func NewRoleService(uc *biz.RoleUsecase) *RoleService {
 	return &RoleService{uc: uc}
 }
 
-// CreateRole creates a role.
+// CreateRole creates a role with its optional initial Menu Grant. The
+// presence-aware menu_check_strictly defaults to true (RuoYi default) when
+// absent.
 func (s *RoleService) CreateRole(ctx context.Context, req *rolev1.CreateRoleRequest) (*rolev1.Role, error) {
 	in := req.GetRole()
+	strict := true
+	if req.MenuCheckStrictly != nil {
+		strict = *req.MenuCheckStrictly
+	}
 	created, err := s.uc.CreateRole(ctx, &biz.Role{
-		RoleName: in.GetRoleName(),
-		RoleKey:  in.GetRoleKey(),
-		RoleSort: int(in.GetRoleSort()),
-		Status:   in.GetStatus(),
-		Remark:   in.GetRemark(),
-	})
+		RoleName:          in.GetRoleName(),
+		RoleKey:           in.GetRoleKey(),
+		RoleSort:          int(in.GetRoleSort()),
+		Status:            in.GetStatus(),
+		MenuCheckStrictly: strict,
+		Remark:            in.GetRemark(),
+	}, req.GetMenuIds())
 	if err != nil {
 		return nil, err
 	}
@@ -143,10 +151,34 @@ func (s *RoleService) UpdateRole(ctx context.Context, req *rolev1.UpdateRoleRequ
 	return convertRole(updated), nil
 }
 
-// DeleteRole soft-deletes a role by id.
+// DeleteRole soft-deletes a role by id (and its Menu Grant, repo side).
 func (s *RoleService) DeleteRole(ctx context.Context, req *rolev1.DeleteRoleRequest) (*emptypb.Empty, error) {
 	if err := s.uc.DeleteRole(ctx, req.GetRoleId()); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
+}
+
+// ListRoleMenus returns the role's checkedKeys (granted menu ids shaped by
+// menu_check_strictly).
+func (s *RoleService) ListRoleMenus(ctx context.Context, req *rolev1.ListRoleMenusRequest) (*rolev1.RoleMenus, error) {
+	ids, err := s.uc.ListRoleMenus(ctx, req.GetRoleId())
+	if err != nil {
+		return nil, err
+	}
+	return &rolev1.RoleMenus{MenuIds: ids}, nil
+}
+
+// UpdateRoleMenus replaces the role's Menu Grant and menu_check_strictly in
+// one transaction; the response echoes the persisted (deduped) grant.
+func (s *RoleService) UpdateRoleMenus(ctx context.Context, req *rolev1.UpdateRoleMenusRequest) (*rolev1.RoleMenus, error) {
+	strict := true
+	if req.MenuCheckStrictly != nil {
+		strict = *req.MenuCheckStrictly
+	}
+	ids, err := s.uc.UpdateRoleMenus(ctx, req.GetRoleId(), req.GetMenuIds(), strict)
+	if err != nil {
+		return nil, err
+	}
+	return &rolev1.RoleMenus{MenuIds: ids}, nil
 }

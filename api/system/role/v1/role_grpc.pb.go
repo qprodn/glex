@@ -20,29 +20,42 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RoleService_CreateRole_FullMethodName = "/system.role.v1.RoleService/CreateRole"
-	RoleService_GetRole_FullMethodName    = "/system.role.v1.RoleService/GetRole"
-	RoleService_ListRoles_FullMethodName  = "/system.role.v1.RoleService/ListRoles"
-	RoleService_UpdateRole_FullMethodName = "/system.role.v1.RoleService/UpdateRole"
-	RoleService_DeleteRole_FullMethodName = "/system.role.v1.RoleService/DeleteRole"
+	RoleService_CreateRole_FullMethodName      = "/system.role.v1.RoleService/CreateRole"
+	RoleService_GetRole_FullMethodName         = "/system.role.v1.RoleService/GetRole"
+	RoleService_ListRoles_FullMethodName       = "/system.role.v1.RoleService/ListRoles"
+	RoleService_UpdateRole_FullMethodName      = "/system.role.v1.RoleService/UpdateRole"
+	RoleService_DeleteRole_FullMethodName      = "/system.role.v1.RoleService/DeleteRole"
+	RoleService_ListRoleMenus_FullMethodName   = "/system.role.v1.RoleService/ListRoleMenus"
+	RoleService_UpdateRoleMenus_FullMethodName = "/system.role.v1.RoleService/UpdateRoleMenus"
 )
 
 // RoleServiceClient is the client API for RoleService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// RoleService is the system-role CRUD service.
+// RoleService is the system-role CRUD + Menu Grant service.
 type RoleServiceClient interface {
-	// CreateRole creates a new role.
+	// CreateRole creates a new role, optionally with its initial Menu Grant.
 	CreateRole(ctx context.Context, in *CreateRoleRequest, opts ...grpc.CallOption) (*Role, error)
 	// GetRole retrieves a role by id.
 	GetRole(ctx context.Context, in *GetRoleRequest, opts ...grpc.CallOption) (*Role, error)
 	// ListRoles lists roles with AIP filter/order/page-token.
 	ListRoles(ctx context.Context, in *ListRolesRequest, opts ...grpc.CallOption) (*RoleSet, error)
-	// UpdateRole partially updates a role (field-mask).
+	// UpdateRole partially updates a role (field-mask). menu_check_strictly is
+	// ignored here — it is written only via UpdateRoleMenus.
 	UpdateRole(ctx context.Context, in *UpdateRoleRequest, opts ...grpc.CallOption) (*Role, error)
-	// DeleteRole soft-deletes a role by id.
+	// DeleteRole soft-deletes a role by id and removes its Menu Grant.
 	DeleteRole(ctx context.Context, in *DeleteRoleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ListRoleMenus returns the role's granted menu ids (checkedKeys), shaped by
+	// menu_check_strictly: when on, a menu that is the parent of another granted
+	// menu is excluded (it shows as half-checked in the tree, not as a grant).
+	// Buttons are included. Soft-deleted menus are excluded.
+	ListRoleMenus(ctx context.Context, in *ListRoleMenusRequest, opts ...grpc.CallOption) (*RoleMenus, error)
+	// UpdateRoleMenus replaces the role's Menu Grant and its
+	// menu_check_strictly flag in one transaction (full replacement; empty
+	// menu_ids clears all grants). Unknown or soft-deleted menu ids are
+	// rejected with ROLE_MENU_NOT_FOUND; duplicates are silently deduped.
+	UpdateRoleMenus(ctx context.Context, in *UpdateRoleMenusRequest, opts ...grpc.CallOption) (*RoleMenus, error)
 }
 
 type roleServiceClient struct {
@@ -103,22 +116,53 @@ func (c *roleServiceClient) DeleteRole(ctx context.Context, in *DeleteRoleReques
 	return out, nil
 }
 
+func (c *roleServiceClient) ListRoleMenus(ctx context.Context, in *ListRoleMenusRequest, opts ...grpc.CallOption) (*RoleMenus, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RoleMenus)
+	err := c.cc.Invoke(ctx, RoleService_ListRoleMenus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *roleServiceClient) UpdateRoleMenus(ctx context.Context, in *UpdateRoleMenusRequest, opts ...grpc.CallOption) (*RoleMenus, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RoleMenus)
+	err := c.cc.Invoke(ctx, RoleService_UpdateRoleMenus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RoleServiceServer is the server API for RoleService service.
 // All implementations must embed UnimplementedRoleServiceServer
 // for forward compatibility.
 //
-// RoleService is the system-role CRUD service.
+// RoleService is the system-role CRUD + Menu Grant service.
 type RoleServiceServer interface {
-	// CreateRole creates a new role.
+	// CreateRole creates a new role, optionally with its initial Menu Grant.
 	CreateRole(context.Context, *CreateRoleRequest) (*Role, error)
 	// GetRole retrieves a role by id.
 	GetRole(context.Context, *GetRoleRequest) (*Role, error)
 	// ListRoles lists roles with AIP filter/order/page-token.
 	ListRoles(context.Context, *ListRolesRequest) (*RoleSet, error)
-	// UpdateRole partially updates a role (field-mask).
+	// UpdateRole partially updates a role (field-mask). menu_check_strictly is
+	// ignored here — it is written only via UpdateRoleMenus.
 	UpdateRole(context.Context, *UpdateRoleRequest) (*Role, error)
-	// DeleteRole soft-deletes a role by id.
+	// DeleteRole soft-deletes a role by id and removes its Menu Grant.
 	DeleteRole(context.Context, *DeleteRoleRequest) (*emptypb.Empty, error)
+	// ListRoleMenus returns the role's granted menu ids (checkedKeys), shaped by
+	// menu_check_strictly: when on, a menu that is the parent of another granted
+	// menu is excluded (it shows as half-checked in the tree, not as a grant).
+	// Buttons are included. Soft-deleted menus are excluded.
+	ListRoleMenus(context.Context, *ListRoleMenusRequest) (*RoleMenus, error)
+	// UpdateRoleMenus replaces the role's Menu Grant and its
+	// menu_check_strictly flag in one transaction (full replacement; empty
+	// menu_ids clears all grants). Unknown or soft-deleted menu ids are
+	// rejected with ROLE_MENU_NOT_FOUND; duplicates are silently deduped.
+	UpdateRoleMenus(context.Context, *UpdateRoleMenusRequest) (*RoleMenus, error)
 	mustEmbedUnimplementedRoleServiceServer()
 }
 
@@ -143,6 +187,12 @@ func (UnimplementedRoleServiceServer) UpdateRole(context.Context, *UpdateRoleReq
 }
 func (UnimplementedRoleServiceServer) DeleteRole(context.Context, *DeleteRoleRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteRole not implemented")
+}
+func (UnimplementedRoleServiceServer) ListRoleMenus(context.Context, *ListRoleMenusRequest) (*RoleMenus, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListRoleMenus not implemented")
+}
+func (UnimplementedRoleServiceServer) UpdateRoleMenus(context.Context, *UpdateRoleMenusRequest) (*RoleMenus, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateRoleMenus not implemented")
 }
 func (UnimplementedRoleServiceServer) mustEmbedUnimplementedRoleServiceServer() {}
 func (UnimplementedRoleServiceServer) testEmbeddedByValue()                     {}
@@ -255,6 +305,42 @@ func _RoleService_DeleteRole_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RoleService_ListRoleMenus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRoleMenusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoleServiceServer).ListRoleMenus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RoleService_ListRoleMenus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoleServiceServer).ListRoleMenus(ctx, req.(*ListRoleMenusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RoleService_UpdateRoleMenus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateRoleMenusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoleServiceServer).UpdateRoleMenus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RoleService_UpdateRoleMenus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoleServiceServer).UpdateRoleMenus(ctx, req.(*UpdateRoleMenusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RoleService_ServiceDesc is the grpc.ServiceDesc for RoleService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -281,6 +367,14 @@ var RoleService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteRole",
 			Handler:    _RoleService_DeleteRole_Handler,
+		},
+		{
+			MethodName: "ListRoleMenus",
+			Handler:    _RoleService_ListRoleMenus_Handler,
+		},
+		{
+			MethodName: "UpdateRoleMenus",
+			Handler:    _RoleService_UpdateRoleMenus_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

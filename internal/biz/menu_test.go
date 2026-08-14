@@ -45,6 +45,16 @@ func (r *fakeMenuRepo) HasChildren(_ context.Context, id int64) (bool, error) {
 	return false, nil
 }
 
+func (r *fakeMenuRepo) ListByIDs(_ context.Context, ids []int64) ([]*Menu, error) {
+	out := make([]*Menu, 0, len(ids))
+	for _, id := range ids {
+		if m, ok := r.byID[id]; ok {
+			out = append(out, m)
+		}
+	}
+	return out, nil
+}
+
 func (r *fakeMenuRepo) ListMenus(context.Context, ...ListOption) ([]*Menu, error) {
 	out := make([]*Menu, 0, len(r.byID))
 	for _, m := range r.byID {

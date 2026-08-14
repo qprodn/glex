@@ -26,8 +26,8 @@ const (
 )
 
 // Role is a named bundle of permissions (角色), ported from RuoYi sys_role.
-// Back-office CRUD only — no associations with other tables yet: role↔menu,
-// user↔role and data-scope links are deferred (see CONTEXT.md).
+// Back-office CRUD plus the role↔menu link (**Menu Grant**); user↔role and
+// data-scope links are deferred (see CONTEXT.md).
 type Role struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Snowflake ID. Server-assigned on create.
@@ -43,12 +43,18 @@ type Role struct {
 	Status int32  `protobuf:"varint,5,opt,name=status,proto3" json:"status,omitempty"`
 	Remark string `protobuf:"bytes,6,opt,name=remark,proto3" json:"remark,omitempty"`
 	// Audit: who created/updated. Filled by the auth module.
-	CreateBy      int64                  `protobuf:"varint,7,opt,name=create_by,json=createBy,proto3" json:"create_by,omitempty"`
-	UpdateBy      int64                  `protobuf:"varint,8,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	CreateBy  int64                  `protobuf:"varint,7,opt,name=create_by,json=createBy,proto3" json:"create_by,omitempty"`
+	UpdateBy  int64                  `protobuf:"varint,8,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// Whether the role editor treats parent/child menu selection as linked
+	// (菜单选择是否关联显示). Defaults to on (RuoYi column default 1). Shown by
+	// GetRole/ListRoles; NOT writable through UpdateRole — it is written only
+	// via UpdateRoleMenus (the permission save), like Menu.children is
+	// read-only on Create/Update.
+	MenuCheckStrictly bool `protobuf:"varint,11,opt,name=menu_check_strictly,json=menuCheckStrictly,proto3" json:"menu_check_strictly,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Role) Reset() {
@@ -151,6 +157,13 @@ func (x *Role) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Role) GetMenuCheckStrictly() bool {
+	if x != nil {
+		return x.MenuCheckStrictly
+	}
+	return false
+}
+
 // RoleSet is a page of roles.
 type RoleSet struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -208,9 +221,15 @@ func (x *RoleSet) GetNextPageToken() string {
 type CreateRoleRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Required. The role to create.
-	Role          *Role `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Role *Role `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	// Optional. Initial Menu Grant. Validated like UpdateRoleMenus; absent =
+	// no menus.
+	MenuIds []int64 `protobuf:"varint,2,rep,packed,name=menu_ids,json=menuIds,proto3" json:"menu_ids,omitempty"`
+	// Optional. Presence-aware; absent = true (RuoYi default). Explicit false
+	// disables parent/child linkage display.
+	MenuCheckStrictly *bool `protobuf:"varint,3,opt,name=menu_check_strictly,json=menuCheckStrictly,proto3,oneof" json:"menu_check_strictly,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *CreateRoleRequest) Reset() {
@@ -248,6 +267,20 @@ func (x *CreateRoleRequest) GetRole() *Role {
 		return x.Role
 	}
 	return nil
+}
+
+func (x *CreateRoleRequest) GetMenuIds() []int64 {
+	if x != nil {
+		return x.MenuIds
+	}
+	return nil
+}
+
+func (x *CreateRoleRequest) GetMenuCheckStrictly() bool {
+	if x != nil && x.MenuCheckStrictly != nil {
+		return *x.MenuCheckStrictly
+	}
+	return false
 }
 
 type GetRoleRequest struct {
@@ -469,11 +502,165 @@ func (x *DeleteRoleRequest) GetRoleId() int64 {
 	return 0
 }
 
+// RoleMenus is a role's Menu Grant: the full set of granted menu ids.
+type RoleMenus struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MenuIds       []int64                `protobuf:"varint,1,rep,packed,name=menu_ids,json=menuIds,proto3" json:"menu_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoleMenus) Reset() {
+	*x = RoleMenus{}
+	mi := &file_system_role_v1_role_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoleMenus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoleMenus) ProtoMessage() {}
+
+func (x *RoleMenus) ProtoReflect() protoreflect.Message {
+	mi := &file_system_role_v1_role_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoleMenus.ProtoReflect.Descriptor instead.
+func (*RoleMenus) Descriptor() ([]byte, []int) {
+	return file_system_role_v1_role_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *RoleMenus) GetMenuIds() []int64 {
+	if x != nil {
+		return x.MenuIds
+	}
+	return nil
+}
+
+type ListRoleMenusRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The id of the role whose grant is read.
+	RoleId        int64 `protobuf:"varint,1,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRoleMenusRequest) Reset() {
+	*x = ListRoleMenusRequest{}
+	mi := &file_system_role_v1_role_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRoleMenusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRoleMenusRequest) ProtoMessage() {}
+
+func (x *ListRoleMenusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_system_role_v1_role_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRoleMenusRequest.ProtoReflect.Descriptor instead.
+func (*ListRoleMenusRequest) Descriptor() ([]byte, []int) {
+	return file_system_role_v1_role_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ListRoleMenusRequest) GetRoleId() int64 {
+	if x != nil {
+		return x.RoleId
+	}
+	return 0
+}
+
+type UpdateRoleMenusRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The id of the role whose grant is replaced.
+	RoleId int64 `protobuf:"varint,1,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	// The complete desired grant; full replacement (empty = clear all).
+	MenuIds []int64 `protobuf:"varint,2,rep,packed,name=menu_ids,json=menuIds,proto3" json:"menu_ids,omitempty"`
+	// Optional. Presence-aware; absent = true (RuoYi default). Written together
+	// with the grant in the same transaction.
+	MenuCheckStrictly *bool `protobuf:"varint,3,opt,name=menu_check_strictly,json=menuCheckStrictly,proto3,oneof" json:"menu_check_strictly,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *UpdateRoleMenusRequest) Reset() {
+	*x = UpdateRoleMenusRequest{}
+	mi := &file_system_role_v1_role_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateRoleMenusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRoleMenusRequest) ProtoMessage() {}
+
+func (x *UpdateRoleMenusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_system_role_v1_role_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRoleMenusRequest.ProtoReflect.Descriptor instead.
+func (*UpdateRoleMenusRequest) Descriptor() ([]byte, []int) {
+	return file_system_role_v1_role_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *UpdateRoleMenusRequest) GetRoleId() int64 {
+	if x != nil {
+		return x.RoleId
+	}
+	return 0
+}
+
+func (x *UpdateRoleMenusRequest) GetMenuIds() []int64 {
+	if x != nil {
+		return x.MenuIds
+	}
+	return nil
+}
+
+func (x *UpdateRoleMenusRequest) GetMenuCheckStrictly() bool {
+	if x != nil && x.MenuCheckStrictly != nil {
+		return *x.MenuCheckStrictly
+	}
+	return false
+}
+
 var File_system_role_v1_role_proto protoreflect.FileDescriptor
 
 const file_system_role_v1_role_proto_rawDesc = "" +
 	"\n" +
-	"\x19system/role/v1/role.proto\x12\x0esystem.role.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\"\xd4\x02\n" +
+	"\x19system/role/v1/role.proto\x12\x0esystem.role.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\"\x84\x03\n" +
 	"\x04Role\x12\x17\n" +
 	"\arole_id\x18\x01 \x01(\x03R\x06roleId\x12\x1b\n" +
 	"\trole_name\x18\x02 \x01(\tR\broleName\x12\x19\n" +
@@ -487,12 +674,16 @@ const file_system_role_v1_role_proto_rawDesc = "" +
 	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
 	"updated_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"]\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12.\n" +
+	"\x13menu_check_strictly\x18\v \x01(\bR\x11menuCheckStrictly\"]\n" +
 	"\aRoleSet\x12*\n" +
 	"\x05roles\x18\x01 \x03(\v2\x14.system.role.v1.RoleR\x05roles\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"B\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xaa\x01\n" +
 	"\x11CreateRoleRequest\x12-\n" +
-	"\x04role\x18\x01 \x01(\v2\x14.system.role.v1.RoleB\x03\xe0A\x02R\x04role\".\n" +
+	"\x04role\x18\x01 \x01(\v2\x14.system.role.v1.RoleB\x03\xe0A\x02R\x04role\x12\x19\n" +
+	"\bmenu_ids\x18\x02 \x03(\x03R\amenuIds\x123\n" +
+	"\x13menu_check_strictly\x18\x03 \x01(\bH\x00R\x11menuCheckStrictly\x88\x01\x01B\x16\n" +
+	"\x14_menu_check_strictly\".\n" +
 	"\x0eGetRoleRequest\x12\x1c\n" +
 	"\arole_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06roleId\"\x81\x01\n" +
 	"\x10ListRolesRequest\x12\x1b\n" +
@@ -506,7 +697,16 @@ const file_system_role_v1_role_proto_rawDesc = "" +
 	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x03\xe0A\x02R\n" +
 	"updateMask\"1\n" +
 	"\x11DeleteRoleRequest\x12\x1c\n" +
-	"\arole_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06roleId2\x8a\x04\n" +
+	"\arole_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06roleId\"&\n" +
+	"\tRoleMenus\x12\x19\n" +
+	"\bmenu_ids\x18\x01 \x03(\x03R\amenuIds\"4\n" +
+	"\x14ListRoleMenusRequest\x12\x1c\n" +
+	"\arole_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06roleId\"\x9e\x01\n" +
+	"\x16UpdateRoleMenusRequest\x12\x1c\n" +
+	"\arole_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06roleId\x12\x19\n" +
+	"\bmenu_ids\x18\x02 \x03(\x03R\amenuIds\x123\n" +
+	"\x13menu_check_strictly\x18\x03 \x01(\bH\x00R\x11menuCheckStrictly\x88\x01\x01B\x16\n" +
+	"\x14_menu_check_strictly2\x81\x06\n" +
 	"\vRoleService\x12a\n" +
 	"\n" +
 	"CreateRole\x12!.system.role.v1.CreateRoleRequest\x1a\x14.system.role.v1.Role\"\x1a\x82\xd3\xe4\x93\x02\x14:\x04role\"\f/system/role\x12_\n" +
@@ -515,7 +715,9 @@ const file_system_role_v1_role_proto_rawDesc = "" +
 	"\n" +
 	"UpdateRole\x12!.system.role.v1.UpdateRoleRequest\x1a\x14.system.role.v1.Role\")\x82\xd3\xe4\x93\x02#:\x04role2\x1b/system/role/{role.role_id}\x12g\n" +
 	"\n" +
-	"DeleteRole\x12!.system.role.v1.DeleteRoleRequest\x1a\x16.google.protobuf.Empty\"\x1e\x82\xd3\xe4\x93\x02\x18*\x16/system/role/{role_id}B2\n" +
+	"DeleteRole\x12!.system.role.v1.DeleteRoleRequest\x1a\x16.google.protobuf.Empty\"\x1e\x82\xd3\xe4\x93\x02\x18*\x16/system/role/{role_id}\x12v\n" +
+	"\rListRoleMenus\x12$.system.role.v1.ListRoleMenusRequest\x1a\x19.system.role.v1.RoleMenus\"$\x82\xd3\xe4\x93\x02\x1e\x12\x1c/system/role/{role_id}/menus\x12}\n" +
+	"\x0fUpdateRoleMenus\x12&.system.role.v1.UpdateRoleMenusRequest\x1a\x19.system.role.v1.RoleMenus\"'\x82\xd3\xe4\x93\x02!:\x01*\x1a\x1c/system/role/{role_id}/menusB2\n" +
 	"\x12api.system.role.v1P\x01Z\x1aglex/api/system/role/v1;v1b\x06proto3"
 
 var (
@@ -530,38 +732,45 @@ func file_system_role_v1_role_proto_rawDescGZIP() []byte {
 	return file_system_role_v1_role_proto_rawDescData
 }
 
-var file_system_role_v1_role_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_system_role_v1_role_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_system_role_v1_role_proto_goTypes = []any{
-	(*Role)(nil),                  // 0: system.role.v1.Role
-	(*RoleSet)(nil),               // 1: system.role.v1.RoleSet
-	(*CreateRoleRequest)(nil),     // 2: system.role.v1.CreateRoleRequest
-	(*GetRoleRequest)(nil),        // 3: system.role.v1.GetRoleRequest
-	(*ListRolesRequest)(nil),      // 4: system.role.v1.ListRolesRequest
-	(*UpdateRoleRequest)(nil),     // 5: system.role.v1.UpdateRoleRequest
-	(*DeleteRoleRequest)(nil),     // 6: system.role.v1.DeleteRoleRequest
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
-	(*fieldmaskpb.FieldMask)(nil), // 8: google.protobuf.FieldMask
-	(*emptypb.Empty)(nil),         // 9: google.protobuf.Empty
+	(*Role)(nil),                   // 0: system.role.v1.Role
+	(*RoleSet)(nil),                // 1: system.role.v1.RoleSet
+	(*CreateRoleRequest)(nil),      // 2: system.role.v1.CreateRoleRequest
+	(*GetRoleRequest)(nil),         // 3: system.role.v1.GetRoleRequest
+	(*ListRolesRequest)(nil),       // 4: system.role.v1.ListRolesRequest
+	(*UpdateRoleRequest)(nil),      // 5: system.role.v1.UpdateRoleRequest
+	(*DeleteRoleRequest)(nil),      // 6: system.role.v1.DeleteRoleRequest
+	(*RoleMenus)(nil),              // 7: system.role.v1.RoleMenus
+	(*ListRoleMenusRequest)(nil),   // 8: system.role.v1.ListRoleMenusRequest
+	(*UpdateRoleMenusRequest)(nil), // 9: system.role.v1.UpdateRoleMenusRequest
+	(*timestamppb.Timestamp)(nil),  // 10: google.protobuf.Timestamp
+	(*fieldmaskpb.FieldMask)(nil),  // 11: google.protobuf.FieldMask
+	(*emptypb.Empty)(nil),          // 12: google.protobuf.Empty
 }
 var file_system_role_v1_role_proto_depIdxs = []int32{
-	7,  // 0: system.role.v1.Role.created_at:type_name -> google.protobuf.Timestamp
-	7,  // 1: system.role.v1.Role.updated_at:type_name -> google.protobuf.Timestamp
+	10, // 0: system.role.v1.Role.created_at:type_name -> google.protobuf.Timestamp
+	10, // 1: system.role.v1.Role.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: system.role.v1.RoleSet.roles:type_name -> system.role.v1.Role
 	0,  // 3: system.role.v1.CreateRoleRequest.role:type_name -> system.role.v1.Role
 	0,  // 4: system.role.v1.UpdateRoleRequest.role:type_name -> system.role.v1.Role
-	8,  // 5: system.role.v1.UpdateRoleRequest.update_mask:type_name -> google.protobuf.FieldMask
+	11, // 5: system.role.v1.UpdateRoleRequest.update_mask:type_name -> google.protobuf.FieldMask
 	2,  // 6: system.role.v1.RoleService.CreateRole:input_type -> system.role.v1.CreateRoleRequest
 	3,  // 7: system.role.v1.RoleService.GetRole:input_type -> system.role.v1.GetRoleRequest
 	4,  // 8: system.role.v1.RoleService.ListRoles:input_type -> system.role.v1.ListRolesRequest
 	5,  // 9: system.role.v1.RoleService.UpdateRole:input_type -> system.role.v1.UpdateRoleRequest
 	6,  // 10: system.role.v1.RoleService.DeleteRole:input_type -> system.role.v1.DeleteRoleRequest
-	0,  // 11: system.role.v1.RoleService.CreateRole:output_type -> system.role.v1.Role
-	0,  // 12: system.role.v1.RoleService.GetRole:output_type -> system.role.v1.Role
-	1,  // 13: system.role.v1.RoleService.ListRoles:output_type -> system.role.v1.RoleSet
-	0,  // 14: system.role.v1.RoleService.UpdateRole:output_type -> system.role.v1.Role
-	9,  // 15: system.role.v1.RoleService.DeleteRole:output_type -> google.protobuf.Empty
-	11, // [11:16] is the sub-list for method output_type
-	6,  // [6:11] is the sub-list for method input_type
+	8,  // 11: system.role.v1.RoleService.ListRoleMenus:input_type -> system.role.v1.ListRoleMenusRequest
+	9,  // 12: system.role.v1.RoleService.UpdateRoleMenus:input_type -> system.role.v1.UpdateRoleMenusRequest
+	0,  // 13: system.role.v1.RoleService.CreateRole:output_type -> system.role.v1.Role
+	0,  // 14: system.role.v1.RoleService.GetRole:output_type -> system.role.v1.Role
+	1,  // 15: system.role.v1.RoleService.ListRoles:output_type -> system.role.v1.RoleSet
+	0,  // 16: system.role.v1.RoleService.UpdateRole:output_type -> system.role.v1.Role
+	12, // 17: system.role.v1.RoleService.DeleteRole:output_type -> google.protobuf.Empty
+	7,  // 18: system.role.v1.RoleService.ListRoleMenus:output_type -> system.role.v1.RoleMenus
+	7,  // 19: system.role.v1.RoleService.UpdateRoleMenus:output_type -> system.role.v1.RoleMenus
+	13, // [13:20] is the sub-list for method output_type
+	6,  // [6:13] is the sub-list for method input_type
 	6,  // [6:6] is the sub-list for extension type_name
 	6,  // [6:6] is the sub-list for extension extendee
 	0,  // [0:6] is the sub-list for field type_name
@@ -572,13 +781,15 @@ func file_system_role_v1_role_proto_init() {
 	if File_system_role_v1_role_proto != nil {
 		return
 	}
+	file_system_role_v1_role_proto_msgTypes[2].OneofWrappers = []any{}
+	file_system_role_v1_role_proto_msgTypes[9].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_system_role_v1_role_proto_rawDesc), len(file_system_role_v1_role_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

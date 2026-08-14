@@ -165,8 +165,25 @@ paths:
         post:
             tags:
                 - RoleService
-            description: CreateRole creates a new role.
+            description: CreateRole creates a new role, optionally with its initial Menu Grant.
             operationId: RoleService_CreateRole
+            parameters:
+                - name: menuIds
+                  in: query
+                  description: |-
+                    Optional. Initial Menu Grant. Validated like UpdateRoleMenus; absent =
+                     no menus.
+                  schema:
+                    type: array
+                    items:
+                        type: string
+                - name: menuCheckStrictly
+                  in: query
+                  description: |-
+                    Optional. Presence-aware; absent = true (RuoYi default). Explicit false
+                     disables parent/child linkage display.
+                  schema:
+                    type: boolean
             requestBody:
                 content:
                     application/json:
@@ -184,7 +201,9 @@ paths:
         patch:
             tags:
                 - RoleService
-            description: UpdateRole partially updates a role (field-mask).
+            description: |-
+                UpdateRole partially updates a role (field-mask). menu_check_strictly is
+                 ignored here — it is written only via UpdateRoleMenus.
             operationId: RoleService_UpdateRole
             parameters:
                 - name: role.role_id
@@ -234,7 +253,7 @@ paths:
         delete:
             tags:
                 - RoleService
-            description: DeleteRole soft-deletes a role by id.
+            description: DeleteRole soft-deletes a role by id and removes its Menu Grant.
             operationId: RoleService_DeleteRole
             parameters:
                 - name: roleId
@@ -247,6 +266,59 @@ paths:
                 "200":
                     description: OK
                     content: {}
+    /system/role/{roleId}/menus:
+        get:
+            tags:
+                - RoleService
+            description: |-
+                ListRoleMenus returns the role's granted menu ids (checkedKeys), shaped by
+                 menu_check_strictly: when on, a menu that is the parent of another granted
+                 menu is excluded (it shows as half-checked in the tree, not as a grant).
+                 Buttons are included. Soft-deleted menus are excluded.
+            operationId: RoleService_ListRoleMenus
+            parameters:
+                - name: roleId
+                  in: path
+                  description: Required. The id of the role whose grant is read.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.role.v1.RoleMenus'
+        put:
+            tags:
+                - RoleService
+            description: |-
+                UpdateRoleMenus replaces the role's Menu Grant and its
+                 menu_check_strictly flag in one transaction (full replacement; empty
+                 menu_ids clears all grants). Unknown or soft-deleted menu ids are
+                 rejected with ROLE_MENU_NOT_FOUND; duplicates are silently deduped.
+            operationId: RoleService_UpdateRoleMenus
+            parameters:
+                - name: roleId
+                  in: path
+                  description: Required. The id of the role whose grant is replaced.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/system.role.v1.UpdateRoleMenusRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.role.v1.RoleMenus'
     /system/user:
         get:
             tags:
@@ -488,10 +560,26 @@ components:
                 updatedAt:
                     type: string
                     format: date-time
+                menuCheckStrictly:
+                    type: boolean
+                    description: |-
+                        Whether the role editor treats parent/child menu selection as linked
+                         (菜单选择是否关联显示). Defaults to on (RuoYi column default 1). Shown by
+                         GetRole/ListRoles; NOT writable through UpdateRole — it is written only
+                         via UpdateRoleMenus (the permission save), like Menu.children is
+                         read-only on Create/Update.
             description: |-
                 Role is a named bundle of permissions (角色), ported from RuoYi sys_role.
-                 Back-office CRUD only — no associations with other tables yet: role↔menu,
-                 user↔role and data-scope links are deferred (see CONTEXT.md).
+                 Back-office CRUD plus the role↔menu link (**Menu Grant**); user↔role and
+                 data-scope links are deferred (see CONTEXT.md).
+        system.role.v1.RoleMenus:
+            type: object
+            properties:
+                menuIds:
+                    type: array
+                    items:
+                        type: string
+            description: 'RoleMenus is a role''s Menu Grant: the full set of granted menu ids.'
         system.role.v1.RoleSet:
             type: object
             properties:
@@ -503,6 +591,24 @@ components:
                     type: string
                     description: Opaque token for the next page; empty when on the last page.
             description: RoleSet is a page of roles.
+        system.role.v1.UpdateRoleMenusRequest:
+            required:
+                - roleId
+            type: object
+            properties:
+                roleId:
+                    type: string
+                    description: Required. The id of the role whose grant is replaced.
+                menuIds:
+                    type: array
+                    items:
+                        type: string
+                    description: The complete desired grant; full replacement (empty = clear all).
+                menuCheckStrictly:
+                    type: boolean
+                    description: |-
+                        Optional. Presence-aware; absent = true (RuoYi default). Written together
+                         with the grant in the same transaction.
         system.user.v1.User:
             type: object
             properties:
@@ -572,6 +678,6 @@ tags:
     - name: MenuService
       description: MenuService is the system-menu CRUD + tree service.
     - name: RoleService
-      description: RoleService is the system-role CRUD service.
+      description: RoleService is the system-role CRUD + Menu Grant service.
     - name: UserService
       description: UserService is the system-user CRUD service.

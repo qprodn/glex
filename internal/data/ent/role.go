@@ -25,6 +25,8 @@ type Role struct {
 	RoleSort int `json:"role_sort,omitempty"`
 	// Status holds the value of the "status" field.
 	Status int8 `json:"status,omitempty"`
+	// MenuCheckStrictly holds the value of the "menu_check_strictly" field.
+	MenuCheckStrictly bool `json:"menu_check_strictly,omitempty"`
 	// Remark holds the value of the "remark" field.
 	Remark string `json:"remark,omitempty"`
 	// CreateBy holds the value of the "create_by" field.
@@ -36,8 +38,29 @@ type Role struct {
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// DeletedAt holds the value of the "deleted_at" field.
-	DeletedAt    *time.Time `json:"deleted_at,omitempty"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the RoleQuery when eager-loading is set.
+	Edges        RoleEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// RoleEdges holds the relations/edges for other nodes in the graph.
+type RoleEdges struct {
+	// Menus holds the value of the menus edge.
+	Menus []*Menu `json:"menus,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// MenusOrErr returns the Menus value or an error if the edge
+// was not loaded in eager-loading.
+func (e RoleEdges) MenusOrErr() ([]*Menu, error) {
+	if e.loadedTypes[0] {
+		return e.Menus, nil
+	}
+	return nil, &NotLoadedError{edge: "menus"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -45,6 +68,8 @@ func (*Role) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case role.FieldMenuCheckStrictly:
+			values[i] = new(sql.NullBool)
 		case role.FieldID, role.FieldRoleSort, role.FieldStatus, role.FieldCreateBy, role.FieldUpdateBy:
 			values[i] = new(sql.NullInt64)
 		case role.FieldRoleName, role.FieldRoleKey, role.FieldRemark:
@@ -96,6 +121,12 @@ func (_m *Role) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Status = int8(value.Int64)
 			}
+		case role.FieldMenuCheckStrictly:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field menu_check_strictly", values[i])
+			} else if value.Valid {
+				_m.MenuCheckStrictly = value.Bool
+			}
 		case role.FieldRemark:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field remark", values[i])
@@ -146,6 +177,11 @@ func (_m *Role) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
+// QueryMenus queries the "menus" edge of the Role entity.
+func (_m *Role) QueryMenus() *MenuQuery {
+	return NewRoleClient(_m.config).QueryMenus(_m)
+}
+
 // Update returns a builder for updating this Role.
 // Note that you need to call Role.Unwrap() before calling this method if this Role
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -180,6 +216,9 @@ func (_m *Role) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
+	builder.WriteString(", ")
+	builder.WriteString("menu_check_strictly=")
+	builder.WriteString(fmt.Sprintf("%v", _m.MenuCheckStrictly))
 	builder.WriteString(", ")
 	builder.WriteString("remark=")
 	builder.WriteString(_m.Remark)

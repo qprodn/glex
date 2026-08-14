@@ -7,19 +7,28 @@ import (
 )
 
 // Role is a role domain object (角色), ported from RuoYi sys_role.
-// Pure biz model: no proto, no storage tags. Basic CRUD only — no
-// associations with other tables (role↔menu, user↔role are deferred).
+// Pure biz model: no proto, no storage tags. Carries a Menu Grant (菜单授权)
+// via the repo; user↔role assignment is deferred to the auth module.
 type Role struct {
-	ID        int64
-	RoleName  string
-	RoleKey   string
-	RoleSort  int
-	Status    int32
-	Remark    string
-	CreateBy  int64
-	UpdateBy  int64
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID                int64
+	RoleName          string
+	RoleKey           string
+	RoleSort          int
+	Status            int32
+	MenuCheckStrictly bool
+	Remark            string
+	CreateBy          int64
+	UpdateBy          int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+// RoleMenuLink is one row of a role's Menu Grant as read from storage: the
+// granted menu id and its parent id. The read path uses ParentID to shape
+// checkedKeys (see RoleUsecase.ListRoleMenus).
+type RoleMenuLink struct {
+	MenuID   int64
+	ParentID int64
 }
 
 // RoleRepo is the repository interface for roles (the inversion seam declared
@@ -29,37 +38,56 @@ type RoleRepo interface {
 	FindByRoleName(ctx context.Context, roleName string) (*Role, error)
 	FindByRoleKey(ctx context.Context, roleKey string) (*Role, error)
 	ListRoles(ctx context.Context, opts ...ListOption) ([]*Role, error)
-	CreateRole(ctx context.Context, r *Role) (*Role, error)
+	// CreateRole persists the role and its initial Menu Grant in one
+	// transaction. menuIDs are stored verbatim (deduped and validated by the
+	// usecase first).
+	CreateRole(ctx context.Context, r *Role, menuIDs []int64) (*Role, error)
 	UpdateRole(ctx context.Context, r *Role) (*Role, error)
+	// DeleteRole soft-deletes the role and hard-deletes its Menu Grant in one
+	// transaction (RuoYi semantics: a deleted role loses its grants for good).
 	DeleteRole(ctx context.Context, id int64) error
+	// ListRoleMenuLinks returns the role's granted menus with their parent
+	// ids, ordered by (parent_id, order_num); soft-deleted menus excluded.
+	ListRoleMenuLinks(ctx context.Context, roleID int64) ([]*RoleMenuLink, error)
+	// ReplaceRoleMenus atomically replaces the role's Menu Grant with menuIDs
+	// and writes menuCheckStrictly (full replacement — RuoYi's
+	// delete-then-insert).
+	ReplaceRoleMenus(ctx context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool) error
 }
 
 // RoleUsecase holds the role business rules.
 type RoleUsecase struct {
-	repo RoleRepo
+	repo     RoleRepo
+	menuRepo MenuRepo
 }
 
-// NewRoleUsecase creates a RoleUsecase.
-func NewRoleUsecase(repo RoleRepo) *RoleUsecase {
-	return &RoleUsecase{repo: repo}
+// NewRoleUsecase creates a RoleUsecase. menuRepo backs Menu Grant validation
+// (granted menus must exist and not be soft-deleted).
+func NewRoleUsecase(repo RoleRepo, menuRepo MenuRepo) *RoleUsecase {
+	return &RoleUsecase{repo: repo, menuRepo: menuRepo}
 }
 
-// CreateRole validates and persists a role: role_name/role_key must be
-// non-blank and unique among active roles. Uniqueness is a code check
-// (repo-wide convention; the DB has no unique constraints) — racy under
-// concurrent creates, accepted.
-func (uc *RoleUsecase) CreateRole(ctx context.Context, r *Role) (*Role, error) {
+// CreateRole validates and persists a role with its initial Menu Grant:
+// role_name/role_key must be non-blank and unique among active roles, and
+// every menu id must exist (duplicates silently deduped). The role row and
+// its links commit in one transaction.
+func (uc *RoleUsecase) CreateRole(ctx context.Context, r *Role, menuIDs []int64) (*Role, error) {
 	if err := uc.validate(r); err != nil {
 		return nil, err
 	}
 	if err := uc.assertUnique(ctx, r, 0); err != nil {
 		return nil, err
 	}
-	return uc.repo.CreateRole(ctx, r)
+	unique, err := uc.assertMenusGrantable(ctx, menuIDs)
+	if err != nil {
+		return nil, err
+	}
+	return uc.repo.CreateRole(ctx, r, unique)
 }
 
 // UpdateRole validates and persists a role, excluding the record being
-// updated from the uniqueness checks.
+// updated from the uniqueness checks. Menu Grant fields are untouched (the
+// grant is replaced only via UpdateRoleMenus).
 func (uc *RoleUsecase) UpdateRole(ctx context.Context, r *Role) (*Role, error) {
 	if err := uc.validate(r); err != nil {
 		return nil, err
@@ -80,9 +108,65 @@ func (uc *RoleUsecase) ListRoles(ctx context.Context, opts ...ListOption) ([]*Ro
 	return uc.repo.ListRoles(ctx, opts...)
 }
 
-// DeleteRole soft-deletes the role with the given id.
+// DeleteRole soft-deletes the role with the given id and removes its Menu
+// Grant (single transaction, repo side).
 func (uc *RoleUsecase) DeleteRole(ctx context.Context, id int64) error {
 	return uc.repo.DeleteRole(ctx, id)
+}
+
+// ListRoleMenus returns the role's checkedKeys: every granted menu id
+// (buttons included; soft-deleted excluded, repo-side) in (parent_id,
+// order_num) order. When menu_check_strictly is on, a granted menu that is
+// the parent of another granted menu is dropped — RuoYi semantics: half- and
+// fully-checked parents show as tree state, not as grants (their children
+// carry the grant).
+func (uc *RoleUsecase) ListRoleMenus(ctx context.Context, roleID int64) ([]int64, error) {
+	role, err := uc.repo.FindByID(ctx, roleID)
+	if err != nil {
+		return nil, err
+	}
+	links, err := uc.repo.ListRoleMenuLinks(ctx, roleID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]int64, 0, len(links))
+	if role.MenuCheckStrictly {
+		parentOf := make(map[int64]struct{}, len(links))
+		for _, l := range links {
+			if l.ParentID != 0 {
+				parentOf[l.ParentID] = struct{}{}
+			}
+		}
+		for _, l := range links {
+			if _, half := parentOf[l.MenuID]; half {
+				continue
+			}
+			ids = append(ids, l.MenuID)
+		}
+		return ids, nil
+	}
+	for _, l := range links {
+		ids = append(ids, l.MenuID)
+	}
+	return ids, nil
+}
+
+// UpdateRoleMenus replaces the role's Menu Grant: menu_ids are validated
+// (exist, not soft-deleted) and deduped, then stored together with
+// menuCheckStrictly in one transaction (full replacement; an empty list
+// clears all grants). Returns the persisted (deduped) ids.
+func (uc *RoleUsecase) UpdateRoleMenus(ctx context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool) ([]int64, error) {
+	if _, err := uc.repo.FindByID(ctx, roleID); err != nil {
+		return nil, err
+	}
+	unique, err := uc.assertMenusGrantable(ctx, menuIDs)
+	if err != nil {
+		return nil, err
+	}
+	if err := uc.repo.ReplaceRoleMenus(ctx, roleID, unique, menuCheckStrictly); err != nil {
+		return nil, err
+	}
+	return unique, nil
 }
 
 // validate rejects blank role_name/role_key (Q4: non-blank is the only rule).
@@ -113,4 +197,36 @@ func (uc *RoleUsecase) assertUnique(ctx context.Context, r *Role, excludeID int6
 		return ErrRoleKeyConflict
 	}
 	return nil
+}
+
+// assertMenusGrantable dedupes menuIDs and checks every id exists and is not
+// soft-deleted (the repo's ListByIDs filters deleted rows). An empty list is
+// legal — it means "no grants" — and passes without touching the repo.
+func (uc *RoleUsecase) assertMenusGrantable(ctx context.Context, menuIDs []int64) ([]int64, error) {
+	unique := dedupeIDs(menuIDs)
+	if len(unique) == 0 {
+		return unique, nil
+	}
+	menus, err := uc.menuRepo.ListByIDs(ctx, unique)
+	if err != nil {
+		return nil, err
+	}
+	if len(menus) != len(unique) {
+		return nil, ErrRoleMenuNotFound
+	}
+	return unique, nil
+}
+
+// dedupeIDs removes duplicates, preserving first-occurrence order.
+func dedupeIDs(ids []int64) []int64 {
+	seen := make(map[int64]struct{}, len(ids))
+	out := make([]int64, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
 }

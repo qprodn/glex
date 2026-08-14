@@ -38,6 +38,8 @@ const (
 	ErrorReason_ROLE_KEY_CONFLICT ErrorReason = 3
 	// role_name/role_key is blank.
 	ErrorReason_ROLE_INVALID ErrorReason = 4
+	// One or more menu ids in a Menu Grant do not exist (or are soft-deleted).
+	ErrorReason_ROLE_MENU_NOT_FOUND ErrorReason = 5
 )
 
 // Enum value maps for ErrorReason.
@@ -48,6 +50,7 @@ var (
 		2: "ROLE_NAME_CONFLICT",
 		3: "ROLE_KEY_CONFLICT",
 		4: "ROLE_INVALID",
+		5: "ROLE_MENU_NOT_FOUND",
 	}
 	ErrorReason_value = map[string]int32{
 		"ERROR_REASON_UNSPECIFIED": 0,
@@ -55,6 +58,7 @@ var (
 		"ROLE_NAME_CONFLICT":       2,
 		"ROLE_KEY_CONFLICT":        3,
 		"ROLE_INVALID":             4,
+		"ROLE_MENU_NOT_FOUND":      5,
 	}
 )
 
@@ -89,13 +93,14 @@ var File_system_role_v1_error_reason_proto protoreflect.FileDescriptor
 
 const file_system_role_v1_error_reason_proto_rawDesc = "" +
 	"\n" +
-	"!system/role/v1/error_reason.proto\x12\x0esystem.role.v1*\x80\x01\n" +
+	"!system/role/v1/error_reason.proto\x12\x0esystem.role.v1*\x99\x01\n" +
 	"\vErrorReason\x12\x1c\n" +
 	"\x18ERROR_REASON_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eROLE_NOT_FOUND\x10\x01\x12\x16\n" +
 	"\x12ROLE_NAME_CONFLICT\x10\x02\x12\x15\n" +
 	"\x11ROLE_KEY_CONFLICT\x10\x03\x12\x10\n" +
-	"\fROLE_INVALID\x10\x04B2\n" +
+	"\fROLE_INVALID\x10\x04\x12\x17\n" +
+	"\x13ROLE_MENU_NOT_FOUND\x10\x05B2\n" +
 	"\x12api.system.role.v1P\x01Z\x1aglex/api/system/role/v1;v1b\x06proto3"
 
 var (

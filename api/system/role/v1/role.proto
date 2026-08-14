@@ -13,8 +13,8 @@ option java_multiple_files = true;
 option java_package = "api.system.role.v1";
 
 // Role is a named bundle of permissions (角色), ported from RuoYi sys_role.
-// Back-office CRUD only — no associations with other tables yet: role↔menu,
-// user↔role and data-scope links are deferred (see CONTEXT.md).
+// Back-office CRUD plus the role↔menu link (**Menu Grant**); user↔role and
+// data-scope links are deferred (see CONTEXT.md).
 message Role {
   // Snowflake ID. Server-assigned on create.
   int64 role_id = 1;
@@ -33,6 +33,12 @@ message Role {
   int64 update_by = 8;
   google.protobuf.Timestamp created_at = 9;
   google.protobuf.Timestamp updated_at = 10;
+  // Whether the role editor treats parent/child menu selection as linked
+  // (菜单选择是否关联显示). Defaults to on (RuoYi column default 1). Shown by
+  // GetRole/ListRoles; NOT writable through UpdateRole — it is written only
+  // via UpdateRoleMenus (the permission save), like Menu.children is
+  // read-only on Create/Update.
+  bool menu_check_strictly = 11;
 }
 
 // RoleSet is a page of roles.
@@ -42,9 +48,9 @@ message RoleSet {
   string next_page_token = 2;
 }
 
-// RoleService is the system-role CRUD service.
+// RoleService is the system-role CRUD + Menu Grant service.
 service RoleService {
-  // CreateRole creates a new role.
+  // CreateRole creates a new role, optionally with its initial Menu Grant.
   rpc CreateRole(CreateRoleRequest) returns (Role) {
     option (google.api.http) = {
       post: "/system/role"
@@ -63,17 +69,37 @@ service RoleService {
       get: "/system/role"
     };
   }
-  // UpdateRole partially updates a role (field-mask).
+  // UpdateRole partially updates a role (field-mask). menu_check_strictly is
+  // ignored here — it is written only via UpdateRoleMenus.
   rpc UpdateRole(UpdateRoleRequest) returns (Role) {
     option (google.api.http) = {
       patch: "/system/role/{role.role_id}"
       body: "role"
     };
   }
-  // DeleteRole soft-deletes a role by id.
+  // DeleteRole soft-deletes a role by id and removes its Menu Grant.
   rpc DeleteRole(DeleteRoleRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/system/role/{role_id}"
+    };
+  }
+  // ListRoleMenus returns the role's granted menu ids (checkedKeys), shaped by
+  // menu_check_strictly: when on, a menu that is the parent of another granted
+  // menu is excluded (it shows as half-checked in the tree, not as a grant).
+  // Buttons are included. Soft-deleted menus are excluded.
+  rpc ListRoleMenus(ListRoleMenusRequest) returns (RoleMenus) {
+    option (google.api.http) = {
+      get: "/system/role/{role_id}/menus"
+    };
+  }
+  // UpdateRoleMenus replaces the role's Menu Grant and its
+  // menu_check_strictly flag in one transaction (full replacement; empty
+  // menu_ids clears all grants). Unknown or soft-deleted menu ids are
+  // rejected with ROLE_MENU_NOT_FOUND; duplicates are silently deduped.
+  rpc UpdateRoleMenus(UpdateRoleMenusRequest) returns (RoleMenus) {
+    option (google.api.http) = {
+      put: "/system/role/{role_id}/menus"
+      body: "*"
     };
   }
 }
@@ -81,6 +107,12 @@ service RoleService {
 message CreateRoleRequest {
   // Required. The role to create.
   Role role = 1 [(google.api.field_behavior) = REQUIRED];
+  // Optional. Initial Menu Grant. Validated like UpdateRoleMenus; absent =
+  // no menus.
+  repeated int64 menu_ids = 2;
+  // Optional. Presence-aware; absent = true (RuoYi default). Explicit false
+  // disables parent/child linkage display.
+  optional bool menu_check_strictly = 3;
 }
 
 message GetRoleRequest {
@@ -112,4 +144,24 @@ message UpdateRoleRequest {
 message DeleteRoleRequest {
   // Required. The id of the role to delete.
   int64 role_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// RoleMenus is a role's Menu Grant: the full set of granted menu ids.
+message RoleMenus {
+  repeated int64 menu_ids = 1;
+}
+
+message ListRoleMenusRequest {
+  // Required. The id of the role whose grant is read.
+  int64 role_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateRoleMenusRequest {
+  // Required. The id of the role whose grant is replaced.
+  int64 role_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // The complete desired grant; full replacement (empty = clear all).
+  repeated int64 menu_ids = 2;
+  // Optional. Presence-aware; absent = true (RuoYi default). Written together
+  // with the grant in the same transaction.
+  optional bool menu_check_strictly = 3;
 }

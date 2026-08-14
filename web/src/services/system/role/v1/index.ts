@@ -16,10 +16,12 @@ export type ErrorReason =
   // The role_key already exists.
   | "ROLE_KEY_CONFLICT"
   // role_name/role_key is blank.
-  | "ROLE_INVALID";
+  | "ROLE_INVALID"
+  // One or more menu ids in a Menu Grant do not exist (or are soft-deleted).
+  | "ROLE_MENU_NOT_FOUND";
 // Role is a named bundle of permissions (角色), ported from RuoYi sys_role.
-// Back-office CRUD only — no associations with other tables yet: role↔menu,
-// user↔role and data-scope links are deferred (see CONTEXT.md).
+// Back-office CRUD plus the role↔menu link (**Menu Grant**); user↔role and
+// data-scope links are deferred (see CONTEXT.md).
 export type Role = {
   // Snowflake ID. Server-assigned on create.
   roleId: number | undefined;
@@ -38,6 +40,12 @@ export type Role = {
   updateBy: number | undefined;
   createdAt: wellKnownTimestamp | undefined;
   updatedAt: wellKnownTimestamp | undefined;
+  // Whether the role editor treats parent/child menu selection as linked
+  // (菜单选择是否关联显示). Defaults to on (RuoYi column default 1). Shown by
+  // GetRole/ListRoles; NOT writable through UpdateRole — it is written only
+  // via UpdateRoleMenus (the permission save), like Menu.children is
+  // read-only on Create/Update.
+  menuCheckStrictly: boolean | undefined;
 };
 
 // Encoded using RFC 3339, where generated output will always be Z-normalized
@@ -57,6 +65,12 @@ export type CreateRoleRequest = {
   //
   // Behaviors: REQUIRED
   role: Role | undefined;
+  // Optional. Initial Menu Grant. Validated like UpdateRoleMenus; absent =
+  // no menus.
+  menuIds: number[] | undefined;
+  // Optional. Presence-aware; absent = true (RuoYi default). Explicit false
+  // disables parent/child linkage display.
+  menuCheckStrictly?: boolean;
 };
 
 export type GetRoleRequest = {
@@ -126,18 +140,53 @@ export type DeleteRoleRequest = {
   roleId: number | undefined;
 };
 
-// RoleService is the system-role CRUD service.
+// RoleMenus is a role's Menu Grant: the full set of granted menu ids.
+export type RoleMenus = {
+  menuIds: number[] | undefined;
+};
+
+export type ListRoleMenusRequest = {
+  // Required. The id of the role whose grant is read.
+  //
+  // Behaviors: REQUIRED
+  roleId: number | undefined;
+};
+
+export type UpdateRoleMenusRequest = {
+  // Required. The id of the role whose grant is replaced.
+  //
+  // Behaviors: REQUIRED
+  roleId: number | undefined;
+  // The complete desired grant; full replacement (empty = clear all).
+  menuIds: number[] | undefined;
+  // Optional. Presence-aware; absent = true (RuoYi default). Written together
+  // with the grant in the same transaction.
+  menuCheckStrictly?: boolean;
+};
+
+// RoleService is the system-role CRUD + Menu Grant service.
 export interface RoleService {
-  // CreateRole creates a new role.
+  // CreateRole creates a new role, optionally with its initial Menu Grant.
   CreateRole(request: CreateRoleRequest): Promise<Role>;
   // GetRole retrieves a role by id.
   GetRole(request: GetRoleRequest): Promise<Role>;
   // ListRoles lists roles with AIP filter/order/page-token.
   ListRoles(request: ListRolesRequest): Promise<RoleSet>;
-  // UpdateRole partially updates a role (field-mask).
+  // UpdateRole partially updates a role (field-mask). menu_check_strictly is
+  // ignored here — it is written only via UpdateRoleMenus.
   UpdateRole(request: UpdateRoleRequest): Promise<Role>;
-  // DeleteRole soft-deletes a role by id.
+  // DeleteRole soft-deletes a role by id and removes its Menu Grant.
   DeleteRole(request: DeleteRoleRequest): Promise<wellKnownEmpty>;
+  // ListRoleMenus returns the role's granted menu ids (checkedKeys), shaped by
+  // menu_check_strictly: when on, a menu that is the parent of another granted
+  // menu is excluded (it shows as half-checked in the tree, not as a grant).
+  // Buttons are included. Soft-deleted menus are excluded.
+  ListRoleMenus(request: ListRoleMenusRequest): Promise<RoleMenus>;
+  // UpdateRoleMenus replaces the role's Menu Grant and its
+  // menu_check_strictly flag in one transaction (full replacement; empty
+  // menu_ids clears all grants). Unknown or soft-deleted menu ids are
+  // rejected with ROLE_MENU_NOT_FOUND; duplicates are silently deduped.
+  UpdateRoleMenus(request: UpdateRoleMenusRequest): Promise<RoleMenus>;
 }
 
 type RequestType = {
@@ -156,6 +205,14 @@ export function createRoleServiceClient(
       const path = `system/role`; // eslint-disable-line quotes
       const body = JSON.stringify(request?.role ?? {});
       const queryParams: string[] = [];
+      if (request.menuIds) {
+        request.menuIds.forEach((x) => {
+          queryParams.push(`menuIds=${encodeURIComponent(x.toString())}`)
+        })
+      }
+      if (request.menuCheckStrictly) {
+        queryParams.push(`menuCheckStrictly=${encodeURIComponent(request.menuCheckStrictly.toString())}`)
+      }
       let uri = path;
       if (queryParams.length > 0) {
         uri += `?${queryParams.join("&")}`
@@ -260,6 +317,46 @@ export function createRoleServiceClient(
         service: "RoleService",
         method: "DeleteRole",
       }) as Promise<wellKnownEmpty>;
+    },
+    ListRoleMenus(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.roleId) {
+        throw new Error("missing required field request.role_id");
+      }
+      const path = `system/role/${request.roleId}/menus`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "RoleService",
+        method: "ListRoleMenus",
+      }) as Promise<RoleMenus>;
+    },
+    UpdateRoleMenus(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.roleId) {
+        throw new Error("missing required field request.role_id");
+      }
+      const path = `system/role/${request.roleId}/menus`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "PUT",
+        body,
+      }, {
+        service: "RoleService",
+        method: "UpdateRoleMenus",
+      }) as Promise<RoleMenus>;
     },
   };
 }

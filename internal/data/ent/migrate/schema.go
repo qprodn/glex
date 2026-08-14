@@ -46,6 +46,7 @@ var (
 		{Name: "role_key", Type: field.TypeString},
 		{Name: "role_sort", Type: field.TypeInt, Default: 0, SchemaType: map[string]string{"postgres": "integer"}},
 		{Name: "status", Type: field.TypeInt8, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
+		{Name: "menu_check_strictly", Type: field.TypeBool, Default: true},
 		{Name: "remark", Type: field.TypeString, Default: ""},
 		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
 		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
@@ -85,11 +86,37 @@ var (
 		Columns:    SysUserColumns,
 		PrimaryKey: []*schema.Column{SysUserColumns[0]},
 	}
+	// RoleMenusColumns holds the columns for the "role_menus" table.
+	RoleMenusColumns = []*schema.Column{
+		{Name: "role_id", Type: field.TypeInt64},
+		{Name: "menu_id", Type: field.TypeInt64},
+	}
+	// RoleMenusTable holds the schema information for the "role_menus" table.
+	RoleMenusTable = &schema.Table{
+		Name:       "role_menus",
+		Columns:    RoleMenusColumns,
+		PrimaryKey: []*schema.Column{RoleMenusColumns[0], RoleMenusColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "role_menus_role_id",
+				Columns:    []*schema.Column{RoleMenusColumns[0]},
+				RefColumns: []*schema.Column{SysRoleColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "role_menus_menu_id",
+				Columns:    []*schema.Column{RoleMenusColumns[1]},
+				RefColumns: []*schema.Column{SysMenuColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		SysMenuTable,
 		SysRoleTable,
 		SysUserTable,
+		RoleMenusTable,
 	}
 )
 
@@ -102,5 +129,10 @@ func init() {
 	}
 	SysUserTable.Annotation = &entsql.Annotation{
 		Table: "sys_user",
+	}
+	RoleMenusTable.ForeignKeys[0].RefTable = SysRoleTable
+	RoleMenusTable.ForeignKeys[1].RefTable = SysMenuTable
+	RoleMenusTable.Annotation = &entsql.Annotation{
+		Table: "sys_role_menu",
 	}
 }
