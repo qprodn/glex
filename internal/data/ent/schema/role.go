@@ -61,10 +61,13 @@ func (Role) Annotations() []entschema.Annotation {
 // Edges of the Role. M2M to Menu via the join table sys_role_menu — exactly
 // RuoYi's shape: columns role_id + menu_id, composite PK (role_id, menu_id),
 // no timestamps/soft delete (hard-deleted rows, full-replacement semantics).
+// The users edge is the inverse side of User.roles (Role Assignment); the
+// join table sys_user_role is owned/named by the User schema's annotation.
 func (Role) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("menus", Menu.Type).Annotations(
 			entsql.Annotation{Table: "sys_role_menu"},
 		),
+		edge.From("users", User.Type).Ref("roles"),
 	}
 }

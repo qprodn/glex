@@ -8,6 +8,7 @@ package v1
 
 import (
 	context "context"
+	v1 "glex/api/system/user/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -20,21 +21,35 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_Login_FullMethodName  = "/system.auth.v1.AuthService/Login"
-	AuthService_Logout_FullMethodName = "/system.auth.v1.AuthService/Logout"
+	AuthService_Login_FullMethodName           = "/system.auth.v1.AuthService/Login"
+	AuthService_Logout_FullMethodName          = "/system.auth.v1.AuthService/Logout"
+	AuthService_ListUserRoles_FullMethodName   = "/system.auth.v1.AuthService/ListUserRoles"
+	AuthService_UpdateUserRoles_FullMethodName = "/system.auth.v1.AuthService/UpdateUserRoles"
+	AuthService_ListRoleUsers_FullMethodName   = "/system.auth.v1.AuthService/ListRoleUsers"
 )
 
 // AuthServiceClient is the client API for AuthService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// AuthService creates and ends Login Sessions.
+// AuthService owns login/logout and the user↔role link (**Role Assignment**).
 type AuthServiceClient interface {
 	// Login creates one Login Session from a username and password.
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginReply, error)
 	// Logout idempotently revokes the presented valid Login Session. Missing or
 	// confirmed-invalid credentials also succeed under OPTIONAL authentication.
 	Logout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ListUserRoles returns every active role with whether the user is assigned
+	// it — the assign dialog's data in one call.
+	ListUserRoles(ctx context.Context, in *ListUserRolesRequest, opts ...grpc.CallOption) (*UserRoles, error)
+	// UpdateUserRoles replaces the user's Role Assignment (full replacement;
+	// empty role_ids clears all). Unknown or soft-deleted role ids are rejected
+	// with ROLE_NOT_FOUND; duplicates are silently deduped. Returns the updated
+	// assignment.
+	UpdateUserRoles(ctx context.Context, in *UpdateUserRolesRequest, opts ...grpc.CallOption) (*UserRoles, error)
+	// ListRoleUsers lists the active users assigned the role, with AIP
+	// filter/order/page-token pagination.
+	ListRoleUsers(ctx context.Context, in *ListRoleUsersRequest, opts ...grpc.CallOption) (*v1.UserSet, error)
 }
 
 type authServiceClient struct {
@@ -65,17 +80,58 @@ func (c *authServiceClient) Logout(ctx context.Context, in *emptypb.Empty, opts 
 	return out, nil
 }
 
+func (c *authServiceClient) ListUserRoles(ctx context.Context, in *ListUserRolesRequest, opts ...grpc.CallOption) (*UserRoles, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UserRoles)
+	err := c.cc.Invoke(ctx, AuthService_ListUserRoles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) UpdateUserRoles(ctx context.Context, in *UpdateUserRolesRequest, opts ...grpc.CallOption) (*UserRoles, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UserRoles)
+	err := c.cc.Invoke(ctx, AuthService_UpdateUserRoles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) ListRoleUsers(ctx context.Context, in *ListRoleUsersRequest, opts ...grpc.CallOption) (*v1.UserSet, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(v1.UserSet)
+	err := c.cc.Invoke(ctx, AuthService_ListRoleUsers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
 //
-// AuthService creates and ends Login Sessions.
+// AuthService owns login/logout and the user↔role link (**Role Assignment**).
 type AuthServiceServer interface {
 	// Login creates one Login Session from a username and password.
 	Login(context.Context, *LoginRequest) (*LoginReply, error)
 	// Logout idempotently revokes the presented valid Login Session. Missing or
 	// confirmed-invalid credentials also succeed under OPTIONAL authentication.
 	Logout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	// ListUserRoles returns every active role with whether the user is assigned
+	// it — the assign dialog's data in one call.
+	ListUserRoles(context.Context, *ListUserRolesRequest) (*UserRoles, error)
+	// UpdateUserRoles replaces the user's Role Assignment (full replacement;
+	// empty role_ids clears all). Unknown or soft-deleted role ids are rejected
+	// with ROLE_NOT_FOUND; duplicates are silently deduped. Returns the updated
+	// assignment.
+	UpdateUserRoles(context.Context, *UpdateUserRolesRequest) (*UserRoles, error)
+	// ListRoleUsers lists the active users assigned the role, with AIP
+	// filter/order/page-token pagination.
+	ListRoleUsers(context.Context, *ListRoleUsersRequest) (*v1.UserSet, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -91,6 +147,15 @@ func (UnimplementedAuthServiceServer) Login(context.Context, *LoginRequest) (*Lo
 }
 func (UnimplementedAuthServiceServer) Logout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method Logout not implemented")
+}
+func (UnimplementedAuthServiceServer) ListUserRoles(context.Context, *ListUserRolesRequest) (*UserRoles, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListUserRoles not implemented")
+}
+func (UnimplementedAuthServiceServer) UpdateUserRoles(context.Context, *UpdateUserRolesRequest) (*UserRoles, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateUserRoles not implemented")
+}
+func (UnimplementedAuthServiceServer) ListRoleUsers(context.Context, *ListRoleUsersRequest) (*v1.UserSet, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListRoleUsers not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -149,6 +214,60 @@ func _AuthService_Logout_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_ListUserRoles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListUserRolesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ListUserRoles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ListUserRoles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ListUserRoles(ctx, req.(*ListUserRolesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_UpdateUserRoles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateUserRolesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).UpdateUserRoles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_UpdateUserRoles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).UpdateUserRoles(ctx, req.(*UpdateUserRolesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_ListRoleUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRoleUsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ListRoleUsers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ListRoleUsers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ListRoleUsers(ctx, req.(*ListRoleUsersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -163,6 +282,18 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Logout",
 			Handler:    _AuthService_Logout_Handler,
+		},
+		{
+			MethodName: "ListUserRoles",
+			Handler:    _AuthService_ListUserRoles_Handler,
+		},
+		{
+			MethodName: "UpdateUserRoles",
+			Handler:    _AuthService_UpdateUserRoles_Handler,
+		},
+		{
+			MethodName: "ListRoleUsers",
+			Handler:    _AuthService_ListRoleUsers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

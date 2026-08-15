@@ -9,6 +9,7 @@ package v1
 import (
 	context "context"
 	http "github.com/go-kratos/kratos/v3/transport/http"
+	v1 "glex/api/system/user/v1"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -18,21 +19,38 @@ var _ = new(context.Context)
 
 const _ = http.SupportPackageIsVersion3
 
+const OperationAuthServiceListRoleUsers = "/system.auth.v1.AuthService/ListRoleUsers"
+const OperationAuthServiceListUserRoles = "/system.auth.v1.AuthService/ListUserRoles"
 const OperationAuthServiceLogin = "/system.auth.v1.AuthService/Login"
 const OperationAuthServiceLogout = "/system.auth.v1.AuthService/Logout"
+const OperationAuthServiceUpdateUserRoles = "/system.auth.v1.AuthService/UpdateUserRoles"
 
 type AuthServiceHTTPServer interface {
+	// ListRoleUsers ListRoleUsers lists the active users assigned the role, with AIP
+	// filter/order/page-token pagination.
+	ListRoleUsers(context.Context, *ListRoleUsersRequest) (*v1.UserSet, error)
+	// ListUserRoles ListUserRoles returns every active role with whether the user is assigned
+	// it — the assign dialog's data in one call.
+	ListUserRoles(context.Context, *ListUserRolesRequest) (*UserRoles, error)
 	// Login Login creates one Login Session from a username and password.
 	Login(context.Context, *LoginRequest) (*LoginReply, error)
 	// Logout Logout idempotently revokes the presented valid Login Session. Missing or
 	// confirmed-invalid credentials also succeed under OPTIONAL authentication.
 	Logout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	// UpdateUserRoles UpdateUserRoles replaces the user's Role Assignment (full replacement;
+	// empty role_ids clears all). Unknown or soft-deleted role ids are rejected
+	// with ROLE_NOT_FOUND; duplicates are silently deduped. Returns the updated
+	// assignment.
+	UpdateUserRoles(context.Context, *UpdateUserRolesRequest) (*UserRoles, error)
 }
 
 func RegisterAuthServiceHTTPServer(s *http.Server, srv AuthServiceHTTPServer) {
 	r := s.Route("/")
 	r.Handle("POST", "/auth/login", _AuthService_Login0_HTTP_Handler(srv))
 	r.Handle("POST", "/auth/logout", _AuthService_Logout0_HTTP_Handler(srv))
+	r.Handle("GET", "/system/user/{user_id}/roles", _AuthService_ListUserRoles0_HTTP_Handler(srv))
+	r.Handle("PUT", "/system/user/{user_id}/roles", _AuthService_UpdateUserRoles0_HTTP_Handler(srv))
+	r.Handle("GET", "/system/role/{role_id}/users", _AuthService_ListRoleUsers0_HTTP_Handler(srv))
 }
 
 func _AuthService_Login0_HTTP_Handler(srv AuthServiceHTTPServer) func(ctx http.Context) error {
@@ -73,12 +91,89 @@ func _AuthService_Logout0_HTTP_Handler(srv AuthServiceHTTPServer) func(ctx http.
 	}
 }
 
+func _AuthService_ListUserRoles0_HTTP_Handler(srv AuthServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListUserRolesRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAuthServiceListUserRoles)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListUserRoles(ctx, req.(*ListUserRolesRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*UserRoles)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _AuthService_UpdateUserRoles0_HTTP_Handler(srv AuthServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in UpdateUserRolesRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAuthServiceUpdateUserRoles)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.UpdateUserRoles(ctx, req.(*UpdateUserRolesRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*UserRoles)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _AuthService_ListRoleUsers0_HTTP_Handler(srv AuthServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListRoleUsersRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAuthServiceListRoleUsers)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListRoleUsers(ctx, req.(*ListRoleUsersRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*v1.UserSet)
+		return ctx.Result(200, reply)
+	}
+}
+
 type AuthServiceHTTPClient interface {
+	// ListRoleUsers ListRoleUsers lists the active users assigned the role, with AIP
+	// filter/order/page-token pagination.
+	ListRoleUsers(ctx context.Context, req *ListRoleUsersRequest, opts ...http.CallOption) (rsp *v1.UserSet, err error)
+	// ListUserRoles ListUserRoles returns every active role with whether the user is assigned
+	// it — the assign dialog's data in one call.
+	ListUserRoles(ctx context.Context, req *ListUserRolesRequest, opts ...http.CallOption) (rsp *UserRoles, err error)
 	// Login Login creates one Login Session from a username and password.
 	Login(ctx context.Context, req *LoginRequest, opts ...http.CallOption) (rsp *LoginReply, err error)
 	// Logout Logout idempotently revokes the presented valid Login Session. Missing or
 	// confirmed-invalid credentials also succeed under OPTIONAL authentication.
 	Logout(ctx context.Context, req *emptypb.Empty, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
+	// UpdateUserRoles UpdateUserRoles replaces the user's Role Assignment (full replacement;
+	// empty role_ids clears all). Unknown or soft-deleted role ids are rejected
+	// with ROLE_NOT_FOUND; duplicates are silently deduped. Returns the updated
+	// assignment.
+	UpdateUserRoles(ctx context.Context, req *UpdateUserRolesRequest, opts ...http.CallOption) (rsp *UserRoles, err error)
 }
 
 type AuthServiceHTTPClientImpl struct {
@@ -87,6 +182,42 @@ type AuthServiceHTTPClientImpl struct {
 
 func NewAuthServiceHTTPClient(client *http.Client) AuthServiceHTTPClient {
 	return &AuthServiceHTTPClientImpl{client}
+}
+
+// ListRoleUsers ListRoleUsers lists the active users assigned the role, with AIP
+// filter/order/page-token pagination.
+func (c *AuthServiceHTTPClientImpl) ListRoleUsers(ctx context.Context, in *ListRoleUsersRequest, opts ...http.CallOption) (*v1.UserSet, error) {
+	var out v1.UserSet
+	pattern := "/system/role/{role_id}/users"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationAuthServiceListRoleUsers),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListUserRoles ListUserRoles returns every active role with whether the user is assigned
+// it — the assign dialog's data in one call.
+func (c *AuthServiceHTTPClientImpl) ListUserRoles(ctx context.Context, in *ListUserRolesRequest, opts ...http.CallOption) (*UserRoles, error) {
+	var out UserRoles
+	pattern := "/system/user/{user_id}/roles"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationAuthServiceListUserRoles),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 // Login Login creates one Login Session from a username and password.
@@ -120,6 +251,27 @@ func (c *AuthServiceHTTPClientImpl) Logout(ctx context.Context, in *emptypb.Empt
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// UpdateUserRoles UpdateUserRoles replaces the user's Role Assignment (full replacement;
+// empty role_ids clears all). Unknown or soft-deleted role ids are rejected
+// with ROLE_NOT_FOUND; duplicates are silently deduped. Returns the updated
+// assignment.
+func (c *AuthServiceHTTPClientImpl) UpdateUserRoles(ctx context.Context, in *UpdateUserRolesRequest, opts ...http.CallOption) (*UserRoles, error) {
+	var out UserRoles
+	pattern := "/system/user/{user_id}/roles"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationAuthServiceUpdateUserRoles),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "PUT", path, in, &out, opts...)
 	if err != nil {
 		return nil, err
 	}

@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/entsql"
 	entschema "entgo.io/ent/schema"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
 
@@ -57,5 +58,18 @@ func (User) Fields() []ent.Field {
 func (User) Annotations() []entschema.Annotation {
 	return []entschema.Annotation{
 		entsql.Annotation{Table: "sys_user"},
+	}
+}
+
+// Edges of the User. M2M to Role via the join table sys_user_role — exactly
+// RuoYi's shape: columns user_id + role_id, composite PK (user_id, role_id),
+// no timestamps/soft delete (hard-deleted rows, full-replacement semantics).
+// The link is the auth module's Role Assignment (角色分配), not the user
+// module's concern.
+func (User) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("roles", Role.Type).Annotations(
+			entsql.Annotation{Table: "sys_user_role"},
+		),
 	}
 }

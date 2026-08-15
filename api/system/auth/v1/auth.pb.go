@@ -8,6 +8,8 @@ package v1
 
 import (
 	_ "glex/api/system/auth/v1/policy"
+	v1 "glex/api/system/role/v1"
+	v11 "glex/api/system/user/v1"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -358,6 +360,109 @@ func (x *OnlineSessionSet) GetNextPageToken() string {
 	return ""
 }
 
+// RoleAssignment is one role with whether the user is assigned it (RuoYi's
+// authRole dialog data: all roles plus a checked flag).
+type RoleAssignment struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The role itself.
+	Role *v1.Role `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	// Whether the user currently holds this role.
+	Assigned      bool `protobuf:"varint,2,opt,name=assigned,proto3" json:"assigned,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoleAssignment) Reset() {
+	*x = RoleAssignment{}
+	mi := &file_system_auth_v1_auth_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoleAssignment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoleAssignment) ProtoMessage() {}
+
+func (x *RoleAssignment) ProtoReflect() protoreflect.Message {
+	mi := &file_system_auth_v1_auth_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoleAssignment.ProtoReflect.Descriptor instead.
+func (*RoleAssignment) Descriptor() ([]byte, []int) {
+	return file_system_auth_v1_auth_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *RoleAssignment) GetRole() *v1.Role {
+	if x != nil {
+		return x.Role
+	}
+	return nil
+}
+
+func (x *RoleAssignment) GetAssigned() bool {
+	if x != nil {
+		return x.Assigned
+	}
+	return false
+}
+
+// UserRoles is a user's Role Assignment (角色分配): every active role with its
+// assigned flag, ordered by (role_sort, role_id). Not paginated — roles are a
+// small flat set.
+type UserRoles struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*RoleAssignment      `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserRoles) Reset() {
+	*x = UserRoles{}
+	mi := &file_system_auth_v1_auth_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserRoles) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserRoles) ProtoMessage() {}
+
+func (x *UserRoles) ProtoReflect() protoreflect.Message {
+	mi := &file_system_auth_v1_auth_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserRoles.ProtoReflect.Descriptor instead.
+func (*UserRoles) Descriptor() ([]byte, []int) {
+	return file_system_auth_v1_auth_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *UserRoles) GetItems() []*RoleAssignment {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 type ListOnlineSessionsRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	PageSize  int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
@@ -372,7 +477,7 @@ type ListOnlineSessionsRequest struct {
 
 func (x *ListOnlineSessionsRequest) Reset() {
 	*x = ListOnlineSessionsRequest{}
-	mi := &file_system_auth_v1_auth_proto_msgTypes[5]
+	mi := &file_system_auth_v1_auth_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -384,7 +489,7 @@ func (x *ListOnlineSessionsRequest) String() string {
 func (*ListOnlineSessionsRequest) ProtoMessage() {}
 
 func (x *ListOnlineSessionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_system_auth_v1_auth_proto_msgTypes[5]
+	mi := &file_system_auth_v1_auth_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -397,7 +502,7 @@ func (x *ListOnlineSessionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListOnlineSessionsRequest.ProtoReflect.Descriptor instead.
 func (*ListOnlineSessionsRequest) Descriptor() ([]byte, []int) {
-	return file_system_auth_v1_auth_proto_rawDescGZIP(), []int{5}
+	return file_system_auth_v1_auth_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListOnlineSessionsRequest) GetPageSize() int32 {
@@ -438,7 +543,7 @@ type OnlineSessionRequest struct {
 
 func (x *OnlineSessionRequest) Reset() {
 	*x = OnlineSessionRequest{}
-	mi := &file_system_auth_v1_auth_proto_msgTypes[6]
+	mi := &file_system_auth_v1_auth_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -450,7 +555,7 @@ func (x *OnlineSessionRequest) String() string {
 func (*OnlineSessionRequest) ProtoMessage() {}
 
 func (x *OnlineSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_system_auth_v1_auth_proto_msgTypes[6]
+	mi := &file_system_auth_v1_auth_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -463,7 +568,7 @@ func (x *OnlineSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OnlineSessionRequest.ProtoReflect.Descriptor instead.
 func (*OnlineSessionRequest) Descriptor() ([]byte, []int) {
-	return file_system_auth_v1_auth_proto_rawDescGZIP(), []int{6}
+	return file_system_auth_v1_auth_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *OnlineSessionRequest) GetTokenId() string {
@@ -473,11 +578,193 @@ func (x *OnlineSessionRequest) GetTokenId() string {
 	return ""
 }
 
+type ListUserRolesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The id of the user whose roles are read.
+	UserId        int64 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListUserRolesRequest) Reset() {
+	*x = ListUserRolesRequest{}
+	mi := &file_system_auth_v1_auth_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListUserRolesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListUserRolesRequest) ProtoMessage() {}
+
+func (x *ListUserRolesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_system_auth_v1_auth_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListUserRolesRequest.ProtoReflect.Descriptor instead.
+func (*ListUserRolesRequest) Descriptor() ([]byte, []int) {
+	return file_system_auth_v1_auth_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ListUserRolesRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+type UpdateUserRolesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The id of the user whose assignment is replaced.
+	UserId int64 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// The complete desired assignment; full replacement (empty = clear all).
+	RoleIds       []int64 `protobuf:"varint,2,rep,packed,name=role_ids,json=roleIds,proto3" json:"role_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateUserRolesRequest) Reset() {
+	*x = UpdateUserRolesRequest{}
+	mi := &file_system_auth_v1_auth_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateUserRolesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateUserRolesRequest) ProtoMessage() {}
+
+func (x *UpdateUserRolesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_system_auth_v1_auth_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateUserRolesRequest.ProtoReflect.Descriptor instead.
+func (*UpdateUserRolesRequest) Descriptor() ([]byte, []int) {
+	return file_system_auth_v1_auth_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *UpdateUserRolesRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *UpdateUserRolesRequest) GetRoleIds() []int64 {
+	if x != nil {
+		return x.RoleIds
+	}
+	return nil
+}
+
+type ListRoleUsersRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The id of the role whose users are listed.
+	RoleId int64 `protobuf:"varint,1,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	// Optional. Page size.
+	PageSize int32 `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	// Optional. Page token from a previous response.
+	PageToken string `protobuf:"bytes,3,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	// Optional. AIP-160 filter. Supported fields:
+	//   - `user_name` (e.g. `user_name="admin"`)
+	//   - `status` (e.g. `status=0`)
+	Filter string `protobuf:"bytes,4,opt,name=filter,proto3" json:"filter,omitempty"`
+	// Optional. AIP-132 order, e.g. `user_id` or `created_at desc`.
+	OrderBy       string `protobuf:"bytes,5,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRoleUsersRequest) Reset() {
+	*x = ListRoleUsersRequest{}
+	mi := &file_system_auth_v1_auth_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRoleUsersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRoleUsersRequest) ProtoMessage() {}
+
+func (x *ListRoleUsersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_system_auth_v1_auth_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRoleUsersRequest.ProtoReflect.Descriptor instead.
+func (*ListRoleUsersRequest) Descriptor() ([]byte, []int) {
+	return file_system_auth_v1_auth_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ListRoleUsersRequest) GetRoleId() int64 {
+	if x != nil {
+		return x.RoleId
+	}
+	return 0
+}
+
+func (x *ListRoleUsersRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListRoleUsersRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+func (x *ListRoleUsersRequest) GetFilter() string {
+	if x != nil {
+		return x.Filter
+	}
+	return ""
+}
+
+func (x *ListRoleUsersRequest) GetOrderBy() string {
+	if x != nil {
+		return x.OrderBy
+	}
+	return ""
+}
+
 var File_system_auth_v1_auth_proto protoreflect.FileDescriptor
 
 const file_system_auth_v1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x19system/auth/v1/auth.proto\x12\x0esystem.auth.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\"system/auth/v1/policy/policy.proto\"P\n" +
+	"\x19system/auth/v1/auth.proto\x12\x0esystem.auth.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\"system/auth/v1/policy/policy.proto\x1a\x19system/role/v1/role.proto\x1a\x19system/user/v1/user.proto\"P\n" +
 	"\fLoginRequest\x12\x1f\n" +
 	"\busername\x18\x01 \x01(\tB\x03\xe0A\x02R\busername\x12\x1f\n" +
 	"\bpassword\x18\x02 \x01(\tB\x03\xe0A\x02R\bpassword\"L\n" +
@@ -504,7 +791,12 @@ const file_system_auth_v1_auth_proto_rawDesc = "" +
 	"login_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tloginTime\"u\n" +
 	"\x10OnlineSessionSet\x129\n" +
 	"\bsessions\x18\x01 \x03(\v2\x1d.system.auth.v1.OnlineSessionR\bsessions\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\x8a\x01\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"V\n" +
+	"\x0eRoleAssignment\x12(\n" +
+	"\x04role\x18\x01 \x01(\v2\x14.system.role.v1.RoleR\x04role\x12\x1a\n" +
+	"\bassigned\x18\x02 \x01(\bR\bassigned\"A\n" +
+	"\tUserRoles\x124\n" +
+	"\x05items\x18\x01 \x03(\v2\x1e.system.auth.v1.RoleAssignmentR\x05items\"\x8a\x01\n" +
 	"\x19ListOnlineSessionsRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
@@ -512,10 +804,25 @@ const file_system_auth_v1_auth_proto_rawDesc = "" +
 	"\x06filter\x18\x03 \x01(\tR\x06filter\x12\x19\n" +
 	"\border_by\x18\x04 \x01(\tR\aorderBy\"6\n" +
 	"\x14OnlineSessionRequest\x12\x1e\n" +
-	"\btoken_id\x18\x01 \x01(\tB\x03\xe0A\x02R\atokenId2\xc7\x01\n" +
+	"\btoken_id\x18\x01 \x01(\tB\x03\xe0A\x02R\atokenId\"4\n" +
+	"\x14ListUserRolesRequest\x12\x1c\n" +
+	"\auser_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06userId\"Q\n" +
+	"\x16UpdateUserRolesRequest\x12\x1c\n" +
+	"\auser_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06userId\x12\x19\n" +
+	"\brole_ids\x18\x02 \x03(\x03R\aroleIds\"\xa3\x01\n" +
+	"\x14ListRoleUsersRequest\x12\x1c\n" +
+	"\arole_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06roleId\x12\x1b\n" +
+	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x03 \x01(\tR\tpageToken\x12\x16\n" +
+	"\x06filter\x18\x04 \x01(\tR\x06filter\x12\x19\n" +
+	"\border_by\x18\x05 \x01(\tR\aorderBy2\x80\x05\n" +
 	"\vAuthService\x12_\n" +
 	"\x05Login\x12\x1c.system.auth.v1.LoginRequest\x1a\x1a.system.auth.v1.LoginReply\"\x1c\xc2\xf3\x18\x02\b\x01\x82\xd3\xe4\x93\x02\x10:\x01*\"\v/auth/login\x12W\n" +
-	"\x06Logout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x1d\xc2\xf3\x18\x02\b\x02\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/auth/logout2\xca\x04\n" +
+	"\x06Logout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x1d\xc2\xf3\x18\x02\b\x02\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/auth/logout\x12\x8f\x01\n" +
+	"\rListUserRoles\x12$.system.auth.v1.ListUserRolesRequest\x1a\x19.system.auth.v1.UserRoles\"=\xc2\xf3\x18\x15\b\x04\x12\x11system:user:query\x82\xd3\xe4\x93\x02\x1e\x12\x1c/system/user/{user_id}/roles\x12\x95\x01\n" +
+	"\x0fUpdateUserRoles\x12&.system.auth.v1.UpdateUserRolesRequest\x1a\x19.system.auth.v1.UserRoles\"?\xc2\xf3\x18\x14\b\x04\x12\x10system:user:edit\x82\xd3\xe4\x93\x02!:\x01*\x1a\x1c/system/user/{user_id}/roles\x12\x8c\x01\n" +
+	"\rListRoleUsers\x12$.system.auth.v1.ListRoleUsersRequest\x1a\x17.system.user.v1.UserSet\"<\xc2\xf3\x18\x14\b\x04\x12\x10system:role:list\x82\xd3\xe4\x93\x02\x1e\x12\x1c/system/role/{role_id}/users2\xca\x04\n" +
 	"\x14OnlineSessionService\x12\x9a\x01\n" +
 	"\x12ListOnlineSessions\x12).system.auth.v1.ListOnlineSessionsRequest\x1a .system.auth.v1.OnlineSessionSet\"7\xc2\xf3\x18\x17\b\x04\x12\x13monitor:online:list\x82\xd3\xe4\x93\x02\x16\x12\x14/monitor/online/list\x12\x9a\x01\n" +
 	"\x14KickoutOnlineSession\x12$.system.auth.v1.OnlineSessionRequest\x1a\x16.google.protobuf.Empty\"D\xc2\xf3\x18\x1e\b\x04\x12\x1amonitor:online:forceLogout\x82\xd3\xe4\x93\x02\x1c*\x1a/monitor/online/{token_id}\x12o\n" +
@@ -535,38 +842,53 @@ func file_system_auth_v1_auth_proto_rawDescGZIP() []byte {
 	return file_system_auth_v1_auth_proto_rawDescData
 }
 
-var file_system_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_system_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_system_auth_v1_auth_proto_goTypes = []any{
 	(*LoginRequest)(nil),              // 0: system.auth.v1.LoginRequest
 	(*LoginReply)(nil),                // 1: system.auth.v1.LoginReply
 	(*Principal)(nil),                 // 2: system.auth.v1.Principal
 	(*OnlineSession)(nil),             // 3: system.auth.v1.OnlineSession
 	(*OnlineSessionSet)(nil),          // 4: system.auth.v1.OnlineSessionSet
-	(*ListOnlineSessionsRequest)(nil), // 5: system.auth.v1.ListOnlineSessionsRequest
-	(*OnlineSessionRequest)(nil),      // 6: system.auth.v1.OnlineSessionRequest
-	(*timestamppb.Timestamp)(nil),     // 7: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),             // 8: google.protobuf.Empty
+	(*RoleAssignment)(nil),            // 5: system.auth.v1.RoleAssignment
+	(*UserRoles)(nil),                 // 6: system.auth.v1.UserRoles
+	(*ListOnlineSessionsRequest)(nil), // 7: system.auth.v1.ListOnlineSessionsRequest
+	(*OnlineSessionRequest)(nil),      // 8: system.auth.v1.OnlineSessionRequest
+	(*ListUserRolesRequest)(nil),      // 9: system.auth.v1.ListUserRolesRequest
+	(*UpdateUserRolesRequest)(nil),    // 10: system.auth.v1.UpdateUserRolesRequest
+	(*ListRoleUsersRequest)(nil),      // 11: system.auth.v1.ListRoleUsersRequest
+	(*timestamppb.Timestamp)(nil),     // 12: google.protobuf.Timestamp
+	(*v1.Role)(nil),                   // 13: system.role.v1.Role
+	(*emptypb.Empty)(nil),             // 14: google.protobuf.Empty
+	(*v11.UserSet)(nil),               // 15: system.user.v1.UserSet
 }
 var file_system_auth_v1_auth_proto_depIdxs = []int32{
-	7, // 0: system.auth.v1.OnlineSession.login_time:type_name -> google.protobuf.Timestamp
-	3, // 1: system.auth.v1.OnlineSessionSet.sessions:type_name -> system.auth.v1.OnlineSession
-	0, // 2: system.auth.v1.AuthService.Login:input_type -> system.auth.v1.LoginRequest
-	8, // 3: system.auth.v1.AuthService.Logout:input_type -> google.protobuf.Empty
-	5, // 4: system.auth.v1.OnlineSessionService.ListOnlineSessions:input_type -> system.auth.v1.ListOnlineSessionsRequest
-	6, // 5: system.auth.v1.OnlineSessionService.KickoutOnlineSession:input_type -> system.auth.v1.OnlineSessionRequest
-	8, // 6: system.auth.v1.OnlineSessionService.ListMyOnlineSessions:input_type -> google.protobuf.Empty
-	6, // 7: system.auth.v1.OnlineSessionService.DeleteMyOnlineSession:input_type -> system.auth.v1.OnlineSessionRequest
-	1, // 8: system.auth.v1.AuthService.Login:output_type -> system.auth.v1.LoginReply
-	8, // 9: system.auth.v1.AuthService.Logout:output_type -> google.protobuf.Empty
-	4, // 10: system.auth.v1.OnlineSessionService.ListOnlineSessions:output_type -> system.auth.v1.OnlineSessionSet
-	8, // 11: system.auth.v1.OnlineSessionService.KickoutOnlineSession:output_type -> google.protobuf.Empty
-	4, // 12: system.auth.v1.OnlineSessionService.ListMyOnlineSessions:output_type -> system.auth.v1.OnlineSessionSet
-	8, // 13: system.auth.v1.OnlineSessionService.DeleteMyOnlineSession:output_type -> google.protobuf.Empty
-	8, // [8:14] is the sub-list for method output_type
-	2, // [2:8] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	12, // 0: system.auth.v1.OnlineSession.login_time:type_name -> google.protobuf.Timestamp
+	3,  // 1: system.auth.v1.OnlineSessionSet.sessions:type_name -> system.auth.v1.OnlineSession
+	13, // 2: system.auth.v1.RoleAssignment.role:type_name -> system.role.v1.Role
+	5,  // 3: system.auth.v1.UserRoles.items:type_name -> system.auth.v1.RoleAssignment
+	0,  // 4: system.auth.v1.AuthService.Login:input_type -> system.auth.v1.LoginRequest
+	14, // 5: system.auth.v1.AuthService.Logout:input_type -> google.protobuf.Empty
+	9,  // 6: system.auth.v1.AuthService.ListUserRoles:input_type -> system.auth.v1.ListUserRolesRequest
+	10, // 7: system.auth.v1.AuthService.UpdateUserRoles:input_type -> system.auth.v1.UpdateUserRolesRequest
+	11, // 8: system.auth.v1.AuthService.ListRoleUsers:input_type -> system.auth.v1.ListRoleUsersRequest
+	7,  // 9: system.auth.v1.OnlineSessionService.ListOnlineSessions:input_type -> system.auth.v1.ListOnlineSessionsRequest
+	8,  // 10: system.auth.v1.OnlineSessionService.KickoutOnlineSession:input_type -> system.auth.v1.OnlineSessionRequest
+	14, // 11: system.auth.v1.OnlineSessionService.ListMyOnlineSessions:input_type -> google.protobuf.Empty
+	8,  // 12: system.auth.v1.OnlineSessionService.DeleteMyOnlineSession:input_type -> system.auth.v1.OnlineSessionRequest
+	1,  // 13: system.auth.v1.AuthService.Login:output_type -> system.auth.v1.LoginReply
+	14, // 14: system.auth.v1.AuthService.Logout:output_type -> google.protobuf.Empty
+	6,  // 15: system.auth.v1.AuthService.ListUserRoles:output_type -> system.auth.v1.UserRoles
+	6,  // 16: system.auth.v1.AuthService.UpdateUserRoles:output_type -> system.auth.v1.UserRoles
+	15, // 17: system.auth.v1.AuthService.ListRoleUsers:output_type -> system.user.v1.UserSet
+	4,  // 18: system.auth.v1.OnlineSessionService.ListOnlineSessions:output_type -> system.auth.v1.OnlineSessionSet
+	14, // 19: system.auth.v1.OnlineSessionService.KickoutOnlineSession:output_type -> google.protobuf.Empty
+	4,  // 20: system.auth.v1.OnlineSessionService.ListMyOnlineSessions:output_type -> system.auth.v1.OnlineSessionSet
+	14, // 21: system.auth.v1.OnlineSessionService.DeleteMyOnlineSession:output_type -> google.protobuf.Empty
+	13, // [13:22] is the sub-list for method output_type
+	4,  // [4:13] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_system_auth_v1_auth_proto_init() }
@@ -580,7 +902,7 @@ func file_system_auth_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_system_auth_v1_auth_proto_rawDesc), len(file_system_auth_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

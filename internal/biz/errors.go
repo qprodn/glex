@@ -41,4 +41,7 @@ var (
 	// ErrRoleMenuNotFound: one or more menu ids in a Menu Grant do not exist
 	// (or are soft-deleted).
 	ErrRoleMenuNotFound = errors.BadRequest(rolev1.ErrorReason_ROLE_MENU_NOT_FOUND.String(), "one or more menu ids do not exist")
+	// ErrRoleAssigned: the role still has users assigned and cannot be
+	// deleted or disabled (RuoYi: 已分配，不能删除/禁用).
+	ErrRoleAssigned = errors.BadRequest(rolev1.ErrorReason_ROLE_ASSIGNED.String(), "role is assigned to users and cannot be deleted or disabled")
 )

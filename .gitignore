@@ -39,3 +39,4 @@ bin/
 .idea/
 *.swp
 RuoYi-Vue-Plus/*
+go-wind-admin/*

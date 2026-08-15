@@ -57,14 +57,16 @@ type RoleRepo interface {
 
 // RoleUsecase holds the role business rules.
 type RoleUsecase struct {
-	repo     RoleRepo
-	menuRepo MenuRepo
+	repo         RoleRepo
+	menuRepo     MenuRepo
+	userRoleRepo UserRoleRepo
 }
 
 // NewRoleUsecase creates a RoleUsecase. menuRepo backs Menu Grant validation
-// (granted menus must exist and not be soft-deleted).
-func NewRoleUsecase(repo RoleRepo, menuRepo MenuRepo) *RoleUsecase {
-	return &RoleUsecase{repo: repo, menuRepo: menuRepo}
+// (granted menus must exist and not be soft-deleted); userRoleRepo backs the
+// "a role with users cannot be deleted/disabled" guard (Role Assignment).
+func NewRoleUsecase(repo RoleRepo, menuRepo MenuRepo, userRoleRepo UserRoleRepo) *RoleUsecase {
+	return &RoleUsecase{repo: repo, menuRepo: menuRepo, userRoleRepo: userRoleRepo}
 }
 
 // CreateRole validates and persists a role with its initial Menu Grant:
@@ -87,12 +89,16 @@ func (uc *RoleUsecase) CreateRole(ctx context.Context, r *Role, menuIDs []int64)
 
 // UpdateRole validates and persists a role, excluding the record being
 // updated from the uniqueness checks. Menu Grant fields are untouched (the
-// grant is replaced only via UpdateRoleMenus).
+// grant is replaced only via UpdateRoleMenus). Disabling a role that still
+// has users assigned is rejected (RuoYi: 角色已分配，不能禁用).
 func (uc *RoleUsecase) UpdateRole(ctx context.Context, r *Role) (*Role, error) {
 	if err := uc.validate(r); err != nil {
 		return nil, err
 	}
 	if err := uc.assertUnique(ctx, r, r.ID); err != nil {
+		return nil, err
+	}
+	if err := uc.assertRoleDisableAllowed(ctx, r); err != nil {
 		return nil, err
 	}
 	return uc.repo.UpdateRole(ctx, r)
@@ -108,9 +114,20 @@ func (uc *RoleUsecase) ListRoles(ctx context.Context, opts ...ListOption) ([]*Ro
 	return uc.repo.ListRoles(ctx, opts...)
 }
 
-// DeleteRole soft-deletes the role with the given id and removes its Menu
-// Grant (single transaction, repo side).
+// DeleteRole refuses to delete a role that still has users assigned (RuoYi:
+// 已分配，不能删除), then soft-deletes it and removes its Menu Grant (single
+// transaction, repo side).
 func (uc *RoleUsecase) DeleteRole(ctx context.Context, id int64) error {
+	if _, err := uc.repo.FindByID(ctx, id); err != nil {
+		return err
+	}
+	n, err := uc.userRoleRepo.CountUserRoles(ctx, id)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		return ErrRoleAssigned
+	}
 	return uc.repo.DeleteRole(ctx, id)
 }
 
@@ -215,6 +232,30 @@ func (uc *RoleUsecase) assertMenusGrantable(ctx context.Context, menuIDs []int64
 		return nil, ErrRoleMenuNotFound
 	}
 	return unique, nil
+}
+
+// assertRoleDisableAllowed rejects an update that *changes* the role's status
+// to disabled (1) while users are still assigned. Re-disabling an already
+// disabled role is a no-op and passes; other status directions are free.
+func (uc *RoleUsecase) assertRoleDisableAllowed(ctx context.Context, r *Role) error {
+	if r.Status != 1 {
+		return nil
+	}
+	existing, err := uc.repo.FindByID(ctx, r.ID)
+	if err != nil {
+		return err
+	}
+	if existing.Status == 1 {
+		return nil
+	}
+	n, err := uc.userRoleRepo.CountUserRoles(ctx, r.ID)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		return ErrRoleAssigned
+	}
+	return nil
 }
 
 // dedupeIDs removes duplicates, preserving first-occurrence order.

@@ -169,15 +169,24 @@ func (r *userRepo) UpdateUser(ctx context.Context, u *biz.User) (*biz.User, erro
 	return toBiz(po), nil
 }
 
+// DeleteUser soft-deletes the user and hard-deletes its Role Assignment
+// (sys_user_role rows) in one transaction (RuoYi semantics: a deleted user
+// loses its role links for good).
 func (r *userRepo) DeleteUser(ctx context.Context, id int64) error {
-	err := r.data.db.User.UpdateOneID(id).
+	tx, err := r.data.db.Tx(ctx)
+	if err != nil {
+		return err
+	}
+	err = tx.User.UpdateOneID(id).
 		SetDeletedAt(time.Now()).
+		ClearRoles().
 		Exec(ctx)
 	if err != nil {
+		_ = tx.Rollback()
 		if ent.IsNotFound(err) {
 			return biz.ErrUserNotFound
 		}
 		return err
 	}
-	return nil
+	return tx.Commit()
 }

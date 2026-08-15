@@ -34,6 +34,9 @@ func TestRPCPoliciesMatchTheConfirmedContract(t *testing.T) {
 	expected := map[protoreflect.FullName]policyv1.AuthPolicy{
 		"system.auth.v1.AuthService.Login":                          {Mode: policyv1.AuthMode_PUBLIC},
 		"system.auth.v1.AuthService.Logout":                         {Mode: policyv1.AuthMode_OPTIONAL},
+		"system.auth.v1.AuthService.ListUserRoles":                  {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:query"},
+		"system.auth.v1.AuthService.UpdateUserRoles":                {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:edit"},
+		"system.auth.v1.AuthService.ListRoleUsers":                  {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:list"},
 		"system.auth.v1.OnlineSessionService.ListOnlineSessions":    {Mode: policyv1.AuthMode_PERMISSION, Permission: "monitor:online:list"},
 		"system.auth.v1.OnlineSessionService.KickoutOnlineSession":  {Mode: policyv1.AuthMode_PERMISSION, Permission: "monitor:online:forceLogout"},
 		"system.auth.v1.OnlineSessionService.ListMyOnlineSessions":  {Mode: policyv1.AuthMode_AUTHENTICATED},

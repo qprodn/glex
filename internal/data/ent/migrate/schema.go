@@ -111,12 +111,38 @@ var (
 			},
 		},
 	}
+	// UserRolesColumns holds the columns for the "user_roles" table.
+	UserRolesColumns = []*schema.Column{
+		{Name: "user_id", Type: field.TypeInt64},
+		{Name: "role_id", Type: field.TypeInt64},
+	}
+	// UserRolesTable holds the schema information for the "user_roles" table.
+	UserRolesTable = &schema.Table{
+		Name:       "user_roles",
+		Columns:    UserRolesColumns,
+		PrimaryKey: []*schema.Column{UserRolesColumns[0], UserRolesColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "user_roles_user_id",
+				Columns:    []*schema.Column{UserRolesColumns[0]},
+				RefColumns: []*schema.Column{SysUserColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "user_roles_role_id",
+				Columns:    []*schema.Column{UserRolesColumns[1]},
+				RefColumns: []*schema.Column{SysRoleColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		SysMenuTable,
 		SysRoleTable,
 		SysUserTable,
 		RoleMenusTable,
+		UserRolesTable,
 	}
 )
 
@@ -134,5 +160,10 @@ func init() {
 	RoleMenusTable.ForeignKeys[1].RefTable = SysMenuTable
 	RoleMenusTable.Annotation = &entsql.Annotation{
 		Table: "sys_role_menu",
+	}
+	UserRolesTable.ForeignKeys[0].RefTable = SysUserTable
+	UserRolesTable.ForeignKeys[1].RefTable = SysRoleTable
+	UserRolesTable.Annotation = &entsql.Annotation{
+		Table: "sys_user_role",
 	}
 }

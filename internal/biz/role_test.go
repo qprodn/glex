@@ -119,7 +119,7 @@ func newFakeMenuRepoForRole(menus map[int64]*Menu) *fakeMenuRepo {
 
 func TestCreateRole_Success(t *testing.T) {
 	repo := newFakeRoleRepo()
-	uc := NewRoleUsecase(repo, newFakeMenuRepo())
+	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
 	got, err := uc.CreateRole(context.Background(), &Role{RoleName: "超级管理员", RoleKey: "superadmin", RoleSort: 1, MenuCheckStrictly: true}, nil)
 	if err != nil {
@@ -140,7 +140,7 @@ func TestCreateRole_Success(t *testing.T) {
 
 func TestCreateRole_BlankNameRejected(t *testing.T) {
 	repo := newFakeRoleRepo()
-	uc := NewRoleUsecase(repo, newFakeMenuRepo())
+	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
 	_, err := uc.CreateRole(context.Background(), &Role{RoleName: "", RoleKey: "superadmin"}, nil)
 	if !errors.Is(err, ErrRoleInvalid) {
@@ -150,7 +150,7 @@ func TestCreateRole_BlankNameRejected(t *testing.T) {
 
 func TestCreateRole_BlankKeyRejected(t *testing.T) {
 	repo := newFakeRoleRepo()
-	uc := NewRoleUsecase(repo, newFakeMenuRepo())
+	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
 	_, err := uc.CreateRole(context.Background(), &Role{RoleName: "超级管理员", RoleKey: ""}, nil)
 	if !errors.Is(err, ErrRoleInvalid) {
@@ -161,7 +161,7 @@ func TestCreateRole_BlankKeyRejected(t *testing.T) {
 func TestCreateRole_NameConflict(t *testing.T) {
 	repo := newFakeRoleRepo()
 	repo.byName["超级管理员"] = &Role{ID: 7, RoleName: "超级管理员", RoleKey: "other"}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo())
+	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
 	_, err := uc.CreateRole(context.Background(), &Role{RoleName: "超级管理员", RoleKey: "superadmin"}, nil)
 	if !errors.Is(err, ErrRoleNameConflict) {
@@ -172,7 +172,7 @@ func TestCreateRole_NameConflict(t *testing.T) {
 func TestCreateRole_KeyConflict(t *testing.T) {
 	repo := newFakeRoleRepo()
 	repo.byKey["superadmin"] = &Role{ID: 7, RoleName: "other", RoleKey: "superadmin"}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo())
+	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
 	_, err := uc.CreateRole(context.Background(), &Role{RoleName: "超级管理员", RoleKey: "superadmin"}, nil)
 	if !errors.Is(err, ErrRoleKeyConflict) {
@@ -186,7 +186,7 @@ func TestUpdateRole_ConflictExcludingSelf(t *testing.T) {
 	repo.byName["管理员"] = repo.byID[5]
 	repo.byKey["admin"] = repo.byID[5]
 	repo.byName["超级管理员"] = &Role{ID: 7, RoleName: "超级管理员", RoleKey: "superadmin"}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo())
+	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
 	// Taking another role's name is rejected...
 	_, err := uc.UpdateRole(context.Background(), &Role{ID: 5, RoleName: "超级管理员", RoleKey: "admin"})
@@ -203,7 +203,7 @@ func TestUpdateRole_ConflictExcludingSelf(t *testing.T) {
 func TestDeleteRole_Success(t *testing.T) {
 	repo := newFakeRoleRepo()
 	repo.byID[3] = &Role{ID: 3, RoleName: "测试", RoleKey: "test"}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo())
+	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
 	if err := uc.DeleteRole(context.Background(), 3); err != nil {
 		t.Fatalf("delete role: %v", err)
@@ -215,7 +215,7 @@ func TestDeleteRole_Success(t *testing.T) {
 
 func TestDeleteRole_NotFound(t *testing.T) {
 	repo := newFakeRoleRepo()
-	uc := NewRoleUsecase(repo, newFakeMenuRepo())
+	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
 	err := uc.DeleteRole(context.Background(), 99)
 	if !errors.Is(err, ErrRoleNotFound) {
@@ -231,7 +231,7 @@ func TestCreateRole_WithMenus_Success(t *testing.T) {
 		10: {MenuName: "系统管理"},
 		11: {MenuName: "用户管理", ParentID: 10},
 	})
-	uc := NewRoleUsecase(repo, menus)
+	uc := NewRoleUsecase(repo, menus, newFakeUserRoleRepo())
 
 	got, err := uc.CreateRole(context.Background(), &Role{
 		RoleName:          "运营",
@@ -253,7 +253,7 @@ func TestCreateRole_WithMenus_Success(t *testing.T) {
 func TestCreateRole_UnknownMenuRejected(t *testing.T) {
 	repo := newFakeRoleRepo()
 	menus := newFakeMenuRepoForRole(map[int64]*Menu{10: {MenuName: "系统管理"}})
-	uc := NewRoleUsecase(repo, menus)
+	uc := NewRoleUsecase(repo, menus, newFakeUserRoleRepo())
 
 	_, err := uc.CreateRole(context.Background(), &Role{RoleName: "运营", RoleKey: "operator"}, []int64{10, 99})
 	if !errors.Is(err, ErrRoleMenuNotFound) {
@@ -267,7 +267,7 @@ func TestCreateRole_UnknownMenuRejected(t *testing.T) {
 func TestCreateRole_MenuDuplicatesDeduped(t *testing.T) {
 	repo := newFakeRoleRepo()
 	menus := newFakeMenuRepoForRole(map[int64]*Menu{10: {MenuName: "系统管理"}})
-	uc := NewRoleUsecase(repo, menus)
+	uc := NewRoleUsecase(repo, menus, newFakeUserRoleRepo())
 
 	got, err := uc.CreateRole(context.Background(), &Role{RoleName: "运营", RoleKey: "operator"}, []int64{10, 10, 10})
 	if err != nil {
@@ -287,7 +287,7 @@ func TestUpdateRoleMenus_ReplacesGrant(t *testing.T) {
 		2: {MenuName: "用户管理", ParentID: 1},
 		3: {MenuName: "角色管理", ParentID: 1},
 	})
-	uc := NewRoleUsecase(repo, menus)
+	uc := NewRoleUsecase(repo, menus, newFakeUserRoleRepo())
 
 	ids, err := uc.UpdateRoleMenus(context.Background(), 5, []int64{1, 2, 3}, true)
 	if err != nil {
@@ -323,7 +323,7 @@ func TestUpdateRoleMenus_UnknownMenuRejected(t *testing.T) {
 	repo := newFakeRoleRepo()
 	repo.byID[5] = &Role{ID: 5, RoleName: "运营", RoleKey: "operator"}
 	menus := newFakeMenuRepoForRole(map[int64]*Menu{1: {MenuName: "系统管理"}})
-	uc := NewRoleUsecase(repo, menus)
+	uc := NewRoleUsecase(repo, menus, newFakeUserRoleRepo())
 
 	_, err := uc.UpdateRoleMenus(context.Background(), 5, []int64{1, 99}, true)
 	if !errors.Is(err, ErrRoleMenuNotFound) {
@@ -336,7 +336,7 @@ func TestUpdateRoleMenus_UnknownMenuRejected(t *testing.T) {
 
 func TestUpdateRoleMenus_RoleNotFound(t *testing.T) {
 	repo := newFakeRoleRepo()
-	uc := NewRoleUsecase(repo, newFakeMenuRepo())
+	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
 	_, err := uc.UpdateRoleMenus(context.Background(), 99, nil, true)
 	if !errors.Is(err, ErrRoleNotFound) {
@@ -349,7 +349,7 @@ func TestListRoleMenus_StrictDropsHalfCheckedParent(t *testing.T) {
 	repo.byID[5] = &Role{ID: 5, RoleName: "运营", RoleKey: "operator", MenuCheckStrictly: true}
 	repo.menuParents = map[int64]int64{10: 0, 11: 10, 12: 10, 20: 0}
 	repo.links[5] = []int64{10, 11, 12, 20} // 10 is parent of granted 11/12
-	uc := NewRoleUsecase(repo, newFakeMenuRepo())
+	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
 	ids, err := uc.ListRoleMenus(context.Background(), 5)
 	if err != nil {
@@ -365,7 +365,7 @@ func TestListRoleMenus_StrictDropsFullyCheckedParent(t *testing.T) {
 	repo.byID[5] = &Role{ID: 5, RoleName: "运营", RoleKey: "operator", MenuCheckStrictly: true}
 	repo.menuParents = map[int64]int64{10: 0, 11: 10}
 	repo.links[5] = []int64{10, 11} // parent 10 fully checked via child 11
-	uc := NewRoleUsecase(repo, newFakeMenuRepo())
+	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
 	ids, err := uc.ListRoleMenus(context.Background(), 5)
 	if err != nil {
@@ -381,7 +381,7 @@ func TestListRoleMenus_NonStrictReturnsAll(t *testing.T) {
 	repo.byID[5] = &Role{ID: 5, RoleName: "运营", RoleKey: "operator", MenuCheckStrictly: false}
 	repo.menuParents = map[int64]int64{10: 0, 11: 10, 12: 10, 20: 0}
 	repo.links[5] = []int64{10, 11, 12, 20}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo())
+	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
 	ids, err := uc.ListRoleMenus(context.Background(), 5)
 	if err != nil {
@@ -394,7 +394,7 @@ func TestListRoleMenus_NonStrictReturnsAll(t *testing.T) {
 
 func TestListRoleMenus_RoleNotFound(t *testing.T) {
 	repo := newFakeRoleRepo()
-	uc := NewRoleUsecase(repo, newFakeMenuRepo())
+	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
 	_, err := uc.ListRoleMenus(context.Background(), 99)
 	if !errors.Is(err, ErrRoleNotFound) {

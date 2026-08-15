@@ -53,6 +53,51 @@ export type OnlineSessionSet = {
   nextPageToken: string | undefined;
 };
 
+// RoleAssignment is one role with whether the user is assigned it (RuoYi's
+// authRole dialog data: all roles plus a checked flag).
+export type RoleAssignment = {
+  // The role itself.
+  role: systemrolev1_Role | undefined;
+  // Whether the user currently holds this role.
+  assigned: boolean | undefined;
+};
+
+// Role is a named bundle of permissions (角色), ported from RuoYi sys_role.
+// Back-office CRUD plus the role↔menu link (**Menu Grant**); user↔role and
+// data-scope links are deferred (see CONTEXT.md).
+export type systemrolev1_Role = {
+  // Snowflake ID. Server-assigned on create.
+  roleId: number | undefined;
+  // Role name. Required, non-blank; unique among active roles.
+  roleName: string | undefined;
+  // Permission string (e.g. "superadmin" or "data:scope:read"). Required,
+  // non-blank; unique among active roles. No charset rule.
+  roleKey: string | undefined;
+  // Display order. Defaults to 0; not required (0 is legal).
+  roleSort: number | undefined;
+  // 0正常 1停用 (per RuoYi). Ordinary updatable field.
+  status: number | undefined;
+  remark: string | undefined;
+  // Audit: who created/updated. Filled by the auth module.
+  createBy: number | undefined;
+  updateBy: number | undefined;
+  createdAt: wellKnownTimestamp | undefined;
+  updatedAt: wellKnownTimestamp | undefined;
+  // Whether the role editor treats parent/child menu selection as linked
+  // (菜单选择是否关联显示). Defaults to on (RuoYi column default 1). Shown by
+  // GetRole/ListRoles; NOT writable through UpdateRole — it is written only
+  // via UpdateRoleMenus (the permission save), like Menu.children is
+  // read-only on Create/Update.
+  menuCheckStrictly: boolean | undefined;
+};
+
+// UserRoles is a user's Role Assignment (角色分配): every active role with its
+// assigned flag, ordered by (role_sort, role_id). Not paginated — roles are a
+// small flat set.
+export type UserRoles = {
+  items: RoleAssignment[] | undefined;
+};
+
 export type ListOnlineSessionsRequest = {
   pageSize: number | undefined;
   pageToken: string | undefined;
@@ -69,13 +114,57 @@ export type OnlineSessionRequest = {
   tokenId: string | undefined;
 };
 
-// AuthService creates and ends Login Sessions.
+export type ListUserRolesRequest = {
+  // Required. The id of the user whose roles are read.
+  //
+  // Behaviors: REQUIRED
+  userId: number | undefined;
+};
+
+export type UpdateUserRolesRequest = {
+  // Required. The id of the user whose assignment is replaced.
+  //
+  // Behaviors: REQUIRED
+  userId: number | undefined;
+  // The complete desired assignment; full replacement (empty = clear all).
+  roleIds: number[] | undefined;
+};
+
+export type ListRoleUsersRequest = {
+  // Required. The id of the role whose users are listed.
+  //
+  // Behaviors: REQUIRED
+  roleId: number | undefined;
+  // Optional. Page size.
+  pageSize: number | undefined;
+  // Optional. Page token from a previous response.
+  pageToken: string | undefined;
+  // Optional. AIP-160 filter. Supported fields:
+  // * `user_name` (e.g. `user_name="admin"`)
+  // * `status` (e.g. `status=0`)
+  filter: string | undefined;
+  // Optional. AIP-132 order, e.g. `user_id` or `created_at desc`.
+  orderBy: string | undefined;
+};
+
+// AuthService owns login/logout and the user↔role link (**Role Assignment**).
 export interface AuthService {
   // Login creates one Login Session from a username and password.
   Login(request: LoginRequest): Promise<LoginReply>;
   // Logout idempotently revokes the presented valid Login Session. Missing or
   // confirmed-invalid credentials also succeed under OPTIONAL authentication.
   Logout(request: wellKnownEmpty): Promise<wellKnownEmpty>;
+  // ListUserRoles returns every active role with whether the user is assigned
+  // it — the assign dialog's data in one call.
+  ListUserRoles(request: ListUserRolesRequest): Promise<UserRoles>;
+  // UpdateUserRoles replaces the user's Role Assignment (full replacement;
+  // empty role_ids clears all). Unknown or soft-deleted role ids are rejected
+  // with ROLE_NOT_FOUND; duplicates are silently deduped. Returns the updated
+  // assignment.
+  UpdateUserRoles(request: UpdateUserRolesRequest): Promise<UserRoles>;
+  // ListRoleUsers lists the active users assigned the role, with AIP
+  // filter/order/page-token pagination.
+  ListRoleUsers(request: ListRoleUsersRequest): Promise<systemuserv1_UserSet>;
 }
 
 type RequestType = {
@@ -124,10 +213,121 @@ export function createAuthServiceClient(
         method: "Logout",
       }) as Promise<wellKnownEmpty>;
     },
+    ListUserRoles(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.userId) {
+        throw new Error("missing required field request.user_id");
+      }
+      const path = `system/user/${request.userId}/roles`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "AuthService",
+        method: "ListUserRoles",
+      }) as Promise<UserRoles>;
+    },
+    UpdateUserRoles(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.userId) {
+        throw new Error("missing required field request.user_id");
+      }
+      const path = `system/user/${request.userId}/roles`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "PUT",
+        body,
+      }, {
+        service: "AuthService",
+        method: "UpdateUserRoles",
+      }) as Promise<UserRoles>;
+    },
+    ListRoleUsers(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.roleId) {
+        throw new Error("missing required field request.role_id");
+      }
+      const path = `system/role/${request.roleId}/users`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      if (request.pageSize) {
+        queryParams.push(`pageSize=${encodeURIComponent(request.pageSize.toString())}`)
+      }
+      if (request.pageToken) {
+        queryParams.push(`pageToken=${encodeURIComponent(request.pageToken.toString())}`)
+      }
+      if (request.filter) {
+        queryParams.push(`filter=${encodeURIComponent(request.filter.toString())}`)
+      }
+      if (request.orderBy) {
+        queryParams.push(`orderBy=${encodeURIComponent(request.orderBy.toString())}`)
+      }
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "AuthService",
+        method: "ListRoleUsers",
+      }) as Promise<systemuserv1_UserSet>;
+    },
   };
 }
 // An empty JSON object
 type wellKnownEmpty = Record<never, never>;
+
+// UserSet is a page of users.
+export type systemuserv1_UserSet = {
+  users: systemuserv1_User[] | undefined;
+  // Opaque token for the next page; empty when on the last page.
+  nextPageToken: string | undefined;
+};
+
+// User is a system user (系统用户), ported from RuoYi sys_user. Back-office
+// CRUD only — login/session lives in the auth module.
+export type systemuserv1_User = {
+  // Snowflake ID. Server-assigned on create.
+  userId: number | undefined;
+  // Login account. Unique.
+  userName: string | undefined;
+  // Display name.
+  nickName: string | undefined;
+  // Email. Unique when set.
+  email: string | undefined;
+  // Phone number. Unique when set.
+  phoneNumber: string | undefined;
+  // 0男 1女 2未知 (per RuoYi).
+  gender: number | undefined;
+  // Write-only: accepted on create/update, never returned. Bcrypt-hashed.
+  password: string | undefined;
+  // 0正常 1停用 (per RuoYi).
+  status: number | undefined;
+  // Avatar URL. OSS upload is deferred; the column is a placeholder.
+  avatar: string | undefined;
+  remark: string | undefined;
+  // Audit: who created/updated. Filled by the auth module.
+  createBy: number | undefined;
+  updateBy: number | undefined;
+  // Last login IP/time. Written by the auth module, read-only here.
+  loginIp: string | undefined;
+  loginDate: wellKnownTimestamp | undefined;
+  createdAt: wellKnownTimestamp | undefined;
+  updatedAt: wellKnownTimestamp | undefined;
+};
 
 // OnlineSessionService exposes the four RuoYi-compatible Login Session
 // management operations. It deliberately has no bulk logout operation.

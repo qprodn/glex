@@ -18,7 +18,9 @@ export type ErrorReason =
   // role_name/role_key is blank.
   | "ROLE_INVALID"
   // One or more menu ids in a Menu Grant do not exist (or are soft-deleted).
-  | "ROLE_MENU_NOT_FOUND";
+  | "ROLE_MENU_NOT_FOUND"
+  // The role still has users assigned and cannot be deleted or disabled.
+  | "ROLE_ASSIGNED";
 // Role is a named bundle of permissions (角色), ported from RuoYi sys_role.
 // Back-office CRUD plus the role↔menu link (**Menu Grant**); user↔role and
 // data-scope links are deferred (see CONTEXT.md).

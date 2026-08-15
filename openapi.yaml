@@ -449,6 +449,52 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/system.role.v1.RoleMenus'
+    /system/role/{roleId}/users:
+        get:
+            tags:
+                - AuthService
+            description: |-
+                ListRoleUsers lists the active users assigned the role, with AIP
+                 filter/order/page-token pagination.
+            operationId: AuthService_ListRoleUsers
+            parameters:
+                - name: roleId
+                  in: path
+                  description: Required. The id of the role whose users are listed.
+                  required: true
+                  schema:
+                    type: string
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `user_name` (e.g. `user_name="admin"`)
+                       * `status` (e.g. `status=0`)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: Optional. AIP-132 order, e.g. `user_id` or `created_at desc`.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.user.v1.UserSet'
     /system/user:
         get:
             tags:
@@ -590,6 +636,57 @@ paths:
                 "200":
                     description: OK
                     content: {}
+    /system/user/{userId}/roles:
+        get:
+            tags:
+                - AuthService
+            description: |-
+                ListUserRoles returns every active role with whether the user is assigned
+                 it — the assign dialog's data in one call.
+            operationId: AuthService_ListUserRoles
+            parameters:
+                - name: userId
+                  in: path
+                  description: Required. The id of the user whose roles are read.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.auth.v1.UserRoles'
+        put:
+            tags:
+                - AuthService
+            description: |-
+                UpdateUserRoles replaces the user's Role Assignment (full replacement;
+                 empty role_ids clears all). Unknown or soft-deleted role ids are rejected
+                 with ROLE_NOT_FOUND; duplicates are silently deduped. Returns the updated
+                 assignment.
+            operationId: AuthService_UpdateUserRoles
+            parameters:
+                - name: userId
+                  in: path
+                  description: Required. The id of the user whose assignment is replaced.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/system.auth.v1.UpdateUserRolesRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.auth.v1.UserRoles'
 components:
     schemas:
         system.auth.v1.LoginReply:
@@ -645,6 +742,43 @@ components:
                 nextPageToken:
                     type: string
             description: OnlineSessionSet is a page of active Login Sessions.
+        system.auth.v1.RoleAssignment:
+            type: object
+            properties:
+                role:
+                    allOf:
+                        - $ref: '#/components/schemas/system.role.v1.Role'
+                    description: The role itself.
+                assigned:
+                    type: boolean
+                    description: Whether the user currently holds this role.
+            description: |-
+                RoleAssignment is one role with whether the user is assigned it (RuoYi's
+                 authRole dialog data: all roles plus a checked flag).
+        system.auth.v1.UpdateUserRolesRequest:
+            required:
+                - userId
+            type: object
+            properties:
+                userId:
+                    type: string
+                    description: Required. The id of the user whose assignment is replaced.
+                roleIds:
+                    type: array
+                    items:
+                        type: string
+                    description: The complete desired assignment; full replacement (empty = clear all).
+        system.auth.v1.UserRoles:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/system.auth.v1.RoleAssignment'
+            description: |-
+                UserRoles is a user's Role Assignment (角色分配): every active role with its
+                 assigned flag, ordered by (role_sort, role_id). Not paginated — roles are a
+                 small flat set.
         system.menu.v1.Menu:
             type: object
             properties:
@@ -979,7 +1113,7 @@ components:
             description: UserSet is a page of users.
 tags:
     - name: AuthService
-      description: AuthService creates and ends Login Sessions.
+      description: AuthService owns login/logout and the user↔role link (**Role Assignment**).
     - name: MenuService
       description: MenuService is the system-menu CRUD + tree service.
     - name: OnlineSessionService

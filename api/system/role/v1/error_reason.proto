@@ -23,4 +23,6 @@ enum ErrorReason {
   ROLE_INVALID = 4;
   // One or more menu ids in a Menu Grant do not exist (or are soft-deleted).
   ROLE_MENU_NOT_FOUND = 5;
+  // The role still has users assigned and cannot be deleted or disabled.
+  ROLE_ASSIGNED = 6;
 }
