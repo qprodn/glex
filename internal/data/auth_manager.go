@@ -11,6 +11,11 @@ import (
 	"github.com/sa-tokens/sa-token-go/core/errs"
 )
 
+// authManagerKeyPrefix is explicit because the Login Session Lua scripts must
+// atomically update the same sa-token keys as Manager. Upstream otherwise
+// supplies this value implicitly when Config.KeyPrefix is empty.
+const authManagerKeyPrefix = "satoken"
+
 // NewAuthManager constructs the sa-token Manager after explicitly validating
 // the auth configuration. The Manager stays inside data; every caller above
 // goes through repo interfaces (login, session store, middleware queries).
@@ -34,9 +39,9 @@ func NewAuthManager(storage adapter.Storage, c *conf.Auth) (*core.Manager, func(
 	cfg.ActiveTimeout = int64(c.GetIdleLifetime().AsDuration().Seconds())
 	cfg.AutoRenew = false
 	cfg.MaxRefresh = -1
-	// The storage adapter owns the glex auth namespace; the Manager adds no
-	// extra prefix segment of its own.
-	cfg.KeyPrefix = ""
+	// The storage adapter owns the glex auth namespace. Keep the upstream
+	// manager prefix explicit so project Lua scripts share its key contract.
+	cfg.KeyPrefix = authManagerKeyPrefix
 	// Credential transport is project-owned (strict Bearer header only); the
 	// Manager never reads tokens from cookies, body, or its own header logic.
 	cfg.IsReadHeader = true

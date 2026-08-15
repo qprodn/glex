@@ -1,13 +1,29 @@
 package biz
 
 import (
+	authv1 "glex/api/system/auth/v1"
 	menuv1 "glex/api/system/menu/v1"
 	rolev1 "glex/api/system/role/v1"
 	userv1 "glex/api/system/user/v1"
+
 	"github.com/go-kratos/kratos/v3/errors"
 )
 
 var (
+	// ErrLoginSessionNotFound: the Session ID is absent or expired.
+	ErrLoginSessionNotFound = errors.NotFound(authv1.ErrorReason_TOKEN_INVALID.String(), "Login Session not found")
+	// ErrLoginSessionNotOwned: a System User attempted to remove another
+	// System User's Login Session.
+	ErrLoginSessionNotOwned = errors.Forbidden(authv1.ErrorReason_PERMISSION_DENIED.String(), "Login Session belongs to another System User")
+	// Authentication-state errors are mapped by data so no sa-token or Redis
+	// error crosses the repository boundary.
+	ErrTokenInvalid           = errors.Unauthorized(authv1.ErrorReason_TOKEN_INVALID.String(), "invalid token")
+	ErrTokenExpired           = errors.Unauthorized(authv1.ErrorReason_TOKEN_EXPIRED.String(), "token expired")
+	ErrTokenIdleTimeout       = errors.Unauthorized(authv1.ErrorReason_TOKEN_IDLE_TIMEOUT.String(), "Login Session idle timeout")
+	ErrLoginSessionKickedOut  = errors.Unauthorized(authv1.ErrorReason_SESSION_KICKED_OUT.String(), "Login Session kicked out")
+	ErrLoginSessionReplaced   = errors.Unauthorized(authv1.ErrorReason_SESSION_REPLACED.String(), "Login Session replaced")
+	ErrAuthBackendUnavailable = errors.ServiceUnavailable(authv1.ErrorReason_AUTH_BACKEND_UNAVAILABLE.String(), "authentication backend unavailable")
+
 	// ErrUserNotFound: the requested user does not exist.
 	ErrUserNotFound = errors.NotFound(userv1.ErrorReason_USER_NOT_FOUND.String(), "user not found")
 	// ErrUserNameConflict: user_name already taken.
