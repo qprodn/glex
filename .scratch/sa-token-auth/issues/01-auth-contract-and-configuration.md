@@ -1,7 +1,7 @@
 # Define the authentication contract and configuration
 
 Type: task
-Status: ready-for-agent
+Status: done 2026-08-15
 
 ## Objective
 
