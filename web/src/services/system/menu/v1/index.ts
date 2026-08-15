@@ -72,6 +72,34 @@ export type MenuTree = {
   menus: Menu[] | undefined;
 };
 
+// RouterMeta contains route presentation metadata consumed by the frontend.
+export type RouterMeta = {
+  title: string | undefined;
+  icon: string | undefined;
+  noCache: boolean | undefined;
+  link: string | undefined;
+  activeMenu: string | undefined;
+};
+
+// Router is one Directory/Menu node in the current System User's route tree.
+// Button nodes are never projected as Router values.
+export type Router = {
+  name: string | undefined;
+  path: string | undefined;
+  hidden: boolean | undefined;
+  redirect: string | undefined;
+  component: string | undefined;
+  query: string | undefined;
+  alwaysShow: boolean | undefined;
+  meta: RouterMeta | undefined;
+  children: Router[] | undefined;
+};
+
+// RouterTree is the current System User's route forest.
+export type RouterTree = {
+  routers: Router[] | undefined;
+};
+
 export type CreateMenuRequest = {
   // Required. The menu to create.
   //
@@ -157,6 +185,8 @@ export interface MenuService {
   UpdateMenu(request: UpdateMenuRequest): Promise<Menu>;
   // DeleteMenu soft-deletes a menu by id; refused while it has children.
   DeleteMenu(request: DeleteMenuRequest): Promise<wellKnownEmpty>;
+  // GetRouters returns the current System User's route tree.
+  GetRouters(request: wellKnownEmpty): Promise<RouterTree>;
 }
 
 type RequestType = {
@@ -273,6 +303,23 @@ export function createMenuServiceClient(
         service: "MenuService",
         method: "DeleteMenu",
       }) as Promise<wellKnownEmpty>;
+    },
+    GetRouters(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `system/menu/getRouters`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "MenuService",
+        method: "GetRouters",
+      }) as Promise<RouterTree>;
     },
   };
 }

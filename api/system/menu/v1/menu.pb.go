@@ -7,6 +7,7 @@
 package v1
 
 import (
+	_ "glex/api/system/auth/v1/policy"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -340,6 +341,238 @@ func (x *MenuTree) GetMenus() []*Menu {
 	return nil
 }
 
+// RouterMeta contains route presentation metadata consumed by the frontend.
+type RouterMeta struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Title         string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
+	Icon          string                 `protobuf:"bytes,2,opt,name=icon,proto3" json:"icon,omitempty"`
+	NoCache       bool                   `protobuf:"varint,3,opt,name=no_cache,json=noCache,proto3" json:"no_cache,omitempty"`
+	Link          string                 `protobuf:"bytes,4,opt,name=link,proto3" json:"link,omitempty"`
+	ActiveMenu    string                 `protobuf:"bytes,5,opt,name=active_menu,json=activeMenu,proto3" json:"active_menu,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RouterMeta) Reset() {
+	*x = RouterMeta{}
+	mi := &file_system_menu_v1_menu_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RouterMeta) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RouterMeta) ProtoMessage() {}
+
+func (x *RouterMeta) ProtoReflect() protoreflect.Message {
+	mi := &file_system_menu_v1_menu_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RouterMeta.ProtoReflect.Descriptor instead.
+func (*RouterMeta) Descriptor() ([]byte, []int) {
+	return file_system_menu_v1_menu_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *RouterMeta) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *RouterMeta) GetIcon() string {
+	if x != nil {
+		return x.Icon
+	}
+	return ""
+}
+
+func (x *RouterMeta) GetNoCache() bool {
+	if x != nil {
+		return x.NoCache
+	}
+	return false
+}
+
+func (x *RouterMeta) GetLink() string {
+	if x != nil {
+		return x.Link
+	}
+	return ""
+}
+
+func (x *RouterMeta) GetActiveMenu() string {
+	if x != nil {
+		return x.ActiveMenu
+	}
+	return ""
+}
+
+// Router is one Directory/Menu node in the current System User's route tree.
+// Button nodes are never projected as Router values.
+type Router struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	Hidden        bool                   `protobuf:"varint,3,opt,name=hidden,proto3" json:"hidden,omitempty"`
+	Redirect      string                 `protobuf:"bytes,4,opt,name=redirect,proto3" json:"redirect,omitempty"`
+	Component     string                 `protobuf:"bytes,5,opt,name=component,proto3" json:"component,omitempty"`
+	Query         string                 `protobuf:"bytes,6,opt,name=query,proto3" json:"query,omitempty"`
+	AlwaysShow    bool                   `protobuf:"varint,7,opt,name=always_show,json=alwaysShow,proto3" json:"always_show,omitempty"`
+	Meta          *RouterMeta            `protobuf:"bytes,8,opt,name=meta,proto3" json:"meta,omitempty"`
+	Children      []*Router              `protobuf:"bytes,9,rep,name=children,proto3" json:"children,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Router) Reset() {
+	*x = Router{}
+	mi := &file_system_menu_v1_menu_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Router) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Router) ProtoMessage() {}
+
+func (x *Router) ProtoReflect() protoreflect.Message {
+	mi := &file_system_menu_v1_menu_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Router.ProtoReflect.Descriptor instead.
+func (*Router) Descriptor() ([]byte, []int) {
+	return file_system_menu_v1_menu_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Router) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Router) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *Router) GetHidden() bool {
+	if x != nil {
+		return x.Hidden
+	}
+	return false
+}
+
+func (x *Router) GetRedirect() string {
+	if x != nil {
+		return x.Redirect
+	}
+	return ""
+}
+
+func (x *Router) GetComponent() string {
+	if x != nil {
+		return x.Component
+	}
+	return ""
+}
+
+func (x *Router) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *Router) GetAlwaysShow() bool {
+	if x != nil {
+		return x.AlwaysShow
+	}
+	return false
+}
+
+func (x *Router) GetMeta() *RouterMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *Router) GetChildren() []*Router {
+	if x != nil {
+		return x.Children
+	}
+	return nil
+}
+
+// RouterTree is the current System User's route forest.
+type RouterTree struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Routers       []*Router              `protobuf:"bytes,1,rep,name=routers,proto3" json:"routers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RouterTree) Reset() {
+	*x = RouterTree{}
+	mi := &file_system_menu_v1_menu_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RouterTree) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RouterTree) ProtoMessage() {}
+
+func (x *RouterTree) ProtoReflect() protoreflect.Message {
+	mi := &file_system_menu_v1_menu_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RouterTree.ProtoReflect.Descriptor instead.
+func (*RouterTree) Descriptor() ([]byte, []int) {
+	return file_system_menu_v1_menu_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *RouterTree) GetRouters() []*Router {
+	if x != nil {
+		return x.Routers
+	}
+	return nil
+}
+
 type CreateMenuRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Required. The menu to create.
@@ -350,7 +583,7 @@ type CreateMenuRequest struct {
 
 func (x *CreateMenuRequest) Reset() {
 	*x = CreateMenuRequest{}
-	mi := &file_system_menu_v1_menu_proto_msgTypes[2]
+	mi := &file_system_menu_v1_menu_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -362,7 +595,7 @@ func (x *CreateMenuRequest) String() string {
 func (*CreateMenuRequest) ProtoMessage() {}
 
 func (x *CreateMenuRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_system_menu_v1_menu_proto_msgTypes[2]
+	mi := &file_system_menu_v1_menu_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -375,7 +608,7 @@ func (x *CreateMenuRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateMenuRequest.ProtoReflect.Descriptor instead.
 func (*CreateMenuRequest) Descriptor() ([]byte, []int) {
-	return file_system_menu_v1_menu_proto_rawDescGZIP(), []int{2}
+	return file_system_menu_v1_menu_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CreateMenuRequest) GetMenu() *Menu {
@@ -395,7 +628,7 @@ type GetMenuRequest struct {
 
 func (x *GetMenuRequest) Reset() {
 	*x = GetMenuRequest{}
-	mi := &file_system_menu_v1_menu_proto_msgTypes[3]
+	mi := &file_system_menu_v1_menu_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -407,7 +640,7 @@ func (x *GetMenuRequest) String() string {
 func (*GetMenuRequest) ProtoMessage() {}
 
 func (x *GetMenuRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_system_menu_v1_menu_proto_msgTypes[3]
+	mi := &file_system_menu_v1_menu_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -420,7 +653,7 @@ func (x *GetMenuRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMenuRequest.ProtoReflect.Descriptor instead.
 func (*GetMenuRequest) Descriptor() ([]byte, []int) {
-	return file_system_menu_v1_menu_proto_rawDescGZIP(), []int{3}
+	return file_system_menu_v1_menu_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetMenuRequest) GetMenuId() int64 {
@@ -447,7 +680,7 @@ type ListMenusRequest struct {
 
 func (x *ListMenusRequest) Reset() {
 	*x = ListMenusRequest{}
-	mi := &file_system_menu_v1_menu_proto_msgTypes[4]
+	mi := &file_system_menu_v1_menu_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -459,7 +692,7 @@ func (x *ListMenusRequest) String() string {
 func (*ListMenusRequest) ProtoMessage() {}
 
 func (x *ListMenusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_system_menu_v1_menu_proto_msgTypes[4]
+	mi := &file_system_menu_v1_menu_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -472,7 +705,7 @@ func (x *ListMenusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMenusRequest.ProtoReflect.Descriptor instead.
 func (*ListMenusRequest) Descriptor() ([]byte, []int) {
-	return file_system_menu_v1_menu_proto_rawDescGZIP(), []int{4}
+	return file_system_menu_v1_menu_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListMenusRequest) GetFilter() string {
@@ -501,7 +734,7 @@ type UpdateMenuRequest struct {
 
 func (x *UpdateMenuRequest) Reset() {
 	*x = UpdateMenuRequest{}
-	mi := &file_system_menu_v1_menu_proto_msgTypes[5]
+	mi := &file_system_menu_v1_menu_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -513,7 +746,7 @@ func (x *UpdateMenuRequest) String() string {
 func (*UpdateMenuRequest) ProtoMessage() {}
 
 func (x *UpdateMenuRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_system_menu_v1_menu_proto_msgTypes[5]
+	mi := &file_system_menu_v1_menu_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -526,7 +759,7 @@ func (x *UpdateMenuRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMenuRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMenuRequest) Descriptor() ([]byte, []int) {
-	return file_system_menu_v1_menu_proto_rawDescGZIP(), []int{5}
+	return file_system_menu_v1_menu_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UpdateMenuRequest) GetMenu() *Menu {
@@ -553,7 +786,7 @@ type DeleteMenuRequest struct {
 
 func (x *DeleteMenuRequest) Reset() {
 	*x = DeleteMenuRequest{}
-	mi := &file_system_menu_v1_menu_proto_msgTypes[6]
+	mi := &file_system_menu_v1_menu_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -565,7 +798,7 @@ func (x *DeleteMenuRequest) String() string {
 func (*DeleteMenuRequest) ProtoMessage() {}
 
 func (x *DeleteMenuRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_system_menu_v1_menu_proto_msgTypes[6]
+	mi := &file_system_menu_v1_menu_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -578,7 +811,7 @@ func (x *DeleteMenuRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteMenuRequest.ProtoReflect.Descriptor instead.
 func (*DeleteMenuRequest) Descriptor() ([]byte, []int) {
-	return file_system_menu_v1_menu_proto_rawDescGZIP(), []int{6}
+	return file_system_menu_v1_menu_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DeleteMenuRequest) GetMenuId() int64 {
@@ -592,7 +825,7 @@ var File_system_menu_v1_menu_proto protoreflect.FileDescriptor
 
 const file_system_menu_v1_menu_proto_rawDesc = "" +
 	"\n" +
-	"\x19system/menu/v1/menu.proto\x12\x0esystem.menu.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\"\xa7\x05\n" +
+	"\x19system/menu/v1/menu.proto\x12\x0esystem.menu.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\"system/auth/v1/policy/policy.proto\"\xa7\x05\n" +
 	"\x04Menu\x12\x17\n" +
 	"\amenu_id\x18\x01 \x01(\x03R\x06menuId\x12\x1b\n" +
 	"\tmenu_name\x18\x02 \x01(\tR\bmenuName\x12\x1b\n" +
@@ -621,7 +854,29 @@ const file_system_menu_v1_menu_proto_rawDesc = "" +
 	"updated_at\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x120\n" +
 	"\bchildren\x18\x15 \x03(\v2\x14.system.menu.v1.MenuR\bchildren\"6\n" +
 	"\bMenuTree\x12*\n" +
-	"\x05menus\x18\x01 \x03(\v2\x14.system.menu.v1.MenuR\x05menus\"B\n" +
+	"\x05menus\x18\x01 \x03(\v2\x14.system.menu.v1.MenuR\x05menus\"\x86\x01\n" +
+	"\n" +
+	"RouterMeta\x12\x14\n" +
+	"\x05title\x18\x01 \x01(\tR\x05title\x12\x12\n" +
+	"\x04icon\x18\x02 \x01(\tR\x04icon\x12\x19\n" +
+	"\bno_cache\x18\x03 \x01(\bR\anoCache\x12\x12\n" +
+	"\x04link\x18\x04 \x01(\tR\x04link\x12\x1f\n" +
+	"\vactive_menu\x18\x05 \x01(\tR\n" +
+	"activeMenu\"\x9d\x02\n" +
+	"\x06Router\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\x12\x16\n" +
+	"\x06hidden\x18\x03 \x01(\bR\x06hidden\x12\x1a\n" +
+	"\bredirect\x18\x04 \x01(\tR\bredirect\x12\x1c\n" +
+	"\tcomponent\x18\x05 \x01(\tR\tcomponent\x12\x14\n" +
+	"\x05query\x18\x06 \x01(\tR\x05query\x12\x1f\n" +
+	"\valways_show\x18\a \x01(\bR\n" +
+	"alwaysShow\x12.\n" +
+	"\x04meta\x18\b \x01(\v2\x1a.system.menu.v1.RouterMetaR\x04meta\x122\n" +
+	"\bchildren\x18\t \x03(\v2\x16.system.menu.v1.RouterR\bchildren\">\n" +
+	"\n" +
+	"RouterTree\x120\n" +
+	"\arouters\x18\x01 \x03(\v2\x16.system.menu.v1.RouterR\arouters\"B\n" +
 	"\x11CreateMenuRequest\x12-\n" +
 	"\x04menu\x18\x01 \x01(\v2\x14.system.menu.v1.MenuB\x03\xe0A\x02R\x04menu\".\n" +
 	"\x0eGetMenuRequest\x12\x1c\n" +
@@ -639,16 +894,18 @@ const file_system_menu_v1_menu_proto_rawDesc = "" +
 	"\x15MENU_TYPE_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13MENU_TYPE_DIRECTORY\x10\x01\x12\x12\n" +
 	"\x0eMENU_TYPE_MENU\x10\x02\x12\x14\n" +
-	"\x10MENU_TYPE_BUTTON\x10\x032\x8b\x04\n" +
-	"\vMenuService\x12a\n" +
+	"\x10MENU_TYPE_BUTTON\x10\x032\xf0\x05\n" +
+	"\vMenuService\x12x\n" +
 	"\n" +
-	"CreateMenu\x12!.system.menu.v1.CreateMenuRequest\x1a\x14.system.menu.v1.Menu\"\x1a\x82\xd3\xe4\x93\x02\x14:\x04menu\"\f/system/menu\x12_\n" +
-	"\aGetMenu\x12\x1e.system.menu.v1.GetMenuRequest\x1a\x14.system.menu.v1.Menu\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/system/menu/{menu_id}\x12]\n" +
-	"\tListMenus\x12 .system.menu.v1.ListMenusRequest\x1a\x18.system.menu.v1.MenuTree\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/system/menu\x12p\n" +
+	"CreateMenu\x12!.system.menu.v1.CreateMenuRequest\x1a\x14.system.menu.v1.Menu\"1\xc2\xf3\x18\x13\b\x04\x12\x0fsystem:menu:add\x82\xd3\xe4\x93\x02\x14:\x04menu\"\f/system/menu\x12x\n" +
+	"\aGetMenu\x12\x1e.system.menu.v1.GetMenuRequest\x1a\x14.system.menu.v1.Menu\"7\xc2\xf3\x18\x15\b\x04\x12\x11system:menu:query\x82\xd3\xe4\x93\x02\x18\x12\x16/system/menu/{menu_id}\x12u\n" +
+	"\tListMenus\x12 .system.menu.v1.ListMenusRequest\x1a\x18.system.menu.v1.MenuTree\",\xc2\xf3\x18\x14\b\x04\x12\x10system:menu:list\x82\xd3\xe4\x93\x02\x0e\x12\f/system/menu\x12\x88\x01\n" +
 	"\n" +
-	"UpdateMenu\x12!.system.menu.v1.UpdateMenuRequest\x1a\x14.system.menu.v1.Menu\")\x82\xd3\xe4\x93\x02#:\x04menu2\x1b/system/menu/{menu.menu_id}\x12g\n" +
+	"UpdateMenu\x12!.system.menu.v1.UpdateMenuRequest\x1a\x14.system.menu.v1.Menu\"A\xc2\xf3\x18\x14\b\x04\x12\x10system:menu:edit\x82\xd3\xe4\x93\x02#:\x04menu2\x1b/system/menu/{menu.menu_id}\x12\x81\x01\n" +
 	"\n" +
-	"DeleteMenu\x12!.system.menu.v1.DeleteMenuRequest\x1a\x16.google.protobuf.Empty\"\x1e\x82\xd3\xe4\x93\x02\x18*\x16/system/menu/{menu_id}B2\n" +
+	"DeleteMenu\x12!.system.menu.v1.DeleteMenuRequest\x1a\x16.google.protobuf.Empty\"8\xc2\xf3\x18\x16\b\x04\x12\x12system:menu:remove\x82\xd3\xe4\x93\x02\x18*\x16/system/menu/{menu_id}\x12g\n" +
+	"\n" +
+	"GetRouters\x12\x16.google.protobuf.Empty\x1a\x1a.system.menu.v1.RouterTree\"%\xc2\xf3\x18\x02\b\x03\x82\xd3\xe4\x93\x02\x19\x12\x17/system/menu/getRoutersB2\n" +
 	"\x12api.system.menu.v1P\x01Z\x1aglex/api/system/menu/v1;v1b\x06proto3"
 
 var (
@@ -664,44 +921,52 @@ func file_system_menu_v1_menu_proto_rawDescGZIP() []byte {
 }
 
 var file_system_menu_v1_menu_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_system_menu_v1_menu_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_system_menu_v1_menu_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_system_menu_v1_menu_proto_goTypes = []any{
 	(MenuType)(0),                 // 0: system.menu.v1.MenuType
 	(*Menu)(nil),                  // 1: system.menu.v1.Menu
 	(*MenuTree)(nil),              // 2: system.menu.v1.MenuTree
-	(*CreateMenuRequest)(nil),     // 3: system.menu.v1.CreateMenuRequest
-	(*GetMenuRequest)(nil),        // 4: system.menu.v1.GetMenuRequest
-	(*ListMenusRequest)(nil),      // 5: system.menu.v1.ListMenusRequest
-	(*UpdateMenuRequest)(nil),     // 6: system.menu.v1.UpdateMenuRequest
-	(*DeleteMenuRequest)(nil),     // 7: system.menu.v1.DeleteMenuRequest
-	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
-	(*fieldmaskpb.FieldMask)(nil), // 9: google.protobuf.FieldMask
-	(*emptypb.Empty)(nil),         // 10: google.protobuf.Empty
+	(*RouterMeta)(nil),            // 3: system.menu.v1.RouterMeta
+	(*Router)(nil),                // 4: system.menu.v1.Router
+	(*RouterTree)(nil),            // 5: system.menu.v1.RouterTree
+	(*CreateMenuRequest)(nil),     // 6: system.menu.v1.CreateMenuRequest
+	(*GetMenuRequest)(nil),        // 7: system.menu.v1.GetMenuRequest
+	(*ListMenusRequest)(nil),      // 8: system.menu.v1.ListMenusRequest
+	(*UpdateMenuRequest)(nil),     // 9: system.menu.v1.UpdateMenuRequest
+	(*DeleteMenuRequest)(nil),     // 10: system.menu.v1.DeleteMenuRequest
+	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
+	(*fieldmaskpb.FieldMask)(nil), // 12: google.protobuf.FieldMask
+	(*emptypb.Empty)(nil),         // 13: google.protobuf.Empty
 }
 var file_system_menu_v1_menu_proto_depIdxs = []int32{
 	0,  // 0: system.menu.v1.Menu.menu_type:type_name -> system.menu.v1.MenuType
-	8,  // 1: system.menu.v1.Menu.created_at:type_name -> google.protobuf.Timestamp
-	8,  // 2: system.menu.v1.Menu.updated_at:type_name -> google.protobuf.Timestamp
+	11, // 1: system.menu.v1.Menu.created_at:type_name -> google.protobuf.Timestamp
+	11, // 2: system.menu.v1.Menu.updated_at:type_name -> google.protobuf.Timestamp
 	1,  // 3: system.menu.v1.Menu.children:type_name -> system.menu.v1.Menu
 	1,  // 4: system.menu.v1.MenuTree.menus:type_name -> system.menu.v1.Menu
-	1,  // 5: system.menu.v1.CreateMenuRequest.menu:type_name -> system.menu.v1.Menu
-	1,  // 6: system.menu.v1.UpdateMenuRequest.menu:type_name -> system.menu.v1.Menu
-	9,  // 7: system.menu.v1.UpdateMenuRequest.update_mask:type_name -> google.protobuf.FieldMask
-	3,  // 8: system.menu.v1.MenuService.CreateMenu:input_type -> system.menu.v1.CreateMenuRequest
-	4,  // 9: system.menu.v1.MenuService.GetMenu:input_type -> system.menu.v1.GetMenuRequest
-	5,  // 10: system.menu.v1.MenuService.ListMenus:input_type -> system.menu.v1.ListMenusRequest
-	6,  // 11: system.menu.v1.MenuService.UpdateMenu:input_type -> system.menu.v1.UpdateMenuRequest
-	7,  // 12: system.menu.v1.MenuService.DeleteMenu:input_type -> system.menu.v1.DeleteMenuRequest
-	1,  // 13: system.menu.v1.MenuService.CreateMenu:output_type -> system.menu.v1.Menu
-	1,  // 14: system.menu.v1.MenuService.GetMenu:output_type -> system.menu.v1.Menu
-	2,  // 15: system.menu.v1.MenuService.ListMenus:output_type -> system.menu.v1.MenuTree
-	1,  // 16: system.menu.v1.MenuService.UpdateMenu:output_type -> system.menu.v1.Menu
-	10, // 17: system.menu.v1.MenuService.DeleteMenu:output_type -> google.protobuf.Empty
-	13, // [13:18] is the sub-list for method output_type
-	8,  // [8:13] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	3,  // 5: system.menu.v1.Router.meta:type_name -> system.menu.v1.RouterMeta
+	4,  // 6: system.menu.v1.Router.children:type_name -> system.menu.v1.Router
+	4,  // 7: system.menu.v1.RouterTree.routers:type_name -> system.menu.v1.Router
+	1,  // 8: system.menu.v1.CreateMenuRequest.menu:type_name -> system.menu.v1.Menu
+	1,  // 9: system.menu.v1.UpdateMenuRequest.menu:type_name -> system.menu.v1.Menu
+	12, // 10: system.menu.v1.UpdateMenuRequest.update_mask:type_name -> google.protobuf.FieldMask
+	6,  // 11: system.menu.v1.MenuService.CreateMenu:input_type -> system.menu.v1.CreateMenuRequest
+	7,  // 12: system.menu.v1.MenuService.GetMenu:input_type -> system.menu.v1.GetMenuRequest
+	8,  // 13: system.menu.v1.MenuService.ListMenus:input_type -> system.menu.v1.ListMenusRequest
+	9,  // 14: system.menu.v1.MenuService.UpdateMenu:input_type -> system.menu.v1.UpdateMenuRequest
+	10, // 15: system.menu.v1.MenuService.DeleteMenu:input_type -> system.menu.v1.DeleteMenuRequest
+	13, // 16: system.menu.v1.MenuService.GetRouters:input_type -> google.protobuf.Empty
+	1,  // 17: system.menu.v1.MenuService.CreateMenu:output_type -> system.menu.v1.Menu
+	1,  // 18: system.menu.v1.MenuService.GetMenu:output_type -> system.menu.v1.Menu
+	2,  // 19: system.menu.v1.MenuService.ListMenus:output_type -> system.menu.v1.MenuTree
+	1,  // 20: system.menu.v1.MenuService.UpdateMenu:output_type -> system.menu.v1.Menu
+	13, // 21: system.menu.v1.MenuService.DeleteMenu:output_type -> google.protobuf.Empty
+	5,  // 22: system.menu.v1.MenuService.GetRouters:output_type -> system.menu.v1.RouterTree
+	17, // [17:23] is the sub-list for method output_type
+	11, // [11:17] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_system_menu_v1_menu_proto_init() }
@@ -715,7 +980,7 @@ func file_system_menu_v1_menu_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_system_menu_v1_menu_proto_rawDesc), len(file_system_menu_v1_menu_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   7,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

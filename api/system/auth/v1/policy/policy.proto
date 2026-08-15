@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package system.auth.v1.policy;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "glex/api/system/auth/v1/policy;policy";
+option java_multiple_files = true;
+option java_package = "api.system.auth.v1.policy";
+
+// AuthMode defines how an RPC is authenticated and authorized.
+enum AuthMode {
+  // AUTH_MODE_UNSPECIFIED is deliberately invalid for an RPC declaration.
+  // Keeping it distinct lets startup validation reject missing intent.
+  AUTH_MODE_UNSPECIFIED = 0;
+  // PUBLIC accepts anonymous requests and does not inspect credentials.
+  PUBLIC = 1;
+  // OPTIONAL accepts anonymous requests but attaches a Principal when the
+  // presented Login Session is valid. This mode is reserved for Logout.
+  OPTIONAL = 2;
+  // AUTHENTICATED requires a valid Login Session.
+  AUTHENTICATED = 3;
+  // PERMISSION requires a valid Login Session and exactly one Functional
+  // Permission handle.
+  PERMISSION = 4;
+}
+
+// AuthPolicy is the authentication and authorization contract for one RPC.
+message AuthPolicy {
+  AuthMode mode = 1;
+  // permission is set only when mode is PERMISSION.
+  string permission = 2;
+}
+
+extend google.protobuf.MethodOptions {
+  AuthPolicy auth_policy = 51000;
+}

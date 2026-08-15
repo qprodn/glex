@@ -6,6 +6,123 @@ info:
     title: ""
     version: 0.0.1
 paths:
+    /auth/login:
+        post:
+            tags:
+                - AuthService
+            description: Login creates one Login Session from a username and password.
+            operationId: AuthService_Login
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/system.auth.v1.LoginRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.auth.v1.LoginReply'
+    /auth/logout:
+        post:
+            tags:
+                - AuthService
+            description: |-
+                Logout idempotently revokes the presented valid Login Session. Missing or
+                 confirmed-invalid credentials also succeed under OPTIONAL authentication.
+            operationId: AuthService_Logout
+            requestBody:
+                content:
+                    application/json: {}
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /monitor/online:
+        get:
+            tags:
+                - OnlineSessionService
+            description: ListMyOnlineSessions lists the current System User's Login Sessions.
+            operationId: OnlineSessionService_ListMyOnlineSessions
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.auth.v1.OnlineSessionSet'
+    /monitor/online/list:
+        get:
+            tags:
+                - OnlineSessionService
+            description: ListOnlineSessions lists active Login Sessions for administrators.
+            operationId: OnlineSessionService_ListOnlineSessions
+            parameters:
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: AIP-160 filter; implementations support user_name and ipaddr.
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: AIP-132 order, e.g. login_time desc.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.auth.v1.OnlineSessionSet'
+    /monitor/online/myself/{tokenId}:
+        delete:
+            tags:
+                - OnlineSessionService
+            description: |-
+                DeleteMyOnlineSession revokes one Login Session only when the current
+                 System User owns it.
+            operationId: OnlineSessionService_DeleteMyOnlineSession
+            parameters:
+                - name: tokenId
+                  in: path
+                  description: Required. Non-secret Session ID serialized as tokenId in JSON.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /monitor/online/{tokenId}:
+        delete:
+            tags:
+                - OnlineSessionService
+            description: KickoutOnlineSession revokes one Login Session by its non-secret Session ID.
+            operationId: OnlineSessionService_KickoutOnlineSession
+            parameters:
+                - name: tokenId
+                  in: path
+                  description: Required. Non-secret Session ID serialized as tokenId in JSON.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
     /system/menu:
         get:
             tags:
@@ -56,6 +173,19 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/system.menu.v1.Menu'
+    /system/menu/getRouters:
+        get:
+            tags:
+                - MenuService
+            description: GetRouters returns the current System User's route tree.
+            operationId: MenuService_GetRouters
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.menu.v1.RouterTree'
     /system/menu/{menu.menu_id}:
         patch:
             tags:
@@ -378,6 +508,21 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/system.user.v1.User'
+    /system/user/getInfo:
+        get:
+            tags:
+                - UserService
+            description: |-
+                GetInfo returns the current System User, Role keys, and Functional
+                 Permissions. It never returns the stored password hash.
+            operationId: UserService_GetInfo
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/system.user.v1.CurrentUserInfo'
     /system/user/{user.user_id}:
         patch:
             tags:
@@ -447,6 +592,59 @@ paths:
                     content: {}
 components:
     schemas:
+        system.auth.v1.LoginReply:
+            type: object
+            properties:
+                accessToken:
+                    type: string
+                expireIn:
+                    type: string
+                    description: Remaining fixed lifetime in seconds.
+            description: |-
+                LoginReply returns the bearer credential exactly once, at login. The token
+                 is never included in Principal or OnlineSession.
+        system.auth.v1.LoginRequest:
+            required:
+                - username
+                - password
+            type: object
+            properties:
+                username:
+                    type: string
+                password:
+                    type: string
+            description: LoginRequest contains the credentials used to create one Login Session.
+        system.auth.v1.OnlineSession:
+            type: object
+            properties:
+                tokenId:
+                    type: string
+                userName:
+                    type: string
+                deviceType:
+                    type: string
+                ipaddr:
+                    type: string
+                browser:
+                    type: string
+                os:
+                    type: string
+                loginTime:
+                    type: string
+                    format: date-time
+            description: |-
+                OnlineSession is the safe management view of one Login Session. token_id is
+                 the non-secret Session ID retained for RuoYi-compatible JSON naming.
+        system.auth.v1.OnlineSessionSet:
+            type: object
+            properties:
+                sessions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/system.auth.v1.OnlineSession'
+                nextPageToken:
+                    type: string
+            description: OnlineSessionSet is a page of active Login Sessions.
         system.menu.v1.Menu:
             type: object
             properties:
@@ -525,6 +723,54 @@ components:
                     items:
                         $ref: '#/components/schemas/system.menu.v1.Menu'
             description: MenuTree is a forest of root menus, each nesting its descendants.
+        system.menu.v1.Router:
+            type: object
+            properties:
+                name:
+                    type: string
+                path:
+                    type: string
+                hidden:
+                    type: boolean
+                redirect:
+                    type: string
+                component:
+                    type: string
+                query:
+                    type: string
+                alwaysShow:
+                    type: boolean
+                meta:
+                    $ref: '#/components/schemas/system.menu.v1.RouterMeta'
+                children:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/system.menu.v1.Router'
+            description: |-
+                Router is one Directory/Menu node in the current System User's route tree.
+                 Button nodes are never projected as Router values.
+        system.menu.v1.RouterMeta:
+            type: object
+            properties:
+                title:
+                    type: string
+                icon:
+                    type: string
+                noCache:
+                    type: boolean
+                link:
+                    type: string
+                activeMenu:
+                    type: string
+            description: RouterMeta contains route presentation metadata consumed by the frontend.
+        system.menu.v1.RouterTree:
+            type: object
+            properties:
+                routers:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/system.menu.v1.Router'
+            description: RouterTree is the current System User's route forest.
         system.role.v1.Role:
             type: object
             properties:
@@ -609,6 +855,63 @@ components:
                     description: |-
                         Optional. Presence-aware; absent = true (RuoYi default). Written together
                          with the grant in the same transaction.
+        system.user.v1.CurrentUser:
+            type: object
+            properties:
+                userId:
+                    type: string
+                userName:
+                    type: string
+                nickName:
+                    type: string
+                email:
+                    type: string
+                phoneNumber:
+                    type: string
+                gender:
+                    type: integer
+                    format: int32
+                status:
+                    type: integer
+                    format: int32
+                avatar:
+                    type: string
+                remark:
+                    type: string
+                createBy:
+                    type: string
+                updateBy:
+                    type: string
+                loginIp:
+                    type: string
+                loginDate:
+                    type: string
+                    format: date-time
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                CurrentUser is the read-only, password-free System User shape returned by
+                 GetInfo. A distinct DTO makes it impossible to expose the stored hash.
+        system.user.v1.CurrentUserInfo:
+            type: object
+            properties:
+                user:
+                    $ref: '#/components/schemas/system.user.v1.CurrentUser'
+                roleKeys:
+                    type: array
+                    items:
+                        type: string
+                permissions:
+                    type: array
+                    items:
+                        type: string
+            description: |-
+                CurrentUserInfo is the authenticated System User and current Authorization
+                 Snapshot exposed to the frontend.
         system.user.v1.User:
             type: object
             properties:
@@ -675,8 +978,14 @@ components:
                     description: Opaque token for the next page; empty when on the last page.
             description: UserSet is a page of users.
 tags:
+    - name: AuthService
+      description: AuthService creates and ends Login Sessions.
     - name: MenuService
       description: MenuService is the system-menu CRUD + tree service.
+    - name: OnlineSessionService
+      description: |-
+        OnlineSessionService exposes the four RuoYi-compatible Login Session
+         management operations. It deliberately has no bulk logout operation.
     - name: RoleService
       description: RoleService is the system-role CRUD + Menu Grant service.
     - name: UserService

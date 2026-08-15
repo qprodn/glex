@@ -21,6 +21,7 @@ const _ = http.SupportPackageIsVersion3
 const OperationMenuServiceCreateMenu = "/system.menu.v1.MenuService/CreateMenu"
 const OperationMenuServiceDeleteMenu = "/system.menu.v1.MenuService/DeleteMenu"
 const OperationMenuServiceGetMenu = "/system.menu.v1.MenuService/GetMenu"
+const OperationMenuServiceGetRouters = "/system.menu.v1.MenuService/GetRouters"
 const OperationMenuServiceListMenus = "/system.menu.v1.MenuService/ListMenus"
 const OperationMenuServiceUpdateMenu = "/system.menu.v1.MenuService/UpdateMenu"
 
@@ -31,6 +32,8 @@ type MenuServiceHTTPServer interface {
 	DeleteMenu(context.Context, *DeleteMenuRequest) (*emptypb.Empty, error)
 	// GetMenu GetMenu retrieves a menu by id.
 	GetMenu(context.Context, *GetMenuRequest) (*Menu, error)
+	// GetRouters GetRouters returns the current System User's route tree.
+	GetRouters(context.Context, *emptypb.Empty) (*RouterTree, error)
 	// ListMenus ListMenus returns the full menu tree. Not paginated (menus are small and
 	// tree-shaped). Supports AIP-160 filter and AIP-132 order.
 	ListMenus(context.Context, *ListMenusRequest) (*MenuTree, error)
@@ -45,6 +48,7 @@ func RegisterMenuServiceHTTPServer(s *http.Server, srv MenuServiceHTTPServer) {
 	r.Handle("GET", "/system/menu", _MenuService_ListMenus0_HTTP_Handler(srv))
 	r.Handle("PATCH", "/system/menu/{menu.menu_id}", _MenuService_UpdateMenu0_HTTP_Handler(srv))
 	r.Handle("DELETE", "/system/menu/{menu_id}", _MenuService_DeleteMenu0_HTTP_Handler(srv))
+	r.Handle("GET", "/system/menu/getRouters", _MenuService_GetRouters0_HTTP_Handler(srv))
 }
 
 func _MenuService_CreateMenu0_HTTP_Handler(srv MenuServiceHTTPServer) func(ctx http.Context) error {
@@ -157,6 +161,25 @@ func _MenuService_DeleteMenu0_HTTP_Handler(srv MenuServiceHTTPServer) func(ctx h
 	}
 }
 
+func _MenuService_GetRouters0_HTTP_Handler(srv MenuServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in emptypb.Empty
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationMenuServiceGetRouters)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.GetRouters(ctx, req.(*emptypb.Empty))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*RouterTree)
+		return ctx.Result(200, reply)
+	}
+}
+
 type MenuServiceHTTPClient interface {
 	// CreateMenu CreateMenu creates a new menu.
 	CreateMenu(ctx context.Context, req *CreateMenuRequest, opts ...http.CallOption) (rsp *Menu, err error)
@@ -164,6 +187,8 @@ type MenuServiceHTTPClient interface {
 	DeleteMenu(ctx context.Context, req *DeleteMenuRequest, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
 	// GetMenu GetMenu retrieves a menu by id.
 	GetMenu(ctx context.Context, req *GetMenuRequest, opts ...http.CallOption) (rsp *Menu, err error)
+	// GetRouters GetRouters returns the current System User's route tree.
+	GetRouters(ctx context.Context, req *emptypb.Empty, opts ...http.CallOption) (rsp *RouterTree, err error)
 	// ListMenus ListMenus returns the full menu tree. Not paginated (menus are small and
 	// tree-shaped). Supports AIP-160 filter and AIP-132 order.
 	ListMenus(ctx context.Context, req *ListMenusRequest, opts ...http.CallOption) (rsp *MenuTree, err error)
@@ -222,6 +247,23 @@ func (c *MenuServiceHTTPClientImpl) GetMenu(ctx context.Context, in *GetMenuRequ
 	opts = append([]http.CallOption{
 		http.Accept("application/protojson"),
 		http.Operation(OperationMenuServiceGetMenu),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// GetRouters GetRouters returns the current System User's route tree.
+func (c *MenuServiceHTTPClientImpl) GetRouters(ctx context.Context, in *emptypb.Empty, opts ...http.CallOption) (*RouterTree, error) {
+	var out RouterTree
+	pattern := "/system/menu/getRouters"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationMenuServiceGetRouters),
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)

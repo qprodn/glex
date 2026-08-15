@@ -20,6 +20,7 @@ const _ = http.SupportPackageIsVersion3
 
 const OperationUserServiceCreateUser = "/system.user.v1.UserService/CreateUser"
 const OperationUserServiceDeleteUser = "/system.user.v1.UserService/DeleteUser"
+const OperationUserServiceGetInfo = "/system.user.v1.UserService/GetInfo"
 const OperationUserServiceGetUser = "/system.user.v1.UserService/GetUser"
 const OperationUserServiceListUsers = "/system.user.v1.UserService/ListUsers"
 const OperationUserServiceUpdateUser = "/system.user.v1.UserService/UpdateUser"
@@ -29,6 +30,9 @@ type UserServiceHTTPServer interface {
 	CreateUser(context.Context, *CreateUserRequest) (*User, error)
 	// DeleteUser DeleteUser soft-deletes a user by id.
 	DeleteUser(context.Context, *DeleteUserRequest) (*emptypb.Empty, error)
+	// GetInfo GetInfo returns the current System User, Role keys, and Functional
+	// Permissions. It never returns the stored password hash.
+	GetInfo(context.Context, *emptypb.Empty) (*CurrentUserInfo, error)
 	// GetUser GetUser retrieves a user by id.
 	GetUser(context.Context, *GetUserRequest) (*User, error)
 	// ListUsers ListUsers lists users with AIP filter/order/page-token.
@@ -44,6 +48,7 @@ func RegisterUserServiceHTTPServer(s *http.Server, srv UserServiceHTTPServer) {
 	r.Handle("GET", "/system/user", _UserService_ListUsers0_HTTP_Handler(srv))
 	r.Handle("PATCH", "/system/user/{user.user_id}", _UserService_UpdateUser0_HTTP_Handler(srv))
 	r.Handle("DELETE", "/system/user/{user_id}", _UserService_DeleteUser0_HTTP_Handler(srv))
+	r.Handle("GET", "/system/user/getInfo", _UserService_GetInfo0_HTTP_Handler(srv))
 }
 
 func _UserService_CreateUser0_HTTP_Handler(srv UserServiceHTTPServer) func(ctx http.Context) error {
@@ -156,11 +161,33 @@ func _UserService_DeleteUser0_HTTP_Handler(srv UserServiceHTTPServer) func(ctx h
 	}
 }
 
+func _UserService_GetInfo0_HTTP_Handler(srv UserServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in emptypb.Empty
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationUserServiceGetInfo)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.GetInfo(ctx, req.(*emptypb.Empty))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*CurrentUserInfo)
+		return ctx.Result(200, reply)
+	}
+}
+
 type UserServiceHTTPClient interface {
 	// CreateUser CreateUser creates a new system user.
 	CreateUser(ctx context.Context, req *CreateUserRequest, opts ...http.CallOption) (rsp *User, err error)
 	// DeleteUser DeleteUser soft-deletes a user by id.
 	DeleteUser(ctx context.Context, req *DeleteUserRequest, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
+	// GetInfo GetInfo returns the current System User, Role keys, and Functional
+	// Permissions. It never returns the stored password hash.
+	GetInfo(ctx context.Context, req *emptypb.Empty, opts ...http.CallOption) (rsp *CurrentUserInfo, err error)
 	// GetUser GetUser retrieves a user by id.
 	GetUser(ctx context.Context, req *GetUserRequest, opts ...http.CallOption) (rsp *User, err error)
 	// ListUsers ListUsers lists users with AIP filter/order/page-token.
@@ -206,6 +233,24 @@ func (c *UserServiceHTTPClientImpl) DeleteUser(ctx context.Context, in *DeleteUs
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "DELETE", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// GetInfo GetInfo returns the current System User, Role keys, and Functional
+// Permissions. It never returns the stored password hash.
+func (c *UserServiceHTTPClientImpl) GetInfo(ctx context.Context, in *emptypb.Empty, opts ...http.CallOption) (*CurrentUserInfo, error) {
+	var out CurrentUserInfo
+	pattern := "/system/user/getInfo"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationUserServiceGetInfo),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
 	if err != nil {
 		return nil, err
 	}

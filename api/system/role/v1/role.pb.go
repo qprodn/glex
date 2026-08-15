@@ -7,6 +7,7 @@
 package v1
 
 import (
+	_ "glex/api/system/auth/v1/policy"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -660,7 +661,7 @@ var File_system_role_v1_role_proto protoreflect.FileDescriptor
 
 const file_system_role_v1_role_proto_rawDesc = "" +
 	"\n" +
-	"\x19system/role/v1/role.proto\x12\x0esystem.role.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\"\x84\x03\n" +
+	"\x19system/role/v1/role.proto\x12\x0esystem.role.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\"system/auth/v1/policy/policy.proto\"\x84\x03\n" +
 	"\x04Role\x12\x17\n" +
 	"\arole_id\x18\x01 \x01(\x03R\x06roleId\x12\x1b\n" +
 	"\trole_name\x18\x02 \x01(\tR\broleName\x12\x19\n" +
@@ -706,18 +707,18 @@ const file_system_role_v1_role_proto_rawDesc = "" +
 	"\arole_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06roleId\x12\x19\n" +
 	"\bmenu_ids\x18\x02 \x03(\x03R\amenuIds\x123\n" +
 	"\x13menu_check_strictly\x18\x03 \x01(\bH\x00R\x11menuCheckStrictly\x88\x01\x01B\x16\n" +
-	"\x14_menu_check_strictly2\x81\x06\n" +
-	"\vRoleService\x12a\n" +
+	"\x14_menu_check_strictly2\xb0\a\n" +
+	"\vRoleService\x12x\n" +
 	"\n" +
-	"CreateRole\x12!.system.role.v1.CreateRoleRequest\x1a\x14.system.role.v1.Role\"\x1a\x82\xd3\xe4\x93\x02\x14:\x04role\"\f/system/role\x12_\n" +
-	"\aGetRole\x12\x1e.system.role.v1.GetRoleRequest\x1a\x14.system.role.v1.Role\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/system/role/{role_id}\x12\\\n" +
-	"\tListRoles\x12 .system.role.v1.ListRolesRequest\x1a\x17.system.role.v1.RoleSet\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/system/role\x12p\n" +
+	"CreateRole\x12!.system.role.v1.CreateRoleRequest\x1a\x14.system.role.v1.Role\"1\xc2\xf3\x18\x13\b\x04\x12\x0fsystem:role:add\x82\xd3\xe4\x93\x02\x14:\x04role\"\f/system/role\x12x\n" +
+	"\aGetRole\x12\x1e.system.role.v1.GetRoleRequest\x1a\x14.system.role.v1.Role\"7\xc2\xf3\x18\x15\b\x04\x12\x11system:role:query\x82\xd3\xe4\x93\x02\x18\x12\x16/system/role/{role_id}\x12t\n" +
+	"\tListRoles\x12 .system.role.v1.ListRolesRequest\x1a\x17.system.role.v1.RoleSet\",\xc2\xf3\x18\x14\b\x04\x12\x10system:role:list\x82\xd3\xe4\x93\x02\x0e\x12\f/system/role\x12\x88\x01\n" +
 	"\n" +
-	"UpdateRole\x12!.system.role.v1.UpdateRoleRequest\x1a\x14.system.role.v1.Role\")\x82\xd3\xe4\x93\x02#:\x04role2\x1b/system/role/{role.role_id}\x12g\n" +
+	"UpdateRole\x12!.system.role.v1.UpdateRoleRequest\x1a\x14.system.role.v1.Role\"A\xc2\xf3\x18\x14\b\x04\x12\x10system:role:edit\x82\xd3\xe4\x93\x02#:\x04role2\x1b/system/role/{role.role_id}\x12\x81\x01\n" +
 	"\n" +
-	"DeleteRole\x12!.system.role.v1.DeleteRoleRequest\x1a\x16.google.protobuf.Empty\"\x1e\x82\xd3\xe4\x93\x02\x18*\x16/system/role/{role_id}\x12v\n" +
-	"\rListRoleMenus\x12$.system.role.v1.ListRoleMenusRequest\x1a\x19.system.role.v1.RoleMenus\"$\x82\xd3\xe4\x93\x02\x1e\x12\x1c/system/role/{role_id}/menus\x12}\n" +
-	"\x0fUpdateRoleMenus\x12&.system.role.v1.UpdateRoleMenusRequest\x1a\x19.system.role.v1.RoleMenus\"'\x82\xd3\xe4\x93\x02!:\x01*\x1a\x1c/system/role/{role_id}/menusB2\n" +
+	"DeleteRole\x12!.system.role.v1.DeleteRoleRequest\x1a\x16.google.protobuf.Empty\"8\xc2\xf3\x18\x16\b\x04\x12\x12system:role:remove\x82\xd3\xe4\x93\x02\x18*\x16/system/role/{role_id}\x12\x8f\x01\n" +
+	"\rListRoleMenus\x12$.system.role.v1.ListRoleMenusRequest\x1a\x19.system.role.v1.RoleMenus\"=\xc2\xf3\x18\x15\b\x04\x12\x11system:role:query\x82\xd3\xe4\x93\x02\x1e\x12\x1c/system/role/{role_id}/menus\x12\x95\x01\n" +
+	"\x0fUpdateRoleMenus\x12&.system.role.v1.UpdateRoleMenusRequest\x1a\x19.system.role.v1.RoleMenus\"?\xc2\xf3\x18\x14\b\x04\x12\x10system:role:edit\x82\xd3\xe4\x93\x02!:\x01*\x1a\x1c/system/role/{role_id}/menusB2\n" +
 	"\x12api.system.role.v1P\x01Z\x1aglex/api/system/role/v1;v1b\x06proto3"
 
 var (

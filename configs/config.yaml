@@ -13,3 +13,18 @@ data:
     addr: 127.0.0.1:6379
     read_timeout: 0.2s
     write_timeout: 0.2s
+auth:
+  # Seven days, encoded in protobuf Duration text format.
+  fixed_lifetime: 604800s
+  idle_lifetime: 1800s
+  max_sessions_per_user: 5
+  username_login_counter:
+    max_failures: 5
+    window: 600s
+  source_ip_login_counter:
+    max_failures: 20
+    window: 600s
+  redis_namespace: glex:auth
+  # Assert true only when the service port is private and the exclusive edge
+  # proxy replaces the forwarded source-IP header with its authoritative value.
+  edge_proxy_authoritative_source_ip: true

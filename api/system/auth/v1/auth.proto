@@ -1,0 +1,130 @@
+syntax = "proto3";
+
+package system.auth.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "system/auth/v1/policy/policy.proto";
+
+option go_package = "glex/api/system/auth/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.system.auth.v1";
+
+// LoginRequest contains the credentials used to create one Login Session.
+message LoginRequest {
+  string username = 1 [(google.api.field_behavior) = REQUIRED];
+  string password = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+// LoginReply returns the bearer credential exactly once, at login. The token
+// is never included in Principal or OnlineSession.
+message LoginReply {
+  string access_token = 1;
+  // Remaining fixed lifetime in seconds.
+  int64 expire_in = 2;
+}
+
+// Principal is the authenticated identity projected at the transport boundary.
+// session_id is a non-secret management handle, never a bearer credential.
+message Principal {
+  int64 user_id = 1;
+  string user_name = 2;
+  string session_id = 3;
+  repeated string role_keys = 4;
+  repeated string permissions = 5;
+}
+
+// OnlineSession is the safe management view of one Login Session. token_id is
+// the non-secret Session ID retained for RuoYi-compatible JSON naming.
+message OnlineSession {
+  string token_id = 1;
+  string user_name = 2;
+  string device_type = 3;
+  string ipaddr = 4;
+  string browser = 5;
+  string os = 6;
+  google.protobuf.Timestamp login_time = 7;
+}
+
+// OnlineSessionSet is a page of active Login Sessions.
+message OnlineSessionSet {
+  repeated OnlineSession sessions = 1;
+  string next_page_token = 2;
+}
+
+// AuthService creates and ends Login Sessions.
+service AuthService {
+  // Login creates one Login Session from a username and password.
+  rpc Login(LoginRequest) returns (LoginReply) {
+    option (system.auth.v1.policy.auth_policy) = {mode: PUBLIC};
+    option (google.api.http) = {
+      post: "/auth/login"
+      body: "*"
+    };
+  }
+  // Logout idempotently revokes the presented valid Login Session. Missing or
+  // confirmed-invalid credentials also succeed under OPTIONAL authentication.
+  rpc Logout(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (system.auth.v1.policy.auth_policy) = {mode: OPTIONAL};
+    option (google.api.http) = {
+      post: "/auth/logout"
+      body: "*"
+    };
+  }
+}
+
+// OnlineSessionService exposes the four RuoYi-compatible Login Session
+// management operations. It deliberately has no bulk logout operation.
+service OnlineSessionService {
+  // ListOnlineSessions lists active Login Sessions for administrators.
+  rpc ListOnlineSessions(ListOnlineSessionsRequest) returns (OnlineSessionSet) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "monitor:online:list"
+    };
+    option (google.api.http) = {
+      get: "/monitor/online/list"
+    };
+  }
+  // KickoutOnlineSession revokes one Login Session by its non-secret Session ID.
+  rpc KickoutOnlineSession(OnlineSessionRequest) returns (google.protobuf.Empty) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "monitor:online:forceLogout"
+    };
+    option (google.api.http) = {
+      delete: "/monitor/online/{token_id}"
+    };
+  }
+  // ListMyOnlineSessions lists the current System User's Login Sessions.
+  rpc ListMyOnlineSessions(google.protobuf.Empty) returns (OnlineSessionSet) {
+    option (system.auth.v1.policy.auth_policy) = {mode: AUTHENTICATED};
+    option (google.api.http) = {
+      get: "/monitor/online"
+    };
+  }
+  // DeleteMyOnlineSession revokes one Login Session only when the current
+  // System User owns it.
+  rpc DeleteMyOnlineSession(OnlineSessionRequest) returns (google.protobuf.Empty) {
+    option (system.auth.v1.policy.auth_policy) = {mode: AUTHENTICATED};
+    option (google.api.http) = {
+      delete: "/monitor/online/myself/{token_id}"
+    };
+  }
+}
+
+message ListOnlineSessionsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  // AIP-160 filter; implementations support user_name and ipaddr.
+  string filter = 3;
+  // AIP-132 order, e.g. login_time desc.
+  string order_by = 4;
+}
+
+message OnlineSessionRequest {
+  // Required. Non-secret Session ID serialized as tokenId in JSON.
+  string token_id = 1 [(google.api.field_behavior) = REQUIRED];
+}

@@ -25,6 +25,7 @@ const (
 	MenuService_ListMenus_FullMethodName  = "/system.menu.v1.MenuService/ListMenus"
 	MenuService_UpdateMenu_FullMethodName = "/system.menu.v1.MenuService/UpdateMenu"
 	MenuService_DeleteMenu_FullMethodName = "/system.menu.v1.MenuService/DeleteMenu"
+	MenuService_GetRouters_FullMethodName = "/system.menu.v1.MenuService/GetRouters"
 )
 
 // MenuServiceClient is the client API for MenuService service.
@@ -44,6 +45,8 @@ type MenuServiceClient interface {
 	UpdateMenu(ctx context.Context, in *UpdateMenuRequest, opts ...grpc.CallOption) (*Menu, error)
 	// DeleteMenu soft-deletes a menu by id; refused while it has children.
 	DeleteMenu(ctx context.Context, in *DeleteMenuRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// GetRouters returns the current System User's route tree.
+	GetRouters(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RouterTree, error)
 }
 
 type menuServiceClient struct {
@@ -104,6 +107,16 @@ func (c *menuServiceClient) DeleteMenu(ctx context.Context, in *DeleteMenuReques
 	return out, nil
 }
 
+func (c *menuServiceClient) GetRouters(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RouterTree, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RouterTree)
+	err := c.cc.Invoke(ctx, MenuService_GetRouters_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MenuServiceServer is the server API for MenuService service.
 // All implementations must embed UnimplementedMenuServiceServer
 // for forward compatibility.
@@ -121,6 +134,8 @@ type MenuServiceServer interface {
 	UpdateMenu(context.Context, *UpdateMenuRequest) (*Menu, error)
 	// DeleteMenu soft-deletes a menu by id; refused while it has children.
 	DeleteMenu(context.Context, *DeleteMenuRequest) (*emptypb.Empty, error)
+	// GetRouters returns the current System User's route tree.
+	GetRouters(context.Context, *emptypb.Empty) (*RouterTree, error)
 	mustEmbedUnimplementedMenuServiceServer()
 }
 
@@ -145,6 +160,9 @@ func (UnimplementedMenuServiceServer) UpdateMenu(context.Context, *UpdateMenuReq
 }
 func (UnimplementedMenuServiceServer) DeleteMenu(context.Context, *DeleteMenuRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMenu not implemented")
+}
+func (UnimplementedMenuServiceServer) GetRouters(context.Context, *emptypb.Empty) (*RouterTree, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRouters not implemented")
 }
 func (UnimplementedMenuServiceServer) mustEmbedUnimplementedMenuServiceServer() {}
 func (UnimplementedMenuServiceServer) testEmbeddedByValue()                     {}
@@ -257,6 +275,24 @@ func _MenuService_DeleteMenu_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MenuService_GetRouters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MenuServiceServer).GetRouters(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MenuService_GetRouters_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MenuServiceServer).GetRouters(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MenuService_ServiceDesc is the grpc.ServiceDesc for MenuService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -283,6 +319,10 @@ var MenuService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteMenu",
 			Handler:    _MenuService_DeleteMenu_Handler,
+		},
+		{
+			MethodName: "GetRouters",
+			Handler:    _MenuService_GetRouters_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

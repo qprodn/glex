@@ -7,6 +7,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/field_mask.proto";
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
+import "system/auth/v1/policy/policy.proto";
 
 option go_package = "glex/api/system/menu/v1;v1";
 option java_multiple_files = true;
@@ -62,10 +63,42 @@ message MenuTree {
   repeated Menu menus = 1;
 }
 
+// RouterMeta contains route presentation metadata consumed by the frontend.
+message RouterMeta {
+  string title = 1;
+  string icon = 2;
+  bool no_cache = 3;
+  string link = 4;
+  string active_menu = 5;
+}
+
+// Router is one Directory/Menu node in the current System User's route tree.
+// Button nodes are never projected as Router values.
+message Router {
+  string name = 1;
+  string path = 2;
+  bool hidden = 3;
+  string redirect = 4;
+  string component = 5;
+  string query = 6;
+  bool always_show = 7;
+  RouterMeta meta = 8;
+  repeated Router children = 9;
+}
+
+// RouterTree is the current System User's route forest.
+message RouterTree {
+  repeated Router routers = 1;
+}
+
 // MenuService is the system-menu CRUD + tree service.
 service MenuService {
   // CreateMenu creates a new menu.
   rpc CreateMenu(CreateMenuRequest) returns (Menu) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:menu:add"
+    };
     option (google.api.http) = {
       post: "/system/menu"
       body: "menu"
@@ -73,6 +106,10 @@ service MenuService {
   }
   // GetMenu retrieves a menu by id.
   rpc GetMenu(GetMenuRequest) returns (Menu) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:menu:query"
+    };
     option (google.api.http) = {
       get: "/system/menu/{menu_id}"
     };
@@ -80,12 +117,20 @@ service MenuService {
   // ListMenus returns the full menu tree. Not paginated (menus are small and
   // tree-shaped). Supports AIP-160 filter and AIP-132 order.
   rpc ListMenus(ListMenusRequest) returns (MenuTree) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:menu:list"
+    };
     option (google.api.http) = {
       get: "/system/menu"
     };
   }
   // UpdateMenu partially updates a menu (field-mask).
   rpc UpdateMenu(UpdateMenuRequest) returns (Menu) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:menu:edit"
+    };
     option (google.api.http) = {
       patch: "/system/menu/{menu.menu_id}"
       body: "menu"
@@ -93,8 +138,19 @@ service MenuService {
   }
   // DeleteMenu soft-deletes a menu by id; refused while it has children.
   rpc DeleteMenu(DeleteMenuRequest) returns (google.protobuf.Empty) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:menu:remove"
+    };
     option (google.api.http) = {
       delete: "/system/menu/{menu_id}"
+    };
+  }
+  // GetRouters returns the current System User's route tree.
+  rpc GetRouters(google.protobuf.Empty) returns (RouterTree) {
+    option (system.auth.v1.policy.auth_policy) = {mode: AUTHENTICATED};
+    option (google.api.http) = {
+      get: "/system/menu/getRouters"
     };
   }
 }

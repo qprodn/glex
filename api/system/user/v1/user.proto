@@ -7,6 +7,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/field_mask.proto";
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
+import "system/auth/v1/policy/policy.proto";
 
 option go_package = "glex/api/system/user/v1;v1";
 option java_multiple_files = true;
@@ -51,10 +52,42 @@ message UserSet {
   string next_page_token = 2;
 }
 
+// CurrentUser is the read-only, password-free System User shape returned by
+// GetInfo. A distinct DTO makes it impossible to expose the stored hash.
+message CurrentUser {
+  int64 user_id = 1;
+  string user_name = 2;
+  string nick_name = 3;
+  string email = 4;
+  string phone_number = 5;
+  int32 gender = 6;
+  int32 status = 7;
+  string avatar = 8;
+  string remark = 9;
+  int64 create_by = 10;
+  int64 update_by = 11;
+  string login_ip = 12;
+  google.protobuf.Timestamp login_date = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+// CurrentUserInfo is the authenticated System User and current Authorization
+// Snapshot exposed to the frontend.
+message CurrentUserInfo {
+  CurrentUser user = 1;
+  repeated string role_keys = 2;
+  repeated string permissions = 3;
+}
+
 // UserService is the system-user CRUD service.
 service UserService {
   // CreateUser creates a new system user.
   rpc CreateUser(CreateUserRequest) returns (User) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:user:add"
+    };
     option (google.api.http) = {
       post: "/system/user"
       body: "user"
@@ -62,18 +95,30 @@ service UserService {
   }
   // GetUser retrieves a user by id.
   rpc GetUser(GetUserRequest) returns (User) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:user:query"
+    };
     option (google.api.http) = {
       get: "/system/user/{user_id}"
     };
   }
   // ListUsers lists users with AIP filter/order/page-token.
   rpc ListUsers(ListUsersRequest) returns (UserSet) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:user:list"
+    };
     option (google.api.http) = {
       get: "/system/user"
     };
   }
   // UpdateUser partially updates a user (field-mask). Empty password = unchanged.
   rpc UpdateUser(UpdateUserRequest) returns (User) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:user:edit"
+    };
     option (google.api.http) = {
       patch: "/system/user/{user.user_id}"
       body: "user"
@@ -81,8 +126,20 @@ service UserService {
   }
   // DeleteUser soft-deletes a user by id.
   rpc DeleteUser(DeleteUserRequest) returns (google.protobuf.Empty) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:user:remove"
+    };
     option (google.api.http) = {
       delete: "/system/user/{user_id}"
+    };
+  }
+  // GetInfo returns the current System User, Role keys, and Functional
+  // Permissions. It never returns the stored password hash.
+  rpc GetInfo(google.protobuf.Empty) returns (CurrentUserInfo) {
+    option (system.auth.v1.policy.auth_policy) = {mode: AUTHENTICATED};
+    option (google.api.http) = {
+      get: "/system/user/getInfo"
     };
   }
 }

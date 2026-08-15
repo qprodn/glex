@@ -63,6 +63,34 @@ export type UserSet = {
   nextPageToken: string | undefined;
 };
 
+// CurrentUser is the read-only, password-free System User shape returned by
+// GetInfo. A distinct DTO makes it impossible to expose the stored hash.
+export type CurrentUser = {
+  userId: number | undefined;
+  userName: string | undefined;
+  nickName: string | undefined;
+  email: string | undefined;
+  phoneNumber: string | undefined;
+  gender: number | undefined;
+  status: number | undefined;
+  avatar: string | undefined;
+  remark: string | undefined;
+  createBy: number | undefined;
+  updateBy: number | undefined;
+  loginIp: string | undefined;
+  loginDate: wellKnownTimestamp | undefined;
+  createdAt: wellKnownTimestamp | undefined;
+  updatedAt: wellKnownTimestamp | undefined;
+};
+
+// CurrentUserInfo is the authenticated System User and current Authorization
+// Snapshot exposed to the frontend.
+export type CurrentUserInfo = {
+  user: CurrentUser | undefined;
+  roleKeys: string[] | undefined;
+  permissions: string[] | undefined;
+};
+
 export type CreateUserRequest = {
   // Required. The user to create.
   //
@@ -151,6 +179,9 @@ export interface UserService {
   UpdateUser(request: UpdateUserRequest): Promise<User>;
   // DeleteUser soft-deletes a user by id.
   DeleteUser(request: DeleteUserRequest): Promise<wellKnownEmpty>;
+  // GetInfo returns the current System User, Role keys, and Functional
+  // Permissions. It never returns the stored password hash.
+  GetInfo(request: wellKnownEmpty): Promise<CurrentUserInfo>;
 }
 
 type RequestType = {
@@ -273,6 +304,23 @@ export function createUserServiceClient(
         service: "UserService",
         method: "DeleteUser",
       }) as Promise<wellKnownEmpty>;
+    },
+    GetInfo(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `system/user/getInfo`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "UserService",
+        method: "GetInfo",
+      }) as Promise<CurrentUserInfo>;
     },
   };
 }

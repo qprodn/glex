@@ -7,6 +7,7 @@
 package v1
 
 import (
+	_ "glex/api/system/auth/v1/policy"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -256,6 +257,226 @@ func (x *UserSet) GetNextPageToken() string {
 	return ""
 }
 
+// CurrentUser is the read-only, password-free System User shape returned by
+// GetInfo. A distinct DTO makes it impossible to expose the stored hash.
+type CurrentUser struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserName      string                 `protobuf:"bytes,2,opt,name=user_name,json=userName,proto3" json:"user_name,omitempty"`
+	NickName      string                 `protobuf:"bytes,3,opt,name=nick_name,json=nickName,proto3" json:"nick_name,omitempty"`
+	Email         string                 `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
+	PhoneNumber   string                 `protobuf:"bytes,5,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
+	Gender        int32                  `protobuf:"varint,6,opt,name=gender,proto3" json:"gender,omitempty"`
+	Status        int32                  `protobuf:"varint,7,opt,name=status,proto3" json:"status,omitempty"`
+	Avatar        string                 `protobuf:"bytes,8,opt,name=avatar,proto3" json:"avatar,omitempty"`
+	Remark        string                 `protobuf:"bytes,9,opt,name=remark,proto3" json:"remark,omitempty"`
+	CreateBy      int64                  `protobuf:"varint,10,opt,name=create_by,json=createBy,proto3" json:"create_by,omitempty"`
+	UpdateBy      int64                  `protobuf:"varint,11,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
+	LoginIp       string                 `protobuf:"bytes,12,opt,name=login_ip,json=loginIp,proto3" json:"login_ip,omitempty"`
+	LoginDate     *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=login_date,json=loginDate,proto3" json:"login_date,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CurrentUser) Reset() {
+	*x = CurrentUser{}
+	mi := &file_system_user_v1_user_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CurrentUser) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CurrentUser) ProtoMessage() {}
+
+func (x *CurrentUser) ProtoReflect() protoreflect.Message {
+	mi := &file_system_user_v1_user_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CurrentUser.ProtoReflect.Descriptor instead.
+func (*CurrentUser) Descriptor() ([]byte, []int) {
+	return file_system_user_v1_user_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CurrentUser) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *CurrentUser) GetUserName() string {
+	if x != nil {
+		return x.UserName
+	}
+	return ""
+}
+
+func (x *CurrentUser) GetNickName() string {
+	if x != nil {
+		return x.NickName
+	}
+	return ""
+}
+
+func (x *CurrentUser) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *CurrentUser) GetPhoneNumber() string {
+	if x != nil {
+		return x.PhoneNumber
+	}
+	return ""
+}
+
+func (x *CurrentUser) GetGender() int32 {
+	if x != nil {
+		return x.Gender
+	}
+	return 0
+}
+
+func (x *CurrentUser) GetStatus() int32 {
+	if x != nil {
+		return x.Status
+	}
+	return 0
+}
+
+func (x *CurrentUser) GetAvatar() string {
+	if x != nil {
+		return x.Avatar
+	}
+	return ""
+}
+
+func (x *CurrentUser) GetRemark() string {
+	if x != nil {
+		return x.Remark
+	}
+	return ""
+}
+
+func (x *CurrentUser) GetCreateBy() int64 {
+	if x != nil {
+		return x.CreateBy
+	}
+	return 0
+}
+
+func (x *CurrentUser) GetUpdateBy() int64 {
+	if x != nil {
+		return x.UpdateBy
+	}
+	return 0
+}
+
+func (x *CurrentUser) GetLoginIp() string {
+	if x != nil {
+		return x.LoginIp
+	}
+	return ""
+}
+
+func (x *CurrentUser) GetLoginDate() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LoginDate
+	}
+	return nil
+}
+
+func (x *CurrentUser) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *CurrentUser) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+// CurrentUserInfo is the authenticated System User and current Authorization
+// Snapshot exposed to the frontend.
+type CurrentUserInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *CurrentUser           `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	RoleKeys      []string               `protobuf:"bytes,2,rep,name=role_keys,json=roleKeys,proto3" json:"role_keys,omitempty"`
+	Permissions   []string               `protobuf:"bytes,3,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CurrentUserInfo) Reset() {
+	*x = CurrentUserInfo{}
+	mi := &file_system_user_v1_user_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CurrentUserInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CurrentUserInfo) ProtoMessage() {}
+
+func (x *CurrentUserInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_system_user_v1_user_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CurrentUserInfo.ProtoReflect.Descriptor instead.
+func (*CurrentUserInfo) Descriptor() ([]byte, []int) {
+	return file_system_user_v1_user_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CurrentUserInfo) GetUser() *CurrentUser {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+func (x *CurrentUserInfo) GetRoleKeys() []string {
+	if x != nil {
+		return x.RoleKeys
+	}
+	return nil
+}
+
+func (x *CurrentUserInfo) GetPermissions() []string {
+	if x != nil {
+		return x.Permissions
+	}
+	return nil
+}
+
 type CreateUserRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Required. The user to create.
@@ -266,7 +487,7 @@ type CreateUserRequest struct {
 
 func (x *CreateUserRequest) Reset() {
 	*x = CreateUserRequest{}
-	mi := &file_system_user_v1_user_proto_msgTypes[2]
+	mi := &file_system_user_v1_user_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -278,7 +499,7 @@ func (x *CreateUserRequest) String() string {
 func (*CreateUserRequest) ProtoMessage() {}
 
 func (x *CreateUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_system_user_v1_user_proto_msgTypes[2]
+	mi := &file_system_user_v1_user_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -291,7 +512,7 @@ func (x *CreateUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateUserRequest.ProtoReflect.Descriptor instead.
 func (*CreateUserRequest) Descriptor() ([]byte, []int) {
-	return file_system_user_v1_user_proto_rawDescGZIP(), []int{2}
+	return file_system_user_v1_user_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *CreateUserRequest) GetUser() *User {
@@ -311,7 +532,7 @@ type GetUserRequest struct {
 
 func (x *GetUserRequest) Reset() {
 	*x = GetUserRequest{}
-	mi := &file_system_user_v1_user_proto_msgTypes[3]
+	mi := &file_system_user_v1_user_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -323,7 +544,7 @@ func (x *GetUserRequest) String() string {
 func (*GetUserRequest) ProtoMessage() {}
 
 func (x *GetUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_system_user_v1_user_proto_msgTypes[3]
+	mi := &file_system_user_v1_user_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -336,7 +557,7 @@ func (x *GetUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserRequest.ProtoReflect.Descriptor instead.
 func (*GetUserRequest) Descriptor() ([]byte, []int) {
-	return file_system_user_v1_user_proto_rawDescGZIP(), []int{3}
+	return file_system_user_v1_user_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetUserRequest) GetUserId() int64 {
@@ -367,7 +588,7 @@ type ListUsersRequest struct {
 
 func (x *ListUsersRequest) Reset() {
 	*x = ListUsersRequest{}
-	mi := &file_system_user_v1_user_proto_msgTypes[4]
+	mi := &file_system_user_v1_user_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -379,7 +600,7 @@ func (x *ListUsersRequest) String() string {
 func (*ListUsersRequest) ProtoMessage() {}
 
 func (x *ListUsersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_system_user_v1_user_proto_msgTypes[4]
+	mi := &file_system_user_v1_user_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -392,7 +613,7 @@ func (x *ListUsersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUsersRequest.ProtoReflect.Descriptor instead.
 func (*ListUsersRequest) Descriptor() ([]byte, []int) {
-	return file_system_user_v1_user_proto_rawDescGZIP(), []int{4}
+	return file_system_user_v1_user_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListUsersRequest) GetPageSize() int32 {
@@ -435,7 +656,7 @@ type UpdateUserRequest struct {
 
 func (x *UpdateUserRequest) Reset() {
 	*x = UpdateUserRequest{}
-	mi := &file_system_user_v1_user_proto_msgTypes[5]
+	mi := &file_system_user_v1_user_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -447,7 +668,7 @@ func (x *UpdateUserRequest) String() string {
 func (*UpdateUserRequest) ProtoMessage() {}
 
 func (x *UpdateUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_system_user_v1_user_proto_msgTypes[5]
+	mi := &file_system_user_v1_user_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -460,7 +681,7 @@ func (x *UpdateUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateUserRequest.ProtoReflect.Descriptor instead.
 func (*UpdateUserRequest) Descriptor() ([]byte, []int) {
-	return file_system_user_v1_user_proto_rawDescGZIP(), []int{5}
+	return file_system_user_v1_user_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *UpdateUserRequest) GetUser() *User {
@@ -487,7 +708,7 @@ type DeleteUserRequest struct {
 
 func (x *DeleteUserRequest) Reset() {
 	*x = DeleteUserRequest{}
-	mi := &file_system_user_v1_user_proto_msgTypes[6]
+	mi := &file_system_user_v1_user_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -499,7 +720,7 @@ func (x *DeleteUserRequest) String() string {
 func (*DeleteUserRequest) ProtoMessage() {}
 
 func (x *DeleteUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_system_user_v1_user_proto_msgTypes[6]
+	mi := &file_system_user_v1_user_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -512,7 +733,7 @@ func (x *DeleteUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteUserRequest.ProtoReflect.Descriptor instead.
 func (*DeleteUserRequest) Descriptor() ([]byte, []int) {
-	return file_system_user_v1_user_proto_rawDescGZIP(), []int{6}
+	return file_system_user_v1_user_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *DeleteUserRequest) GetUserId() int64 {
@@ -526,7 +747,7 @@ var File_system_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_system_user_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x19system/user/v1/user.proto\x12\x0esystem.user.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\"\x94\x04\n" +
+	"\x19system/user/v1/user.proto\x12\x0esystem.user.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\"system/auth/v1/policy/policy.proto\"\x94\x04\n" +
 	"\x04User\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
 	"\tuser_name\x18\x02 \x01(\tR\buserName\x12\x1b\n" +
@@ -550,7 +771,31 @@ const file_system_user_v1_user_proto_rawDesc = "" +
 	"updated_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"]\n" +
 	"\aUserSet\x12*\n" +
 	"\x05users\x18\x01 \x03(\v2\x14.system.user.v1.UserR\x05users\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"B\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xff\x03\n" +
+	"\vCurrentUser\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
+	"\tuser_name\x18\x02 \x01(\tR\buserName\x12\x1b\n" +
+	"\tnick_name\x18\x03 \x01(\tR\bnickName\x12\x14\n" +
+	"\x05email\x18\x04 \x01(\tR\x05email\x12!\n" +
+	"\fphone_number\x18\x05 \x01(\tR\vphoneNumber\x12\x16\n" +
+	"\x06gender\x18\x06 \x01(\x05R\x06gender\x12\x16\n" +
+	"\x06status\x18\a \x01(\x05R\x06status\x12\x16\n" +
+	"\x06avatar\x18\b \x01(\tR\x06avatar\x12\x16\n" +
+	"\x06remark\x18\t \x01(\tR\x06remark\x12\x1b\n" +
+	"\tcreate_by\x18\n" +
+	" \x01(\x03R\bcreateBy\x12\x1b\n" +
+	"\tupdate_by\x18\v \x01(\x03R\bupdateBy\x12\x19\n" +
+	"\blogin_ip\x18\f \x01(\tR\aloginIp\x129\n" +
+	"\n" +
+	"login_date\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tloginDate\x129\n" +
+	"\n" +
+	"created_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x81\x01\n" +
+	"\x0fCurrentUserInfo\x12/\n" +
+	"\x04user\x18\x01 \x01(\v2\x1b.system.user.v1.CurrentUserR\x04user\x12\x1b\n" +
+	"\trole_keys\x18\x02 \x03(\tR\broleKeys\x12 \n" +
+	"\vpermissions\x18\x03 \x03(\tR\vpermissions\"B\n" +
 	"\x11CreateUserRequest\x12-\n" +
 	"\x04user\x18\x01 \x01(\v2\x14.system.user.v1.UserB\x03\xe0A\x02R\x04user\".\n" +
 	"\x0eGetUserRequest\x12\x1c\n" +
@@ -566,16 +811,17 @@ const file_system_user_v1_user_proto_rawDesc = "" +
 	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x03\xe0A\x02R\n" +
 	"updateMask\"1\n" +
 	"\x11DeleteUserRequest\x12\x1c\n" +
-	"\auser_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06userId2\x8a\x04\n" +
-	"\vUserService\x12a\n" +
+	"\auser_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06userId2\xee\x05\n" +
+	"\vUserService\x12x\n" +
 	"\n" +
-	"CreateUser\x12!.system.user.v1.CreateUserRequest\x1a\x14.system.user.v1.User\"\x1a\x82\xd3\xe4\x93\x02\x14:\x04user\"\f/system/user\x12_\n" +
-	"\aGetUser\x12\x1e.system.user.v1.GetUserRequest\x1a\x14.system.user.v1.User\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/system/user/{user_id}\x12\\\n" +
-	"\tListUsers\x12 .system.user.v1.ListUsersRequest\x1a\x17.system.user.v1.UserSet\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/system/user\x12p\n" +
+	"CreateUser\x12!.system.user.v1.CreateUserRequest\x1a\x14.system.user.v1.User\"1\xc2\xf3\x18\x13\b\x04\x12\x0fsystem:user:add\x82\xd3\xe4\x93\x02\x14:\x04user\"\f/system/user\x12x\n" +
+	"\aGetUser\x12\x1e.system.user.v1.GetUserRequest\x1a\x14.system.user.v1.User\"7\xc2\xf3\x18\x15\b\x04\x12\x11system:user:query\x82\xd3\xe4\x93\x02\x18\x12\x16/system/user/{user_id}\x12t\n" +
+	"\tListUsers\x12 .system.user.v1.ListUsersRequest\x1a\x17.system.user.v1.UserSet\",\xc2\xf3\x18\x14\b\x04\x12\x10system:user:list\x82\xd3\xe4\x93\x02\x0e\x12\f/system/user\x12\x88\x01\n" +
 	"\n" +
-	"UpdateUser\x12!.system.user.v1.UpdateUserRequest\x1a\x14.system.user.v1.User\")\x82\xd3\xe4\x93\x02#:\x04user2\x1b/system/user/{user.user_id}\x12g\n" +
+	"UpdateUser\x12!.system.user.v1.UpdateUserRequest\x1a\x14.system.user.v1.User\"A\xc2\xf3\x18\x14\b\x04\x12\x10system:user:edit\x82\xd3\xe4\x93\x02#:\x04user2\x1b/system/user/{user.user_id}\x12\x81\x01\n" +
 	"\n" +
-	"DeleteUser\x12!.system.user.v1.DeleteUserRequest\x1a\x16.google.protobuf.Empty\"\x1e\x82\xd3\xe4\x93\x02\x18*\x16/system/user/{user_id}B2\n" +
+	"DeleteUser\x12!.system.user.v1.DeleteUserRequest\x1a\x16.google.protobuf.Empty\"8\xc2\xf3\x18\x16\b\x04\x12\x12system:user:remove\x82\xd3\xe4\x93\x02\x18*\x16/system/user/{user_id}\x12f\n" +
+	"\aGetInfo\x12\x16.google.protobuf.Empty\x1a\x1f.system.user.v1.CurrentUserInfo\"\"\xc2\xf3\x18\x02\b\x03\x82\xd3\xe4\x93\x02\x16\x12\x14/system/user/getInfoB2\n" +
 	"\x12api.system.user.v1P\x01Z\x1aglex/api/system/user/v1;v1b\x06proto3"
 
 var (
@@ -590,42 +836,50 @@ func file_system_user_v1_user_proto_rawDescGZIP() []byte {
 	return file_system_user_v1_user_proto_rawDescData
 }
 
-var file_system_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_system_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_system_user_v1_user_proto_goTypes = []any{
 	(*User)(nil),                  // 0: system.user.v1.User
 	(*UserSet)(nil),               // 1: system.user.v1.UserSet
-	(*CreateUserRequest)(nil),     // 2: system.user.v1.CreateUserRequest
-	(*GetUserRequest)(nil),        // 3: system.user.v1.GetUserRequest
-	(*ListUsersRequest)(nil),      // 4: system.user.v1.ListUsersRequest
-	(*UpdateUserRequest)(nil),     // 5: system.user.v1.UpdateUserRequest
-	(*DeleteUserRequest)(nil),     // 6: system.user.v1.DeleteUserRequest
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
-	(*fieldmaskpb.FieldMask)(nil), // 8: google.protobuf.FieldMask
-	(*emptypb.Empty)(nil),         // 9: google.protobuf.Empty
+	(*CurrentUser)(nil),           // 2: system.user.v1.CurrentUser
+	(*CurrentUserInfo)(nil),       // 3: system.user.v1.CurrentUserInfo
+	(*CreateUserRequest)(nil),     // 4: system.user.v1.CreateUserRequest
+	(*GetUserRequest)(nil),        // 5: system.user.v1.GetUserRequest
+	(*ListUsersRequest)(nil),      // 6: system.user.v1.ListUsersRequest
+	(*UpdateUserRequest)(nil),     // 7: system.user.v1.UpdateUserRequest
+	(*DeleteUserRequest)(nil),     // 8: system.user.v1.DeleteUserRequest
+	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
+	(*fieldmaskpb.FieldMask)(nil), // 10: google.protobuf.FieldMask
+	(*emptypb.Empty)(nil),         // 11: google.protobuf.Empty
 }
 var file_system_user_v1_user_proto_depIdxs = []int32{
-	7,  // 0: system.user.v1.User.login_date:type_name -> google.protobuf.Timestamp
-	7,  // 1: system.user.v1.User.created_at:type_name -> google.protobuf.Timestamp
-	7,  // 2: system.user.v1.User.updated_at:type_name -> google.protobuf.Timestamp
+	9,  // 0: system.user.v1.User.login_date:type_name -> google.protobuf.Timestamp
+	9,  // 1: system.user.v1.User.created_at:type_name -> google.protobuf.Timestamp
+	9,  // 2: system.user.v1.User.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 3: system.user.v1.UserSet.users:type_name -> system.user.v1.User
-	0,  // 4: system.user.v1.CreateUserRequest.user:type_name -> system.user.v1.User
-	0,  // 5: system.user.v1.UpdateUserRequest.user:type_name -> system.user.v1.User
-	8,  // 6: system.user.v1.UpdateUserRequest.update_mask:type_name -> google.protobuf.FieldMask
-	2,  // 7: system.user.v1.UserService.CreateUser:input_type -> system.user.v1.CreateUserRequest
-	3,  // 8: system.user.v1.UserService.GetUser:input_type -> system.user.v1.GetUserRequest
-	4,  // 9: system.user.v1.UserService.ListUsers:input_type -> system.user.v1.ListUsersRequest
-	5,  // 10: system.user.v1.UserService.UpdateUser:input_type -> system.user.v1.UpdateUserRequest
-	6,  // 11: system.user.v1.UserService.DeleteUser:input_type -> system.user.v1.DeleteUserRequest
-	0,  // 12: system.user.v1.UserService.CreateUser:output_type -> system.user.v1.User
-	0,  // 13: system.user.v1.UserService.GetUser:output_type -> system.user.v1.User
-	1,  // 14: system.user.v1.UserService.ListUsers:output_type -> system.user.v1.UserSet
-	0,  // 15: system.user.v1.UserService.UpdateUser:output_type -> system.user.v1.User
-	9,  // 16: system.user.v1.UserService.DeleteUser:output_type -> google.protobuf.Empty
-	12, // [12:17] is the sub-list for method output_type
-	7,  // [7:12] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	9,  // 4: system.user.v1.CurrentUser.login_date:type_name -> google.protobuf.Timestamp
+	9,  // 5: system.user.v1.CurrentUser.created_at:type_name -> google.protobuf.Timestamp
+	9,  // 6: system.user.v1.CurrentUser.updated_at:type_name -> google.protobuf.Timestamp
+	2,  // 7: system.user.v1.CurrentUserInfo.user:type_name -> system.user.v1.CurrentUser
+	0,  // 8: system.user.v1.CreateUserRequest.user:type_name -> system.user.v1.User
+	0,  // 9: system.user.v1.UpdateUserRequest.user:type_name -> system.user.v1.User
+	10, // 10: system.user.v1.UpdateUserRequest.update_mask:type_name -> google.protobuf.FieldMask
+	4,  // 11: system.user.v1.UserService.CreateUser:input_type -> system.user.v1.CreateUserRequest
+	5,  // 12: system.user.v1.UserService.GetUser:input_type -> system.user.v1.GetUserRequest
+	6,  // 13: system.user.v1.UserService.ListUsers:input_type -> system.user.v1.ListUsersRequest
+	7,  // 14: system.user.v1.UserService.UpdateUser:input_type -> system.user.v1.UpdateUserRequest
+	8,  // 15: system.user.v1.UserService.DeleteUser:input_type -> system.user.v1.DeleteUserRequest
+	11, // 16: system.user.v1.UserService.GetInfo:input_type -> google.protobuf.Empty
+	0,  // 17: system.user.v1.UserService.CreateUser:output_type -> system.user.v1.User
+	0,  // 18: system.user.v1.UserService.GetUser:output_type -> system.user.v1.User
+	1,  // 19: system.user.v1.UserService.ListUsers:output_type -> system.user.v1.UserSet
+	0,  // 20: system.user.v1.UserService.UpdateUser:output_type -> system.user.v1.User
+	11, // 21: system.user.v1.UserService.DeleteUser:output_type -> google.protobuf.Empty
+	3,  // 22: system.user.v1.UserService.GetInfo:output_type -> system.user.v1.CurrentUserInfo
+	17, // [17:23] is the sub-list for method output_type
+	11, // [11:17] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_system_user_v1_user_proto_init() }
@@ -639,7 +893,7 @@ func file_system_user_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_system_user_v1_user_proto_rawDesc), len(file_system_user_v1_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

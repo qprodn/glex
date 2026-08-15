@@ -7,6 +7,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/field_mask.proto";
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
+import "system/auth/v1/policy/policy.proto";
 
 option go_package = "glex/api/system/role/v1;v1";
 option java_multiple_files = true;
@@ -52,6 +53,10 @@ message RoleSet {
 service RoleService {
   // CreateRole creates a new role, optionally with its initial Menu Grant.
   rpc CreateRole(CreateRoleRequest) returns (Role) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:role:add"
+    };
     option (google.api.http) = {
       post: "/system/role"
       body: "role"
@@ -59,12 +64,20 @@ service RoleService {
   }
   // GetRole retrieves a role by id.
   rpc GetRole(GetRoleRequest) returns (Role) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:role:query"
+    };
     option (google.api.http) = {
       get: "/system/role/{role_id}"
     };
   }
   // ListRoles lists roles with AIP filter/order/page-token.
   rpc ListRoles(ListRolesRequest) returns (RoleSet) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:role:list"
+    };
     option (google.api.http) = {
       get: "/system/role"
     };
@@ -72,6 +85,10 @@ service RoleService {
   // UpdateRole partially updates a role (field-mask). menu_check_strictly is
   // ignored here — it is written only via UpdateRoleMenus.
   rpc UpdateRole(UpdateRoleRequest) returns (Role) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:role:edit"
+    };
     option (google.api.http) = {
       patch: "/system/role/{role.role_id}"
       body: "role"
@@ -79,6 +96,10 @@ service RoleService {
   }
   // DeleteRole soft-deletes a role by id and removes its Menu Grant.
   rpc DeleteRole(DeleteRoleRequest) returns (google.protobuf.Empty) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:role:remove"
+    };
     option (google.api.http) = {
       delete: "/system/role/{role_id}"
     };
@@ -88,6 +109,10 @@ service RoleService {
   // menu is excluded (it shows as half-checked in the tree, not as a grant).
   // Buttons are included. Soft-deleted menus are excluded.
   rpc ListRoleMenus(ListRoleMenusRequest) returns (RoleMenus) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:role:query"
+    };
     option (google.api.http) = {
       get: "/system/role/{role_id}/menus"
     };
@@ -97,6 +122,10 @@ service RoleService {
   // menu_ids clears all grants). Unknown or soft-deleted menu ids are
   // rejected with ROLE_MENU_NOT_FOUND; duplicates are silently deduped.
   rpc UpdateRoleMenus(UpdateRoleMenusRequest) returns (RoleMenus) {
+    option (system.auth.v1.policy.auth_policy) = {
+      mode: PERMISSION
+      permission: "system:role:edit"
+    };
     option (google.api.http) = {
       put: "/system/role/{role_id}/menus"
       body: "*"
