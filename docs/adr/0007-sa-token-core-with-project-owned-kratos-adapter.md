@@ -8,7 +8,9 @@ RBAC model and distinguish authentication failures, authorization denials, and
 backend failures. This deliberately gives up the integration package's
 convenience in exchange for explicit policy composition, typed context values,
 and transport-independent application interfaces. The dependency is pinned to
-`sa-token-go` v0.2.4 and isolated behind data-layer repository contracts. HTTP accepts only a strict
+`sa-token-go` core v0.2.3 — the newest published tag; the originally
+considered v0.2.4 was never released upstream — and isolated behind
+data-layer repository contracts. HTTP accepts only a strict
 `Authorization: Bearer` credential; the credential is an opaque random token
 generated with `core.TokenStyleSimple`, while externally visible session
 management uses a separate non-secret Session ID. A project-owned Redis storage

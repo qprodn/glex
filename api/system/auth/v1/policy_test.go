@@ -31,44 +31,44 @@ func TestEveryRPCDeclaresAValidAuthPolicy(t *testing.T) {
 }
 
 func TestRPCPoliciesMatchTheConfirmedContract(t *testing.T) {
-	expected := map[protoreflect.FullName]policyv1.AuthPolicy{
-		"system.auth.v1.AuthService.Login":                          {Mode: policyv1.AuthMode_PUBLIC},
-		"system.auth.v1.AuthService.Logout":                         {Mode: policyv1.AuthMode_OPTIONAL},
-		"system.auth.v1.AuthService.ListUserRoles":                  {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:query"},
-		"system.auth.v1.AuthService.UpdateUserRoles":                {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:edit"},
-		"system.auth.v1.AuthService.ListRoleUsers":                  {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:list"},
-		"system.auth.v1.OnlineSessionService.ListOnlineSessions":    {Mode: policyv1.AuthMode_PERMISSION, Permission: "monitor:online:list"},
-		"system.auth.v1.OnlineSessionService.KickoutOnlineSession":  {Mode: policyv1.AuthMode_PERMISSION, Permission: "monitor:online:forceLogout"},
-		"system.auth.v1.OnlineSessionService.ListMyOnlineSessions":  {Mode: policyv1.AuthMode_AUTHENTICATED},
-		"system.auth.v1.OnlineSessionService.DeleteMyOnlineSession": {Mode: policyv1.AuthMode_AUTHENTICATED},
-		"system.menu.v1.MenuService.CreateMenu":                     {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:menu:add"},
-		"system.menu.v1.MenuService.GetMenu":                        {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:menu:query"},
-		"system.menu.v1.MenuService.ListMenus":                      {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:menu:list"},
-		"system.menu.v1.MenuService.UpdateMenu":                     {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:menu:edit"},
-		"system.menu.v1.MenuService.DeleteMenu":                     {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:menu:remove"},
-		"system.menu.v1.MenuService.GetRouters":                     {Mode: policyv1.AuthMode_AUTHENTICATED},
-		"system.role.v1.RoleService.CreateRole":                     {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:add"},
-		"system.role.v1.RoleService.GetRole":                        {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:query"},
-		"system.role.v1.RoleService.ListRoles":                      {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:list"},
-		"system.role.v1.RoleService.UpdateRole":                     {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:edit"},
-		"system.role.v1.RoleService.DeleteRole":                     {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:remove"},
-		"system.role.v1.RoleService.ListRoleMenus":                  {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:query"},
-		"system.role.v1.RoleService.UpdateRoleMenus":                {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:edit"},
-		"system.user.v1.UserService.CreateUser":                     {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:add"},
-		"system.user.v1.UserService.GetUser":                        {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:query"},
-		"system.user.v1.UserService.ListUsers":                      {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:list"},
-		"system.user.v1.UserService.UpdateUser":                     {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:edit"},
-		"system.user.v1.UserService.DeleteUser":                     {Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:remove"},
-		"system.user.v1.UserService.GetInfo":                        {Mode: policyv1.AuthMode_AUTHENTICATED},
+	expected := map[protoreflect.FullName]*policyv1.AuthPolicy{
+		"system.auth.v1.AuthService.Login":                          &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PUBLIC},
+		"system.auth.v1.AuthService.Logout":                         &policyv1.AuthPolicy{Mode: policyv1.AuthMode_OPTIONAL},
+		"system.auth.v1.AuthService.ListUserRoles":                  &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:query"},
+		"system.auth.v1.AuthService.UpdateUserRoles":                &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:edit"},
+		"system.auth.v1.AuthService.ListRoleUsers":                  &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:list"},
+		"system.auth.v1.OnlineSessionService.ListOnlineSessions":    &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "monitor:online:list"},
+		"system.auth.v1.OnlineSessionService.KickoutOnlineSession":  &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "monitor:online:forceLogout"},
+		"system.auth.v1.OnlineSessionService.ListMyOnlineSessions":  &policyv1.AuthPolicy{Mode: policyv1.AuthMode_AUTHENTICATED},
+		"system.auth.v1.OnlineSessionService.DeleteMyOnlineSession": &policyv1.AuthPolicy{Mode: policyv1.AuthMode_AUTHENTICATED},
+		"system.menu.v1.MenuService.CreateMenu":                     &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:menu:add"},
+		"system.menu.v1.MenuService.GetMenu":                        &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:menu:query"},
+		"system.menu.v1.MenuService.ListMenus":                      &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:menu:list"},
+		"system.menu.v1.MenuService.UpdateMenu":                     &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:menu:edit"},
+		"system.menu.v1.MenuService.DeleteMenu":                     &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:menu:remove"},
+		"system.menu.v1.MenuService.GetRouters":                     &policyv1.AuthPolicy{Mode: policyv1.AuthMode_AUTHENTICATED},
+		"system.role.v1.RoleService.CreateRole":                     &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:add"},
+		"system.role.v1.RoleService.GetRole":                        &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:query"},
+		"system.role.v1.RoleService.ListRoles":                      &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:list"},
+		"system.role.v1.RoleService.UpdateRole":                     &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:edit"},
+		"system.role.v1.RoleService.DeleteRole":                     &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:remove"},
+		"system.role.v1.RoleService.ListRoleMenus":                  &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:query"},
+		"system.role.v1.RoleService.UpdateRoleMenus":                &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:role:edit"},
+		"system.user.v1.UserService.CreateUser":                     &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:add"},
+		"system.user.v1.UserService.GetUser":                        &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:query"},
+		"system.user.v1.UserService.ListUsers":                      &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:list"},
+		"system.user.v1.UserService.UpdateUser":                     &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:edit"},
+		"system.user.v1.UserService.DeleteUser":                     &policyv1.AuthPolicy{Mode: policyv1.AuthMode_PERMISSION, Permission: "system:user:remove"},
+		"system.user.v1.UserService.GetInfo":                        &policyv1.AuthPolicy{Mode: policyv1.AuthMode_AUTHENTICATED},
 	}
 
-	actual := make(map[protoreflect.FullName]policyv1.AuthPolicy)
+	actual := make(map[protoreflect.FullName]*policyv1.AuthPolicy)
 	for _, method := range serviceMethods() {
 		policy, err := methodPolicy(method)
 		if err != nil {
 			t.Fatalf("%s: %v", method.FullName(), err)
 		}
-		actual[method.FullName()] = *policy
+		actual[method.FullName()] = policy
 	}
 
 	for name, want := range expected {
