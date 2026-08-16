@@ -46,7 +46,7 @@ func (r *fakeLoginCounterRepo) ClearUserName(_ context.Context, userName string)
 }
 
 func newLoginUsecase(users *fakeUserRepo, issuer *fakeAuthLoginRepo, counters *fakeLoginCounterRepo) *AuthUsecase {
-	uc := NewAuthUsecase(users, newFakeRoleRepo(), newFakeUserRoleRepo(), issuer, counters)
+	uc := NewAuthUsecase(users, newFakeRoleRepo(), newFakeUserRoleRepo(), issuer, counters, nil)
 	uc.now = func() time.Time { return time.Unix(1_700_000_000, 0) }
 	return uc
 }

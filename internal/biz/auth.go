@@ -45,20 +45,31 @@ type AuthUsecase struct {
 	linkRepo    UserRoleRepo
 	loginRepo   AuthLoginRepo
 	counterRepo LoginCounterRepo
+	sessionRepo LoginSessionRepo
 	now         func() time.Time
 }
 
 // NewAuthUsecase creates an AuthUsecase. userRepo/roleRepo back existence
 // checks; linkRepo owns the sys_user_role rows.
-func NewAuthUsecase(userRepo UserRepo, roleRepo RoleRepo, linkRepo UserRoleRepo, loginRepo AuthLoginRepo, counterRepo LoginCounterRepo) *AuthUsecase {
+func NewAuthUsecase(userRepo UserRepo, roleRepo RoleRepo, linkRepo UserRoleRepo, loginRepo AuthLoginRepo, counterRepo LoginCounterRepo, sessionRepo LoginSessionRepo) *AuthUsecase {
 	return &AuthUsecase{
 		userRepo:    userRepo,
 		roleRepo:    roleRepo,
 		linkRepo:    linkRepo,
 		loginRepo:   loginRepo,
 		counterRepo: counterRepo,
+		sessionRepo: sessionRepo,
 		now:         time.Now,
 	}
+}
+
+// Logout revokes only the authenticated Principal's current Login Session. An
+// anonymous call is the idempotent success path admitted by OPTIONAL auth.
+func (uc *AuthUsecase) Logout(ctx context.Context, principal *Principal) error {
+	if principal == nil {
+		return nil
+	}
+	return uc.sessionRepo.Logout(ctx, principal.SessionID())
 }
 
 // Login verifies credentials without revealing whether the System User exists,

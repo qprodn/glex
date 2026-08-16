@@ -1,7 +1,7 @@
 # Expose login, logout, and RuoYi online-session operations
 
 Type: task
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 03, 04, 05
 
 ## Objective
@@ -33,3 +33,26 @@ Session-management operations.
 - A System User cannot remove another user's Session ID.
 - Logout with Redis unavailable returns 503 and does not claim success.
 - No bulk public logout route is registered.
+
+## Comments
+
+- 2026-08-16 implemented the login transport boundary, including authoritative
+  forwarded source IP and User-Agent metadata, and mapped the login DO to the
+  `access_token` / `expire_in` reply without retaining or publishing the bearer
+  credential elsewhere.
+- Added the Login Session usecase and service operations for OPTIONAL
+  current-Session logout, permission-protected global listing and targeted
+  administrator kickout, authenticated current-user listing, and atomic
+  ownership-checked current-user removal. Missing Logout credentials and absent
+  revocation targets remain idempotent; storage failures propagate as 503.
+- Online Session DTOs contain only the non-secret Session ID, username, derived
+  device/browser/OS, IP address, and login time. No bulk logout RPC or HTTP
+  route was added.
+- Runtime HTTP tests register the generated handlers in isolation and exercise
+  all six RuoYi routes and policy modes, list-output credential replay
+  rejection, foreign Session ownership rejection, backend-failure handling,
+  and the exact absence of any bulk auth/session route. Production ProviderSet
+  and server registration remain scoped to issue 09; no unprotected gRPC
+  session-management service is exposed.
+- Verification completed with `make all`, `go test ./...`, and
+  `go test -race ./...`.
