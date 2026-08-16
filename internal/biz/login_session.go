@@ -18,6 +18,65 @@ type LoginSession struct {
 	LoginTime    time.Time
 }
 
+// AuthorizationSnapshot is the shared account-level view used by every Login
+// Session of one System User. It contains active Role keys and distinct
+// Functional Permission handles only; route-tree presentation is deliberately
+// not part of this snapshot.
+type AuthorizationSnapshot struct {
+	SystemUserID int64
+	UserName     string
+	RoleKeys     []string
+	Permissions  []string
+}
+
+// LoginRequest contains credentials plus the authoritative request metadata
+// needed to create a Login Session. Password is plaintext only while the login
+// usecase verifies it and is never persisted or returned.
+type LoginRequest struct {
+	UserName  string
+	Password  string
+	SourceIP  string
+	UserAgent string
+}
+
+// LoginResult returns the bearer credential exactly once after the shared
+// Authorization Snapshot and authoritative Login Session both exist.
+type LoginResult struct {
+	AccessToken string
+	ExpiresIn   time.Duration
+}
+
+// LoginIssue is the already-verified identity and safe Login Session metadata
+// passed from biz to the data wrapper. PasswordHash lets the wrapper prove the
+// credential did not change while it waited for the PostgreSQL advisory lock.
+type LoginIssue struct {
+	SystemUserID int64
+	UserName     string
+	PasswordHash string
+	SourceIP     string
+	DeviceType   string
+	Browser      string
+	OS           string
+	LoginTime    time.Time
+}
+
+// AuthLoginRepo is the data-layer login wrapper. Its implementation is the
+// only project call site allowed to invoke sa-token Manager.Login; it holds the
+// authorization lock, rebuilds the shared snapshot, and registers the Login
+// Session before returning a bearer credential.
+type AuthLoginRepo interface {
+	Issue(ctx context.Context, issue *LoginIssue) (*LoginResult, error)
+}
+
+// LoginCounterRepo owns the Redis-backed username and authoritative source-IP
+// failure counters. A positive duration means the attempt is locked for at
+// least that much longer.
+type LoginCounterRepo interface {
+	LockRemaining(ctx context.Context, userName, sourceIP string) (time.Duration, error)
+	RecordFailure(ctx context.Context, userName, sourceIP string) (time.Duration, error)
+	ClearUserName(ctx context.Context, userName string) error
+}
+
 // LoginSessionRepo is the authoritative project-owned Login Session store.
 // It accepts a bearer token only when correlating a newly-issued credential;
 // no read method returns that credential.

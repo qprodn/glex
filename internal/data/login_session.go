@@ -242,8 +242,8 @@ func tokenFingerprint(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func loginSessionBackendError(operation string, err error) error {
-	slog.Warn("Login Session Redis operation failed", "op", operation, "err", err)
+func authRedisBackendError(operation string, err error) error {
+	slog.Warn("authentication Redis operation failed", "op", operation, "err", err)
 	return biz.ErrAuthBackendUnavailable
 }
 
@@ -285,7 +285,7 @@ func (r *loginSessionRepo) Create(ctx context.Context, bearerToken string, sessi
 		).Int()
 		cancel()
 		if err != nil {
-			return nil, loginSessionBackendError("create", err)
+			return nil, authRedisBackendError("create_login_session", err)
 		}
 		if result == 1 {
 			return toBizLoginSession(po)
@@ -304,7 +304,7 @@ func (r *loginSessionRepo) FindByID(ctx context.Context, sessionID string) (*biz
 	}
 	session, err := toBizLoginSession(po)
 	if err != nil {
-		return nil, loginSessionBackendError("decode_system_user_id", err)
+		return nil, authRedisBackendError("decode_system_user_id", err)
 	}
 	return session, nil
 }
@@ -327,7 +327,7 @@ func (r *loginSessionRepo) FindByToken(ctx context.Context, bearerToken string) 
 		return nil, biz.ErrTokenInvalid
 	}
 	if err != nil {
-		return nil, loginSessionBackendError("find_by_token", err)
+		return nil, authRedisBackendError("find_login_session_by_token", err)
 	}
 	return r.FindByID(ctx, sessionID)
 }
@@ -340,7 +340,7 @@ func (r *loginSessionRepo) findPO(ctx context.Context, sessionID string) (*login
 		return nil, biz.ErrLoginSessionNotFound
 	}
 	if err != nil {
-		return nil, loginSessionBackendError("find_by_id", err)
+		return nil, authRedisBackendError("find_login_session_by_id", err)
 	}
 	var po loginSessionPO
 	if err := json.Unmarshal([]byte(encoded), &po); err != nil {
@@ -386,7 +386,7 @@ func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...bi
 	defer cancel()
 	ids, err := r.rdb.ZRange(readCtx, indexKey, 0, -1).Result()
 	if err != nil {
-		return nil, loginSessionBackendError("list_index", err)
+		return nil, authRedisBackendError("list_login_session_index", err)
 	}
 	if len(ids) == 0 {
 		return []*biz.LoginSession{}, nil
@@ -397,7 +397,7 @@ func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...bi
 	}
 	values, err := r.rdb.MGet(readCtx, keys...).Result()
 	if err != nil {
-		return nil, loginSessionBackendError("list_metadata", err)
+		return nil, authRedisBackendError("list_login_session_metadata", err)
 	}
 	result := make([]*biz.LoginSession, 0, len(values))
 	staleIDs := make([]any, 0)
@@ -413,7 +413,7 @@ func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...bi
 		}
 		session, err := toBizLoginSession(&po)
 		if err != nil {
-			return nil, loginSessionBackendError("decode_system_user_id", err)
+			return nil, authRedisBackendError("decode_system_user_id", err)
 		}
 		matches, err := matchesLoginSessionFilter(o.Filter.CheckedExpr.GetExpr(), session)
 		if err != nil {
@@ -428,7 +428,7 @@ func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...bi
 		err := r.rdb.ZRem(writeCtx, indexKey, staleIDs...).Err()
 		writeCancel()
 		if err != nil {
-			return nil, loginSessionBackendError("clean_stale_index", err)
+			return nil, authRedisBackendError("clean_stale_login_session_index", err)
 		}
 	}
 	if len(o.OrderBy.Fields) > 0 {
@@ -608,7 +608,7 @@ func (r *loginSessionRepo) RevokeSystemUser(ctx context.Context, systemUserID in
 		r.key(authManagerKeyPrefix+satokensession.AccountSessionKeyPrefix),
 	).Result()
 	if err != nil {
-		return loginSessionBackendError("revoke_system_user", err)
+		return authRedisBackendError("revoke_system_user_login_sessions", err)
 	}
 	return nil
 }
@@ -635,7 +635,7 @@ func (r *loginSessionRepo) revoke(ctx context.Context, sessionID string, expecte
 		r.key(authManagerKeyPrefix+satokensession.AccountSessionKeyPrefix),
 	).Int()
 	if err != nil {
-		return loginSessionBackendError("revoke", err)
+		return authRedisBackendError("revoke_login_session", err)
 	}
 	if result == -1 {
 		return biz.ErrLoginSessionNotOwned

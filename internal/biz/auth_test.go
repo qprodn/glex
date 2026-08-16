@@ -59,7 +59,7 @@ func (r *fakeUserRoleRepo) CountUserRoles(_ context.Context, roleID int64) (int,
 // --- Role Assignment (角色分配) — auth usecase ---
 
 func TestAuthListUserRoles_UserNotFound(t *testing.T) {
-	uc := NewAuthUsecase(newFakeUserRepo(), newFakeRoleRepo(), newFakeUserRoleRepo())
+	uc := NewAuthUsecase(newFakeUserRepo(), newFakeRoleRepo(), newFakeUserRoleRepo(), nil, nil)
 
 	_, err := uc.ListUserRoles(context.Background(), 99)
 	if !errors.Is(err, ErrUserNotFound) {
@@ -76,7 +76,7 @@ func TestAuthListUserRoles_AllRolesWithFlags(t *testing.T) {
 		{ID: 2, RoleName: "运营", RoleKey: "operator", RoleSort: 2},
 	}
 	link.links[10] = []int64{2}
-	uc := NewAuthUsecase(users, newFakeRoleRepo(), link)
+	uc := NewAuthUsecase(users, newFakeRoleRepo(), link, nil, nil)
 
 	got, err := uc.ListUserRoles(context.Background(), 10)
 	if err != nil {
@@ -91,7 +91,7 @@ func TestAuthListUserRoles_AllRolesWithFlags(t *testing.T) {
 }
 
 func TestAuthUpdateUserRoles_UserNotFound(t *testing.T) {
-	uc := NewAuthUsecase(newFakeUserRepo(), newFakeRoleRepo(), newFakeUserRoleRepo())
+	uc := NewAuthUsecase(newFakeUserRepo(), newFakeRoleRepo(), newFakeUserRoleRepo(), nil, nil)
 
 	_, err := uc.UpdateUserRoles(context.Background(), 99, []int64{1})
 	if !errors.Is(err, ErrUserNotFound) {
@@ -104,7 +104,7 @@ func TestAuthUpdateUserRoles_UnknownRoleRejected(t *testing.T) {
 	users.byID[10] = &User{ID: 10, UserName: "bob"}
 	link := newFakeUserRoleRepo()
 	link.roles = []*Role{{ID: 1, RoleName: "管理员", RoleKey: "admin"}}
-	uc := NewAuthUsecase(users, newFakeRoleRepo(), link)
+	uc := NewAuthUsecase(users, newFakeRoleRepo(), link, nil, nil)
 
 	_, err := uc.UpdateUserRoles(context.Background(), 10, []int64{1, 99})
 	if !errors.Is(err, ErrRoleNotFound) {
@@ -125,7 +125,7 @@ func TestAuthUpdateUserRoles_FullReplacement(t *testing.T) {
 		{ID: 3, RoleName: "访客", RoleKey: "guest", RoleSort: 3},
 	}
 	link.links[10] = []int64{1, 2}
-	uc := NewAuthUsecase(users, newFakeRoleRepo(), link)
+	uc := NewAuthUsecase(users, newFakeRoleRepo(), link, nil, nil)
 
 	// Replace with [2, 3] — duplicates are silently deduped.
 	got, err := uc.UpdateUserRoles(context.Background(), 10, []int64{2, 3, 2})
@@ -154,7 +154,7 @@ func TestAuthUpdateUserRoles_EmptyClears(t *testing.T) {
 	link := newFakeUserRoleRepo()
 	link.roles = []*Role{{ID: 1, RoleName: "管理员", RoleKey: "admin"}}
 	link.links[10] = []int64{1}
-	uc := NewAuthUsecase(users, newFakeRoleRepo(), link)
+	uc := NewAuthUsecase(users, newFakeRoleRepo(), link, nil, nil)
 
 	got, err := uc.UpdateUserRoles(context.Background(), 10, nil)
 	if err != nil {
@@ -169,7 +169,7 @@ func TestAuthUpdateUserRoles_EmptyClears(t *testing.T) {
 }
 
 func TestAuthListRoleUsers_RoleNotFound(t *testing.T) {
-	uc := NewAuthUsecase(newFakeUserRepo(), newFakeRoleRepo(), newFakeUserRoleRepo())
+	uc := NewAuthUsecase(newFakeUserRepo(), newFakeRoleRepo(), newFakeUserRoleRepo(), nil, nil)
 
 	_, err := uc.ListRoleUsers(context.Background(), 99)
 	if !errors.Is(err, ErrRoleNotFound) {

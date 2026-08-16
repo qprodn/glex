@@ -24,6 +24,8 @@ var ProviderSet = wire.NewSet(
 	NewAuthStorage,
 	NewAuthManager,
 	NewLoginSessionRepo,
+	NewLoginCounterRepo,
+	NewAuthLoginRepo,
 )
 
 // Data is a struct that contains the database client.

@@ -42,10 +42,7 @@ func newTestLoginSessionRepo(t *testing.T) (biz.LoginSessionRepo, *core.Manager,
 
 func createManagedLoginSession(t *testing.T, repo biz.LoginSessionRepo, manager *core.Manager, userID int64, userName, device string, loginTime time.Time) (*biz.LoginSession, string) {
 	t.Helper()
-	token, err := manager.Login(strconv.FormatInt(userID, 10), device)
-	if err != nil {
-		t.Fatalf("Manager.Login: %v", err)
-	}
+	token := issueTestBearer(t, manager, userID, userName, device)
 	ipAddress := "192.0.2.1"
 	if userName == "bob" {
 		ipAddress = "192.0.2.2"
@@ -114,11 +111,7 @@ func TestConcurrentRegistrationKeepsFiveUsableSessionsAndReplacesOldest(t *testi
 	const registrations = 6
 	tokens := make([]string, registrations)
 	for i := range tokens {
-		var err error
-		tokens[i], err = manager.Login("42", "desktop")
-		if err != nil {
-			t.Fatalf("Manager.Login #%d: %v", i+1, err)
-		}
+		tokens[i] = issueTestBearer(t, manager, 42, "alice", "desktop")
 	}
 
 	type created struct {
@@ -226,10 +219,7 @@ func TestConcurrentRegistrationAgainstRealRedis(t *testing.T) {
 	const registrations = 6
 	tokens := make([]string, registrations)
 	for i := range tokens {
-		tokens[i], err = manager.Login("42", "desktop")
-		if err != nil {
-			t.Fatalf("Manager.Login #%d: %v", i+1, err)
-		}
+		tokens[i] = issueTestBearer(t, manager, 42, "alice", "desktop")
 	}
 	type result struct {
 		token string

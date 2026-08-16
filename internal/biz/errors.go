@@ -1,6 +1,9 @@
 package biz
 
 import (
+	"strconv"
+	"time"
+
 	authv1 "glex/api/system/auth/v1"
 	menuv1 "glex/api/system/menu/v1"
 	rolev1 "glex/api/system/role/v1"
@@ -23,6 +26,8 @@ var (
 	ErrLoginSessionKickedOut  = errors.Unauthorized(authv1.ErrorReason_SESSION_KICKED_OUT.String(), "Login Session kicked out")
 	ErrLoginSessionReplaced   = errors.Unauthorized(authv1.ErrorReason_SESSION_REPLACED.String(), "Login Session replaced")
 	ErrAuthBackendUnavailable = errors.ServiceUnavailable(authv1.ErrorReason_AUTH_BACKEND_UNAVAILABLE.String(), "authentication backend unavailable")
+	ErrInvalidCredentials     = errors.Unauthorized(authv1.ErrorReason_INVALID_CREDENTIALS.String(), "invalid username or password")
+	ErrSystemUserDisabled     = errors.Forbidden(authv1.ErrorReason_ACCOUNT_DISABLED.String(), "System User is disabled")
 
 	// ErrUserNotFound: the requested user does not exist.
 	ErrUserNotFound = errors.NotFound(userv1.ErrorReason_USER_NOT_FOUND.String(), "user not found")
@@ -61,3 +66,15 @@ var (
 	// deleted or disabled (RuoYi: 已分配，不能删除/禁用).
 	ErrRoleAssigned = errors.BadRequest(rolev1.ErrorReason_ROLE_ASSIGNED.String(), "role is assigned to users and cannot be deleted or disabled")
 )
+
+// NewLoginLocked returns the stable LOGIN_LOCKED reason together with a
+// rounded-up remaining duration. The metadata does not identify which counter
+// (username or source IP) caused the lock.
+func NewLoginLocked(remaining time.Duration) error {
+	seconds := int64((remaining + time.Second - 1) / time.Second)
+	if seconds < 1 {
+		seconds = 1
+	}
+	return errors.Unauthorized(authv1.ErrorReason_LOGIN_LOCKED.String(), "login temporarily locked").
+		WithMetadata(map[string]string{"remaining_seconds": strconv.FormatInt(seconds, 10)})
+}

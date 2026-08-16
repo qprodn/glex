@@ -2,6 +2,11 @@ package biz
 
 import (
 	"context"
+	"errors"
+	"strings"
+	"time"
+
+	"github.com/mileusna/useragent"
 )
 
 // RoleAssignment is one role with whether the user is assigned it — the auth
@@ -35,15 +40,112 @@ type UserRoleRepo interface {
 
 // AuthUsecase holds the user↔role assignment business rules (auth module).
 type AuthUsecase struct {
-	userRepo UserRepo
-	roleRepo RoleRepo
-	linkRepo UserRoleRepo
+	userRepo    UserRepo
+	roleRepo    RoleRepo
+	linkRepo    UserRoleRepo
+	loginRepo   AuthLoginRepo
+	counterRepo LoginCounterRepo
+	now         func() time.Time
 }
 
 // NewAuthUsecase creates an AuthUsecase. userRepo/roleRepo back existence
 // checks; linkRepo owns the sys_user_role rows.
-func NewAuthUsecase(userRepo UserRepo, roleRepo RoleRepo, linkRepo UserRoleRepo) *AuthUsecase {
-	return &AuthUsecase{userRepo: userRepo, roleRepo: roleRepo, linkRepo: linkRepo}
+func NewAuthUsecase(userRepo UserRepo, roleRepo RoleRepo, linkRepo UserRoleRepo, loginRepo AuthLoginRepo, counterRepo LoginCounterRepo) *AuthUsecase {
+	return &AuthUsecase{
+		userRepo:    userRepo,
+		roleRepo:    roleRepo,
+		linkRepo:    linkRepo,
+		loginRepo:   loginRepo,
+		counterRepo: counterRepo,
+		now:         time.Now,
+	}
+}
+
+// Login verifies credentials without revealing whether the System User exists,
+// enforces the two failure counters, validates System User state only after bcrypt
+// succeeds, and delegates token/snapshot creation to the data wrapper.
+func (uc *AuthUsecase) Login(ctx context.Context, req *LoginRequest) (*LoginResult, error) {
+	if req == nil || uc.loginRepo == nil || uc.counterRepo == nil {
+		return nil, ErrInvalidCredentials
+	}
+	userName := strings.TrimSpace(req.UserName)
+	if remaining, err := uc.counterRepo.LockRemaining(ctx, userName, req.SourceIP); err != nil {
+		return nil, err
+	} else if remaining > 0 {
+		return nil, NewLoginLocked(remaining)
+	}
+
+	u, err := uc.userRepo.FindByUserName(ctx, userName)
+	if err != nil {
+		if !errors.Is(err, ErrUserNotFound) {
+			return nil, err
+		}
+		_ = passwordMatches(invalidCredentialHash, req.Password)
+		return nil, uc.invalidLogin(ctx, userName, req.SourceIP)
+	}
+	if !passwordMatches(u.Password, req.Password) {
+		return nil, uc.invalidLogin(ctx, userName, req.SourceIP)
+	}
+	if u.Status != 0 {
+		return nil, ErrSystemUserDisabled
+	}
+	// Clear before issuing a bearer credential: a Redis failure cannot leave an
+	// unreturned but live Login Session behind. The data wrapper revalidates the
+	// password hash and status under the authorization lock.
+	if err := uc.counterRepo.ClearUserName(ctx, userName); err != nil {
+		return nil, err
+	}
+	deviceType, browser, os := loginClientMetadata(req.UserAgent)
+	result, err := uc.loginRepo.Issue(ctx, &LoginIssue{
+		SystemUserID: u.ID,
+		UserName:     u.UserName,
+		PasswordHash: u.Password,
+		SourceIP:     req.SourceIP,
+		DeviceType:   deviceType,
+		Browser:      browser,
+		OS:           os,
+		LoginTime:    uc.now(),
+	})
+	if errors.Is(err, ErrInvalidCredentials) {
+		return nil, uc.invalidLogin(ctx, userName, req.SourceIP)
+	}
+	return result, err
+}
+
+func (uc *AuthUsecase) invalidLogin(ctx context.Context, userName, sourceIP string) error {
+	remaining, err := uc.counterRepo.RecordFailure(ctx, userName, sourceIP)
+	if err != nil {
+		return err
+	}
+	if remaining > 0 {
+		return NewLoginLocked(remaining)
+	}
+	return ErrInvalidCredentials
+}
+
+func loginClientMetadata(raw string) (deviceType, browser, os string) {
+	ua := useragent.Parse(raw)
+	switch {
+	case ua.Bot:
+		deviceType = "bot"
+	case ua.Tablet:
+		deviceType = "tablet"
+	case ua.Mobile:
+		deviceType = "mobile"
+	case ua.Desktop:
+		deviceType = "desktop"
+	default:
+		deviceType = "unknown"
+	}
+	browser = ua.Name
+	if browser == "" {
+		browser = "Unknown"
+	}
+	os = ua.OS
+	if os == "" {
+		os = "Unknown"
+	}
+	return deviceType, browser, os
 }
 
 // ListUserRoles returns every active role with its assigned flag for the

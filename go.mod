@@ -4,6 +4,7 @@ go 1.25.7
 
 require (
 	entgo.io/ent v0.14.6
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/alicebob/miniredis/v2 v2.38.0
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/go-kratos/aip-go/ents v0.0.0-20251213081434-74ffa1fc1588
@@ -12,6 +13,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.7.0
 	github.com/jackc/pgx/v5 v5.10.0
+	github.com/mileusna/useragent v1.3.5
 	github.com/redis/go-redis/v9 v9.19.0
 	github.com/sa-tokens/sa-token-go/core v0.2.3
 	go.einride.tech/aip v0.86.3

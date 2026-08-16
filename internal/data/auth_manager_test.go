@@ -17,10 +17,11 @@ import (
 
 func testAuthConf() *conf.Auth {
 	return &conf.Auth{
-		FixedLifetime:      durationpb.New(7 * 24 * time.Hour),
-		IdleLifetime:       durationpb.New(30 * time.Minute),
-		MaxSessionsPerUser: 5,
-		RedisNamespace:     "glex:auth",
+		FixedLifetime:                  durationpb.New(7 * 24 * time.Hour),
+		IdleLifetime:                   durationpb.New(30 * time.Minute),
+		MaxSessionsPerUser:             5,
+		RedisNamespace:                 "glex:auth",
+		EdgeProxyAuthoritativeSourceIp: true,
 		UsernameLoginCounter: &conf.Auth_LoginCounter{
 			MaxFailures: 5,
 			Window:      durationpb.New(10 * time.Minute),
@@ -44,6 +45,7 @@ func TestValidateAuthConfig(t *testing.T) {
 		}},
 		{"zero max sessions", func(c *conf.Auth) { c.MaxSessionsPerUser = 0 }},
 		{"empty namespace", func(c *conf.Auth) { c.RedisNamespace = "  " }},
+		{"untrusted source IP topology", func(c *conf.Auth) { c.EdgeProxyAuthoritativeSourceIp = false }},
 		{"missing username counter", func(c *conf.Auth) { c.UsernameLoginCounter = nil }},
 		{"zero counter failures", func(c *conf.Auth) { c.UsernameLoginCounter.MaxFailures = 0 }},
 		{"zero counter window", func(c *conf.Auth) { c.SourceIpLoginCounter.Window = durationpb.New(0) }},
@@ -105,14 +107,8 @@ func TestNewAuthManagerProducesDistinctTokens(t *testing.T) {
 	}
 	defer cleanup()
 
-	first, err := manager.Login("42", "web")
-	if err != nil {
-		t.Fatalf("Login #1: %v", err)
-	}
-	second, err := manager.Login("42", "web")
-	if err != nil {
-		t.Fatalf("Login #2: %v", err)
-	}
+	first := issueTestBearer(t, manager, 42, "alice", "web")
+	second := issueTestBearer(t, manager, 42, "alice", "web")
 	if first == "" || second == "" || first == second {
 		t.Fatalf("logins must issue distinct non-empty tokens, got %q and %q", first, second)
 	}
@@ -169,9 +165,7 @@ func TestAuthManagerStaysInNamespace(t *testing.T) {
 	}
 	defer cleanup()
 
-	if _, err := manager.Login("42", "web"); err != nil {
-		t.Fatalf("Login: %v", err)
-	}
+	_ = issueTestBearer(t, manager, 42, "alice", "web")
 	var leaked []string
 	for _, key := range mr.Keys() {
 		if !strings.HasPrefix(key, "glex:auth:") {

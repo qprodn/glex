@@ -78,6 +78,9 @@ func validateAuthConfig(c *conf.Auth) error {
 	if ns := normalizeNamespace(c.GetRedisNamespace()); ns == "" || ns == ":" {
 		return errors.New("redis_namespace must be a non-empty glex auth namespace")
 	}
+	if !c.GetEdgeProxyAuthoritativeSourceIp() {
+		return errors.New("edge_proxy_authoritative_source_ip must confirm the exclusive edge-proxy deployment topology")
+	}
 	if err := validateLoginCounter("username_login_counter", c.GetUsernameLoginCounter()); err != nil {
 		return err
 	}
