@@ -23,7 +23,7 @@ func TestMenuRepoLoadRouteAccessQueriesAssignmentsGrantsAndActiveMenus(t *testin
 	t.Cleanup(func() { _ = db.Close() })
 	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
 	t.Cleanup(func() { _ = client.Close() })
-	repo := NewMenuRepo(&Data{db: client})
+	repo := NewMenuRepo(&Data{db: client}, nil)
 	now := time.Unix(1_700_000_000, 0)
 
 	mock.ExpectQuery(`SELECT .* FROM "sys_role"`).
@@ -62,7 +62,7 @@ func TestMenuRepoLoadRouteAccessSkipsGrantQueryWithoutActiveAssignments(t *testi
 	t.Cleanup(func() { _ = db.Close() })
 	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
 	t.Cleanup(func() { _ = client.Close() })
-	repo := NewMenuRepo(&Data{db: client})
+	repo := NewMenuRepo(&Data{db: client}, nil)
 
 	mock.ExpectQuery(`SELECT .* FROM "sys_role"`).WillReturnRows(sqlmock.NewRows(role.Columns))
 	mock.ExpectQuery(`SELECT .* FROM "sys_menu"`).WillReturnRows(sqlmock.NewRows(menu.Columns))
@@ -116,7 +116,7 @@ func TestMenuRepoLoadRouteAccessMapsDatabaseFailures(t *testing.T) {
 			t.Cleanup(func() { _ = db.Close() })
 			client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
 			t.Cleanup(func() { _ = client.Close() })
-			repo := NewMenuRepo(&Data{db: client})
+			repo := NewMenuRepo(&Data{db: client}, nil)
 			tt.expect(mock, time.Unix(1_700_000_000, 0))
 
 			_, err = repo.LoadRouteAccess(t.Context(), 42)

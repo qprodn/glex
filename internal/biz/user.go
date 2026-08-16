@@ -46,7 +46,7 @@ type UserRepo interface {
 	FindByPhoneNumber(ctx context.Context, phone string) (*User, error)
 	ListUsers(ctx context.Context, opts ...ListOption) ([]*User, error)
 	CreateUser(ctx context.Context, u *User) (*User, error)
-	UpdateUser(ctx context.Context, u *User) (*User, error)
+	UpdateUser(ctx context.Context, u *User, passwordPolicy SessionRevocation) (*User, error)
 	DeleteUser(ctx context.Context, id int64) error
 }
 
@@ -92,7 +92,13 @@ func (uc *UserUsecase) UpdateUser(ctx context.Context, u *User) (*User, error) {
 		}
 		u.Password = hashed
 	}
-	return uc.repo.UpdateUser(ctx, u)
+	passwordPolicy := RevokeAllLoginSessions()
+	if u.Password != "" {
+		if principal, ok := PrincipalFromContext(ctx); ok && principal.SystemUserID() == u.ID {
+			passwordPolicy = PreserveLoginSession(principal.SessionID())
+		}
+	}
+	return uc.repo.UpdateUser(ctx, u, passwordPolicy)
 }
 
 // GetUser returns the user with the given id.

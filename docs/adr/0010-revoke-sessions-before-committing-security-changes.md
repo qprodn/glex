@@ -2,7 +2,15 @@
 
 Login and every security-relevant write acquire the same transaction-scoped
 PostgreSQL advisory lock for each affected System User; multi-user operations
-lock sorted ids. While the database change is still uncommitted, the operation
+lock sorted ids. Locks are namespaced and acquired in one global order:
+**Menu IDs, then Role IDs, then System User IDs**, ascending inside each type.
+Before concrete identities, Menu Grant writers take a per-Role grant seam in
+the Menu phase and Role Assignment writers take a per-User assignment seam in
+the Role phase. Those seams stabilize the old relationship set; writers then
+lock both old and replacement identities and re-read the relationship under
+the concrete locks. Downstream affected users are re-read after Role locks are
+held. Login takes the same namespaced System User lock.
+While the database change is still uncommitted, the operation
 atomically revokes the affected Login Sessions through the Redis `System User ->
 Login Sessions` index, then commits PostgreSQL. A Redis failure rolls back the
 database change, preventing stale authorization from surviving a committed

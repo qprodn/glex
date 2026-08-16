@@ -132,40 +132,62 @@ end
 return 1
 `)
 
-var revokeSystemUserLoginSessionsScript = redis.NewScript(`
-local userKey = ARGV[5] .. ARGV[1]
-local sessionIDs = redis.call('ZRANGE', userKey, 0, -1)
-local revoked = 0
-for _, sessionID in ipairs(sessionIDs) do
-  local metadataKey = ARGV[3] .. sessionID
-  local encoded = redis.call('GET', metadataKey)
-  if sessionID == ARGV[2] and not encoded then
-    redis.call('ZREM', userKey, sessionID)
-    redis.call('ZREM', ARGV[6], sessionID)
-  elseif sessionID ~= ARGV[2] then
-    redis.call('ZREM', userKey, sessionID)
-    redis.call('ZREM', ARGV[6], sessionID)
+var revokeSystemUsersLoginSessionsScript = redis.NewScript(`
+local validateIndex = 10
+while validateIndex <= #ARGV do
+  local userKey = ARGV[3] .. ARGV[validateIndex]
+  local sessionIDs = redis.call('ZRANGE', userKey, 0, -1)
+  for _, sessionID in ipairs(sessionIDs) do
+    local encoded = redis.call('GET', ARGV[1] .. sessionID)
     if encoded then
-      local metadata = cjson.decode(encoded)
-      redis.call('DEL', metadataKey)
-      redis.call('DEL', ARGV[4] .. metadata.fingerprint)
-      local tokenKey = ARGV[7] .. metadata.bearer_token
-      if redis.call('EXISTS', tokenKey) == 1 then
-        redis.call('SET', tokenKey, 'KICK_OUT', 'KEEPTTL', 'XX')
+      local decoded, metadata = pcall(cjson.decode, encoded)
+      if not decoded or not metadata.fingerprint or not metadata.bearer_token or not metadata.device_type then
+        return redis.error_reply('invalid Login Session metadata')
       end
-      local accountKey = ARGV[8] .. ARGV[1] .. ':' .. metadata.device_type
-      if redis.call('GET', accountKey) == metadata.bearer_token then
-        redis.call('DEL', accountKey)
-      end
-      redis.call('DEL', ARGV[9] .. metadata.bearer_token)
-      redis.call('DEL', ARGV[10] .. metadata.bearer_token)
-      revoked = revoked + 1
     end
   end
+  validateIndex = validateIndex + 2
 end
-if redis.call('ZCARD', userKey) == 0 then
-  redis.call('DEL', userKey)
-  redis.call('DEL', ARGV[11] .. ARGV[1])
+
+local revoked = 0
+local i = 10
+while i <= #ARGV do
+  local systemUserID = ARGV[i]
+  local exceptSessionID = ARGV[i + 1]
+  local userKey = ARGV[3] .. systemUserID
+  local sessionIDs = redis.call('ZRANGE', userKey, 0, -1)
+  for _, sessionID in ipairs(sessionIDs) do
+    local metadataKey = ARGV[1] .. sessionID
+    local encoded = redis.call('GET', metadataKey)
+    if sessionID == exceptSessionID and not encoded then
+      redis.call('ZREM', userKey, sessionID)
+      redis.call('ZREM', ARGV[4], sessionID)
+    elseif sessionID ~= exceptSessionID then
+      redis.call('ZREM', userKey, sessionID)
+      redis.call('ZREM', ARGV[4], sessionID)
+      if encoded then
+        local metadata = cjson.decode(encoded)
+        redis.call('DEL', metadataKey)
+        redis.call('DEL', ARGV[2] .. metadata.fingerprint)
+        local tokenKey = ARGV[5] .. metadata.bearer_token
+        if redis.call('EXISTS', tokenKey) == 1 then
+          redis.call('SET', tokenKey, 'KICK_OUT', 'KEEPTTL', 'XX')
+        end
+        local accountKey = ARGV[6] .. systemUserID .. ':' .. metadata.device_type
+        if redis.call('GET', accountKey) == metadata.bearer_token then
+          redis.call('DEL', accountKey)
+        end
+        redis.call('DEL', ARGV[7] .. metadata.bearer_token)
+        redis.call('DEL', ARGV[8] .. metadata.bearer_token)
+        revoked = revoked + 1
+      end
+    end
+  end
+  if redis.call('ZCARD', userKey) == 0 then
+    redis.call('DEL', userKey)
+    redis.call('DEL', ARGV[9] .. systemUserID)
+  end
+  i = i + 2
 end
 return revoked
 `)
@@ -613,23 +635,38 @@ func (r *loginSessionRepo) Replace(ctx context.Context, sessionID string) error 
 }
 
 func (r *loginSessionRepo) RevokeSystemUser(ctx context.Context, systemUserID int64, exceptSessionID string) error {
+	return r.RevokeSystemUsers(ctx, []biz.SystemUserSessionRevocation{{
+		SystemUserID: systemUserID,
+		Policy:       biz.PreserveLoginSession(exceptSessionID),
+	}})
+}
+
+func (r *loginSessionRepo) RevokeSystemUsers(ctx context.Context, revocations []biz.SystemUserSessionRevocation) error {
+	if len(revocations) == 0 {
+		return nil
+	}
 	writeCtx, cancel := context.WithTimeout(ctx, boundedTimeout(r.writeTimeout, defaultAuthWriteTimeout))
 	defer cancel()
-	_, err := revokeSystemUserLoginSessionsScript.Run(writeCtx, r.rdb, nil,
-		strconv.FormatInt(systemUserID, 10),
-		exceptSessionID,
+	args := []any{
 		r.key(loginSessionMetadataPrefix),
 		r.key(loginSessionTokenKeyPrefix),
 		r.key(loginSessionUserKeyPrefix),
 		r.key(loginSessionAllKey),
-		r.key(authManagerKeyPrefix+satokenmanager.TokenKeyPrefix),
-		r.key(authManagerKeyPrefix+satokenmanager.AccountKeyPrefix),
-		r.key(authManagerKeyPrefix+satokensession.TokenSessionKeyPrefix),
-		r.key(authManagerKeyPrefix+satokenmanager.RenewKeyPrefix),
-		r.key(authManagerKeyPrefix+satokensession.AccountSessionKeyPrefix),
-	).Result()
+		r.key(authManagerKeyPrefix + satokenmanager.TokenKeyPrefix),
+		r.key(authManagerKeyPrefix + satokenmanager.AccountKeyPrefix),
+		r.key(authManagerKeyPrefix + satokensession.TokenSessionKeyPrefix),
+		r.key(authManagerKeyPrefix + satokenmanager.RenewKeyPrefix),
+		r.key(authManagerKeyPrefix + satokensession.AccountSessionKeyPrefix),
+	}
+	for _, revocation := range revocations {
+		args = append(args,
+			strconv.FormatInt(revocation.SystemUserID, 10),
+			revocation.Policy.PreservedSessionID(),
+		)
+	}
+	_, err := revokeSystemUsersLoginSessionsScript.Run(writeCtx, r.rdb, nil, args...).Result()
 	if err != nil {
-		return authRedisBackendError("revoke_system_user_login_sessions", err)
+		return authRedisBackendError("revoke_system_users_login_sessions", err)
 	}
 	return nil
 }

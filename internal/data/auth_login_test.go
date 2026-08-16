@@ -119,8 +119,8 @@ func TestSystemUserAuthorizationLockUsesTransactionScopedPostgresAdvisoryLock(t 
 	if !strings.Contains(query, "pg_advisory_xact_lock") || !strings.Contains(query, "::text") {
 		t.Fatalf("lock query = %q, want transaction-scoped PostgreSQL advisory lock", query)
 	}
-	if len(args) != 1 || args[0] != int64(42) {
-		t.Fatalf("lock args = %#v, want [42]", args)
+	if len(args) != 1 || args[0] != "glex:authorization:system-user:42" {
+		t.Fatalf("lock args = %#v, want namespaced System User lock key", args)
 	}
 }
 

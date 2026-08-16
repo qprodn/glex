@@ -40,12 +40,13 @@ func toBizMenu(po *ent.Menu) *biz.Menu {
 }
 
 type menuRepo struct {
-	data *Data
+	data     *Data
+	security *securityChangeCoordinator
 }
 
 // NewMenuRepo creates a new MenuRepo instance.
-func NewMenuRepo(data *Data) biz.MenuRepo {
-	return &menuRepo{data: data}
+func NewMenuRepo(data *Data, security *securityChangeCoordinator) biz.MenuRepo {
+	return &menuRepo{data: data, security: security}
 }
 
 func (r *menuRepo) FindByID(ctx context.Context, id int64) (*biz.Menu, error) {
@@ -193,27 +194,62 @@ func (r *menuRepo) CreateMenu(ctx context.Context, m *biz.Menu) (*biz.Menu, erro
 }
 
 func (r *menuRepo) UpdateMenu(ctx context.Context, m *biz.Menu) (*biz.Menu, error) {
-	po, err := r.data.db.Menu.UpdateOneID(m.ID).
-		SetMenuName(m.MenuName).
-		SetParentID(m.ParentID).
-		SetOrderNum(m.OrderNum).
-		SetPath(m.Path).
-		SetComponent(m.Component).
-		SetQueryParam(m.QueryParam).
-		SetIsFrame(int8(m.IsFrame)).
-		SetIsCache(int8(m.IsCache)).
-		SetMenuType(int8(m.MenuType)).
-		SetVisible(int8(m.Visible)).
-		SetStatus(int8(m.Status)).
-		SetPerms(m.Perms).
-		SetIcon(m.Icon).
-		SetActiveMenu(m.ActiveMenu).
-		SetExt(m.Ext).
-		Save(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, biz.ErrMenuNotFound
+	var po *ent.Menu
+	err := r.security.Run(ctx, func(change *securityChangeTx) error {
+		if err := change.LockMenus(ctx, m.ID); err != nil {
+			if ent.IsNotFound(err) {
+				return biz.ErrMenuNotFound
+			}
+			return err
 		}
+		current, err := change.tx.Menu.Query().Where(menu.IDEQ(m.ID), menu.DeletedAtIsNil()).Only(ctx)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return biz.ErrMenuNotFound
+			}
+			return err
+		}
+		roleIDs, err := change.tx.Menu.Query().Where(menu.IDEQ(m.ID)).QueryRoles().
+			Where(role.DeletedAtIsNil()).IDs(ctx)
+		if err != nil {
+			return err
+		}
+		if err := change.LockRoles(ctx, roleIDs...); err != nil {
+			return err
+		}
+		userIDs, err := systemUserIDsForRoles(ctx, change.tx, roleIDs)
+		if err != nil {
+			return err
+		}
+		if err := change.LockSystemUsers(ctx, userIDs...); err != nil {
+			return err
+		}
+		po, err = change.tx.Menu.UpdateOneID(m.ID).
+			SetMenuName(m.MenuName).
+			SetParentID(m.ParentID).
+			SetOrderNum(m.OrderNum).
+			SetPath(m.Path).
+			SetComponent(m.Component).
+			SetQueryParam(m.QueryParam).
+			SetIsFrame(int8(m.IsFrame)).
+			SetIsCache(int8(m.IsCache)).
+			SetMenuType(int8(m.MenuType)).
+			SetVisible(int8(m.Visible)).
+			SetStatus(int8(m.Status)).
+			SetPerms(m.Perms).
+			SetIcon(m.Icon).
+			SetActiveMenu(m.ActiveMenu).
+			SetExt(m.Ext).
+			Save(ctx)
+		if err != nil {
+			return err
+		}
+		if m.AuthorizationChangedFrom(toBizMenu(current)) {
+			change.AffectSystemUsers(userIDs...)
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	return toBizMenu(po), nil
@@ -242,20 +278,54 @@ func (r *menuRepo) ListByIDs(ctx context.Context, ids []int64) ([]*biz.Menu, err
 // transaction: a deleted menu leaves no trace in sys_role_menu (RuoYi
 // parity, so the link table never dangles).
 func (r *menuRepo) DeleteMenu(ctx context.Context, id int64) error {
-	tx, err := r.data.db.Tx(ctx)
-	if err != nil {
-		return err
-	}
-	err = tx.Menu.UpdateOneID(id).
-		SetDeletedAt(time.Now()).
-		ClearRoles().
-		Exec(ctx)
-	if err != nil {
-		_ = tx.Rollback()
-		if ent.IsNotFound(err) {
+	return r.security.Run(ctx, func(change *securityChangeTx) error {
+		if err := change.LockMenus(ctx, id); err != nil {
+			if ent.IsNotFound(err) {
+				return biz.ErrMenuNotFound
+			}
+			return err
+		}
+		if exists, err := change.tx.Menu.Query().Where(menu.IDEQ(id), menu.DeletedAtIsNil()).Exist(ctx); err != nil {
+			return err
+		} else if !exists {
 			return biz.ErrMenuNotFound
 		}
-		return err
+		roleIDs, err := change.tx.Menu.Query().Where(menu.IDEQ(id)).QueryRoles().
+			Where(role.DeletedAtIsNil()).IDs(ctx)
+		if err != nil {
+			return err
+		}
+		if err := change.LockRoles(ctx, roleIDs...); err != nil {
+			return err
+		}
+		userIDs, err := systemUserIDsForRoles(ctx, change.tx, roleIDs)
+		if err != nil {
+			return err
+		}
+		if err := change.LockSystemUsers(ctx, userIDs...); err != nil {
+			return err
+		}
+		err = change.tx.Menu.UpdateOneID(id).
+			SetDeletedAt(time.Now()).
+			ClearRoles().
+			Exec(ctx)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return biz.ErrMenuNotFound
+			}
+			return err
+		}
+		change.AffectSystemUsers(userIDs...)
+		return nil
+	})
+}
+
+func systemUserIDsForRoles(ctx context.Context, tx *ent.Tx, roleIDs []int64) ([]int64, error) {
+	if len(roleIDs) == 0 {
+		return nil, nil
 	}
-	return tx.Commit()
+	return tx.User.Query().Where(
+		user.DeletedAtIsNil(),
+		user.HasRolesWith(role.IDIn(roleIDs...)),
+	).IDs(ctx)
 }

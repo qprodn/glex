@@ -14,12 +14,13 @@ import (
 // (Role Assignment, 角色分配). Pattern: the role↔menu repo (sys_role_menu) —
 // ent M2M edge traversal for reads, delete-then-insert in one tx for writes.
 type userRoleRepo struct {
-	data *Data
+	data     *Data
+	security *securityChangeCoordinator
 }
 
 // NewUserRoleRepo creates a new UserRoleRepo instance.
-func NewUserRoleRepo(data *Data) biz.UserRoleRepo {
-	return &userRoleRepo{data: data}
+func NewUserRoleRepo(data *Data, security *securityChangeCoordinator) biz.UserRoleRepo {
+	return &userRoleRepo{data: data, security: security}
 }
 
 // ListRoleAssignments reads every active role (the dialog's "all roles") with
@@ -51,22 +52,59 @@ func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([
 // delete-then-insert) in one transaction. roleIDs are stored verbatim; the
 // usecase validates and dedupes them first.
 func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleIDs []int64) error {
-	tx, err := r.data.db.Tx(ctx)
-	if err != nil {
-		return err
-	}
-	_, err = tx.User.UpdateOneID(userID).
-		ClearRoles().
-		AddRoleIDs(roleIDs...).
-		Save(ctx)
-	if err != nil {
-		_ = tx.Rollback()
-		if ent.IsNotFound(err) {
+	return r.security.Run(ctx, func(change *securityChangeTx) error {
+		if err := change.LockRoleAssignment(ctx, userID); err != nil {
+			if ent.IsNotFound(err) {
+				return biz.ErrUserNotFound
+			}
+			return err
+		}
+		oldRoleIDs, err := change.tx.User.Query().Where(user.IDEQ(userID), user.DeletedAtIsNil()).QueryRoles().IDs(ctx)
+		if err != nil {
+			return err
+		}
+		if err := change.LockRoles(ctx, appendIDs(oldRoleIDs, roleIDs)...); err != nil {
+			if ent.IsNotFound(err) {
+				return biz.ErrRoleNotFound
+			}
+			return err
+		}
+		if len(roleIDs) > 0 {
+			count, err := change.tx.Role.Query().Where(role.IDIn(roleIDs...), role.DeletedAtIsNil()).Count(ctx)
+			if err != nil {
+				return err
+			}
+			if count != len(sortedIDs(roleIDs)) {
+				return biz.ErrRoleNotFound
+			}
+		}
+		if err := change.LockSystemUsers(ctx, userID); err != nil {
+			if ent.IsNotFound(err) {
+				return biz.ErrUserNotFound
+			}
+			return err
+		}
+		if exists, err := change.tx.User.Query().Where(user.IDEQ(userID), user.DeletedAtIsNil()).Exist(ctx); err != nil {
+			return err
+		} else if !exists {
 			return biz.ErrUserNotFound
 		}
-		return err
-	}
-	return tx.Commit()
+		if _, err := change.tx.User.Query().Where(user.IDEQ(userID), user.DeletedAtIsNil()).QueryRoles().IDs(ctx); err != nil {
+			return err
+		}
+		_, err = change.tx.User.UpdateOneID(userID).
+			ClearRoles().
+			AddRoleIDs(roleIDs...).
+			Save(ctx)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return biz.ErrUserNotFound
+			}
+			return err
+		}
+		change.AffectSystemUsers(userID)
+		return nil
+	})
 }
 
 // ListRoleUsers lists the active users assigned the role, applying the given

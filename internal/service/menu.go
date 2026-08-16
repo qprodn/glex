@@ -113,8 +113,9 @@ func innerLinkPath(path string) string {
 
 // MenuService implements the system-menu CRUD + tree service.
 //
-// No authz here by design: the global auth middleware will be added by the auth
-// module, and finer permission checks belong to the RBAC/auth module.
+// Authentication and the operation's Functional Permission policy are
+// enforced by the registered HTTP middleware; this adapter only translates
+// DTOs and delegates business rules.
 type MenuService struct {
 	menuv1.UnimplementedMenuServiceServer
 

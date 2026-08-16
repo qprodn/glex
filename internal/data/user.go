@@ -38,12 +38,13 @@ func toBiz(po *ent.User) *biz.User {
 }
 
 type userRepo struct {
-	data *Data
+	data     *Data
+	security *securityChangeCoordinator
 }
 
 // NewUserRepo creates a new UserRepo instance.
-func NewUserRepo(data *Data) biz.UserRepo {
-	return &userRepo{data: data}
+func NewUserRepo(data *Data, security *securityChangeCoordinator) biz.UserRepo {
+	return &userRepo{data: data, security: security}
 }
 
 func (r *userRepo) FindByID(ctx context.Context, id int64) (*biz.User, error) {
@@ -145,24 +146,46 @@ func (r *userRepo) CreateUser(ctx context.Context, u *biz.User) (*biz.User, erro
 	return toBiz(po), nil
 }
 
-func (r *userRepo) UpdateUser(ctx context.Context, u *biz.User) (*biz.User, error) {
-	upd := r.data.db.User.UpdateOneID(u.ID).
-		SetUserName(u.UserName).
-		SetNickName(u.NickName).
-		SetGender(int8(u.Gender)).
-		SetStatus(int8(u.Status)).
-		SetAvatar(u.Avatar).
-		SetRemark(u.Remark)
-	if u.Password != "" {
-		upd.SetPassword(u.Password)
-	}
-	if u.Email != "" {
-		upd.SetEmail(u.Email)
-	}
-	if u.PhoneNumber != "" {
-		upd.SetPhoneNumber(u.PhoneNumber)
-	}
-	po, err := upd.Save(ctx)
+func (r *userRepo) UpdateUser(ctx context.Context, u *biz.User, passwordPolicy biz.SessionRevocation) (*biz.User, error) {
+	var po *ent.User
+	err := r.security.Run(ctx, func(change *securityChangeTx) error {
+		if err := change.LockSystemUsers(ctx, u.ID); err != nil {
+			if ent.IsNotFound(err) {
+				return biz.ErrUserNotFound
+			}
+			return err
+		}
+		current, err := change.tx.User.Query().Where(user.IDEQ(u.ID), user.DeletedAtIsNil()).Only(ctx)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return biz.ErrUserNotFound
+			}
+			return err
+		}
+		revocation := u.SessionRevocationFrom(toBiz(current), passwordPolicy)
+		upd := change.tx.User.UpdateOneID(u.ID).
+			SetUserName(u.UserName).
+			SetNickName(u.NickName).
+			SetGender(int8(u.Gender)).
+			SetStatus(int8(u.Status)).
+			SetAvatar(u.Avatar).
+			SetRemark(u.Remark)
+		if u.Password != "" {
+			upd.SetPassword(u.Password)
+		}
+		if u.Email != "" {
+			upd.SetEmail(u.Email)
+		}
+		if u.PhoneNumber != "" {
+			upd.SetPhoneNumber(u.PhoneNumber)
+		}
+		po, err = upd.Save(ctx)
+		if err != nil {
+			return err
+		}
+		change.AffectSystemUser(u.ID, revocation)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -173,20 +196,48 @@ func (r *userRepo) UpdateUser(ctx context.Context, u *biz.User) (*biz.User, erro
 // (sys_user_role rows) in one transaction (RuoYi semantics: a deleted user
 // loses its role links for good).
 func (r *userRepo) DeleteUser(ctx context.Context, id int64) error {
-	tx, err := r.data.db.Tx(ctx)
-	if err != nil {
-		return err
-	}
-	err = tx.User.UpdateOneID(id).
-		SetDeletedAt(time.Now()).
-		ClearRoles().
-		Exec(ctx)
-	if err != nil {
-		_ = tx.Rollback()
-		if ent.IsNotFound(err) {
+	return r.security.Run(ctx, func(change *securityChangeTx) error {
+		if err := change.LockRoleAssignment(ctx, id); err != nil {
+			if ent.IsNotFound(err) {
+				return biz.ErrUserNotFound
+			}
+			return err
+		}
+		roleIDs, err := change.tx.User.Query().Where(user.IDEQ(id), user.DeletedAtIsNil()).QueryRoles().IDs(ctx)
+		if err != nil {
+			return err
+		}
+		if err := change.LockRoles(ctx, roleIDs...); err != nil {
+			return err
+		}
+		if err := change.LockSystemUsers(ctx, id); err != nil {
+			if ent.IsNotFound(err) {
+				return biz.ErrUserNotFound
+			}
+			return err
+		}
+		if exists, err := change.tx.User.Query().Where(user.IDEQ(id), user.DeletedAtIsNil()).Exist(ctx); err != nil {
+			return err
+		} else if !exists {
 			return biz.ErrUserNotFound
 		}
-		return err
-	}
-	return tx.Commit()
+		// The relationship seam above prevents another replacement while the
+		// concrete Role/User locks are acquired. Re-read under those locks
+		// before clearing the Role Assignment.
+		if _, err := change.tx.User.Query().Where(user.IDEQ(id), user.DeletedAtIsNil()).QueryRoles().IDs(ctx); err != nil {
+			return err
+		}
+		err = change.tx.User.UpdateOneID(id).
+			SetDeletedAt(time.Now()).
+			ClearRoles().
+			Exec(ctx)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return biz.ErrUserNotFound
+			}
+			return err
+		}
+		change.AffectSystemUsers(id)
+		return nil
+	})
 }

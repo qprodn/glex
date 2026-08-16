@@ -1,7 +1,7 @@
 # Make security-changing writes revoke Sessions before commit
 
 Type: task
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 03, 04, 05
 
 ## Objective
@@ -37,3 +37,27 @@ that can invalidate an Authorization Snapshot.
 - Concurrent login/Role Assignment/Menu Grant/Menu-permission tests cannot
   produce a valid Session with a committed stale permission snapshot.
 - `go test -race` reports no data races and lock-order tests do not deadlock.
+
+## Comments
+
+- Implemented one shared data-layer security-change coordinator. Its protocol
+  is PostgreSQL transaction → namespaced advisory locks in Menu/Role/System
+  User order (ascending IDs within each type) → lock-protected relationship
+  re-read → database mutation → one atomic Redis batch revocation → PostgreSQL
+  commit. Per-Role Menu Grant and per-User Role Assignment seams stabilize old
+  relationship sets before concrete identity locks and the protected re-read.
+  Redis failure rolls the database back; commit failure after Redis success
+  intentionally leaves Sessions revoked.
+- Integrated Role Assignment and Menu Grant replacement; Role key/status/delete;
+  Menu perms/status/delete; and System User status/delete/password writes.
+  Self password changes preserve only Principal's current Session, while an
+  administrative reset revokes every Session.
+- Added focused biz coverage for every trigger, deterministic
+  lock/failure-injection tests, and optional real PostgreSQL/Redis integration
+  coverage for every trigger, Redis rollback, preservation, and concurrent
+  login/assignment/grant/menu-permission mutation. The real-backend suite is
+  enabled with `GLEX_TEST_POSTGRES_DSN` and `GLEX_TEST_REDIS_ADDR`; ordinary CI
+  remains credential-free. `make all`, `go test ./...`, and
+  `go test -race ./...` pass.
+- Two-axis review against baseline `0c7a75f15f090ac8c3d73b21bfaf36824b33fce1`
+  completed with zero remaining Standards or Spec findings.

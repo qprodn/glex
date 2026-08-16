@@ -41,10 +41,9 @@ func convertUser(m *biz.User) *userv1.User {
 
 // UserService implements the system-user CRUD service.
 //
-// No authz here by design: the global auth middleware already requires a valid
-// token for every non-login path, and finer "only user-administrators may act"
-// authorization belongs to the RBAC/auth module. This keeps the user module
-// decoupled from the legacy admin access model (ADR-0002).
+// Authentication and the operation's Functional Permission policy are
+// enforced by the registered HTTP middleware. This adapter remains limited to
+// DTO/DO conversion and keeps authorization and mutation rules out of service.
 type UserService struct {
 	userv1.UnimplementedUserServiceServer
 

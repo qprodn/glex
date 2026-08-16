@@ -11,13 +11,14 @@ import (
 // fakeUserRepo is an in-memory UserRepo for testing the usecase in isolation
 // from the data layer.
 type fakeUserRepo struct {
-	byID    map[int64]*User
-	byName  map[string]*User
-	byEmail map[string]*User
-	byPhone map[string]*User
-	nextID  int64
-	created []*User
-	deleted []int64
+	byID           map[int64]*User
+	byName         map[string]*User
+	byEmail        map[string]*User
+	byPhone        map[string]*User
+	nextID         int64
+	created        []*User
+	passwordPolicy SessionRevocation
+	deleted        []int64
 }
 
 func newFakeUserRepo() *fakeUserRepo {
@@ -81,7 +82,8 @@ func (r *fakeUserRepo) CreateUser(_ context.Context, u *User) (*User, error) {
 	return u, nil
 }
 
-func (r *fakeUserRepo) UpdateUser(_ context.Context, u *User) (*User, error) {
+func (r *fakeUserRepo) UpdateUser(_ context.Context, u *User, passwordPolicy SessionRevocation) (*User, error) {
+	r.passwordPolicy = passwordPolicy
 	r.byID[u.ID] = u
 	return u, nil
 }
@@ -186,6 +188,32 @@ func TestUpdateUser_HashesNewPassword(t *testing.T) {
 	}
 }
 
+func TestUpdateUserSelfPasswordPreservesOnlyCurrentSession(t *testing.T) {
+	repo := newFakeUserRepo()
+	uc := NewUserUsecase(repo)
+	ctx := WithPrincipal(t.Context(), NewPrincipal(42, "alice", "current-session", nil, nil))
+
+	if _, err := uc.UpdateUser(ctx, &User{ID: 42, UserName: "alice", Password: "newsecret"}); err != nil {
+		t.Fatalf("UpdateUser: %v", err)
+	}
+	if repo.passwordPolicy.PreservedSessionID() != "current-session" {
+		t.Fatalf("preserved Session = %q, want current-session", repo.passwordPolicy.PreservedSessionID())
+	}
+}
+
+func TestUpdateUserAdministrativePasswordResetRevokesAllSessions(t *testing.T) {
+	repo := newFakeUserRepo()
+	uc := NewUserUsecase(repo)
+	ctx := WithPrincipal(t.Context(), NewPrincipal(7, "admin", "admin-session", nil, nil))
+
+	if _, err := uc.UpdateUser(ctx, &User{ID: 42, UserName: "alice", Password: "reset-secret"}); err != nil {
+		t.Fatalf("UpdateUser: %v", err)
+	}
+	if repo.passwordPolicy.PreservedSessionID() != "" || !repo.passwordPolicy.Required() {
+		t.Fatalf("administrative reset policy = %#v", repo.passwordPolicy)
+	}
+}
+
 func TestUpdateUser_UserNameConflict(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byName["bob"] = &User{ID: 7, UserName: "bob"}
@@ -258,5 +286,17 @@ func TestGetCurrentUserInfoRequiresPrincipal(t *testing.T) {
 	uc := NewUserUsecase(newFakeUserRepo())
 	if _, err := uc.GetCurrentUserInfo(t.Context(), nil); !errors.Is(err, ErrCredentialMissing) {
 		t.Fatalf("GetCurrentUserInfo(nil) = %v", err)
+	}
+}
+
+func TestDeleteSystemUserDelegatesSecurityTrigger(t *testing.T) {
+	repo := newFakeUserRepo()
+	uc := NewUserUsecase(repo)
+
+	if err := uc.DeleteUser(t.Context(), 42); err != nil {
+		t.Fatalf("DeleteUser: %v", err)
+	}
+	if len(repo.deleted) != 1 || repo.deleted[0] != 42 {
+		t.Fatalf("deleted System Users = %v, want [42]", repo.deleted)
 	}
 }

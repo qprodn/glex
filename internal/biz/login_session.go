@@ -92,4 +92,5 @@ type LoginSessionRepo interface {
 	Kickout(ctx context.Context, sessionID string) error
 	Replace(ctx context.Context, sessionID string) error
 	RevokeSystemUser(ctx context.Context, systemUserID int64, exceptSessionID string) error
+	RevokeSystemUsers(ctx context.Context, revocations []SystemUserSessionRevocation) error
 }

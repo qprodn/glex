@@ -406,6 +406,31 @@ func TestRevokeSystemUserSessionsCanPreserveCurrentSession(t *testing.T) {
 	}
 }
 
+func TestRevokeSystemUsersIsOneAtomicValidatedBatch(t *testing.T) {
+	repo, manager, rdb := newTestLoginSessionRepo(t)
+	first, firstToken := createManagedLoginSession(t, repo, manager, 42, "alice", "desktop", time.Unix(1_700_005_101, 0))
+	second, _ := createManagedLoginSession(t, repo, manager, 84, "bob", "mobile", time.Unix(1_700_005_102, 0))
+
+	// A malformed later user's metadata makes the Lua validation phase fail.
+	// Because validation precedes every write, the earlier user remains live.
+	if err := rdb.Set(t.Context(), "glex:auth:"+loginSessionMetadataPrefix+second.ID, "{", time.Hour).Err(); err != nil {
+		t.Fatalf("corrupt later metadata: %v", err)
+	}
+	err := repo.RevokeSystemUsers(t.Context(), []biz.SystemUserSessionRevocation{
+		{SystemUserID: 42, Policy: biz.RevokeAllLoginSessions()},
+		{SystemUserID: 84, Policy: biz.RevokeAllLoginSessions()},
+	})
+	if err == nil {
+		t.Fatal("atomic batch accepted malformed later metadata")
+	}
+	if got, err := repo.FindByID(t.Context(), first.ID); err != nil || got.ID != first.ID {
+		t.Fatalf("earlier user was partially revoked: %#v/%v", got, err)
+	}
+	if _, err := repo.FindByToken(t.Context(), firstToken); err != nil {
+		t.Fatalf("earlier bearer was partially revoked: %v", err)
+	}
+}
+
 func TestListLoginSessionsFiltersAndOrdersBeforePagination(t *testing.T) {
 	repo, manager, _ := newTestLoginSessionRepo(t)
 	older, _ := createManagedLoginSession(t, repo, manager, 42, "alice", "desktop", time.Unix(1_700_006_001, 0))

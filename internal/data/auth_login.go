@@ -15,7 +15,6 @@ import (
 	"glex/internal/data/ent/role"
 	"glex/internal/data/ent/user"
 
-	entsql "entgo.io/ent/dialect/sql"
 	"github.com/sa-tokens/sa-token-go/core"
 	satokenmanager "github.com/sa-tokens/sa-token-go/core/manager"
 )
@@ -55,9 +54,10 @@ func (r *authLoginRepo) Issue(ctx context.Context, issue *biz.LoginIssue) (*biz.
 		}
 	}()
 
-	// Global authorization-lock order: ascending System User ID. Login takes
-	// exactly one identity lock. Security-changing mutations (issue 08) must
-	// acquire every affected identity in that same order before Redis writes.
+	// Global authorization-lock order is Menu, Role, then System User, with
+	// ascending IDs inside each type. Login takes exactly one System User lock;
+	// security-changing mutations finish their upstream locks before sharing
+	// this exact identity lock with login and before performing Redis writes.
 	// This is a separate statement from the authoritative re-read below: under
 	// READ COMMITTED, the second statement receives a snapshot taken only after
 	// any previous lock holder commits.
@@ -122,16 +122,6 @@ func (r *authLoginRepo) Issue(ctx context.Context, issue *biz.LoginIssue) (*biz.
 	}
 	committed = true
 	return &biz.LoginResult{AccessToken: token, ExpiresIn: r.fixedLifetime}, nil
-}
-
-// systemUserAuthorizationLock embeds pg_advisory_xact_lock in the query's
-// ORDER BY expression. Casting PostgreSQL's void result to text yields the same
-// empty sort key for every row while guaranteeing the transaction-scoped lock
-// statement finishes before the caller performs its authoritative re-read.
-func systemUserAuthorizationLock(systemUserID int64) user.OrderOption {
-	return func(selector *entsql.Selector) {
-		selector.OrderExpr(entsql.Expr("pg_advisory_xact_lock(?)::text", systemUserID))
-	}
 }
 
 func loadAuthorizationSnapshot(ctx context.Context, tx *ent.Tx, systemUserID int64, userName string) (*biz.AuthorizationSnapshot, error) {

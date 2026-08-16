@@ -33,8 +33,9 @@ func convertRole(r *biz.Role) *rolev1.Role {
 
 // RoleService implements the system-role CRUD service.
 //
-// No authz here by design: the global auth middleware will be added by the
-// auth module, and finer permission checks belong to the RBAC/auth module.
+// Authentication and the operation's Functional Permission policy are
+// enforced by the registered HTTP middleware; this adapter only translates
+// DTOs and delegates business rules.
 type RoleService struct {
 	rolev1.UnimplementedRoleServiceServer
 
