@@ -895,7 +895,9 @@ const file_system_menu_v1_menu_proto_rawDesc = "" +
 	"\x13MENU_TYPE_DIRECTORY\x10\x01\x12\x12\n" +
 	"\x0eMENU_TYPE_MENU\x10\x02\x12\x14\n" +
 	"\x10MENU_TYPE_BUTTON\x10\x032\xf0\x05\n" +
-	"\vMenuService\x12x\n" +
+	"\vMenuService\x12g\n" +
+	"\n" +
+	"GetRouters\x12\x16.google.protobuf.Empty\x1a\x1a.system.menu.v1.RouterTree\"%\xc2\xf3\x18\x02\b\x03\x82\xd3\xe4\x93\x02\x19\x12\x17/system/menu/getRouters\x12x\n" +
 	"\n" +
 	"CreateMenu\x12!.system.menu.v1.CreateMenuRequest\x1a\x14.system.menu.v1.Menu\"1\xc2\xf3\x18\x13\b\x04\x12\x0fsystem:menu:add\x82\xd3\xe4\x93\x02\x14:\x04menu\"\f/system/menu\x12x\n" +
 	"\aGetMenu\x12\x1e.system.menu.v1.GetMenuRequest\x1a\x14.system.menu.v1.Menu\"7\xc2\xf3\x18\x15\b\x04\x12\x11system:menu:query\x82\xd3\xe4\x93\x02\x18\x12\x16/system/menu/{menu_id}\x12u\n" +
@@ -903,9 +905,7 @@ const file_system_menu_v1_menu_proto_rawDesc = "" +
 	"\n" +
 	"UpdateMenu\x12!.system.menu.v1.UpdateMenuRequest\x1a\x14.system.menu.v1.Menu\"A\xc2\xf3\x18\x14\b\x04\x12\x10system:menu:edit\x82\xd3\xe4\x93\x02#:\x04menu2\x1b/system/menu/{menu.menu_id}\x12\x81\x01\n" +
 	"\n" +
-	"DeleteMenu\x12!.system.menu.v1.DeleteMenuRequest\x1a\x16.google.protobuf.Empty\"8\xc2\xf3\x18\x16\b\x04\x12\x12system:menu:remove\x82\xd3\xe4\x93\x02\x18*\x16/system/menu/{menu_id}\x12g\n" +
-	"\n" +
-	"GetRouters\x12\x16.google.protobuf.Empty\x1a\x1a.system.menu.v1.RouterTree\"%\xc2\xf3\x18\x02\b\x03\x82\xd3\xe4\x93\x02\x19\x12\x17/system/menu/getRoutersB2\n" +
+	"DeleteMenu\x12!.system.menu.v1.DeleteMenuRequest\x1a\x16.google.protobuf.Empty\"8\xc2\xf3\x18\x16\b\x04\x12\x12system:menu:remove\x82\xd3\xe4\x93\x02\x18*\x16/system/menu/{menu_id}B2\n" +
 	"\x12api.system.menu.v1P\x01Z\x1aglex/api/system/menu/v1;v1b\x06proto3"
 
 var (
@@ -950,18 +950,18 @@ var file_system_menu_v1_menu_proto_depIdxs = []int32{
 	1,  // 8: system.menu.v1.CreateMenuRequest.menu:type_name -> system.menu.v1.Menu
 	1,  // 9: system.menu.v1.UpdateMenuRequest.menu:type_name -> system.menu.v1.Menu
 	12, // 10: system.menu.v1.UpdateMenuRequest.update_mask:type_name -> google.protobuf.FieldMask
-	6,  // 11: system.menu.v1.MenuService.CreateMenu:input_type -> system.menu.v1.CreateMenuRequest
-	7,  // 12: system.menu.v1.MenuService.GetMenu:input_type -> system.menu.v1.GetMenuRequest
-	8,  // 13: system.menu.v1.MenuService.ListMenus:input_type -> system.menu.v1.ListMenusRequest
-	9,  // 14: system.menu.v1.MenuService.UpdateMenu:input_type -> system.menu.v1.UpdateMenuRequest
-	10, // 15: system.menu.v1.MenuService.DeleteMenu:input_type -> system.menu.v1.DeleteMenuRequest
-	13, // 16: system.menu.v1.MenuService.GetRouters:input_type -> google.protobuf.Empty
-	1,  // 17: system.menu.v1.MenuService.CreateMenu:output_type -> system.menu.v1.Menu
-	1,  // 18: system.menu.v1.MenuService.GetMenu:output_type -> system.menu.v1.Menu
-	2,  // 19: system.menu.v1.MenuService.ListMenus:output_type -> system.menu.v1.MenuTree
-	1,  // 20: system.menu.v1.MenuService.UpdateMenu:output_type -> system.menu.v1.Menu
-	13, // 21: system.menu.v1.MenuService.DeleteMenu:output_type -> google.protobuf.Empty
-	5,  // 22: system.menu.v1.MenuService.GetRouters:output_type -> system.menu.v1.RouterTree
+	13, // 11: system.menu.v1.MenuService.GetRouters:input_type -> google.protobuf.Empty
+	6,  // 12: system.menu.v1.MenuService.CreateMenu:input_type -> system.menu.v1.CreateMenuRequest
+	7,  // 13: system.menu.v1.MenuService.GetMenu:input_type -> system.menu.v1.GetMenuRequest
+	8,  // 14: system.menu.v1.MenuService.ListMenus:input_type -> system.menu.v1.ListMenusRequest
+	9,  // 15: system.menu.v1.MenuService.UpdateMenu:input_type -> system.menu.v1.UpdateMenuRequest
+	10, // 16: system.menu.v1.MenuService.DeleteMenu:input_type -> system.menu.v1.DeleteMenuRequest
+	5,  // 17: system.menu.v1.MenuService.GetRouters:output_type -> system.menu.v1.RouterTree
+	1,  // 18: system.menu.v1.MenuService.CreateMenu:output_type -> system.menu.v1.Menu
+	1,  // 19: system.menu.v1.MenuService.GetMenu:output_type -> system.menu.v1.Menu
+	2,  // 20: system.menu.v1.MenuService.ListMenus:output_type -> system.menu.v1.MenuTree
+	1,  // 21: system.menu.v1.MenuService.UpdateMenu:output_type -> system.menu.v1.Menu
+	13, // 22: system.menu.v1.MenuService.DeleteMenu:output_type -> google.protobuf.Empty
 	17, // [17:23] is the sub-list for method output_type
 	11, // [11:17] is the sub-list for method input_type
 	11, // [11:11] is the sub-list for extension type_name

@@ -177,7 +177,10 @@ paths:
         get:
             tags:
                 - MenuService
-            description: GetRouters returns the current System User's route tree.
+            description: |-
+                GetRouters returns the current System User's route tree. It is declared
+                 before the parameterized GetMenu route so the generated HTTP router gives
+                 this static path precedence.
             operationId: MenuService_GetRouters
             responses:
                 "200":
@@ -560,7 +563,8 @@ paths:
                 - UserService
             description: |-
                 GetInfo returns the current System User, Role keys, and Functional
-                 Permissions. It never returns the stored password hash.
+                 Permissions. It is declared before the parameterized GetUser route so the
+                 generated HTTP router gives this static path precedence.
             operationId: UserService_GetInfo
             responses:
                 "200":

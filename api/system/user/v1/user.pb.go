@@ -812,7 +812,8 @@ const file_system_user_v1_user_proto_rawDesc = "" +
 	"updateMask\"1\n" +
 	"\x11DeleteUserRequest\x12\x1c\n" +
 	"\auser_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06userId2\xee\x05\n" +
-	"\vUserService\x12x\n" +
+	"\vUserService\x12f\n" +
+	"\aGetInfo\x12\x16.google.protobuf.Empty\x1a\x1f.system.user.v1.CurrentUserInfo\"\"\xc2\xf3\x18\x02\b\x03\x82\xd3\xe4\x93\x02\x16\x12\x14/system/user/getInfo\x12x\n" +
 	"\n" +
 	"CreateUser\x12!.system.user.v1.CreateUserRequest\x1a\x14.system.user.v1.User\"1\xc2\xf3\x18\x13\b\x04\x12\x0fsystem:user:add\x82\xd3\xe4\x93\x02\x14:\x04user\"\f/system/user\x12x\n" +
 	"\aGetUser\x12\x1e.system.user.v1.GetUserRequest\x1a\x14.system.user.v1.User\"7\xc2\xf3\x18\x15\b\x04\x12\x11system:user:query\x82\xd3\xe4\x93\x02\x18\x12\x16/system/user/{user_id}\x12t\n" +
@@ -820,8 +821,7 @@ const file_system_user_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"UpdateUser\x12!.system.user.v1.UpdateUserRequest\x1a\x14.system.user.v1.User\"A\xc2\xf3\x18\x14\b\x04\x12\x10system:user:edit\x82\xd3\xe4\x93\x02#:\x04user2\x1b/system/user/{user.user_id}\x12\x81\x01\n" +
 	"\n" +
-	"DeleteUser\x12!.system.user.v1.DeleteUserRequest\x1a\x16.google.protobuf.Empty\"8\xc2\xf3\x18\x16\b\x04\x12\x12system:user:remove\x82\xd3\xe4\x93\x02\x18*\x16/system/user/{user_id}\x12f\n" +
-	"\aGetInfo\x12\x16.google.protobuf.Empty\x1a\x1f.system.user.v1.CurrentUserInfo\"\"\xc2\xf3\x18\x02\b\x03\x82\xd3\xe4\x93\x02\x16\x12\x14/system/user/getInfoB2\n" +
+	"DeleteUser\x12!.system.user.v1.DeleteUserRequest\x1a\x16.google.protobuf.Empty\"8\xc2\xf3\x18\x16\b\x04\x12\x12system:user:remove\x82\xd3\xe4\x93\x02\x18*\x16/system/user/{user_id}B2\n" +
 	"\x12api.system.user.v1P\x01Z\x1aglex/api/system/user/v1;v1b\x06proto3"
 
 var (
@@ -863,18 +863,18 @@ var file_system_user_v1_user_proto_depIdxs = []int32{
 	0,  // 8: system.user.v1.CreateUserRequest.user:type_name -> system.user.v1.User
 	0,  // 9: system.user.v1.UpdateUserRequest.user:type_name -> system.user.v1.User
 	10, // 10: system.user.v1.UpdateUserRequest.update_mask:type_name -> google.protobuf.FieldMask
-	4,  // 11: system.user.v1.UserService.CreateUser:input_type -> system.user.v1.CreateUserRequest
-	5,  // 12: system.user.v1.UserService.GetUser:input_type -> system.user.v1.GetUserRequest
-	6,  // 13: system.user.v1.UserService.ListUsers:input_type -> system.user.v1.ListUsersRequest
-	7,  // 14: system.user.v1.UserService.UpdateUser:input_type -> system.user.v1.UpdateUserRequest
-	8,  // 15: system.user.v1.UserService.DeleteUser:input_type -> system.user.v1.DeleteUserRequest
-	11, // 16: system.user.v1.UserService.GetInfo:input_type -> google.protobuf.Empty
-	0,  // 17: system.user.v1.UserService.CreateUser:output_type -> system.user.v1.User
-	0,  // 18: system.user.v1.UserService.GetUser:output_type -> system.user.v1.User
-	1,  // 19: system.user.v1.UserService.ListUsers:output_type -> system.user.v1.UserSet
-	0,  // 20: system.user.v1.UserService.UpdateUser:output_type -> system.user.v1.User
-	11, // 21: system.user.v1.UserService.DeleteUser:output_type -> google.protobuf.Empty
-	3,  // 22: system.user.v1.UserService.GetInfo:output_type -> system.user.v1.CurrentUserInfo
+	11, // 11: system.user.v1.UserService.GetInfo:input_type -> google.protobuf.Empty
+	4,  // 12: system.user.v1.UserService.CreateUser:input_type -> system.user.v1.CreateUserRequest
+	5,  // 13: system.user.v1.UserService.GetUser:input_type -> system.user.v1.GetUserRequest
+	6,  // 14: system.user.v1.UserService.ListUsers:input_type -> system.user.v1.ListUsersRequest
+	7,  // 15: system.user.v1.UserService.UpdateUser:input_type -> system.user.v1.UpdateUserRequest
+	8,  // 16: system.user.v1.UserService.DeleteUser:input_type -> system.user.v1.DeleteUserRequest
+	3,  // 17: system.user.v1.UserService.GetInfo:output_type -> system.user.v1.CurrentUserInfo
+	0,  // 18: system.user.v1.UserService.CreateUser:output_type -> system.user.v1.User
+	0,  // 19: system.user.v1.UserService.GetUser:output_type -> system.user.v1.User
+	1,  // 20: system.user.v1.UserService.ListUsers:output_type -> system.user.v1.UserSet
+	0,  // 21: system.user.v1.UserService.UpdateUser:output_type -> system.user.v1.User
+	11, // 22: system.user.v1.UserService.DeleteUser:output_type -> google.protobuf.Empty
 	17, // [17:23] is the sub-list for method output_type
 	11, // [11:17] is the sub-list for method input_type
 	11, // [11:11] is the sub-list for extension type_name

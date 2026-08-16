@@ -169,6 +169,10 @@ export type DeleteUserRequest = {
 
 // UserService is the system-user CRUD service.
 export interface UserService {
+  // GetInfo returns the current System User, Role keys, and Functional
+  // Permissions. It is declared before the parameterized GetUser route so the
+  // generated HTTP router gives this static path precedence.
+  GetInfo(request: wellKnownEmpty): Promise<CurrentUserInfo>;
   // CreateUser creates a new system user.
   CreateUser(request: CreateUserRequest): Promise<User>;
   // GetUser retrieves a user by id.
@@ -179,9 +183,6 @@ export interface UserService {
   UpdateUser(request: UpdateUserRequest): Promise<User>;
   // DeleteUser soft-deletes a user by id.
   DeleteUser(request: DeleteUserRequest): Promise<wellKnownEmpty>;
-  // GetInfo returns the current System User, Role keys, and Functional
-  // Permissions. It never returns the stored password hash.
-  GetInfo(request: wellKnownEmpty): Promise<CurrentUserInfo>;
 }
 
 type RequestType = {
@@ -196,6 +197,23 @@ export function createUserServiceClient(
   handler: RequestHandler
 ): UserService {
   return {
+    GetInfo(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `system/user/getInfo`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "UserService",
+        method: "GetInfo",
+      }) as Promise<CurrentUserInfo>;
+    },
     CreateUser(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
       const path = `system/user`; // eslint-disable-line quotes
       const body = JSON.stringify(request?.user ?? {});
@@ -304,23 +322,6 @@ export function createUserServiceClient(
         service: "UserService",
         method: "DeleteUser",
       }) as Promise<wellKnownEmpty>;
-    },
-    GetInfo(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
-      const path = `system/user/getInfo`; // eslint-disable-line quotes
-      const body = null;
-      const queryParams: string[] = [];
-      let uri = path;
-      if (queryParams.length > 0) {
-        uri += `?${queryParams.join("&")}`
-      }
-      return handler({
-        path: uri,
-        method: "GET",
-        body,
-      }, {
-        service: "UserService",
-        method: "GetInfo",
-      }) as Promise<CurrentUserInfo>;
     },
   };
 }

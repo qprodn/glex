@@ -10,9 +10,10 @@ import (
 // fakeMenuRepo is an in-memory MenuRepo for testing the usecase in isolation
 // from the data layer.
 type fakeMenuRepo struct {
-	byID    map[int64]*Menu
-	next    int64
-	deleted []int64
+	byID        map[int64]*Menu
+	next        int64
+	deleted     []int64
+	routeAccess *MenuRouteAccess
 }
 
 func newFakeMenuRepo() *fakeMenuRepo {
@@ -61,6 +62,10 @@ func (r *fakeMenuRepo) ListMenus(context.Context, ...ListOption) ([]*Menu, error
 		out = append(out, m)
 	}
 	return out, nil
+}
+
+func (r *fakeMenuRepo) LoadRouteAccess(context.Context, int64) (*MenuRouteAccess, error) {
+	return r.routeAccess, nil
 }
 
 func (r *fakeMenuRepo) CreateMenu(_ context.Context, m *Menu) (*Menu, error) {
@@ -185,6 +190,127 @@ func TestListMenuTree_BuildsFromFlatRepo(t *testing.T) {
 	}
 	if len(roots[0].Children) != 1 || roots[0].Children[0].ID != 2 {
 		t.Fatalf("expected child id 2 under root, got %+v", roots[0].Children)
+	}
+}
+
+func TestListUserRouteTree_GrantedNodesIncludeActiveAncestors(t *testing.T) {
+	repo := newFakeMenuRepo()
+	repo.routeAccess = &MenuRouteAccess{
+		RoleKeys:       []string{"operator"},
+		GrantedMenuIDs: []int64{3, 4, 6},
+		ActiveMenus: []*Menu{
+			{ID: 1, ParentID: 0, OrderNum: 2, MenuName: "System", MenuType: MenuTypeDirectory},
+			{ID: 2, ParentID: 1, OrderNum: 2, MenuName: "Users", MenuType: MenuTypeDirectory},
+			{ID: 3, ParentID: 2, OrderNum: 1, MenuName: "User list", MenuType: MenuTypeMenu},
+			{ID: 4, ParentID: 1, OrderNum: 1, MenuName: "Roles", MenuType: MenuTypeMenu},
+			{ID: 5, ParentID: 0, OrderNum: 1, MenuName: "Ungrant", MenuType: MenuTypeMenu},
+			// A missing/soft-deleted parent keeps this granted node orphaned.
+			{ID: 6, ParentID: 99, OrderNum: 1, MenuName: "Orphan", MenuType: MenuTypeMenu},
+		},
+	}
+	uc := NewMenuUsecase(repo)
+
+	roots, err := uc.ListUserRouteTree(t.Context(), 42)
+	if err != nil {
+		t.Fatalf("ListUserRouteTree: %v", err)
+	}
+	ids := treeIDs(roots)
+	want := []int64{1, 4, 2, 3}
+	if len(ids) != len(want) {
+		t.Fatalf("route ids = %v, want %v", ids, want)
+	}
+	for i := range want {
+		if ids[i] != want[i] {
+			t.Fatalf("route ids = %v, want %v", ids, want)
+		}
+	}
+}
+
+func TestListUserRouteTree_ButtonOnlyAndInactiveGrantsProduceNoRoutes(t *testing.T) {
+	repo := newFakeMenuRepo()
+	repo.routeAccess = &MenuRouteAccess{
+		RoleKeys:       []string{"operator"},
+		GrantedMenuIDs: []int64{8, 9}, // absent: Button and inactive Menu
+		ActiveMenus: []*Menu{
+			{ID: 1, ParentID: 0, MenuName: "System", MenuType: MenuTypeDirectory},
+		},
+	}
+	uc := NewMenuUsecase(repo)
+
+	roots, err := uc.ListUserRouteTree(t.Context(), 42)
+	if err != nil {
+		t.Fatalf("ListUserRouteTree: %v", err)
+	}
+	if len(roots) != 0 {
+		t.Fatalf("button/inactive grants produced routes: %v", treeIDs(roots))
+	}
+}
+
+func TestListUserRouteTree_SuperadminGetsAllActiveRouteableNodes(t *testing.T) {
+	repo := newFakeMenuRepo()
+	repo.routeAccess = &MenuRouteAccess{
+		RoleKeys:       []string{"operator", "superadmin"},
+		GrantedMenuIDs: nil,
+		ActiveMenus: []*Menu{
+			{ID: 1, ParentID: 0, OrderNum: 2, MenuName: "Second", MenuType: MenuTypeMenu},
+			{ID: 2, ParentID: 0, OrderNum: 1, MenuName: "First", MenuType: MenuTypeDirectory},
+			{ID: 3, ParentID: 2, OrderNum: 1, MenuName: "Child", MenuType: MenuTypeMenu},
+		},
+	}
+	uc := NewMenuUsecase(repo)
+
+	roots, err := uc.ListUserRouteTree(t.Context(), 42)
+	if err != nil {
+		t.Fatalf("ListUserRouteTree: %v", err)
+	}
+	ids := treeIDs(roots)
+	want := []int64{2, 3, 1}
+	for i := range want {
+		if len(ids) != len(want) || ids[i] != want[i] {
+			t.Fatalf("superadmin route ids = %v, want %v", ids, want)
+		}
+	}
+}
+
+func TestListUserRouteTree_MalformedSuperadminRoleKeyDoesNotBypassGrants(t *testing.T) {
+	repo := newFakeMenuRepo()
+	repo.routeAccess = &MenuRouteAccess{
+		RoleKeys: []string{" superadmin "},
+		ActiveMenus: []*Menu{
+			{ID: 1, ParentID: 0, MenuName: "System", MenuType: MenuTypeDirectory},
+		},
+	}
+	uc := NewMenuUsecase(repo)
+
+	roots, err := uc.ListUserRouteTree(t.Context(), 42)
+	if err != nil {
+		t.Fatalf("ListUserRouteTree: %v", err)
+	}
+	if len(roots) != 0 {
+		t.Fatalf("malformed superadmin role key bypassed Menu Grants: %v", treeIDs(roots))
+	}
+}
+
+func TestListUserRouteTree_PreservesRepositoryTieBreakForEqualOrder(t *testing.T) {
+	repo := newFakeMenuRepo()
+	repo.routeAccess = &MenuRouteAccess{
+		RoleKeys:       []string{"operator"},
+		GrantedMenuIDs: []int64{2, 3},
+		// The data repo supplies id order as the tie-break for equal order_num.
+		ActiveMenus: []*Menu{
+			{ID: 1, ParentID: 0, OrderNum: 1, MenuType: MenuTypeDirectory},
+			{ID: 2, ParentID: 1, OrderNum: 5, MenuType: MenuTypeMenu},
+			{ID: 3, ParentID: 1, OrderNum: 5, MenuType: MenuTypeMenu},
+		},
+	}
+	uc := NewMenuUsecase(repo)
+
+	roots, err := uc.ListUserRouteTree(t.Context(), 42)
+	if err != nil {
+		t.Fatalf("ListUserRouteTree: %v", err)
+	}
+	if len(roots) != 1 || len(roots[0].Children) != 2 || roots[0].Children[0].ID != 2 || roots[0].Children[1].ID != 3 {
+		t.Fatalf("equal-order routes lost repository tie-break: %v", treeIDs(roots))
 	}
 }
 

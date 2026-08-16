@@ -93,6 +93,15 @@ message RouterTree {
 
 // MenuService is the system-menu CRUD + tree service.
 service MenuService {
+  // GetRouters returns the current System User's route tree. It is declared
+  // before the parameterized GetMenu route so the generated HTTP router gives
+  // this static path precedence.
+  rpc GetRouters(google.protobuf.Empty) returns (RouterTree) {
+    option (system.auth.v1.policy.auth_policy) = {mode: AUTHENTICATED};
+    option (google.api.http) = {
+      get: "/system/menu/getRouters"
+    };
+  }
   // CreateMenu creates a new menu.
   rpc CreateMenu(CreateMenuRequest) returns (Menu) {
     option (system.auth.v1.policy.auth_policy) = {
@@ -144,13 +153,6 @@ service MenuService {
     };
     option (google.api.http) = {
       delete: "/system/menu/{menu_id}"
-    };
-  }
-  // GetRouters returns the current System User's route tree.
-  rpc GetRouters(google.protobuf.Empty) returns (RouterTree) {
-    option (system.auth.v1.policy.auth_policy) = {mode: AUTHENTICATED};
-    option (google.api.http) = {
-      get: "/system/menu/getRouters"
     };
   }
 }

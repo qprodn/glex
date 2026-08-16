@@ -31,7 +31,8 @@ type UserServiceHTTPServer interface {
 	// DeleteUser DeleteUser soft-deletes a user by id.
 	DeleteUser(context.Context, *DeleteUserRequest) (*emptypb.Empty, error)
 	// GetInfo GetInfo returns the current System User, Role keys, and Functional
-	// Permissions. It never returns the stored password hash.
+	// Permissions. It is declared before the parameterized GetUser route so the
+	// generated HTTP router gives this static path precedence.
 	GetInfo(context.Context, *emptypb.Empty) (*CurrentUserInfo, error)
 	// GetUser GetUser retrieves a user by id.
 	GetUser(context.Context, *GetUserRequest) (*User, error)
@@ -43,12 +44,31 @@ type UserServiceHTTPServer interface {
 
 func RegisterUserServiceHTTPServer(s *http.Server, srv UserServiceHTTPServer) {
 	r := s.Route("/")
+	r.Handle("GET", "/system/user/getInfo", _UserService_GetInfo0_HTTP_Handler(srv))
 	r.Handle("POST", "/system/user", _UserService_CreateUser0_HTTP_Handler(srv))
 	r.Handle("GET", "/system/user/{user_id}", _UserService_GetUser0_HTTP_Handler(srv))
 	r.Handle("GET", "/system/user", _UserService_ListUsers0_HTTP_Handler(srv))
 	r.Handle("PATCH", "/system/user/{user.user_id}", _UserService_UpdateUser0_HTTP_Handler(srv))
 	r.Handle("DELETE", "/system/user/{user_id}", _UserService_DeleteUser0_HTTP_Handler(srv))
-	r.Handle("GET", "/system/user/getInfo", _UserService_GetInfo0_HTTP_Handler(srv))
+}
+
+func _UserService_GetInfo0_HTTP_Handler(srv UserServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in emptypb.Empty
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationUserServiceGetInfo)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.GetInfo(ctx, req.(*emptypb.Empty))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*CurrentUserInfo)
+		return ctx.Result(200, reply)
+	}
 }
 
 func _UserService_CreateUser0_HTTP_Handler(srv UserServiceHTTPServer) func(ctx http.Context) error {
@@ -161,32 +181,14 @@ func _UserService_DeleteUser0_HTTP_Handler(srv UserServiceHTTPServer) func(ctx h
 	}
 }
 
-func _UserService_GetInfo0_HTTP_Handler(srv UserServiceHTTPServer) func(ctx http.Context) error {
-	return func(ctx http.Context) error {
-		var in emptypb.Empty
-		if err := ctx.BindQuery(&in); err != nil {
-			return err
-		}
-		http.SetOperation(ctx, OperationUserServiceGetInfo)
-		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
-			return srv.GetInfo(ctx, req.(*emptypb.Empty))
-		})
-		out, err := h(ctx, &in)
-		if err != nil {
-			return err
-		}
-		reply := out.(*CurrentUserInfo)
-		return ctx.Result(200, reply)
-	}
-}
-
 type UserServiceHTTPClient interface {
 	// CreateUser CreateUser creates a new system user.
 	CreateUser(ctx context.Context, req *CreateUserRequest, opts ...http.CallOption) (rsp *User, err error)
 	// DeleteUser DeleteUser soft-deletes a user by id.
 	DeleteUser(ctx context.Context, req *DeleteUserRequest, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
 	// GetInfo GetInfo returns the current System User, Role keys, and Functional
-	// Permissions. It never returns the stored password hash.
+	// Permissions. It is declared before the parameterized GetUser route so the
+	// generated HTTP router gives this static path precedence.
 	GetInfo(ctx context.Context, req *emptypb.Empty, opts ...http.CallOption) (rsp *CurrentUserInfo, err error)
 	// GetUser GetUser retrieves a user by id.
 	GetUser(ctx context.Context, req *GetUserRequest, opts ...http.CallOption) (rsp *User, err error)
@@ -240,7 +242,8 @@ func (c *UserServiceHTTPClientImpl) DeleteUser(ctx context.Context, in *DeleteUs
 }
 
 // GetInfo GetInfo returns the current System User, Role keys, and Functional
-// Permissions. It never returns the stored password hash.
+// Permissions. It is declared before the parameterized GetUser route so the
+// generated HTTP router gives this static path precedence.
 func (c *UserServiceHTTPClientImpl) GetInfo(ctx context.Context, in *emptypb.Empty, opts ...http.CallOption) (*CurrentUserInfo, error) {
 	var out CurrentUserInfo
 	pattern := "/system/user/getInfo"

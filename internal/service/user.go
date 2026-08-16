@@ -48,11 +48,24 @@ func convertUser(m *biz.User) *userv1.User {
 type UserService struct {
 	userv1.UnimplementedUserServiceServer
 
-	uc *biz.UserUsecase
+	uc userUsecase
+}
+
+type userUsecase interface {
+	CreateUser(context.Context, *biz.User) (*biz.User, error)
+	GetUser(context.Context, int64) (*biz.User, error)
+	GetCurrentUserInfo(context.Context, *biz.Principal) (*biz.CurrentUserInfo, error)
+	ListUsers(context.Context, ...biz.ListOption) ([]*biz.User, error)
+	UpdateUser(context.Context, *biz.User) (*biz.User, error)
+	DeleteUser(context.Context, int64) error
 }
 
 // NewUserService creates a UserService.
 func NewUserService(uc *biz.UserUsecase) *UserService {
+	return newUserService(uc)
+}
+
+func newUserService(uc userUsecase) *UserService {
 	return &UserService{uc: uc}
 }
 
@@ -83,6 +96,44 @@ func (s *UserService) GetUser(ctx context.Context, req *userv1.GetUserRequest) (
 		return nil, err
 	}
 	return convertUser(u), nil
+}
+
+// GetInfo returns the freshly loaded current System User plus the Role keys and
+// Functional Permissions authenticated from the shared Authorization Snapshot.
+func (s *UserService) GetInfo(ctx context.Context, _ *emptypb.Empty) (*userv1.CurrentUserInfo, error) {
+	principal, ok := biz.PrincipalFromContext(ctx)
+	if !ok {
+		return nil, biz.ErrCredentialMissing
+	}
+	info, err := s.uc.GetCurrentUserInfo(ctx, principal)
+	if err != nil {
+		return nil, err
+	}
+	u := info.User
+	current := &userv1.CurrentUser{
+		UserId:      u.ID,
+		UserName:    u.UserName,
+		NickName:    u.NickName,
+		Email:       u.Email,
+		PhoneNumber: u.PhoneNumber,
+		Gender:      u.Gender,
+		Status:      u.Status,
+		Avatar:      u.Avatar,
+		Remark:      u.Remark,
+		CreateBy:    u.CreateBy,
+		UpdateBy:    u.UpdateBy,
+		LoginIp:     u.LoginIP,
+		CreatedAt:   timestamppb.New(u.CreatedAt),
+		UpdatedAt:   timestamppb.New(u.UpdatedAt),
+	}
+	if u.LoginDate != nil {
+		current.LoginDate = timestamppb.New(*u.LoginDate)
+	}
+	return &userv1.CurrentUserInfo{
+		User:        current,
+		RoleKeys:    append([]string(nil), info.RoleKeys...),
+		Permissions: append([]string(nil), info.Permissions...),
+	}, nil
 }
 
 // ListUsers lists users with AIP-160 filter, AIP-132 order, and page-token

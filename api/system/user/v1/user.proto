@@ -82,6 +82,15 @@ message CurrentUserInfo {
 
 // UserService is the system-user CRUD service.
 service UserService {
+  // GetInfo returns the current System User, Role keys, and Functional
+  // Permissions. It is declared before the parameterized GetUser route so the
+  // generated HTTP router gives this static path precedence.
+  rpc GetInfo(google.protobuf.Empty) returns (CurrentUserInfo) {
+    option (system.auth.v1.policy.auth_policy) = {mode: AUTHENTICATED};
+    option (google.api.http) = {
+      get: "/system/user/getInfo"
+    };
+  }
   // CreateUser creates a new system user.
   rpc CreateUser(CreateUserRequest) returns (User) {
     option (system.auth.v1.policy.auth_policy) = {
@@ -132,14 +141,6 @@ service UserService {
     };
     option (google.api.http) = {
       delete: "/system/user/{user_id}"
-    };
-  }
-  // GetInfo returns the current System User, Role keys, and Functional
-  // Permissions. It never returns the stored password hash.
-  rpc GetInfo(google.protobuf.Empty) returns (CurrentUserInfo) {
-    option (system.auth.v1.policy.auth_policy) = {mode: AUTHENTICATED};
-    option (google.api.http) = {
-      get: "/system/user/getInfo"
     };
   }
 }

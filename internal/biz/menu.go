@@ -42,6 +42,17 @@ type Menu struct {
 	Children   []*Menu
 }
 
+// MenuRouteAccess is the freshly loaded authorization data used to build one
+// System User's route tree. It deliberately carries menu ids rather than
+// Functional Permission handles: routes follow active Role Assignments and
+// Menu Grants, while permission checks use the separate Authorization
+// Snapshot.
+type MenuRouteAccess struct {
+	RoleKeys       []string
+	GrantedMenuIDs []int64
+	ActiveMenus    []*Menu
+}
+
 // MenuRepo is the repository interface for menus (the inversion seam declared
 // in biz, implemented in data).
 type MenuRepo interface {
@@ -52,6 +63,10 @@ type MenuRepo interface {
 	// soft-deleted (used to validate Menu Grants).
 	ListByIDs(ctx context.Context, ids []int64) ([]*Menu, error)
 	ListMenus(ctx context.Context, opts ...ListOption) ([]*Menu, error)
+	// LoadRouteAccess freshly reads the System User's active Role Assignments,
+	// their Menu Grants, and every active Directory/Menu. Button nodes are not
+	// included in ActiveMenus.
+	LoadRouteAccess(ctx context.Context, systemUserID int64) (*MenuRouteAccess, error)
 	CreateMenu(ctx context.Context, m *Menu) (*Menu, error)
 	UpdateMenu(ctx context.Context, m *Menu) (*Menu, error)
 	DeleteMenu(ctx context.Context, id int64) error
@@ -92,6 +107,81 @@ func (uc *MenuUsecase) ListMenuTree(ctx context.Context, opts ...ListOption) ([]
 		return nil, err
 	}
 	return buildTree(menus), nil
+}
+
+// ListUserRouteTree builds the current System User's routes from fresh
+// Role-Assignment/Menu-Grant data. An ordinary user receives granted
+// routeable nodes plus their active ancestors. A currently assigned active
+// superadmin Role receives every active routeable node. The shared buildTree
+// helper then applies the existing sibling ordering and orphan behavior.
+func (uc *MenuUsecase) ListUserRouteTree(ctx context.Context, systemUserID int64) ([]*Menu, error) {
+	access, err := uc.repo.LoadRouteAccess(ctx, systemUserID)
+	if err != nil {
+		return nil, err
+	}
+	if access == nil {
+		return []*Menu{}, nil
+	}
+
+	all := make(map[int64]*Menu, len(access.ActiveMenus))
+	for _, m := range access.ActiveMenus {
+		if m != nil {
+			all[m.ID] = m
+		}
+	}
+
+	selected := make(map[int64]*Menu, len(all))
+	if hasExactRoleKey(access.RoleKeys, "superadmin") {
+		for id, m := range all {
+			selected[id] = m
+		}
+	} else {
+		for _, id := range access.GrantedMenuIDs {
+			m, ok := all[id]
+			if !ok {
+				// Disabled/deleted menus and Button-only grants do not seed a
+				// route or cause their ancestors to appear.
+				continue
+			}
+			selected[id] = m
+			seenAncestors := map[int64]struct{}{m.ID: {}}
+			for parentID := m.ParentID; parentID != 0; {
+				if _, cycle := seenAncestors[parentID]; cycle {
+					break
+				}
+				seenAncestors[parentID] = struct{}{}
+				parent, ok := all[parentID]
+				if !ok {
+					// Preserve the existing menu-tree rule: descendants of a
+					// missing/soft-deleted parent remain orphans and are dropped.
+					break
+				}
+				selected[parent.ID] = parent
+				parentID = parent.ParentID
+			}
+		}
+	}
+
+	// Preserve the repository's (parent_id, order_num, id) order. buildTree's
+	// stable order_num sort then retains id as the deterministic tie-break.
+	menus := make([]*Menu, 0, len(selected))
+	for _, m := range access.ActiveMenus {
+		if m != nil {
+			if _, ok := selected[m.ID]; ok {
+				menus = append(menus, m)
+			}
+		}
+	}
+	return buildTree(menus), nil
+}
+
+func hasExactRoleKey(roleKeys []string, want string) bool {
+	for _, roleKey := range roleKeys {
+		if roleKey == want {
+			return true
+		}
+	}
+	return false
 }
 
 // UpdateMenu rejects a self-parent, re-validates the type (so an explicit mask

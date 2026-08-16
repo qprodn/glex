@@ -8,6 +8,8 @@ import (
 	"glex/internal/biz"
 	"glex/internal/data/ent"
 	"glex/internal/data/ent/menu"
+	"glex/internal/data/ent/role"
+	"glex/internal/data/ent/user"
 )
 
 // toBizMenu maps an ent Menu PO to a biz.Menu DO. Children is left nil — the
@@ -102,6 +104,67 @@ func (r *menuRepo) ListMenus(ctx context.Context, opts ...biz.ListOption) ([]*bi
 		menus = append(menus, toBizMenu(po))
 	}
 	return menus, nil
+}
+
+// LoadRouteAccess freshly resolves the three database inputs for getRouters:
+// active Role Assignments, their Menu Grants, and all active routeable Menus.
+// It intentionally does not consult Functional Permission handles or an
+// Account Session snapshot.
+func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*biz.MenuRouteAccess, error) {
+	assignedRoles, err := r.data.db.Role.Query().
+		Where(
+			role.DeletedAtIsNil(),
+			role.StatusEQ(0),
+			role.HasUsersWith(
+				user.IDEQ(systemUserID),
+				user.DeletedAtIsNil(),
+				user.StatusEQ(0),
+			),
+		).
+		Order(role.ByRoleKey(), role.ByID()).
+		All(ctx)
+	if err != nil {
+		return nil, authDatabaseBackendError("load_route_role_assignments", err)
+	}
+
+	roleKeys := make([]string, 0, len(assignedRoles))
+	roleIDs := make([]int64, 0, len(assignedRoles))
+	for _, assignedRole := range assignedRoles {
+		roleKeys = append(roleKeys, assignedRole.RoleKey)
+		roleIDs = append(roleIDs, assignedRole.ID)
+	}
+
+	grantedMenuIDs := make([]int64, 0)
+	if len(roleIDs) > 0 {
+		grantedMenuIDs, err = r.data.db.Role.Query().
+			Where(role.IDIn(roleIDs...)).
+			QueryMenus().
+			IDs(ctx)
+		if err != nil {
+			return nil, authDatabaseBackendError("load_route_menu_grants", err)
+		}
+	}
+
+	pos, err := r.data.db.Menu.Query().
+		Where(
+			menu.DeletedAtIsNil(),
+			menu.StatusEQ(0),
+			menu.MenuTypeIn(int8(biz.MenuTypeDirectory), int8(biz.MenuTypeMenu)),
+		).
+		Order(menu.ByParentID(), menu.ByOrderNum(), menu.ByID()).
+		All(ctx)
+	if err != nil {
+		return nil, authDatabaseBackendError("load_active_route_menus", err)
+	}
+	menus := make([]*biz.Menu, 0, len(pos))
+	for _, po := range pos {
+		menus = append(menus, toBizMenu(po))
+	}
+	return &biz.MenuRouteAccess{
+		RoleKeys:       roleKeys,
+		GrantedMenuIDs: grantedMenuIDs,
+		ActiveMenus:    menus,
+	}, nil
 }
 
 func (r *menuRepo) CreateMenu(ctx context.Context, m *biz.Menu) (*biz.Menu, error) {

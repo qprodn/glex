@@ -27,6 +27,16 @@ type User struct {
 	UpdatedAt   time.Time
 }
 
+// CurrentUserInfo combines the current System User record with the immutable
+// Role/Functional-Permission view authenticated into the request Principal.
+// Password remains on User only for credential/update workflows and is never
+// projected by the service's dedicated current-user DTO conversion.
+type CurrentUserInfo struct {
+	User        *User
+	RoleKeys    []string
+	Permissions []string
+}
+
 // UserRepo is the repository interface for system users (the inversion seam
 // declared in biz, implemented in data).
 type UserRepo interface {
@@ -88,6 +98,23 @@ func (uc *UserUsecase) UpdateUser(ctx context.Context, u *User) (*User, error) {
 // GetUser returns the user with the given id.
 func (uc *UserUsecase) GetUser(ctx context.Context, id int64) (*User, error) {
 	return uc.repo.FindByID(ctx, id)
+}
+
+// GetCurrentUserInfo reads the System User record afresh while retaining Roles
+// and Functional Permissions from the authenticated Authorization Snapshot.
+func (uc *UserUsecase) GetCurrentUserInfo(ctx context.Context, principal *Principal) (*CurrentUserInfo, error) {
+	if principal == nil {
+		return nil, ErrCredentialMissing
+	}
+	u, err := uc.repo.FindByID(ctx, principal.SystemUserID())
+	if err != nil {
+		return nil, err
+	}
+	return &CurrentUserInfo{
+		User:        u,
+		RoleKeys:    principal.RoleKeys(),
+		Permissions: principal.Permissions(),
+	}, nil
 }
 
 // ListUsers lists users matching the given options.

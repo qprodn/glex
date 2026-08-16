@@ -231,3 +231,32 @@ func TestUpdateUser_EmptyEmailNotChecked(t *testing.T) {
 		t.Fatalf("update without email: %v", err)
 	}
 }
+
+func TestGetCurrentUserInfoReadsUserAndCopiesPrincipalSnapshot(t *testing.T) {
+	repo := newFakeUserRepo()
+	repo.byID[42] = &User{ID: 42, UserName: "alice", Password: "stored-hash"}
+	uc := NewUserUsecase(repo)
+	roleKeys := []string{"operator"}
+	permissions := []string{"system:user:list"}
+	principal := NewPrincipal(42, "alice", "session-id", roleKeys, permissions)
+
+	info, err := uc.GetCurrentUserInfo(t.Context(), principal)
+	if err != nil {
+		t.Fatalf("GetCurrentUserInfo: %v", err)
+	}
+	if info.User != repo.byID[42] || info.User.ID != 42 {
+		t.Fatalf("current System User = %#v", info.User)
+	}
+	roleKeys[0] = "mutated"
+	permissions[0] = "mutated"
+	if info.RoleKeys[0] != "operator" || info.Permissions[0] != "system:user:list" {
+		t.Fatalf("snapshot was not defensively copied: %#v", info)
+	}
+}
+
+func TestGetCurrentUserInfoRequiresPrincipal(t *testing.T) {
+	uc := NewUserUsecase(newFakeUserRepo())
+	if _, err := uc.GetCurrentUserInfo(t.Context(), nil); !errors.Is(err, ErrCredentialMissing) {
+		t.Fatalf("GetCurrentUserInfo(nil) = %v", err)
+	}
+}

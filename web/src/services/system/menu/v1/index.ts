@@ -174,6 +174,10 @@ export type DeleteMenuRequest = {
 
 // MenuService is the system-menu CRUD + tree service.
 export interface MenuService {
+  // GetRouters returns the current System User's route tree. It is declared
+  // before the parameterized GetMenu route so the generated HTTP router gives
+  // this static path precedence.
+  GetRouters(request: wellKnownEmpty): Promise<RouterTree>;
   // CreateMenu creates a new menu.
   CreateMenu(request: CreateMenuRequest): Promise<Menu>;
   // GetMenu retrieves a menu by id.
@@ -185,8 +189,6 @@ export interface MenuService {
   UpdateMenu(request: UpdateMenuRequest): Promise<Menu>;
   // DeleteMenu soft-deletes a menu by id; refused while it has children.
   DeleteMenu(request: DeleteMenuRequest): Promise<wellKnownEmpty>;
-  // GetRouters returns the current System User's route tree.
-  GetRouters(request: wellKnownEmpty): Promise<RouterTree>;
 }
 
 type RequestType = {
@@ -201,6 +203,23 @@ export function createMenuServiceClient(
   handler: RequestHandler
 ): MenuService {
   return {
+    GetRouters(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `system/menu/getRouters`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "MenuService",
+        method: "GetRouters",
+      }) as Promise<RouterTree>;
+    },
     CreateMenu(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
       const path = `system/menu`; // eslint-disable-line quotes
       const body = JSON.stringify(request?.menu ?? {});
@@ -303,23 +322,6 @@ export function createMenuServiceClient(
         service: "MenuService",
         method: "DeleteMenu",
       }) as Promise<wellKnownEmpty>;
-    },
-    GetRouters(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
-      const path = `system/menu/getRouters`; // eslint-disable-line quotes
-      const body = null;
-      const queryParams: string[] = [];
-      let uri = path;
-      if (queryParams.length > 0) {
-        uri += `?${queryParams.join("&")}`
-      }
-      return handler({
-        path: uri,
-        method: "GET",
-        body,
-      }, {
-        service: "MenuService",
-        method: "GetRouters",
-      }) as Promise<RouterTree>;
     },
   };
 }

@@ -32,7 +32,9 @@ type MenuServiceHTTPServer interface {
 	DeleteMenu(context.Context, *DeleteMenuRequest) (*emptypb.Empty, error)
 	// GetMenu GetMenu retrieves a menu by id.
 	GetMenu(context.Context, *GetMenuRequest) (*Menu, error)
-	// GetRouters GetRouters returns the current System User's route tree.
+	// GetRouters GetRouters returns the current System User's route tree. It is declared
+	// before the parameterized GetMenu route so the generated HTTP router gives
+	// this static path precedence.
 	GetRouters(context.Context, *emptypb.Empty) (*RouterTree, error)
 	// ListMenus ListMenus returns the full menu tree. Not paginated (menus are small and
 	// tree-shaped). Supports AIP-160 filter and AIP-132 order.
@@ -43,12 +45,31 @@ type MenuServiceHTTPServer interface {
 
 func RegisterMenuServiceHTTPServer(s *http.Server, srv MenuServiceHTTPServer) {
 	r := s.Route("/")
+	r.Handle("GET", "/system/menu/getRouters", _MenuService_GetRouters0_HTTP_Handler(srv))
 	r.Handle("POST", "/system/menu", _MenuService_CreateMenu0_HTTP_Handler(srv))
 	r.Handle("GET", "/system/menu/{menu_id}", _MenuService_GetMenu0_HTTP_Handler(srv))
 	r.Handle("GET", "/system/menu", _MenuService_ListMenus0_HTTP_Handler(srv))
 	r.Handle("PATCH", "/system/menu/{menu.menu_id}", _MenuService_UpdateMenu0_HTTP_Handler(srv))
 	r.Handle("DELETE", "/system/menu/{menu_id}", _MenuService_DeleteMenu0_HTTP_Handler(srv))
-	r.Handle("GET", "/system/menu/getRouters", _MenuService_GetRouters0_HTTP_Handler(srv))
+}
+
+func _MenuService_GetRouters0_HTTP_Handler(srv MenuServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in emptypb.Empty
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationMenuServiceGetRouters)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.GetRouters(ctx, req.(*emptypb.Empty))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*RouterTree)
+		return ctx.Result(200, reply)
+	}
 }
 
 func _MenuService_CreateMenu0_HTTP_Handler(srv MenuServiceHTTPServer) func(ctx http.Context) error {
@@ -161,25 +182,6 @@ func _MenuService_DeleteMenu0_HTTP_Handler(srv MenuServiceHTTPServer) func(ctx h
 	}
 }
 
-func _MenuService_GetRouters0_HTTP_Handler(srv MenuServiceHTTPServer) func(ctx http.Context) error {
-	return func(ctx http.Context) error {
-		var in emptypb.Empty
-		if err := ctx.BindQuery(&in); err != nil {
-			return err
-		}
-		http.SetOperation(ctx, OperationMenuServiceGetRouters)
-		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
-			return srv.GetRouters(ctx, req.(*emptypb.Empty))
-		})
-		out, err := h(ctx, &in)
-		if err != nil {
-			return err
-		}
-		reply := out.(*RouterTree)
-		return ctx.Result(200, reply)
-	}
-}
-
 type MenuServiceHTTPClient interface {
 	// CreateMenu CreateMenu creates a new menu.
 	CreateMenu(ctx context.Context, req *CreateMenuRequest, opts ...http.CallOption) (rsp *Menu, err error)
@@ -187,7 +189,9 @@ type MenuServiceHTTPClient interface {
 	DeleteMenu(ctx context.Context, req *DeleteMenuRequest, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
 	// GetMenu GetMenu retrieves a menu by id.
 	GetMenu(ctx context.Context, req *GetMenuRequest, opts ...http.CallOption) (rsp *Menu, err error)
-	// GetRouters GetRouters returns the current System User's route tree.
+	// GetRouters GetRouters returns the current System User's route tree. It is declared
+	// before the parameterized GetMenu route so the generated HTTP router gives
+	// this static path precedence.
 	GetRouters(ctx context.Context, req *emptypb.Empty, opts ...http.CallOption) (rsp *RouterTree, err error)
 	// ListMenus ListMenus returns the full menu tree. Not paginated (menus are small and
 	// tree-shaped). Supports AIP-160 filter and AIP-132 order.
@@ -256,7 +260,9 @@ func (c *MenuServiceHTTPClientImpl) GetMenu(ctx context.Context, in *GetMenuRequ
 	return &out, nil
 }
 
-// GetRouters GetRouters returns the current System User's route tree.
+// GetRouters GetRouters returns the current System User's route tree. It is declared
+// before the parameterized GetMenu route so the generated HTTP router gives
+// this static path precedence.
 func (c *MenuServiceHTTPClientImpl) GetRouters(ctx context.Context, in *emptypb.Empty, opts ...http.CallOption) (*RouterTree, error) {
 	var out RouterTree
 	pattern := "/system/menu/getRouters"
