@@ -56,7 +56,10 @@ end
 
 local sequence = redis.call('INCR', KEYS[5])
 redis.call('SET', KEYS[3], ARGV[2], 'PX', ARGV[3])
-redis.call('SET', KEYS[4], ARGV[1], 'PX', ARGV[3])
+-- Keep the credential fingerprint for one additional fixed-lifetime window.
+-- After the token and metadata expire it is a non-secret expiry tombstone,
+-- allowing middleware to distinguish fixed expiry from an unknown token.
+redis.call('SET', KEYS[4], ARGV[1], 'PX', ARGV[13])
 redis.call('ZADD', KEYS[1], sequence, ARGV[1])
 redis.call('ZADD', KEYS[2], sequence, ARGV[1])
 redis.call('PEXPIRE', KEYS[1], ARGV[3])
@@ -282,6 +285,7 @@ func (r *loginSessionRepo) Create(ctx context.Context, bearerToken string, sessi
 			r.key(authManagerKeyPrefix+satokenmanager.RenewKeyPrefix),
 			po.SystemUserID,
 			po.DeviceType,
+			(2 * r.lifetime).Milliseconds(),
 		).Int()
 		cancel()
 		if err != nil {
@@ -312,6 +316,9 @@ func (r *loginSessionRepo) FindByID(ctx context.Context, sessionID string) (*biz
 func (r *loginSessionRepo) FindByToken(ctx context.Context, bearerToken string) (*biz.LoginSession, error) {
 	loggedIn, err := r.manager.CheckLoginWithState(bearerToken)
 	if err != nil {
+		if errors.Is(err, ErrAuthKeyNotFound) {
+			return nil, r.missingTokenError(ctx, bearerToken)
+		}
 		return nil, mapLoginSessionAuthError(err)
 	}
 	if !loggedIn {
@@ -330,6 +337,20 @@ func (r *loginSessionRepo) FindByToken(ctx context.Context, bearerToken string) 
 		return nil, authRedisBackendError("find_login_session_by_token", err)
 	}
 	return r.FindByID(ctx, sessionID)
+}
+
+func (r *loginSessionRepo) missingTokenError(ctx context.Context, bearerToken string) error {
+	readCtx, cancel := context.WithTimeout(ctx, boundedTimeout(r.readTimeout, defaultAuthReadTimeout))
+	defer cancel()
+	_, err := r.rdb.Get(readCtx, r.key(loginSessionTokenKeyPrefix+tokenFingerprint(bearerToken))).Result()
+	switch {
+	case err == nil:
+		return biz.ErrTokenExpired
+	case errors.Is(err, redis.Nil):
+		return biz.ErrTokenInvalid
+	default:
+		return authRedisBackendError("classify_missing_login_session_token", err)
+	}
 }
 
 func (r *loginSessionRepo) findPO(ctx context.Context, sessionID string) (*loginSessionPO, error) {

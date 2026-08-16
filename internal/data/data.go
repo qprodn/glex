@@ -24,6 +24,7 @@ var ProviderSet = wire.NewSet(
 	NewAuthStorage,
 	NewAuthManager,
 	NewLoginSessionRepo,
+	NewAuthenticator,
 	NewLoginCounterRepo,
 	NewAuthLoginRepo,
 )

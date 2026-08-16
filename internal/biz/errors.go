@@ -21,11 +21,14 @@ var (
 	// Authentication-state errors are mapped by data so no sa-token or Redis
 	// error crosses the repository boundary.
 	ErrTokenInvalid           = errors.Unauthorized(authv1.ErrorReason_TOKEN_INVALID.String(), "invalid token")
+	ErrCredentialMissing      = errors.Unauthorized(authv1.ErrorReason_CREDENTIAL_MISSING.String(), "Authorization credential is required")
+	ErrCredentialMalformed    = errors.Unauthorized(authv1.ErrorReason_CREDENTIAL_MALFORMED.String(), "Authorization credential is malformed")
 	ErrTokenExpired           = errors.Unauthorized(authv1.ErrorReason_TOKEN_EXPIRED.String(), "token expired")
 	ErrTokenIdleTimeout       = errors.Unauthorized(authv1.ErrorReason_TOKEN_IDLE_TIMEOUT.String(), "Login Session idle timeout")
 	ErrLoginSessionKickedOut  = errors.Unauthorized(authv1.ErrorReason_SESSION_KICKED_OUT.String(), "Login Session kicked out")
 	ErrLoginSessionReplaced   = errors.Unauthorized(authv1.ErrorReason_SESSION_REPLACED.String(), "Login Session replaced")
 	ErrAuthBackendUnavailable = errors.ServiceUnavailable(authv1.ErrorReason_AUTH_BACKEND_UNAVAILABLE.String(), "authentication backend unavailable")
+	ErrPermissionDenied       = errors.Forbidden(authv1.ErrorReason_PERMISSION_DENIED.String(), "Functional Permission denied")
 	ErrInvalidCredentials     = errors.Unauthorized(authv1.ErrorReason_INVALID_CREDENTIALS.String(), "invalid username or password")
 	ErrSystemUserDisabled     = errors.Forbidden(authv1.ErrorReason_ACCOUNT_DISABLED.String(), "System User is disabled")
 
