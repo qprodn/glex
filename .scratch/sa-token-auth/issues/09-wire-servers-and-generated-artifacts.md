@@ -1,7 +1,7 @@
 # Complete wiring, server registration, and generated artifacts
 
 Type: task
-Status: ready-for-agent
+Status: done 2026-08-17
 Blocked by: 05, 06, 07, 08
 
 ## Objective

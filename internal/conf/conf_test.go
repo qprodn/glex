@@ -1,6 +1,7 @@
 package conf_test
 
 import (
+	"net/url"
 	"testing"
 	"time"
 
@@ -42,6 +43,13 @@ func TestExampleAuthConfigurationMatchesConfirmedDefaults(t *testing.T) {
 	}
 	if !auth.GetEdgeProxyAuthoritativeSourceIp() {
 		t.Error("edge proxy authoritative-source-IP deployment assertion is false")
+	}
+	databaseURL, err := url.Parse(bootstrap.GetData().GetDatabase().GetSource())
+	if err != nil {
+		t.Fatalf("parse example database source: %v", err)
+	}
+	if _, configured := databaseURL.User.Password(); configured {
+		t.Error("example database source contains a committed password")
 	}
 }
 

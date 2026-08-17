@@ -14,7 +14,7 @@ import (
 )
 
 func TestProjectAuthPoliciesAreCompleteAtStartup(t *testing.T) {
-	registrations := httpServiceRegistrations(nil, nil, nil, nil)
+	registrations := httpServiceRegistrations(nil, nil, nil, nil, nil)
 	descriptors := make([]protoreflect.ServiceDescriptor, len(registrations))
 	for i, registration := range registrations {
 		descriptors[i] = registration.descriptor

@@ -8,7 +8,9 @@ server:
 data:
   database:
     driver: postgres
-    source: postgres://postgres:123456@127.0.0.1:5432/glex?sslmode=disable
+    # Local passwordless example only. Supply production credentials through a
+    # deployment-specific config source; never commit them here.
+    source: postgres://postgres@127.0.0.1:5432/glex?sslmode=disable
   redis:
     addr: 127.0.0.1:6379
     read_timeout: 0.2s

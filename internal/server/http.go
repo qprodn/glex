@@ -20,7 +20,7 @@ type httpServiceRegistration struct {
 	register   func(*http.Server)
 }
 
-func httpServiceRegistrations(user *service.UserService, menu *service.MenuService, role *service.RoleService, auth *service.AuthService) []httpServiceRegistration {
+func httpServiceRegistrations(user *service.UserService, menu *service.MenuService, role *service.RoleService, auth *service.AuthService, online *service.OnlineSessionService) []httpServiceRegistration {
 	return []httpServiceRegistration{
 		{
 			descriptor: userv1.File_system_user_v1_user_proto.Services().ByName("UserService"),
@@ -38,12 +38,16 @@ func httpServiceRegistrations(user *service.UserService, menu *service.MenuServi
 			descriptor: authv1.File_system_auth_v1_auth_proto.Services().ByName("AuthService"),
 			register:   func(server *http.Server) { authv1.RegisterAuthServiceHTTPServer(server, auth) },
 		},
+		{
+			descriptor: authv1.File_system_auth_v1_auth_proto.Services().ByName("OnlineSessionService"),
+			register:   func(server *http.Server) { authv1.RegisterOnlineSessionServiceHTTPServer(server, online) },
+		},
 	}
 }
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, user *service.UserService, menu *service.MenuService, role *service.RoleService, auth *service.AuthService, authenticator biz.Authenticator) (*http.Server, error) {
-	registrations := httpServiceRegistrations(user, menu, role, auth)
+func NewHTTPServer(c *conf.Server, user *service.UserService, menu *service.MenuService, role *service.RoleService, auth *service.AuthService, online *service.OnlineSessionService, authenticator biz.Authenticator) (*http.Server, error) {
+	registrations := httpServiceRegistrations(user, menu, role, auth, online)
 	descriptors := make([]protoreflect.ServiceDescriptor, len(registrations))
 	for i, registration := range registrations {
 		descriptors[i] = registration.descriptor

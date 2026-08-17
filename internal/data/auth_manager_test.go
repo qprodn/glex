@@ -38,6 +38,10 @@ func TestValidateAuthConfig(t *testing.T) {
 		name   string
 		mutate func(*conf.Auth)
 	}{
+		{"missing fixed lifetime", func(c *conf.Auth) { c.FixedLifetime = nil }},
+		{"malformed fixed lifetime", func(c *conf.Auth) {
+			c.FixedLifetime = &durationpb.Duration{Seconds: 315576000001}
+		}},
 		{"zero fixed lifetime", func(c *conf.Auth) { c.FixedLifetime = durationpb.New(0) }},
 		{"zero idle lifetime", func(c *conf.Auth) { c.IdleLifetime = durationpb.New(0) }},
 		{"idle not shorter than fixed", func(c *conf.Auth) {
@@ -86,6 +90,10 @@ func TestNewAuthManager(t *testing.T) {
 		t.Fatal("manager is nil")
 	}
 	cleanup()
+	cleanup()
+	if err := storage.Ping(); err != nil {
+		t.Fatalf("Manager cleanup unexpectedly closed shared Redis storage: %v", err)
+	}
 
 	if _, _, err := NewAuthManager(storage, nil); err == nil {
 		t.Fatal("NewAuthManager(nil config) must fail")

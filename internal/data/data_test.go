@@ -1,6 +1,7 @@
 package data
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -9,6 +10,29 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
+
+type testResourceCloser struct {
+	err   error
+	calls int
+}
+
+func (c *testResourceCloser) Close() error {
+	c.calls++
+	return c.err
+}
+
+func TestDataCleanupClosesResourcesIndependentlyAndOnce(t *testing.T) {
+	db := &testResourceCloser{err: errors.New("database close failed")}
+	rdb := &testResourceCloser{err: errors.New("Redis close failed")}
+	cleanup := newDataCleanup(db, rdb)
+
+	cleanup()
+	cleanup()
+
+	if db.calls != 1 || rdb.calls != 1 {
+		t.Fatalf("cleanup close calls = database:%d Redis:%d, want 1 each", db.calls, rdb.calls)
+	}
+}
 
 // TestNewRedisClientLifecycle covers the shared client's construction,
 // reachability gate, and cleanup: alive while miniredis runs, closed (and

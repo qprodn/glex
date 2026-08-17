@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/google/wire"
@@ -43,6 +44,10 @@ type Data struct {
 	redisWriteTimeout time.Duration
 }
 
+type dataResourceCloser interface {
+	Close() error
+}
+
 // NewData creates a new Data instance.
 func NewData(c *conf.Data) (*Data, func(), error) {
 	db, err := ent.Open(c.Database.Driver, c.Database.Source)
@@ -61,16 +66,30 @@ func NewData(c *conf.Data) (*Data, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	cleanup := func() {
-		db.Close()
-		rdb.Close()
-	}
+	cleanup := newDataCleanup(db, rdb)
 	return &Data{
 		db:                db,
 		rdb:               rdb,
 		redisReadTimeout:  readTimeout,
 		redisWriteTimeout: writeTimeout,
 	}, cleanup, nil
+}
+
+// newDataCleanup closes the database and Redis as independent resources. It is
+// safe to call more than once, and a close error from either client never
+// prevents the other client from being closed.
+func newDataCleanup(db, rdb dataResourceCloser) func() {
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			if err := db.Close(); err != nil {
+				log.Printf("failed closing database client: %v", err)
+			}
+			if err := rdb.Close(); err != nil {
+				log.Printf("failed closing Redis client: %v", err)
+			}
+		})
+	}
 }
 
 // newRedisClient builds the shared Redis client from config, bounds every

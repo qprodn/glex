@@ -3,12 +3,14 @@ package data
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"glex/internal/conf"
 
 	"github.com/sa-tokens/sa-token-go/core"
 	"github.com/sa-tokens/sa-token-go/core/adapter"
 	"github.com/sa-tokens/sa-token-go/core/errs"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 // authManagerKeyPrefix is explicit because the Login Session Lua scripts must
@@ -51,9 +53,8 @@ func NewAuthManager(storage adapter.Storage, c *conf.Auth) (*core.Manager, func(
 	cfg.IsLog = false
 	cfg.IsPrintBanner = false
 	manager := core.NewManager(storage, cfg)
-	cleanup := func() {
-		manager.CloseManager()
-	}
+	var closeOnce sync.Once
+	cleanup := func() { closeOnce.Do(manager.CloseManager) }
 	return manager, cleanup, nil
 }
 
@@ -63,11 +64,11 @@ func validateAuthConfig(c *conf.Auth) error {
 	if c == nil {
 		return errors.New("auth config is required")
 	}
-	if c.GetFixedLifetime().AsDuration() <= 0 {
-		return errors.New("fixed_lifetime must be positive")
+	if err := validatePositiveDuration("fixed_lifetime", c.GetFixedLifetime()); err != nil {
+		return err
 	}
-	if c.GetIdleLifetime().AsDuration() <= 0 {
-		return errors.New("idle_lifetime must be positive")
+	if err := validatePositiveDuration("idle_lifetime", c.GetIdleLifetime()); err != nil {
+		return err
 	}
 	if c.GetIdleLifetime().AsDuration() >= c.GetFixedLifetime().AsDuration() {
 		return errors.New("idle_lifetime must be shorter than fixed_lifetime")
@@ -97,8 +98,18 @@ func validateLoginCounter(name string, c *conf.Auth_LoginCounter) error {
 	if c.GetMaxFailures() == 0 {
 		return fmt.Errorf("%s.max_failures must be positive", name)
 	}
-	if c.GetWindow().AsDuration() <= 0 {
-		return fmt.Errorf("%s.window must be positive", name)
+	return validatePositiveDuration(name+".window", c.GetWindow())
+}
+
+func validatePositiveDuration(name string, duration *durationpb.Duration) error {
+	if duration == nil {
+		return fmt.Errorf("%s is required", name)
+	}
+	if err := duration.CheckValid(); err != nil {
+		return fmt.Errorf("%s is malformed: %w", name, err)
+	}
+	if duration.AsDuration() <= 0 {
+		return fmt.Errorf("%s must be positive", name)
 	}
 	return nil
 }

@@ -1,7 +1,6 @@
 package server
 
 import (
-	authv1 "glex/api/system/auth/v1"
 	menuv1 "glex/api/system/menu/v1"
 	rolev1 "glex/api/system/role/v1"
 	userv1 "glex/api/system/user/v1"
@@ -14,7 +13,7 @@ import (
 )
 
 // NewGRPCServer new a gRPC server.
-func NewGRPCServer(c *conf.Server, user *service.UserService, menu *service.MenuService, role *service.RoleService, auth *service.AuthService) *grpc.Server {
+func NewGRPCServer(c *conf.Server, user *service.UserService, menu *service.MenuService, role *service.RoleService) *grpc.Server {
 	var opts = []grpc.ServerOption{
 		grpc.Middleware(
 			recovery.Recovery(),
@@ -34,6 +33,5 @@ func NewGRPCServer(c *conf.Server, user *service.UserService, menu *service.Menu
 	userv1.RegisterUserServiceServer(srv, user)
 	menuv1.RegisterMenuServiceServer(srv, menu)
 	rolev1.RegisterRoleServiceServer(srv, role)
-	authv1.RegisterAuthServiceServer(srv, auth)
 	return srv
 }
