@@ -2,18 +2,32 @@ package data
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"os"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/google/wire"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/redis/go-redis/v9"
 	"glex/internal/conf"
 	"glex/internal/data/ent"
 	"glex/internal/data/ent/migrate"
 )
+
+// The generated ent client opens the "postgres" dialect, and pgx's stdlib
+// registers itself under "pgx". Register pgx's driver under the dialect name
+// so ent.Open("postgres", …) reaches a real driver — without this, no
+// PostgreSQL connection (application or test) can be opened at all. The
+// drivers() guard keeps the registration from panicking if another module
+// ever supplies a "postgres" driver first.
+func init() {
+	if !slices.Contains(sql.Drivers(), "postgres") {
+		sql.Register("postgres", stdlib.GetDefaultDriver())
+	}
+}
 
 // ProviderSet is data providers.
 var ProviderSet = wire.NewSet(

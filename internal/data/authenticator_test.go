@@ -69,6 +69,40 @@ func TestAuthenticatorBuildsPrincipalAndRefreshesActivity(t *testing.T) {
 	}
 }
 
+func TestAuthenticatorAcceptsRoleLessSystemUser(t *testing.T) {
+	// A System User with no Roles and no Functional Permissions is legal.
+	// Regression guard: the snapshot writer must serialize an empty set as []
+	// rather than null — a null decodes as a mismatched snapshot and locked
+	// these users out with spurious 503s.
+	sessions, tokenManager, _ := newTestLoginSessionRepo(t)
+	token, err := loginAndReplaceAuthorizationSnapshot(tokenManager, &biz.AuthorizationSnapshot{
+		SystemUserID: 42,
+		UserName:     "alice",
+	}, "desktop", 7*24*time.Hour)
+	if err != nil {
+		t.Fatalf("issue bearer: %v", err)
+	}
+	if _, err := sessions.Create(t.Context(), token, &biz.LoginSession{
+		SystemUserID: 42,
+		UserName:     "alice",
+		DeviceType:   "desktop",
+		LoginTime:    time.Now(),
+	}); err != nil {
+		t.Fatalf("create Login Session: %v", err)
+	}
+
+	principal, err := NewAuthenticator(tokenManager, sessions).Authenticate(t.Context(), token)
+	if err != nil {
+		t.Fatalf("Authenticate role-less System User: %v", err)
+	}
+	if len(principal.RoleKeys()) != 0 || len(principal.Permissions()) != 0 {
+		t.Fatalf("role-less Principal = %v/%v, want empty sets", principal.RoleKeys(), principal.Permissions())
+	}
+	if principal.HasPermission("system:user:list") {
+		t.Fatal("role-less Principal must not hold any Functional Permission")
+	}
+}
+
 func TestAuthenticatorPreservesSessionFailureDistinctions(t *testing.T) {
 	tests := []struct {
 		name   string

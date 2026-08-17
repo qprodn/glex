@@ -2,6 +2,7 @@ package data
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -113,14 +114,24 @@ func TestAuthorizationSnapshotAddsWildcardOnlyThroughSuperadminRole(t *testing.T
 
 func TestSystemUserAuthorizationLockUsesTransactionScopedPostgresAdvisoryLock(t *testing.T) {
 	table := entsql.Table("sys_user")
-	selector := entsql.Select(table.C("user_id")).From(table)
+	selector := entsql.Dialect(dialect.Postgres).Select(table.C("user_id")).From(table)
+	selector.Where(entsql.EQ(table.C("user_id"), 42))
 	systemUserAuthorizationLock(42)(selector)
 	query, args := selector.Query()
-	if !strings.Contains(query, "pg_advisory_xact_lock") || !strings.Contains(query, "::text") {
-		t.Fatalf("lock query = %q, want transaction-scoped PostgreSQL advisory lock", query)
+
+	// The lock must embed a literal integer hash of the namespaced lock key:
+	// a "?" placeholder is invalid PostgreSQL syntax, and a bound parameter
+	// gets silently renumbered onto the WHERE argument by ent's ORDER BY
+	// merge — which would lock on the bare entity id instead.
+	want := fmt.Sprintf("pg_advisory_xact_lock(%d)", advisoryLockHash("glex:authorization:system-user:42"))
+	if !strings.Contains(query, want) {
+		t.Fatalf("lock query = %q, want %q", query, want)
 	}
-	if len(args) != 1 || args[0] != "glex:authorization:system-user:42" {
-		t.Fatalf("lock args = %#v, want namespaced System User lock key", args)
+	if len(args) != 1 || args[0] != 42 {
+		t.Fatalf("lock args = %#v, want only the WHERE argument — the lock key must not depend on parameter binding", args)
+	}
+	if advisoryLockHash("glex:authorization:system-user:42") == advisoryLockHash("glex:authorization:role:42") {
+		t.Fatal("lock kinds must hash to distinct advisory-lock integers")
 	}
 }
 

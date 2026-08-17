@@ -216,8 +216,11 @@ func loginAndReplaceAuthorizationSnapshot(manager *core.Manager, snapshot *biz.A
 	err = session.SetMulti(map[string]any{
 		authorizationSnapshotSystemUserIDKey: strconv.FormatInt(snapshot.SystemUserID, 10),
 		authorizationSnapshotUserNameKey:     snapshot.UserName,
-		satokenmanager.SessionKeyRoles:       append([]string(nil), snapshot.RoleKeys...),
-		satokenmanager.SessionKeyPermissions: append([]string(nil), snapshot.Permissions...),
+		// Copy into a non-nil slice even when empty: a nil slice serializes
+		// to JSON null, which the snapshot decoder rejects — locking a
+		// legitimately role-less System User out with spurious 503s.
+		satokenmanager.SessionKeyRoles:       copyStringSet(snapshot.RoleKeys),
+		satokenmanager.SessionKeyPermissions: copyStringSet(snapshot.Permissions),
 	}, lifetime)
 	if err != nil {
 		_ = manager.LogoutByToken(token)
@@ -229,6 +232,14 @@ func loginAndReplaceAuthorizationSnapshot(manager *core.Manager, snapshot *biz.A
 func authDatabaseBackendError(operation string, err error) error {
 	slog.Warn("authentication database operation failed", "op", operation, "err", err)
 	return biz.ErrAuthBackendUnavailable
+}
+
+// copyStringSet copies values into a slice that is never nil, so an empty set
+// round-trips through the Account Session as [] rather than null.
+func copyStringSet(values []string) []string {
+	copied := make([]string, len(values))
+	copy(copied, values)
+	return copied
 }
 
 func (r *authLoginRepo) cleanupUnregisteredToken(ctx context.Context, token string, systemUserID int64) {

@@ -2,6 +2,8 @@ package data
 
 import (
 	"context"
+	"fmt"
+	"hash/fnv"
 	"sort"
 	"strconv"
 
@@ -198,9 +200,25 @@ func authorizationLockKey(kind authorizationLockKind, id int64) string {
 	return "glex:authorization:" + string(kind) + ":" + strconv.FormatInt(id, 10)
 }
 
+// advisoryLockHash maps a namespaced lock key onto the positive int64 space
+// PostgreSQL advisory locks accept. It is computed in Go because an ORDER BY
+// expression cannot reliably bind arguments through ent's builder: a raw "?"
+// placeholder is invalid PostgreSQL syntax, and the builder's parameter merge
+// silently renumbers expression arguments onto the statement's earlier
+// placeholders. The function must stay stable across processes and releases —
+// every service instance must derive the same integer for the same key, or
+// the locks stop excluding each other.
+func advisoryLockHash(key string) int64 {
+	sum := fnv.New64a()
+	_, _ = sum.Write([]byte(key))
+	return int64(sum.Sum64() & (1<<63 - 1))
+}
+
 func advisoryAuthorizationLock(key string) func(*entsql.Selector) {
 	return func(selector *entsql.Selector) {
-		selector.OrderExpr(entsql.Expr("pg_advisory_xact_lock(hashtextextended(?::text, 0))::text", key))
+		// ::text keeps the ORDER BY expression orderable: the lock function
+		// returns void.
+		selector.OrderExpr(entsql.Expr(fmt.Sprintf("pg_advisory_xact_lock(%d)::text", advisoryLockHash(key))))
 	}
 }
 

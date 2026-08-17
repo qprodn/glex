@@ -3,20 +3,13 @@ package data
 import (
 	"context"
 	"errors"
-	"fmt"
-	"os"
 	"reflect"
 	"strconv"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"glex/internal/biz"
-	"glex/internal/conf"
 	"glex/internal/data/ent"
-
-	"github.com/redis/go-redis/v9"
-	"google.golang.org/protobuf/proto"
 )
 
 type securityIntegration struct {
@@ -28,91 +21,46 @@ type securityIntegration struct {
 	menus       biz.MenuRepo
 	userRoles   biz.UserRoleRepo
 	coordinator *securityChangeCoordinator
-	nextID      atomic.Int64
+	graph       *authGraph
+	seed        *integrationSeeder
 }
 
 func newSecurityIntegration(t *testing.T) *securityIntegration {
 	t.Helper()
-	dsn := os.Getenv("GLEX_TEST_POSTGRES_DSN")
-	redisAddr := os.Getenv("GLEX_TEST_REDIS_ADDR")
-	if dsn == "" || redisAddr == "" {
-		t.Skip("set GLEX_TEST_POSTGRES_DSN and GLEX_TEST_REDIS_ADDR for real PostgreSQL/Redis security-change integration tests")
+	graph := newIntegrationStores(t).newGraph(t)
+	return &securityIntegration{
+		data:        graph.data,
+		client:      graph.db,
+		sessions:    graph.sessions,
+		users:       graph.users,
+		roles:       graph.roles,
+		menus:       graph.menus,
+		userRoles:   graph.userRoles,
+		coordinator: graph.coordinator,
+		graph:       graph,
+		seed:        newIntegrationSeeder(),
 	}
-	client, err := ent.Open("pgx", dsn)
-	if err != nil {
-		t.Fatalf("open PostgreSQL: %v", err)
-	}
-	t.Cleanup(func() { _ = client.Close() })
-	if err := client.Schema.Create(t.Context()); err != nil {
-		t.Fatalf("create integration schema: %v", err)
-	}
-	rdb := redis.NewClient(&redis.Options{Addr: redisAddr})
-	t.Cleanup(func() { _ = rdb.Close() })
-	if err := rdb.Ping(t.Context()).Err(); err != nil {
-		t.Fatalf("ping Redis: %v", err)
-	}
-	conf := proto.Clone(testAuthConf()).(*conf.Auth)
-	conf.RedisNamespace = fmt.Sprintf("glex:test:security:%d", time.Now().UnixNano())
-	storage := newAuthStorage(rdb, conf.RedisNamespace, time.Second, time.Second)
-	manager, cleanup, err := NewAuthManager(storage, conf)
-	if err != nil {
-		t.Fatalf("NewAuthManager: %v", err)
-	}
-	t.Cleanup(cleanup)
-	data := &Data{db: client, rdb: rdb, redisReadTimeout: time.Second, redisWriteTimeout: time.Second}
-	sessions := NewLoginSessionRepo(data, manager, conf)
-	coordinator := NewSecurityChangeCoordinator(data, sessions)
-	h := &securityIntegration{
-		data:        data,
-		client:      client,
-		sessions:    sessions,
-		coordinator: coordinator,
-	}
-	h.users = NewUserRepo(data, coordinator)
-	h.roles = NewRoleRepo(data, coordinator)
-	h.menus = NewMenuRepo(data, coordinator)
-	h.userRoles = NewUserRoleRepo(data, coordinator)
-	h.nextID.Store(time.Now().UnixNano() & (1<<62 - 1))
-	return h
 }
-
-func (h *securityIntegration) id() int64 { return h.nextID.Add(1) }
 
 func (h *securityIntegration) user(t *testing.T, status int8) int64 {
 	t.Helper()
-	id := h.id()
-	_, err := h.client.User.Create().SetID(id).SetUserName("user-" + strconv.FormatInt(id, 10)).SetNickName("User").SetStatus(status).SetPassword("hash").Save(t.Context())
-	if err != nil {
-		t.Fatalf("create user: %v", err)
-	}
-	return id
+	return h.seed.user(t, h.graph, status)
 }
 
 func (h *securityIntegration) role(t *testing.T, status int8) int64 {
 	t.Helper()
-	id := h.id()
-	_, err := h.client.Role.Create().SetID(id).SetRoleName("role-" + strconv.FormatInt(id, 10)).SetRoleKey("key-" + strconv.FormatInt(id, 10)).SetStatus(status).Save(t.Context())
-	if err != nil {
-		t.Fatalf("create role: %v", err)
-	}
-	return id
+	return h.seed.role(t, h.graph, status)
 }
 
 func (h *securityIntegration) menu(t *testing.T, perms string, status int8) int64 {
 	t.Helper()
-	id := h.id()
-	_, err := h.client.Menu.Create().SetID(id).SetMenuName("menu-" + strconv.FormatInt(id, 10)).SetMenuType(int8(biz.MenuTypeButton)).SetPerms(perms).SetStatus(status).Save(t.Context())
-	if err != nil {
-		t.Fatalf("create menu: %v", err)
-	}
-	return id
+	return h.seed.menu(t, h.graph, perms, status)
 }
 
 func (h *securityIntegration) session(t *testing.T, systemUserID int64) string {
 	t.Helper()
-	manager := h.sessions.(*loginSessionRepo).manager
-	token := issueTestBearer(t, manager, systemUserID, "user-"+strconv.FormatInt(systemUserID, 10), "desktop")
-	created, err := h.sessions.Create(t.Context(), token, &biz.LoginSession{SystemUserID: systemUserID, UserName: "user", DeviceType: "desktop", LoginTime: time.Now()})
+	token := issueTestBearer(t, h.graph.manager, systemUserID, integrationUserName(systemUserID), "desktop")
+	created, err := h.sessions.Create(t.Context(), token, &biz.LoginSession{SystemUserID: systemUserID, UserName: integrationUserName(systemUserID), DeviceType: "desktop", LoginTime: time.Now()})
 	if err != nil {
 		t.Fatalf("create Login Session: %v", err)
 	}
@@ -121,9 +69,7 @@ func (h *securityIntegration) session(t *testing.T, systemUserID int64) string {
 
 func (h *securityIntegration) requireRevoked(t *testing.T, sessionID string) {
 	t.Helper()
-	if _, err := h.sessions.FindByID(t.Context(), sessionID); !errors.Is(err, biz.ErrLoginSessionNotFound) {
-		t.Fatalf("Session %q remains usable/indexed: %v", sessionID, err)
-	}
+	requireRevoked(t, sessionID, h.graph)
 }
 
 func TestSecurityChangeTriggersRevokeAffectedSessionsIntegration(t *testing.T) {

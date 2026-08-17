@@ -184,9 +184,9 @@ func TestConcurrentRegistrationKeepsFiveUsableSessionsAndReplacesOldest(t *testi
 }
 
 func TestConcurrentRegistrationAgainstRealRedis(t *testing.T) {
-	addr := os.Getenv("GLEX_REAL_REDIS_ADDR")
+	addr := os.Getenv(integrationRedisAddrEnv)
 	if addr == "" {
-		t.Skip("set GLEX_REAL_REDIS_ADDR to run the real-Redis concurrency contract")
+		t.Skipf("set %s to run the real-Redis concurrency contract", integrationRedisAddrEnv)
 	}
 	rdb := redis.NewClient(&redis.Options{Addr: addr})
 	t.Cleanup(func() { _ = rdb.Close() })
@@ -265,6 +265,62 @@ func TestConcurrentRegistrationAgainstRealRedis(t *testing.T) {
 	}
 	if len(listed) != 5 || replaced != 1 {
 		t.Fatalf("real Redis result = %d listed/%d replaced, want 5/1", len(listed), replaced)
+	}
+}
+
+// TestSaTokenDeviceMappingHazardIsContainedByProjectIndex reproduces the
+// pinned sa-token version's account/device mapping hazard on a bare Manager,
+// then proves the project-owned session index prevents every consequence of
+// it: enumeration misses, orphaned valid tokens, and unenforceable limits.
+func TestSaTokenDeviceMappingHazardIsContainedByProjectIndex(t *testing.T) {
+	repo, manager, _ := newTestLoginSessionRepo(t)
+
+	// The hazard: two same-device logins straight through Manager.Login.
+	older, err := manager.Login("42", "desktop")
+	if err != nil {
+		t.Fatalf("first Manager.Login: %v", err)
+	}
+	newer, err := manager.Login("42", "desktop")
+	if err != nil {
+		t.Fatalf("second Manager.Login: %v", err)
+	}
+	if err := manager.CheckLogin(older); err != nil {
+		t.Fatalf("older token must still be valid to demonstrate the hazard: %v", err)
+	}
+	if err := manager.CheckLogin(newer); err != nil {
+		t.Fatalf("newer token: %v", err)
+	}
+	enumerated, err := manager.GetTokenValueListByLoginID("42")
+	if err != nil {
+		t.Fatalf("GetTokenValueListByLoginID: %v", err)
+	}
+	// Counts only in the failure message: enumerated tokens are credentials.
+	if len(enumerated) != 1 || enumerated[0] != newer {
+		t.Fatalf("sa-token enumerated %d tokens for two valid same-device logins, want only the newest — the older token is valid but invisible to the account/device mapping", len(enumerated))
+	}
+
+	// Prevention: the same login pattern through the project index.
+	first, firstToken := createManagedLoginSession(t, repo, manager, 42, "alice", "desktop", time.Unix(1_700_007_001, 0))
+	second, secondToken := createManagedLoginSession(t, repo, manager, 42, "alice", "desktop", time.Unix(1_700_007_002, 0))
+	indexed, err := repo.ListBySystemUser(t.Context(), 42)
+	if err != nil || len(indexed) != 2 {
+		t.Fatalf("project index lists %d Sessions (%v), want both same-device Sessions", len(indexed), err)
+	}
+	// Limit enforcement counts real Sessions, not device mappings: revoking
+	// all of the user's Sessions through the index leaves no valid orphan.
+	if err := repo.RevokeSystemUser(t.Context(), 42, ""); err != nil {
+		t.Fatalf("RevokeSystemUser: %v", err)
+	}
+	for _, token := range []string{firstToken, secondToken} {
+		if _, err := manager.CheckLoginWithState(token); err == nil {
+			t.Fatal("token survived an all-Session revocation through the index")
+		}
+		if _, err := repo.FindByToken(t.Context(), token); !errors.Is(err, biz.ErrLoginSessionKickedOut) {
+			t.Fatalf("revoked token = %v, want ErrLoginSessionKickedOut", err)
+		}
+	}
+	if first.ID == second.ID {
+		t.Fatal("same-device Sessions must keep distinct Session IDs")
 	}
 }
 
