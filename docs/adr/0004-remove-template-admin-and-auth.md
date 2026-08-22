@@ -8,7 +8,7 @@ Supersedes [ADR-0002](./0002-system-user-fresh-module.md), which had kept
 `admin` in place as legacy. Two things changed the decision:
 
 - `pkg/auth`'s global middleware required a token on every non-login path,
-  including the new `/system/user/*` endpoints — a chicken-and-egg blocker for
+  including the new `/iam/user/*` endpoints — a chicken-and-egg blocker for
   testing the user module before any auth module exists.
 - `admin` was the template's *example* auth+user module, not something we
   intended to keep. "Rewrite later" is cheaper from a clean slate than from a

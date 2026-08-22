@@ -1,5 +1,7 @@
 # Declare every RPC auth policy explicitly in proto metadata
 
+Status: Superseded by 0013-auth-policy-declared-in-middleware-route-table.md
+
 Every glex RPC will carry a method option classifying it as public, optionally
 authenticated, authenticated-only, or protected by one Functional Permission;
 an unspecified policy is a startup error. Optional authentication exists only

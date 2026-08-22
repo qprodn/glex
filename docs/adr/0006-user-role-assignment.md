@@ -1,9 +1,10 @@
 # User↔role association — auth module owns it, full replacement, asymmetric deletion
 
 The user↔role link (**Role Assignment**, 角色分配, table `sys_user_role`) is
-implemented in a new **auth module** (`api/system/auth/v1`, `biz.AuthUsecase`),
+implemented in a new **auth module** (`api/iam/auth/v1`,
+`internal/application/iam.AuthUsecase`),
 not in the user or role modules — even though its routes are path-nested under
-`/system/user/{user_id}/roles` and `/system/role/{role_id}/users`. Decided at
+`/iam/user/{user_id}/roles` and `/iam/role/{role_id}/users`. Decided at
 Role Assignment planning (grill-with-docs session).
 
 RuoYi-Vue-Plus exposes two sides: user-side assignment (`authRole` — full
@@ -12,7 +13,7 @@ replacement of a user's role ids) and role-side user management
 add/remove). glex ports the shape but **not the incremental verbs**: both
 directions are read-only or full-replacement (`ListUserRoles` /
 `UpdateUserRoles` / `ListRoleUsers`), matching the Menu Grant precedent
-(`PUT /system/role/{role_id}/menus`). `selectAll`/`cancelAll` are deferred
+(`PUT /iam/role/{role_id}/menus`). `selectAll`/`cancelAll` are deferred
 until a real UX needs batch moves.
 
 CONTEXT.md previously deferred assignment "to the auth module"; ADR-0004 had
@@ -40,8 +41,8 @@ dangerous cascade. Menu Grant, by contrast, cascades on role delete: menus are
 part of the role's own configuration, users are external holders.
 
 **Error reasons:** auth defines no `error_reason.proto`; it reuses
-`USER_NOT_FOUND` / `ROLE_NOT_FOUND` from the owning modules (biz imports the
-enums per AGENTS.md). `ROLE_ASSIGNED` was added to the role module's proto since
+`USER_NOT_FOUND` / `ROLE_NOT_FOUND` from the owning modules. `ROLE_ASSIGNED`
+was added to the role module's proto since
 the guard lives in the role usecase.
 
 **Consistency details:** link rows are hard-deleted (no timestamps/soft

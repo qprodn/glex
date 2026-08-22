@@ -23,7 +23,7 @@ creating is not premature infrastructure; the line we hold is *complete entity,
 minimal surface* — no `getRouters` or `role_menu` endpoints.
 
 **Tree strategy:** the repo returns a flat list (AIP filter + order by
-`parent_id, order_num`); biz builds the tree in memory in a single pass (roots =
+`parent_id, order_num`); Application builds the tree in memory in a single pass (roots =
 `parent_id == 0`, children grouped by parent, sorted by `order_num`). No
 recursive SQL/CTE. Menus are a small, hand-curated set (tens to low-hundreds of
 rows).
@@ -32,7 +32,7 @@ rows).
 (char(1)→smallint per [ADR-0003](./0003-postgresql.md)); menus are soft-deleted
 via `deleted_at` for repo-wide consistency (RuoYi hard-deletes — a noted
 deviation: a soft-deleted parent orphans its children in the tree view); and
-`(parent_id, menu_name)` carries no DB unique constraint, only a soft biz check.
+`(parent_id, menu_name)` carries no DB unique constraint, only an Application check.
 
 Consequences: all menu endpoints are currently unauthenticated (ADR-0004);
 `perms`, `is_frame`, `is_cache`, `path`, and `component` are stored but inert

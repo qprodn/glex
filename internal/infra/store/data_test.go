@@ -1,0 +1,130 @@
+package store
+
+import (
+	"bytes"
+	"errors"
+	"log/slog"
+	"strings"
+	"testing"
+	"time"
+
+	"glex/internal/conf"
+
+	"github.com/alicebob/miniredis/v2"
+	"google.golang.org/protobuf/types/known/durationpb"
+)
+
+type testResourceCloser struct {
+	err   error
+	calls int
+}
+
+func (c *testResourceCloser) Close() error {
+	c.calls++
+	return c.err
+}
+
+func testLogger() *slog.Logger {
+	return slog.New(slog.DiscardHandler)
+}
+
+func TestDataCleanupClosesResourcesIndependentlyAndOnce(t *testing.T) {
+	db := &testResourceCloser{err: errors.New("database close failed")}
+	rdb := &testResourceCloser{err: errors.New("Redis close failed")}
+	var output bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&output, nil))
+	cleanup := newDataCleanup(logger, db, rdb)
+
+	cleanup()
+	cleanup()
+
+	if db.calls != 1 || rdb.calls != 1 {
+		t.Fatalf("cleanup close calls = database:%d Redis:%d, want 1 each", db.calls, rdb.calls)
+	}
+	for _, want := range []string{"failed closing database client", "failed closing Redis client", "database close failed", "Redis close failed"} {
+		if !strings.Contains(output.String(), want) {
+			t.Fatalf("cleanup log output %q does not contain %q", output.String(), want)
+		}
+	}
+}
+
+func TestNewDataReturnsDatabaseOpenError(t *testing.T) {
+	data, cleanup, err := NewData(&conf.Data{
+		Database: &conf.Data_Database{Driver: "not-a-database-driver"},
+	}, testLogger())
+	if err == nil {
+		t.Fatal("NewData with an unknown driver succeeded")
+	}
+	if data != nil || cleanup != nil {
+		t.Fatalf("NewData failure returned data=%v cleanup_nil=%t error=%v, want nil data and cleanup", data, cleanup == nil, err)
+	}
+	if !strings.Contains(err.Error(), "open database") {
+		t.Fatalf("NewData error = %q, want open database context", err)
+	}
+}
+
+// TestNewRedisClientLifecycle covers the shared client's construction,
+// reachability gate, and cleanup: alive while miniredis runs, closed (and
+// thus unusable) after Close.
+func TestNewRedisClientLifecycle(t *testing.T) {
+	mr := miniredis.RunT(t)
+	c := &conf.Data{
+		Redis: &conf.Data_Redis{
+			Addr:         mr.Addr(),
+			ReadTimeout:  durationpb.New(time.Second),
+			WriteTimeout: durationpb.New(time.Second),
+		},
+	}
+
+	rdb, readTimeout, writeTimeout, err := newRedisClient(c)
+	if err != nil {
+		t.Fatalf("newRedisClient: %v", err)
+	}
+	if readTimeout != time.Second || writeTimeout != time.Second {
+		t.Fatalf("timeouts = %v/%v, want 1s/1s", readTimeout, writeTimeout)
+	}
+
+	if err := rdb.Ping(t.Context()).Err(); err != nil {
+		t.Fatalf("Ping before close: %v", err)
+	}
+
+	rdb.Close()
+	if err := rdb.Ping(t.Context()).Err(); err == nil {
+		t.Fatal("Ping after Close must fail")
+	}
+}
+
+// TestNewRedisClientFailsWhenUnreachable proves the startup reachability
+// gate: the app refuses to serve when Redis is down instead of failing per
+// request later.
+func TestNewRedisClientFailsWhenUnreachable(t *testing.T) {
+	mr := miniredis.RunT(t)
+	addr := mr.Addr()
+	mr.Close() // port now closed
+
+	c := &conf.Data{
+		Redis: &conf.Data_Redis{
+			Addr:         addr,
+			ReadTimeout:  durationpb.New(150 * time.Millisecond),
+			WriteTimeout: durationpb.New(150 * time.Millisecond),
+		},
+	}
+	if _, _, _, err := newRedisClient(c); err == nil {
+		t.Fatal("newRedisClient against a closed Redis must fail")
+	}
+}
+
+// TestNewRedisClientDefaultsTimeouts pins the fallback when the config omits
+// timeouts.
+func TestNewRedisClientDefaultsTimeouts(t *testing.T) {
+	mr := miniredis.RunT(t)
+	c := &conf.Data{Redis: &conf.Data_Redis{Addr: mr.Addr()}}
+	rdb, readTimeout, writeTimeout, err := newRedisClient(c)
+	if err != nil {
+		t.Fatalf("newRedisClient: %v", err)
+	}
+	defer rdb.Close()
+	if readTimeout != DefaultAuthReadTimeout || writeTimeout != DefaultAuthWriteTimeout {
+		t.Fatalf("defaults = %v/%v, want %v/%v", readTimeout, writeTimeout, DefaultAuthReadTimeout, DefaultAuthWriteTimeout)
+	}
+}

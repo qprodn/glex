@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package iam.auth.v1;
+
+option go_package = "glex/api/iam/auth/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.iam.auth.v1";
+
+// ErrorReason is the stable public reason carried by Kratos auth errors.
+// Backend and storage-driver details must remain in internal logs only.
+enum ErrorReason {
+  ERROR_REASON_UNSPECIFIED = 0;
+
+  // Login failures.
+  INVALID_CREDENTIALS = 1;
+  ACCOUNT_DISABLED = 2;
+  LOGIN_LOCKED = 3;
+
+  // Authentication failures (HTTP 401).
+  CREDENTIAL_MISSING = 4;
+  CREDENTIAL_MALFORMED = 5;
+  TOKEN_INVALID = 6;
+  TOKEN_EXPIRED = 7;
+  TOKEN_IDLE_TIMEOUT = 8;
+  SESSION_KICKED_OUT = 9;
+  SESSION_REPLACED = 10;
+
+  // Authorization failure (HTTP 403).
+  PERMISSION_DENIED = 11;
+
+  // Authentication/session backend failure (HTTP 503).
+  AUTH_BACKEND_UNAVAILABLE = 12;
+}

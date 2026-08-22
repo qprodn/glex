@@ -1,65 +1,26 @@
 package server
 
 import (
-	authv1 "glex/api/system/auth/v1"
-	menuv1 "glex/api/system/menu/v1"
-	rolev1 "glex/api/system/role/v1"
-	userv1 "glex/api/system/user/v1"
-	"glex/internal/biz"
+	authv1 "glex/api/iam/auth/v1"
+	menuv1 "glex/api/iam/menu/v1"
+	rolev1 "glex/api/iam/role/v1"
+	userv1 "glex/api/iam/user/v1"
+	iamapp "glex/internal/application/iam"
 	"glex/internal/conf"
-	"glex/internal/service"
+	"glex/internal/domain/iam"
+	authmw "glex/pkg/middleware/auth"
 	"glex/pkg/validate"
 
 	"github.com/go-kratos/kratos/v3/middleware/recovery"
 	"github.com/go-kratos/kratos/v3/transport/http"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-type httpServiceRegistration struct {
-	descriptor protoreflect.ServiceDescriptor
-	register   func(*http.Server)
-}
-
-func httpServiceRegistrations(user *service.UserService, menu *service.MenuService, role *service.RoleService, auth *service.AuthService, online *service.OnlineSessionService) []httpServiceRegistration {
-	return []httpServiceRegistration{
-		{
-			descriptor: userv1.File_system_user_v1_user_proto.Services().ByName("UserService"),
-			register:   func(server *http.Server) { userv1.RegisterUserServiceHTTPServer(server, user) },
-		},
-		{
-			descriptor: menuv1.File_system_menu_v1_menu_proto.Services().ByName("MenuService"),
-			register:   func(server *http.Server) { menuv1.RegisterMenuServiceHTTPServer(server, menu) },
-		},
-		{
-			descriptor: rolev1.File_system_role_v1_role_proto.Services().ByName("RoleService"),
-			register:   func(server *http.Server) { rolev1.RegisterRoleServiceHTTPServer(server, role) },
-		},
-		{
-			descriptor: authv1.File_system_auth_v1_auth_proto.Services().ByName("AuthService"),
-			register:   func(server *http.Server) { authv1.RegisterAuthServiceHTTPServer(server, auth) },
-		},
-		{
-			descriptor: authv1.File_system_auth_v1_auth_proto.Services().ByName("OnlineSessionService"),
-			register:   func(server *http.Server) { authv1.RegisterOnlineSessionServiceHTTPServer(server, online) },
-		},
-	}
-}
-
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, user *service.UserService, menu *service.MenuService, role *service.RoleService, auth *service.AuthService, online *service.OnlineSessionService, authenticator biz.Authenticator) (*http.Server, error) {
-	registrations := httpServiceRegistrations(user, menu, role, auth, online)
-	descriptors := make([]protoreflect.ServiceDescriptor, len(registrations))
-	for i, registration := range registrations {
-		descriptors[i] = registration.descriptor
-	}
-	policies, err := newAuthPolicyRegistry(descriptors...)
-	if err != nil {
-		return nil, err
-	}
+func NewHTTPServer(c *conf.Server, user *iamapp.UserApplication, menu *iamapp.MenuApplication, role *iamapp.RoleApplication, auth *iamapp.AuthApplication, online *iamapp.OnlineSessionApplication, authenticator iam.Authenticator) *http.Server {
 	var opts = []http.ServerOption{
 		http.Middleware(
 			recovery.Recovery(),
-			authMiddleware(authenticator, policies),
+			authmw.Middleware(authenticatorAdapter{authenticator: authenticator}, authRoutes()),
 			validate.Middleware(),
 		),
 	}
@@ -73,8 +34,10 @@ func NewHTTPServer(c *conf.Server, user *service.UserService, menu *service.Menu
 		opts = append(opts, http.Timeout(c.Http.Timeout.AsDuration()))
 	}
 	srv := http.NewServer(opts...)
-	for _, registration := range registrations {
-		registration.register(srv)
-	}
-	return srv, nil
+	userv1.RegisterUserServiceHTTPServer(srv, user)
+	menuv1.RegisterMenuServiceHTTPServer(srv, menu)
+	rolev1.RegisterRoleServiceHTTPServer(srv, role)
+	authv1.RegisterAuthServiceHTTPServer(srv, auth)
+	authv1.RegisterOnlineSessionServiceHTTPServer(srv, online)
+	return srv
 }

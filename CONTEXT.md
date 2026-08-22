@@ -44,7 +44,7 @@ The set of Roles a System User carries, stored as user↔role links
 (`sys_user_role`). Assigning is **full-replacement**: saving a user's roles
 replaces the whole set (empty set = no roles), never a diff. The assignment is
 per user, never per role; the link table and its endpoints belong to the auth
-module (`/system/user/{user_id}/roles`, `/system/role/{role_id}/users`).
+module (`/iam/user/{user_id}/roles`, `/iam/role/{role_id}/users`).
 Deleting a user hard-deletes its links with it; a role that still has users
 assigned cannot be deleted or disabled. Resolving assignments (and **Menu
 Grants**) into permission handles is also the auth module's job.

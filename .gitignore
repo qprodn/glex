@@ -31,7 +31,7 @@ Thumbs.db
 *.key
 *.log
 bin/
-/cmd/kratos-admin
+/cmd/kratos-admin/kratos-admin
 
 # Develop tools
 .vscode/

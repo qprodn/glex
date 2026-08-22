@@ -1,5 +1,9 @@
 # Revoke sessions before committing security changes
 
+> Superseded by [0012](0012-context-propagated-transactions.md) as the
+> mechanism (coordinator → ctx-propagated InTx with the revocation moved into
+> the Application operations). The ordering semantics below are unchanged.
+
 Login and every security-relevant write acquire the same transaction-scoped
 PostgreSQL advisory lock for each affected System User; multi-user operations
 lock sorted ids. Locks are namespaced and acquired in one global order:

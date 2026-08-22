@@ -1,11 +1,11 @@
 package server
 
 import (
-	menuv1 "glex/api/system/menu/v1"
-	rolev1 "glex/api/system/role/v1"
-	userv1 "glex/api/system/user/v1"
+	menuv1 "glex/api/iam/menu/v1"
+	rolev1 "glex/api/iam/role/v1"
+	userv1 "glex/api/iam/user/v1"
+	iamapp "glex/internal/application/iam"
 	"glex/internal/conf"
-	"glex/internal/service"
 	"glex/pkg/validate"
 
 	"github.com/go-kratos/kratos/v3/middleware/recovery"
@@ -13,7 +13,7 @@ import (
 )
 
 // NewGRPCServer new a gRPC server.
-func NewGRPCServer(c *conf.Server, user *service.UserService, menu *service.MenuService, role *service.RoleService) *grpc.Server {
+func NewGRPCServer(c *conf.Server, user *iamapp.UserApplication, menu *iamapp.MenuApplication, role *iamapp.RoleApplication) *grpc.Server {
 	var opts = []grpc.ServerOption{
 		grpc.Middleware(
 			recovery.Recovery(),

@@ -1,0 +1,312 @@
+package iaminfra
+
+import (
+	"glex/internal/infra/store"
+
+	"context"
+	"errors"
+	"log/slog"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"glex/internal/conf"
+	"glex/internal/domain/iam"
+	"glex/internal/infra/ent"
+	"glex/internal/infra/ent/menu"
+	"glex/internal/infra/ent/role"
+	"glex/internal/infra/ent/user"
+
+	"github.com/sa-tokens/sa-token-go/core"
+	satokenmanager "github.com/sa-tokens/sa-token-go/core/manager"
+)
+
+const (
+	authorizationSnapshotSystemUserIDKey = "glex.system_user_id"
+	authorizationSnapshotUserNameKey     = "glex.user_name"
+	superadminRoleKey                    = "superadmin"
+	superadminPermission                 = "*:*:*"
+)
+
+type authLoginRepo struct {
+	data          *store.Data
+	logger        *slog.Logger
+	manager       *core.Manager
+	sessions      iam.LoginSessionRepo
+	fixedLifetime time.Duration
+}
+
+// NewAuthLoginRepo constructs the sole data wrapper permitted to issue bearer
+// credentials through Manager.Login.
+func NewAuthLoginRepo(data *store.Data, manager *core.Manager, sessions iam.LoginSessionRepo, c *conf.Auth) iam.AuthLoginRepo {
+	return &authLoginRepo{
+		data:          data,
+		logger:        data.Logger.With(slog.String("component", "infra.iam.auth_login")),
+		manager:       manager,
+		sessions:      sessions,
+		fixedLifetime: c.GetFixedLifetime().AsDuration(),
+	}
+}
+
+// authLoginTxError keeps transaction-machinery failures (begin/commit/
+// rollback) inside the 503 boundary: domain errors the closure already
+// classified pass through unchanged.
+func authLoginTxError(ctx context.Context, logger *slog.Logger, operation string, err error) error {
+	if err == nil ||
+		errors.Is(err, iam.ErrInvalidCredentials) ||
+		errors.Is(err, iam.ErrSystemUserDisabled) ||
+		errors.Is(err, iam.ErrAuthBackendUnavailable) {
+		return err
+	}
+	return authDatabaseBackendError(ctx, logger, operation, err)
+}
+
+// LockAndRevalidate acquires the System User's authorization advisory lock and
+// re-reads the account under it. Join-or-begin via InTx: inside the login
+// orchestration the lock is held until the outermost transaction commits.
+func (r *authLoginRepo) LockAndRevalidate(ctx context.Context, systemUserID int64, userName, passwordHash string) (*iam.User, error) {
+	if systemUserID <= 0 || userName == "" || passwordHash == "" {
+		return nil, iam.ErrInvalidCredentials
+	}
+	var current *ent.User
+	err := r.data.DB.InTx(ctx, func(ctx context.Context) error {
+		// Global authorization-lock order is Menu, Role, then System User, with
+		// ascending IDs inside each type. Login takes exactly one System User
+		// lock; security-changing mutations finish their upstream locks before
+		// sharing this exact identity lock with login and before performing
+		// Redis writes. This is a separate statement from the authoritative
+		// re-read below: under READ COMMITTED, the second statement receives a
+		// snapshot taken only after any previous lock holder commits.
+		if _, err := r.data.DB.User(ctx).Query().
+			Where(user.IDEQ(systemUserID)).
+			Select(user.FieldID).
+			Order(systemUserAuthorizationLock(systemUserID)).
+			Only(ctx); err != nil {
+			if ent.IsNotFound(err) {
+				return iam.ErrInvalidCredentials
+			}
+			return authDatabaseBackendError(ctx, r.logger, "acquire_system_user_authorization_lock", err)
+		}
+		var err error
+		current, err = r.data.DB.User(ctx).Query().
+			Where(user.IDEQ(systemUserID), user.DeletedAtIsNil()).
+			Only(ctx)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return iam.ErrInvalidCredentials
+			}
+			return authDatabaseBackendError(ctx, r.logger, "reload_login_system_user", err)
+		}
+		if current.UserName != userName || current.Password != passwordHash {
+			return iam.ErrInvalidCredentials
+		}
+		if current.Status != 0 {
+			return iam.ErrSystemUserDisabled
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, authLoginTxError(ctx, r.logger, "begin_login_transaction", err)
+	}
+	return toBiz(current), nil
+}
+
+// LoadSnapshot freshly reads the shared Authorization Snapshot for the locked
+// System User, inside the caller's transaction.
+func (r *authLoginRepo) LoadSnapshot(ctx context.Context, systemUserID int64, userName string) (*iam.AuthorizationSnapshot, error) {
+	var snapshot *iam.AuthorizationSnapshot
+	err := r.data.DB.InTx(ctx, func(ctx context.Context) error {
+		var err error
+		snapshot, err = loadAuthorizationSnapshot(ctx, r.data.DB, systemUserID, userName)
+		if err != nil {
+			return authDatabaseBackendError(ctx, r.logger, "load_authorization_snapshot", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, authLoginTxError(ctx, r.logger, "load_authorization_snapshot", err)
+	}
+	return snapshot, nil
+}
+
+// RecordLogin persists the login IP and time on the System User row inside
+// the caller's transaction.
+func (r *authLoginRepo) RecordLogin(ctx context.Context, systemUserID int64, sourceIP string, loginTime time.Time) error {
+	return authLoginTxError(ctx, r.logger, "update_last_login", r.data.DB.InTx(ctx, func(ctx context.Context) error {
+		if err := r.data.DB.User(ctx).UpdateOneID(systemUserID).
+			SetLoginIP(sourceIP).
+			SetLoginDate(loginTime).
+			Exec(ctx); err != nil {
+			return authDatabaseBackendError(ctx, r.logger, "update_last_login", err)
+		}
+		return nil
+	}))
+}
+
+// IssueCredential mints the bearer credential (the only Manager.Login call
+// site), replaces the shared Account Session snapshot, and registers the
+// authoritative Login Session. Pure Redis — deliberately the last step of the
+// login orchestration so its failure rolls the PostgreSQL writes back. On
+// partial failure it destroys what it wrote before returning the error.
+func (r *authLoginRepo) IssueCredential(ctx context.Context, snapshot *iam.AuthorizationSnapshot, session *iam.LoginSession) (*iam.LoginResult, error) {
+	if snapshot == nil || session == nil || session.SystemUserID <= 0 || session.UserName == "" {
+		return nil, iam.ErrInvalidCredentials
+	}
+	token, err := loginAndReplaceAuthorizationSnapshot(r.manager, snapshot, session.DeviceType, r.fixedLifetime)
+	if err != nil {
+		return nil, iam.ErrAuthBackendUnavailable
+	}
+	if _, err := r.sessions.Create(ctx, token, session); err != nil {
+		r.cleanupUnregisteredToken(ctx, token, session.SystemUserID)
+		return nil, err
+	}
+	return &iam.LoginResult{AccessToken: token, ExpiresIn: r.fixedLifetime}, nil
+}
+
+// DiscardCredential tears down a credential whose transaction failed to
+// commit: destroys the token, its authoritative Login Session, and the
+// Account Session when it was the last one. Best-effort and idempotent — a
+// leftover credential expires on its own.
+func (r *authLoginRepo) DiscardCredential(ctx context.Context, systemUserID int64, bearerToken string) error {
+	if systemUserID <= 0 || bearerToken == "" {
+		return nil
+	}
+	if session, err := r.sessions.FindByToken(ctx, bearerToken); err == nil && session != nil {
+		_ = r.sessions.Logout(ctx, session.ID)
+	}
+	_ = r.manager.LogoutByToken(bearerToken)
+	if remaining, err := r.sessions.ListBySystemUser(ctx, systemUserID); err == nil && len(remaining) == 0 {
+		_ = r.manager.DeleteSession(strconv.FormatInt(systemUserID, 10))
+	}
+	return nil
+}
+
+func loadAuthorizationSnapshot(ctx context.Context, db *ent.Database, systemUserID int64, userName string) (*iam.AuthorizationSnapshot, error) {
+	roles, err := db.Role(ctx).Query().
+		Where(
+			role.DeletedAtIsNil(),
+			role.StatusEQ(0),
+			role.HasUsersWith(user.IDEQ(systemUserID), user.DeletedAtIsNil()),
+		).
+		Order(role.ByRoleKey(), role.ByID()).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	roleIDs := make([]int64, 0, len(roles))
+	for _, assignedRole := range roles {
+		roleIDs = append(roleIDs, assignedRole.ID)
+	}
+	menus := make([]*ent.Menu, 0)
+	if len(roleIDs) > 0 {
+		menus, err = db.Menu(ctx).Query().
+			Where(
+				menu.DeletedAtIsNil(),
+				menu.StatusEQ(0),
+				menu.HasRolesWith(role.IDIn(roleIDs...)),
+			).
+			Order(menu.ByPerms(), menu.ByID()).
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return toBizAuthorizationSnapshot(systemUserID, userName, roles, menus), nil
+}
+
+func toBizAuthorizationSnapshot(systemUserID int64, userName string, roles []*ent.Role, menus []*ent.Menu) *iam.AuthorizationSnapshot {
+	roleKeys := make([]string, 0, len(roles))
+	superadmin := false
+	for _, assignedRole := range roles {
+		key := assignedRole.RoleKey
+		if strings.TrimSpace(key) == "" {
+			continue
+		}
+		roleKeys = append(roleKeys, key)
+		if key == superadminRoleKey {
+			superadmin = true
+		}
+	}
+	permissions := make([]string, 0, len(menus)+1)
+	seen := make(map[string]struct{}, len(menus)+1)
+	for _, grantedMenu := range menus {
+		permission := strings.TrimSpace(grantedMenu.Perms)
+		if permission == "" || permission == superadminPermission && !superadmin {
+			continue
+		}
+		if _, ok := seen[permission]; ok {
+			continue
+		}
+		seen[permission] = struct{}{}
+		permissions = append(permissions, permission)
+	}
+	if superadmin {
+		if _, ok := seen[superadminPermission]; !ok {
+			permissions = append(permissions, superadminPermission)
+		}
+	}
+	sort.Strings(roleKeys)
+	sort.Strings(permissions)
+	return &iam.AuthorizationSnapshot{
+		SystemUserID: systemUserID,
+		UserName:     userName,
+		RoleKeys:     roleKeys,
+		Permissions:  permissions,
+	}
+}
+
+// loginAndReplaceAuthorizationSnapshot is deliberately the only project call
+// site of Manager.Login. Manager.Login clears the Account Session; SetMulti
+// immediately restores identity, Roles, and Functional Permissions in one
+// storage write before the token can leave the data wrapper.
+func loginAndReplaceAuthorizationSnapshot(manager *core.Manager, snapshot *iam.AuthorizationSnapshot, deviceType string, lifetime time.Duration) (string, error) {
+	loginID := strconv.FormatInt(snapshot.SystemUserID, 10)
+	token, err := manager.Login(loginID, deviceType)
+	if err != nil {
+		return "", err
+	}
+	session, err := manager.GetSession(loginID)
+	if err != nil {
+		_ = manager.LogoutByToken(token)
+		return "", err
+	}
+	err = session.SetMulti(map[string]any{
+		authorizationSnapshotSystemUserIDKey: strconv.FormatInt(snapshot.SystemUserID, 10),
+		authorizationSnapshotUserNameKey:     snapshot.UserName,
+		// Copy into a non-nil slice even when empty: a nil slice serializes
+		// to JSON null, which the snapshot decoder rejects — locking a
+		// legitimately role-less System User out with spurious 503s.
+		satokenmanager.SessionKeyRoles:       copyStringSet(snapshot.RoleKeys),
+		satokenmanager.SessionKeyPermissions: copyStringSet(snapshot.Permissions),
+	}, lifetime)
+	if err != nil {
+		_ = manager.LogoutByToken(token)
+		return "", err
+	}
+	return token, nil
+}
+
+func authDatabaseBackendError(ctx context.Context, logger *slog.Logger, operation string, err error) error {
+	logger.WarnContext(ctx, "authentication database operation failed",
+		slog.String("operation", operation),
+		slog.Any("error", err),
+	)
+	return iam.ErrAuthBackendUnavailable
+}
+
+// copyStringSet copies values into a slice that is never nil, so an empty set
+// round-trips through the Account Session as [] rather than null.
+func copyStringSet(values []string) []string {
+	copied := make([]string, len(values))
+	copy(copied, values)
+	return copied
+}
+
+func (r *authLoginRepo) cleanupUnregisteredToken(ctx context.Context, token string, systemUserID int64) {
+	_ = r.manager.LogoutByToken(token)
+	remaining, err := r.sessions.ListBySystemUser(ctx, systemUserID)
+	if err == nil && len(remaining) == 0 {
+		_ = r.manager.DeleteSession(strconv.FormatInt(systemUserID, 10))
+	}
+}

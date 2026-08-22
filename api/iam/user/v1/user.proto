@@ -1,0 +1,162 @@
+syntax = "proto3";
+
+package iam.user.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/field_mask.proto";
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "glex/api/iam/user/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.iam.user.v1";
+
+// User is a system user (系统用户), ported from RuoYi sys_user. Back-office
+// CRUD only — login/session lives in the auth module.
+message User {
+  // Snowflake ID. Server-assigned on create.
+  int64 user_id = 1;
+  // Login account. Unique.
+  string user_name = 2;
+  // Display name.
+  string nick_name = 3;
+  // Email. Unique when set.
+  string email = 4;
+  // Phone number. Unique when set.
+  string phone_number = 5;
+  // 0男 1女 2未知 (per RuoYi).
+  int32 gender = 6;
+  // Write-only: accepted on create/update, never returned. Bcrypt-hashed.
+  string password = 7;
+  // 0正常 1停用 (per RuoYi).
+  int32 status = 8;
+  // Avatar URL. OSS upload is deferred; the column is a placeholder.
+  string avatar = 9;
+  string remark = 10;
+  // Audit: who created/updated. Filled by the auth module.
+  int64 create_by = 11;
+  int64 update_by = 12;
+  // Last login IP/time. Written by the auth module, read-only here.
+  string login_ip = 13;
+  google.protobuf.Timestamp login_date = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+}
+
+// UserSet is a page of users.
+message UserSet {
+  repeated User users = 1;
+  // Opaque token for the next page; empty when on the last page.
+  string next_page_token = 2;
+}
+
+// CurrentUser is the read-only, password-free System User shape returned by
+// GetInfo. A distinct DTO makes it impossible to expose the stored hash.
+message CurrentUser {
+  int64 user_id = 1;
+  string user_name = 2;
+  string nick_name = 3;
+  string email = 4;
+  string phone_number = 5;
+  int32 gender = 6;
+  int32 status = 7;
+  string avatar = 8;
+  string remark = 9;
+  int64 create_by = 10;
+  int64 update_by = 11;
+  string login_ip = 12;
+  google.protobuf.Timestamp login_date = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+// CurrentUserInfo is the authenticated System User and current Authorization
+// Snapshot exposed to the frontend.
+message CurrentUserInfo {
+  CurrentUser user = 1;
+  repeated string role_keys = 2;
+  repeated string permissions = 3;
+}
+
+// UserService is the system-user CRUD service.
+service UserService {
+  // GetInfo returns the current System User, Role keys, and Functional
+  // Permissions. It is declared before the parameterized GetUser route so the
+  // generated HTTP router gives this static path precedence.
+  rpc GetInfo(google.protobuf.Empty) returns (CurrentUserInfo) {
+    option (google.api.http) = {
+      get: "/iam/user/getInfo"
+    };
+  }
+  // CreateUser creates a new system user.
+  rpc CreateUser(CreateUserRequest) returns (User) {
+    option (google.api.http) = {
+      post: "/iam/user"
+      body: "user"
+    };
+  }
+  // GetUser retrieves a user by id.
+  rpc GetUser(GetUserRequest) returns (User) {
+    option (google.api.http) = {
+      get: "/iam/user/{user_id}"
+    };
+  }
+  // ListUsers lists users with AIP filter/order/page-token.
+  rpc ListUsers(ListUsersRequest) returns (UserSet) {
+    option (google.api.http) = {
+      get: "/iam/user"
+    };
+  }
+  // UpdateUser partially updates a user (field-mask). Empty password = unchanged.
+  rpc UpdateUser(UpdateUserRequest) returns (User) {
+    option (google.api.http) = {
+      patch: "/iam/user/{user.user_id}"
+      body: "user"
+    };
+  }
+  // DeleteUser soft-deletes a user by id.
+  rpc DeleteUser(DeleteUserRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/iam/user/{user_id}"
+    };
+  }
+}
+
+message CreateUserRequest {
+  // Required. The user to create.
+  User user = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetUserRequest {
+  // Required. The id of the user to retrieve.
+  int64 user_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListUsersRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `user_name` (e.g. `user_name="admin"`)
+  //   * `email` (e.g. `email="a@b.com"`)
+  //   * `phone_number` (e.g. `phone_number="13800000000"`)
+  //   * `status` (e.g. `status=0`)
+  //   * `created_at` range (e.g. `created_at>="2026-01-01T00:00:00Z"`)
+  string filter = 3;
+  // Optional. AIP-132 order, e.g. `created_at desc` or `user_name`.
+  string order_by = 4;
+}
+
+message UpdateUserRequest {
+  // Required. The user to update. user_id identifies the record.
+  User user = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. Mask of fields to update.
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteUserRequest {
+  // Required. The id of the user to delete.
+  int64 user_id = 1 [(google.api.field_behavior) = REQUIRED];
+}

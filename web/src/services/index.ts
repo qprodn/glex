@@ -1,4 +1,4 @@
-import { createUserServiceClient } from "@/services/system/user/v1";
+import { createUserServiceClient } from "@/services/iam/user/v1";
 import { request } from "@umijs/max";
 
 type Request = {
@@ -55,4 +55,4 @@ export function asServiceError(error: unknown): ServiceError | undefined {
 }
 
 // Re-export DTOs so pages import types and clients from the same place.
-export type * from "@/services/system/user/v1";
+export type * from "@/services/iam/user/v1";
