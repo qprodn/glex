@@ -15,7 +15,7 @@ func TestUsecasesReceiveComponentLogger(t *testing.T) {
 	var output bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&output, nil))
 
-	NewLoginUsecase(nil, nil, nil, nil, logger).logger.Info("configured")
+	NewLoginUsecase(nil, nil, nil, nil, nil, logger).logger.Info("configured")
 	NewLoginSessionUsecase(nil, logger).logger.Info("configured")
 
 	for _, component := range []string{

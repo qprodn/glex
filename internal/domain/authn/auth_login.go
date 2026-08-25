@@ -36,11 +36,6 @@ type LoginAccountStore interface {
 	// ErrInvalidCredentials means the user is gone, renamed, or its password
 	// hash changed; ErrSystemUserDisabled means it is disabled.
 	Revalidate(ctx context.Context, systemUserID int64, userName, passwordHash string) (*LoginAccount, error)
-	// LoadSnapshot freshly reads the shared Authorization Snapshot (active
-	// Role keys, distinct Functional Permissions) for the System User,
-	// inside the caller's transaction. Resolution still reads the iam-side
-	// tables; it flips to the access crossdomain contract with ticket 04.
-	LoadSnapshot(ctx context.Context, systemUserID int64, userName string) (*AuthorizationSnapshot, error)
 	// RecordLogin persists the login IP and time on the System User row inside
 	// the caller's transaction.
 	RecordLogin(ctx context.Context, systemUserID int64, sourceIP string, loginTime time.Time) error

@@ -14,13 +14,18 @@ import (
 	"testing"
 	"time"
 
+	accessapp "glex/internal/application/access"
 	authnapp "glex/internal/application/authn"
 	iamapp "glex/internal/application/iam"
 	"glex/internal/conf"
+	accesscrossdomain "glex/internal/crossdomain/access"
+	accessimpl "glex/internal/crossdomain/access/impl"
 	authncrossdomain "glex/internal/crossdomain/authn"
 	authnimpl "glex/internal/crossdomain/authn/impl"
+	access "glex/internal/domain/access"
 	authndomain "glex/internal/domain/authn"
 	iam "glex/internal/domain/iam"
+	accessinfra "glex/internal/infra/access"
 	iaminfra "glex/internal/infra/iam"
 
 	"github.com/redis/go-redis/v9"
@@ -144,15 +149,16 @@ type authGraph struct {
 	tx           *store.TxManager
 	revoker      authncrossdomain.SessionRevoker
 	counter      authndomain.LoginCounterRepo
+	resolver     accesscrossdomain.AuthorizationResolver
 	users        iam.UserRepo
-	roles        iam.RoleRepo
-	menus        iam.MenuRepo
-	userRoles    iam.UserRoleRepo
+	roles        access.RoleRepo
+	menus        access.MenuRepo
+	userRoles    access.UserRoleRepo
 	userUC       *iamapp.UserUsecase
-	roleUC       *iamapp.RoleUsecase
-	menuUC       *iamapp.MenuUsecase
+	roleUC       *accessapp.RoleUsecase
+	menuUC       *accessapp.MenuUsecase
 	authUC       *authnapp.LoginUsecase
-	assignmentUC *iamapp.RoleAssignmentUsecase
+	assignmentUC *accessapp.RoleAssignmentUsecase
 }
 
 func (s *integrationStores) newGraph(t *testing.T) *authGraph {
@@ -184,9 +190,10 @@ func (s *integrationStores) newGraph(t *testing.T) *authGraph {
 	counter := NewLoginCounterRepo(data, s.conf)
 	loginRepo := NewAuthLoginBackend(data, manager, sessions, s.conf)
 	users := iaminfra.NewUserRepo(data)
-	roles := iaminfra.NewRoleRepo(data)
-	menus := iaminfra.NewMenuRepo(data)
-	userRoles := iaminfra.NewUserRoleRepo(data)
+	roles := accessinfra.NewRoleRepo(data)
+	menus := accessinfra.NewMenuRepo(data)
+	userRoles := accessinfra.NewUserRoleRepo(data)
+	resolver := accessimpl.NewAuthorizationResolver(accessinfra.NewAuthorizationResolver(data))
 	t.Cleanup(s.cleanupNamespace)
 	return &authGraph{
 		data:         data,
@@ -199,15 +206,16 @@ func (s *integrationStores) newGraph(t *testing.T) *authGraph {
 		tx:           tx,
 		revoker:      revoker,
 		counter:      counter,
+		resolver:     resolver,
 		users:        users,
 		roles:        roles,
 		menus:        menus,
 		userRoles:    userRoles,
 		userUC:       iamapp.NewUserUsecase(users, authnimpl.NewCredentialWriter(NewCredentialRepo(data)), tx, revoker, s.logger),
-		roleUC:       iamapp.NewRoleUsecase(roles, menus, userRoles, tx, revoker, s.logger),
-		menuUC:       iamapp.NewMenuUsecase(menus, tx, revoker, s.logger),
-		authUC:       authnapp.NewLoginUsecase(loginRepo, counter, sessions, tx, s.logger),
-		assignmentUC: iamapp.NewRoleAssignmentUsecase(users, roles, userRoles, revoker, tx, s.logger),
+		roleUC:       accessapp.NewRoleUsecase(roles, menus, userRoles, tx, revoker, s.logger),
+		menuUC:       accessapp.NewMenuUsecase(menus, tx, revoker, s.logger),
+		authUC:       authnapp.NewLoginUsecase(loginRepo, counter, sessions, resolver, tx, s.logger),
+		assignmentUC: accessapp.NewRoleAssignmentUsecase(roles, userRoles, revoker, tx, s.logger),
 	}
 }
 
@@ -277,7 +285,7 @@ func (s *integrationSeeder) menu(t *testing.T, g *authGraph, perms string, statu
 	_, err := g.db.Menu.Create().
 		SetID(id).
 		SetMenuName("menu-" + strconv.FormatInt(id, 10)).
-		SetMenuType(int8(iam.MenuTypeButton)).
+		SetMenuType(int8(access.MenuTypeButton)).
 		SetPerms(perms).
 		SetStatus(status).
 		Save(t.Context())

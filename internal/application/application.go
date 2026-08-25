@@ -1,6 +1,7 @@
 package application
 
 import (
+	accessapp "glex/internal/application/access"
 	authnapp "glex/internal/application/authn"
 	"glex/internal/application/iam"
 
@@ -8,4 +9,4 @@ import (
 )
 
 // ProviderSet contains every application module exposed to the composition root.
-var ProviderSet = wire.NewSet(iam.ProviderSet, authnapp.ProviderSet)
+var ProviderSet = wire.NewSet(iam.ProviderSet, accessapp.ProviderSet, authnapp.ProviderSet)

@@ -8,10 +8,13 @@ package main
 
 import (
 	"github.com/go-kratos/kratos/v3"
+	"glex/internal/application/access"
 	"glex/internal/application/authn"
 	"glex/internal/application/iam"
 	"glex/internal/conf"
+	impl2 "glex/internal/crossdomain/access/impl"
 	"glex/internal/crossdomain/authn/impl"
+	"glex/internal/infra/access"
 	"glex/internal/infra/authn"
 	"glex/internal/infra/iam"
 	"glex/internal/infra/store"
@@ -45,19 +48,21 @@ func wireApp(confServer *conf.Server, data *conf.Data, auth *conf.Auth, logger *
 	sessionRevoker := impl.NewSessionRevoker(loginSessionRepo)
 	userUsecase := iam.NewUserUsecase(userRepo, credentialWriter, txManager, sessionRevoker, logger)
 	userApplication := iam.NewUserApplication(userUsecase, logger)
-	menuRepo := iaminfra.NewMenuRepo(storeData)
-	menuUsecase := iam.NewMenuUsecase(menuRepo, txManager, sessionRevoker, logger)
-	menuApplication := iam.NewMenuApplication(menuUsecase, logger)
-	roleRepo := iaminfra.NewRoleRepo(storeData)
-	userRoleRepo := iaminfra.NewUserRoleRepo(storeData)
-	roleUsecase := iam.NewRoleUsecase(roleRepo, menuRepo, userRoleRepo, txManager, sessionRevoker, logger)
-	roleApplication := iam.NewRoleApplication(roleUsecase, logger)
+	menuRepo := accessinfra.NewMenuRepo(storeData)
+	menuUsecase := access.NewMenuUsecase(menuRepo, txManager, sessionRevoker, logger)
+	menuApplication := access.NewMenuApplication(menuUsecase, logger)
+	roleRepo := accessinfra.NewRoleRepo(storeData)
+	userRoleRepo := accessinfra.NewUserRoleRepo(storeData)
+	roleUsecase := access.NewRoleUsecase(roleRepo, menuRepo, userRoleRepo, txManager, sessionRevoker, logger)
+	roleApplication := access.NewRoleApplication(roleUsecase, logger)
 	grpcServer := server.NewGRPCServer(confServer, userApplication, menuApplication, roleApplication, logger)
-	roleAssignmentUsecase := iam.NewRoleAssignmentUsecase(userRepo, roleRepo, userRoleRepo, sessionRevoker, txManager, logger)
-	roleAssignmentApplication := iam.NewRoleAssignmentApplication(roleAssignmentUsecase, logger)
+	roleAssignmentUsecase := access.NewRoleAssignmentUsecase(roleRepo, userRoleRepo, sessionRevoker, txManager, logger)
+	roleAssignmentApplication := access.NewRoleAssignmentApplication(roleAssignmentUsecase, logger)
 	authLoginBackend := authninfra.NewAuthLoginBackend(storeData, v, loginSessionRepo, auth)
 	loginCounterRepo := authninfra.NewLoginCounterRepo(storeData, auth)
-	loginUsecase := authn.NewLoginUsecase(authLoginBackend, loginCounterRepo, loginSessionRepo, txManager, logger)
+	authorizationResolver := accessinfra.NewAuthorizationResolver(storeData)
+	accessAuthorizationResolver := impl2.NewAuthorizationResolver(authorizationResolver)
+	loginUsecase := authn.NewLoginUsecase(authLoginBackend, loginCounterRepo, loginSessionRepo, accessAuthorizationResolver, txManager, logger)
 	loginApplication := authn.NewLoginApplication(loginUsecase, logger)
 	loginSessionUsecase := authn.NewLoginSessionUsecase(loginSessionRepo, logger)
 	onlineSessionApplication := authn.NewOnlineSessionApplication(loginSessionUsecase, logger)

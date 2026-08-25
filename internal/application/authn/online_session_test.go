@@ -44,7 +44,7 @@ func (r *fakeLoginSessionRepo) LogoutOwned(_ context.Context, systemUserID int64
 
 func TestLoginSessionLogoutAnonymousAndCurrentSession(t *testing.T) {
 	repo := &fakeLoginSessionRepo{}
-	uc := NewLoginUsecase(nil, nil, repo, newFakeTransaction(), testLogger())
+	uc := NewLoginUsecase(nil, nil, repo, nil, newFakeTransaction(), testLogger())
 	if err := uc.Logout(t.Context(), nil); err != nil {
 		t.Fatalf("anonymous Logout: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestLoginSessionLogoutAnonymousAndCurrentSession(t *testing.T) {
 
 func TestLoginSessionLogoutPropagatesBackendFailure(t *testing.T) {
 	repo := &fakeLoginSessionRepo{err: authndomain.ErrAuthBackendUnavailable}
-	uc := NewLoginUsecase(nil, nil, repo, newFakeTransaction(), testLogger())
+	uc := NewLoginUsecase(nil, nil, repo, nil, newFakeTransaction(), testLogger())
 	err := uc.Logout(t.Context(), authndomain.NewPrincipal(42, "alice", "session-id", nil, nil))
 	if !errors.Is(err, authndomain.ErrAuthBackendUnavailable) {
 		t.Fatalf("Logout error = %v, want ErrAuthBackendUnavailable", err)

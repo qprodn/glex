@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"glex/internal/crossdomain/access"
+	accessmodel "glex/internal/crossdomain/access/model"
+
 	kratoserrors "github.com/go-kratos/kratos/v3/errors"
 )
 
@@ -19,18 +22,17 @@ type fakeAuthLoginRepo struct {
 	accounts   map[string]*authndomain.LoginAccount
 	accountErr error
 
-	steps     []string
-	locked    *authndomain.LoginAccount
-	lockErr   error
-	snapshot  *authndomain.AuthorizationSnapshot
-	snapErr   error
-	recordIP  string
-	recordAt  time.Time
-	recordErr error
-	result    *authndomain.LoginResult
-	issueErr  error
-	issued    *authndomain.LoginSession
-	discarded []string
+	steps          []string
+	locked         *authndomain.LoginAccount
+	lockErr        error
+	recordIP       string
+	recordAt       time.Time
+	recordErr      error
+	result         *authndomain.LoginResult
+	issueErr       error
+	issued         *authndomain.LoginSession
+	issuedSnapshot *authndomain.AuthorizationSnapshot
+	discarded      []string
 }
 
 func (r *fakeAuthLoginRepo) FindLoginAccount(_ context.Context, userName string) (*authndomain.LoginAccount, error) {
@@ -44,26 +46,15 @@ func (r *fakeAuthLoginRepo) FindLoginAccount(_ context.Context, userName string)
 	return account, nil
 }
 
-func (r *fakeAuthLoginRepo) Revalidate(_ context.Context, systemUserID int64, _, _ string) (*authndomain.LoginAccount, error) {
+func (r *fakeAuthLoginRepo) Revalidate(_ context.Context, systemUserID int64, userName, _ string) (*authndomain.LoginAccount, error) {
 	r.steps = append(r.steps, "lock")
 	if r.lockErr != nil {
 		return nil, r.lockErr
 	}
 	if r.locked == nil {
-		r.locked = &authndomain.LoginAccount{ID: systemUserID}
+		r.locked = &authndomain.LoginAccount{ID: systemUserID, UserName: userName}
 	}
 	return r.locked, nil
-}
-
-func (r *fakeAuthLoginRepo) LoadSnapshot(_ context.Context, _ int64, _ string) (*authndomain.AuthorizationSnapshot, error) {
-	r.steps = append(r.steps, "snapshot")
-	if r.snapErr != nil {
-		return nil, r.snapErr
-	}
-	if r.snapshot == nil {
-		r.snapshot = &authndomain.AuthorizationSnapshot{}
-	}
-	return r.snapshot, nil
 }
 
 func (r *fakeAuthLoginRepo) RecordLogin(_ context.Context, _ int64, sourceIP string, loginTime time.Time) error {
@@ -73,8 +64,9 @@ func (r *fakeAuthLoginRepo) RecordLogin(_ context.Context, _ int64, sourceIP str
 	return r.recordErr
 }
 
-func (r *fakeAuthLoginRepo) IssueCredential(_ context.Context, _ *authndomain.AuthorizationSnapshot, session *authndomain.LoginSession) (*authndomain.LoginResult, error) {
+func (r *fakeAuthLoginRepo) IssueCredential(_ context.Context, snapshot *authndomain.AuthorizationSnapshot, session *authndomain.LoginSession) (*authndomain.LoginResult, error) {
 	r.steps = append(r.steps, "issue")
+	r.issuedSnapshot = snapshot
 	r.issued = session
 	if r.issueErr != nil {
 		return nil, r.issueErr
@@ -89,6 +81,27 @@ func (r *fakeAuthLoginRepo) DiscardCredential(_ context.Context, _ int64, bearer
 	r.steps = append(r.steps, "discard")
 	r.discarded = append(r.discarded, bearerToken)
 	return nil
+}
+
+// fakeAuthorizer stands in for the access crossdomain contract: it records
+// the snapshot step and answers from preloaded fields.
+type fakeAuthorizer struct {
+	steps      *[]string
+	resolution *accessmodel.AuthorizationResolution
+	err        error
+}
+
+func (a *fakeAuthorizer) ResolveAuthorization(_ context.Context, _ int64) (*accessmodel.AuthorizationResolution, error) {
+	if a.steps != nil {
+		*a.steps = append(*a.steps, "snapshot")
+	}
+	if a.err != nil {
+		return nil, a.err
+	}
+	if a.resolution == nil {
+		a.resolution = &accessmodel.AuthorizationResolution{}
+	}
+	return a.resolution, nil
 }
 
 type fakeLoginCounterRepo struct {
@@ -118,7 +131,15 @@ func newLoginUsecase(issuer *fakeAuthLoginRepo, counters *fakeLoginCounterRepo) 
 }
 
 func newLoginUsecaseWithTx(issuer *fakeAuthLoginRepo, counters *fakeLoginCounterRepo, tx *fakeTransaction) *LoginUsecase {
-	uc := NewLoginUsecase(issuer, counters, &stubSessionRepo{}, tx, testLogger())
+	uc := NewLoginUsecase(issuer, counters, &stubSessionRepo{}, &fakeAuthorizer{steps: &issuer.steps}, tx, testLogger())
+	uc.now = func() time.Time { return time.Unix(1_700_000_000, 0) }
+	return uc
+}
+
+// newLoginUsecaseWithAuthorizer lets a test inject its own access contract
+// fake (step sharing, resolution content, or failure).
+func newLoginUsecaseWithAuthorizer(issuer *fakeAuthLoginRepo, counters *fakeLoginCounterRepo, authorizer access.AuthorizationResolver) *LoginUsecase {
+	uc := NewLoginUsecase(issuer, counters, &stubSessionRepo{}, authorizer, newFakeTransaction(), testLogger())
 	uc.now = func() time.Time { return time.Unix(1_700_000_000, 0) }
 	return uc
 }
@@ -331,5 +352,57 @@ func TestLoginBackendFailurePropagatesWithoutTouchingTheCounter(t *testing.T) {
 	}
 	if counters.failures != 0 {
 		t.Fatalf("failures = %d, want 0 (backend failures are not login failures)", counters.failures)
+	}
+}
+
+func TestLoginResolutionFailureIsAuthBackendUnavailable(t *testing.T) {
+	issuer := &fakeAuthLoginRepo{
+		accounts: map[string]*authndomain.LoginAccount{"alice": accountWithPassword("alice", "correct")},
+	}
+	counters := &fakeLoginCounterRepo{}
+
+	_, err := newLoginUsecaseWithAuthorizer(issuer, counters, &fakeAuthorizer{steps: &issuer.steps, err: errors.New("access unavailable")}).Login(t.Context(), &LoginRequest{
+		UserName: "alice", Password: "correct", SourceIP: "192.0.2.10",
+	})
+	if !errors.Is(err, authndomain.ErrAuthBackendUnavailable) {
+		t.Fatalf("Login error = %v, want ErrAuthBackendUnavailable", err)
+	}
+	if counters.failures != 0 {
+		t.Fatalf("failures = %d, want 0 (resolution failures are not login failures)", counters.failures)
+	}
+	// Resolution happens between revalidation and the last-login write; the
+	// credential is never issued.
+	assertSteps(t, &issuer.steps, "lock", "snapshot")
+}
+
+func TestLoginFillsSnapshotFromTheAccessContract(t *testing.T) {
+	issuer := &fakeAuthLoginRepo{
+		accounts: map[string]*authndomain.LoginAccount{"alice": accountWithPassword("alice", "correct")},
+		result:   &authndomain.LoginResult{AccessToken: "secret"},
+	}
+	counters := &fakeLoginCounterRepo{}
+	authorizer := &fakeAuthorizer{resolution: &accessmodel.AuthorizationResolution{
+		RoleKeys:    []string{"viewer"},
+		Permissions: []string{"system:user:list"},
+	}}
+	uc := newLoginUsecaseWithAuthorizer(issuer, counters, authorizer)
+
+	if _, err := uc.Login(t.Context(), &LoginRequest{UserName: "alice", Password: "correct"}); err != nil {
+		t.Fatalf("Login: %v", err)
+	}
+	snapshot := issuer.issuedSnapshot
+	if snapshot == nil {
+		t.Fatal("no Authorization Snapshot was issued")
+	}
+	// Identity is authn's own carrier data; authorization content is the
+	// contract's answer, passed through verbatim.
+	if snapshot.SystemUserID != 42 || snapshot.UserName != "alice" {
+		t.Fatalf("carrier = %d/%q, want 42/alice", snapshot.SystemUserID, snapshot.UserName)
+	}
+	if len(snapshot.RoleKeys) != 1 || snapshot.RoleKeys[0] != "viewer" {
+		t.Fatalf("RoleKeys = %v", snapshot.RoleKeys)
+	}
+	if len(snapshot.Permissions) != 1 || snapshot.Permissions[0] != "system:user:list" {
+		t.Fatalf("Permissions = %v", snapshot.Permissions)
 	}
 }

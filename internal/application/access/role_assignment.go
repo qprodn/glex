@@ -1,4 +1,4 @@
-package iam
+package access
 
 import (
 	"context"
@@ -6,23 +6,50 @@ import (
 
 	authv1 "glex/api/iam/auth/v1"
 	userv1 "glex/api/iam/user/v1"
-	iamdomain "glex/internal/domain/iam"
+	accessdomain "glex/internal/domain/access"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
 	"go.einride.tech/aip/pagination"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// convertRoleAssignment maps a iamdomain.RoleAssignment DO to the proto DTO.
-func convertRoleAssignment(a *iamdomain.RoleAssignment) *authv1.RoleAssignment {
+// convertRoleAssignment maps a accessdomain.RoleAssignment DO to the proto DTO.
+func convertRoleAssignment(a *accessdomain.RoleAssignment) *authv1.RoleAssignment {
 	return &authv1.RoleAssignment{
 		Role:     convertRole(a.Role),
 		Assigned: a.Assigned,
 	}
 }
 
+// convertRoleUser maps a accessdomain.RoleUser DO to the proto User DTO —
+// access's own projection of the by-role listing; the user module's converter
+// is not shared across the module seam.
+func convertRoleUser(m *accessdomain.RoleUser) *userv1.User {
+	u := &userv1.User{
+		UserId:      m.ID,
+		UserName:    m.UserName,
+		NickName:    m.NickName,
+		Email:       m.Email,
+		PhoneNumber: m.PhoneNumber,
+		Gender:      m.Gender,
+		Status:      m.Status,
+		Avatar:      m.Avatar,
+		Remark:      m.Remark,
+		CreateBy:    m.CreateBy,
+		UpdateBy:    m.UpdateBy,
+		LoginIp:     m.LoginIP,
+		CreatedAt:   timestamppb.New(m.CreatedAt),
+		UpdatedAt:   timestamppb.New(m.UpdatedAt),
+	}
+	if m.LoginDate != nil {
+		u.LoginDate = timestamppb.New(*m.LoginDate)
+	}
+	return u
+}
+
 // toUserRoles maps a list of assignments to the UserRoles DTO.
-func toUserRoles(assignments []*iamdomain.RoleAssignment) *authv1.UserRoles {
+func toUserRoles(assignments []*accessdomain.RoleAssignment) *authv1.UserRoles {
 	items := make([]*authv1.RoleAssignment, 0, len(assignments))
 	for _, a := range assignments {
 		items = append(items, convertRoleAssignment(a))
@@ -30,7 +57,7 @@ func toUserRoles(assignments []*iamdomain.RoleAssignment) *authv1.UserRoles {
 	return &authv1.UserRoles{Items: items}
 }
 
-// RoleAssignmentApplication implements the iam span of the proto
+// RoleAssignmentApplication implements the access span of the proto
 // AuthService: the three user↔role assignment endpoints. The login/logout
 // span of the same proto service lives with authn; the contracts split in
 // ticket 06 moves these RPCs onto a standalone RoleAssignmentService.
@@ -45,7 +72,7 @@ type RoleAssignmentApplication struct {
 func NewRoleAssignmentApplication(uc *RoleAssignmentUsecase, logger *slog.Logger) *RoleAssignmentApplication {
 	return &RoleAssignmentApplication{
 		uc:     uc,
-		logger: logger.With(slog.String("component", "application.iam.role_assignment")),
+		logger: logger.With(slog.String("component", "application.access.role_assignment")),
 	}
 }
 
@@ -101,17 +128,17 @@ func (s *RoleAssignmentApplication) ListRoleUsers(ctx context.Context, req *auth
 		req.PageSize = 20
 	}
 	users, err := s.uc.ListRoleUsers(ctx, req.GetRoleId(),
-		iamdomain.ListFilter(filter),
-		iamdomain.ListOrderBy(orderBy),
-		iamdomain.ListLimit(int(req.GetPageSize())),
-		iamdomain.ListOffset(int(pageToken.Offset)),
+		accessdomain.ListFilter(filter),
+		accessdomain.ListOrderBy(orderBy),
+		accessdomain.ListLimit(int(req.GetPageSize())),
+		accessdomain.ListOffset(int(pageToken.Offset)),
 	)
 	if err != nil {
 		return nil, err
 	}
 	set := &userv1.UserSet{Users: make([]*userv1.User, 0, len(users))}
 	for _, u := range users {
-		set.Users = append(set.Users, convertUser(u))
+		set.Users = append(set.Users, convertRoleUser(u))
 	}
 	if len(users) >= int(req.GetPageSize()) {
 		set.NextPageToken = pageToken.Next(req).String()

@@ -9,7 +9,10 @@ import (
 	"testing"
 	"time"
 
+	authnapp "glex/internal/application/authn"
+	accessimpl "glex/internal/crossdomain/access/impl"
 	authndomain "glex/internal/domain/authn"
+	accessinfra "glex/internal/infra/access"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
@@ -88,32 +91,6 @@ func TestAuthorizationSnapshotPreservesSnowflakeSystemUserIDExactly(t *testing.T
 	}
 }
 
-func TestAuthorizationSnapshotAddsWildcardOnlyThroughSuperadminRole(t *testing.T) {
-	snapshot := toBizAuthorizationSnapshot(42, "alice", []*ent.Role{
-		{ID: 1, RoleKey: "viewer"},
-		{ID: 2, RoleKey: "superadmin"},
-	}, []*ent.Menu{
-		{ID: 10, Perms: "system:user:list"},
-		{ID: 11, Perms: " system:user:list "},
-		{ID: 12, Perms: ""},
-	})
-	if strings.Join(snapshot.RoleKeys, ",") != "superadmin,viewer" {
-		t.Fatalf("Role keys = %v", snapshot.RoleKeys)
-	}
-	if strings.Join(snapshot.Permissions, ",") != "*:*:*,system:user:list" {
-		t.Fatalf("Functional Permissions = %v", snapshot.Permissions)
-	}
-
-	withoutWildcard := toBizAuthorizationSnapshot(42, "alice", []*ent.Role{{ID: 1, RoleKey: "viewer"}}, []*ent.Menu{{ID: 13, Perms: "*:*:*"}})
-	if len(withoutWildcard.Permissions) != 0 {
-		t.Fatalf("wildcard added without superadmin Role: %v", withoutWildcard.Permissions)
-	}
-	malformedSuperadmin := toBizAuthorizationSnapshot(42, "alice", []*ent.Role{{ID: 2, RoleKey: " superadmin "}}, nil)
-	if len(malformedSuperadmin.Permissions) != 0 {
-		t.Fatalf("non-exact superadmin Role key granted wildcard: %v", malformedSuperadmin.Permissions)
-	}
-}
-
 // newAuthLoginSQLMock builds an authLoginRepo over sqlmock PostgreSQL and
 // miniredis-backed sa-token/session stores.
 func newAuthLoginSQLMock(t *testing.T) (*authLoginRepo, *core.Manager, authndomain.LoginSessionRepo, sqlmock.Sqlmock) {
@@ -144,10 +121,15 @@ func TestAuthLoginPrimitivesRunInOrderAndKeepRedisLast(t *testing.T) {
 	repo, manager, sessions, mock := newAuthLoginSQLMock(t)
 	loginTime := time.Unix(1_700_000_000, 0)
 
+	// Pre-transaction account lookup.
+	mock.ExpectQuery(`SELECT .* FROM "sys_user"`).
+		WillReturnRows(sqlmock.NewRows(user.Columns).AddRow(
+			int64(42), "alice", "Alice", nil, nil, int8(0), int8(0), integrationPasswordHash(), "", "", int64(0), int64(0), "", nil, loginTime, loginTime, nil,
+		))
 	mock.ExpectBegin()
 	mock.ExpectQuery(`SELECT .* FROM "sys_user"`).
 		WillReturnRows(sqlmock.NewRows(user.Columns).AddRow(
-			int64(42), "alice", "Alice", nil, nil, int8(0), int8(0), "hash", "", "", int64(0), int64(0), "", nil, loginTime, loginTime, nil,
+			int64(42), "alice", "Alice", nil, nil, int8(0), int8(0), integrationPasswordHash(), "", "", int64(0), int64(0), "", nil, loginTime, loginTime, nil,
 		))
 	mock.ExpectQuery(`SELECT .* FROM "sys_role"`).
 		WillReturnRows(sqlmock.NewRows(role.Columns).AddRow(
@@ -162,35 +144,24 @@ func TestAuthLoginPrimitivesRunInOrderAndKeepRedisLast(t *testing.T) {
 	// ent's update-one path re-reads the node it touched.
 	mock.ExpectQuery(`SELECT .* FROM "sys_user"`).
 		WillReturnRows(sqlmock.NewRows(user.Columns).AddRow(
-			int64(42), "alice", "Alice", nil, nil, int8(0), int8(0), "hash", "", "", int64(0), int64(0), "192.0.2.10", loginTime, loginTime, loginTime, nil,
+			int64(42), "alice", "Alice", nil, nil, int8(0), int8(0), integrationPasswordHash(), "", "", int64(0), int64(0), "192.0.2.10", loginTime, loginTime, loginTime, nil,
 		))
 	mock.ExpectCommit()
 
-	// The login orchestration shape: database primitives inside one
-	// transaction, the Redis primitive last, commit after it.
-	var result *authndomain.LoginResult
-	err := repo.data.DB.InTx(t.Context(), func(ctx context.Context) error {
-		locked, err := repo.Revalidate(ctx, 42, "alice", "hash")
-		if err != nil {
-			return err
-		}
-		snapshot, err := repo.LoadSnapshot(ctx, locked.ID, locked.UserName)
-		if err != nil {
-			return err
-		}
-		if err := repo.RecordLogin(ctx, locked.ID, "192.0.2.10", loginTime); err != nil {
-			return err
-		}
-		result, err = repo.IssueCredential(ctx, snapshot, &authndomain.LoginSession{
-			SystemUserID: 42,
-			UserName:     "alice",
-			DeviceType:   "desktop",
-			IPAddress:    "192.0.2.10",
-			Browser:      "Chrome",
-			OS:           "Linux",
-			LoginTime:    loginTime,
-		})
-		return err
+	// The full production login usecase over the sqlmock graph: the access
+	// crossdomain contract resolves the snapshot on the same
+	// context-propagated transaction, so the database primitives stay inside
+	// one transaction and the Redis primitive runs last. The usecase is
+	// driven from here (not the repo primitives) because the ordering proof
+	// spans the cross-module seam; ticket 07 re-homes this suite with the
+	// other whole-graph integration tests.
+	authorizer := accessimpl.NewAuthorizationResolver(accessinfra.NewAuthorizationResolver(repo.data))
+	uc := authnapp.NewLoginUsecase(repo, NewLoginCounterRepo(repo.data, testAuthConf()), sessions, authorizer, store.NewTxManager(repo.data), testLogger())
+	result, err := uc.Login(t.Context(), &authnapp.LoginRequest{
+		UserName:  "alice",
+		Password:  integrationLoginPassword,
+		SourceIP:  "192.0.2.10",
+		UserAgent: "Mozilla/5.0 (X11; Linux x86_64) Firefox/1.0",
 	})
 	if err != nil {
 		t.Fatalf("login orchestration: %v", err)
@@ -202,7 +173,7 @@ func TestAuthLoginPrimitivesRunInOrderAndKeepRedisLast(t *testing.T) {
 	if err != nil || len(listed) != 1 {
 		t.Fatalf("authoritative Login Sessions = %v/%v", listed, err)
 	}
-	if listed[0].ID == result.AccessToken || listed[0].Browser != "Chrome" || listed[0].IPAddress != "192.0.2.10" {
+	if listed[0].ID == result.AccessToken || listed[0].Browser != "Firefox" || listed[0].IPAddress != "192.0.2.10" {
 		t.Fatalf("safe Session metadata = %#v", listed[0])
 	}
 	permissions, err := manager.GetPermissions("42")

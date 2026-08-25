@@ -1,7 +1,7 @@
-package iam
+package access
 
 import (
-	. "glex/internal/domain/iam"
+	. "glex/internal/domain/access"
 
 	"context"
 	"testing"
@@ -12,15 +12,21 @@ import (
 // fakeUserRoleRepo is an in-memory UserRoleRepo for testing the role-assignment usecase
 // and the role delete/disable guards in isolation from the infrastructure layer.
 // roles is the "all active roles" set; links maps userID → assigned role ids
-// (in replacement order).
+// (in replacement order); users is the existing-user set behind UserExists.
 type fakeUserRoleRepo struct {
 	roles    []*Role
 	links    map[int64][]int64
+	users    map[int64]struct{}
 	replaced []int64
 }
 
 func newFakeUserRoleRepo() *fakeUserRoleRepo {
-	return &fakeUserRoleRepo{links: make(map[int64][]int64)}
+	return &fakeUserRoleRepo{links: make(map[int64][]int64), users: make(map[int64]struct{})}
+}
+
+func (r *fakeUserRoleRepo) UserExists(_ context.Context, userID int64) (bool, error) {
+	_, ok := r.users[userID]
+	return ok, nil
 }
 
 func (r *fakeUserRoleRepo) ListRoleAssignments(_ context.Context, userID int64) ([]*RoleAssignment, error) {
@@ -45,11 +51,11 @@ func (r *fakeUserRoleRepo) ReplaceUserRoles(_ context.Context, userID int64, rol
 // newRoleAssignmentUsecase wires the role-assignment usecase with the test
 // transaction; flows under test reach the session world only through the
 // injected revocation fake.
-func newRoleAssignmentUsecase(users UserRepo, link UserRoleRepo) *RoleAssignmentUsecase {
-	return NewRoleAssignmentUsecase(users, newFakeRoleRepo(), link, new(fakeSessionRevoker), newFakeTransaction(), testLogger())
+func newRoleAssignmentUsecase(link UserRoleRepo) *RoleAssignmentUsecase {
+	return NewRoleAssignmentUsecase(newFakeRoleRepo(), link, new(fakeSessionRevoker), newFakeTransaction(), testLogger())
 }
 
-func (r *fakeUserRoleRepo) ListRoleUsers(context.Context, int64, ...ListOption) ([]*User, error) {
+func (r *fakeUserRoleRepo) ListRoleUsers(context.Context, int64, ...ListOption) ([]*RoleUser, error) {
 	return nil, nil
 }
 
@@ -65,10 +71,18 @@ func (r *fakeUserRoleRepo) CountUserRoles(_ context.Context, roleID int64) (int,
 	return n, nil
 }
 
+// userExists seeds the link fake's existing-user set.
+func userExists(link *fakeUserRoleRepo, userIDs ...int64) *fakeUserRoleRepo {
+	for _, id := range userIDs {
+		link.users[id] = struct{}{}
+	}
+	return link
+}
+
 // --- Role Assignment (角色分配) — auth usecase ---
 
 func TestAuthListUserRoles_UserNotFound(t *testing.T) {
-	uc := newRoleAssignmentUsecase(newFakeUserRepo(), newFakeUserRoleRepo())
+	uc := newRoleAssignmentUsecase(newFakeUserRoleRepo())
 
 	_, err := uc.ListUserRoles(context.Background(), 99)
 	if !errors.Is(err, ErrUserNotFound) {
@@ -77,15 +91,13 @@ func TestAuthListUserRoles_UserNotFound(t *testing.T) {
 }
 
 func TestAuthListUserRoles_AllRolesWithFlags(t *testing.T) {
-	users := newFakeUserRepo()
-	users.byID[10] = &User{ID: 10, UserName: "bob"}
-	link := newFakeUserRoleRepo()
+	link := userExists(newFakeUserRoleRepo(), 10)
 	link.roles = []*Role{
 		{ID: 1, RoleName: "管理员", RoleKey: "admin", RoleSort: 1},
 		{ID: 2, RoleName: "运营", RoleKey: "operator", RoleSort: 2},
 	}
 	link.links[10] = []int64{2}
-	uc := newRoleAssignmentUsecase(users, link)
+	uc := newRoleAssignmentUsecase(link)
 
 	got, err := uc.ListUserRoles(context.Background(), 10)
 	if err != nil {
@@ -100,7 +112,7 @@ func TestAuthListUserRoles_AllRolesWithFlags(t *testing.T) {
 }
 
 func TestAuthUpdateUserRoles_UserNotFound(t *testing.T) {
-	uc := newRoleAssignmentUsecase(newFakeUserRepo(), newFakeUserRoleRepo())
+	uc := newRoleAssignmentUsecase(newFakeUserRoleRepo())
 
 	_, err := uc.UpdateUserRoles(context.Background(), 99, []int64{1})
 	if !errors.Is(err, ErrUserNotFound) {
@@ -109,11 +121,9 @@ func TestAuthUpdateUserRoles_UserNotFound(t *testing.T) {
 }
 
 func TestAuthUpdateUserRoles_UnknownRoleRejected(t *testing.T) {
-	users := newFakeUserRepo()
-	users.byID[10] = &User{ID: 10, UserName: "bob"}
-	link := newFakeUserRoleRepo()
+	link := userExists(newFakeUserRoleRepo(), 10)
 	link.roles = []*Role{{ID: 1, RoleName: "管理员", RoleKey: "admin"}}
-	uc := newRoleAssignmentUsecase(users, link)
+	uc := newRoleAssignmentUsecase(link)
 
 	_, err := uc.UpdateUserRoles(context.Background(), 10, []int64{1, 99})
 	if !errors.Is(err, ErrRoleNotFound) {
@@ -125,9 +135,7 @@ func TestAuthUpdateUserRoles_UnknownRoleRejected(t *testing.T) {
 }
 
 func TestAuthUpdateUserRoles_FullReplacement(t *testing.T) {
-	users := newFakeUserRepo()
-	users.byID[10] = &User{ID: 10, UserName: "bob"}
-	link := newFakeUserRoleRepo()
+	link := userExists(newFakeUserRoleRepo(), 10)
 	link.roles = []*Role{
 		{ID: 1, RoleName: "管理员", RoleKey: "admin", RoleSort: 1},
 		{ID: 2, RoleName: "运营", RoleKey: "operator", RoleSort: 2},
@@ -135,7 +143,7 @@ func TestAuthUpdateUserRoles_FullReplacement(t *testing.T) {
 	}
 	link.links[10] = []int64{1, 2}
 	revoker := &fakeSessionRevoker{}
-	uc := NewRoleAssignmentUsecase(users, newFakeRoleRepo(), link, revoker, newFakeTransaction(), testLogger())
+	uc := NewRoleAssignmentUsecase(newFakeRoleRepo(), link, revoker, newFakeTransaction(), testLogger())
 
 	// Replace with [2, 3] — duplicates are silently deduped.
 	got, err := uc.UpdateUserRoles(context.Background(), 10, []int64{2, 3, 2})
@@ -162,12 +170,10 @@ func TestAuthUpdateUserRoles_FullReplacement(t *testing.T) {
 }
 
 func TestAuthUpdateUserRoles_EmptyClears(t *testing.T) {
-	users := newFakeUserRepo()
-	users.byID[10] = &User{ID: 10, UserName: "bob"}
-	link := newFakeUserRoleRepo()
+	link := userExists(newFakeUserRoleRepo(), 10)
 	link.roles = []*Role{{ID: 1, RoleName: "管理员", RoleKey: "admin"}}
 	link.links[10] = []int64{1}
-	uc := newRoleAssignmentUsecase(users, link)
+	uc := newRoleAssignmentUsecase(link)
 
 	got, err := uc.UpdateUserRoles(context.Background(), 10, nil)
 	if err != nil {
@@ -182,7 +188,7 @@ func TestAuthUpdateUserRoles_EmptyClears(t *testing.T) {
 }
 
 func TestAuthListRoleUsers_RoleNotFound(t *testing.T) {
-	uc := newRoleAssignmentUsecase(newFakeUserRepo(), newFakeUserRoleRepo())
+	uc := newRoleAssignmentUsecase(newFakeUserRoleRepo())
 
 	_, err := uc.ListRoleUsers(context.Background(), 99)
 	if !errors.Is(err, ErrRoleNotFound) {

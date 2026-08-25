@@ -1,11 +1,11 @@
-package iam
+package access
 
 import (
 	"context"
 	"log/slog"
 
 	rolev1 "glex/api/iam/role/v1"
-	iamdomain "glex/internal/domain/iam"
+	accessdomain "glex/internal/domain/access"
 
 	"go.einride.tech/aip/fieldmask"
 	"go.einride.tech/aip/filtering"
@@ -15,8 +15,8 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// convertRole maps a iamdomain.Role DO to the proto Role DTO.
-func convertRole(r *iamdomain.Role) *rolev1.Role {
+// convertRole maps a accessdomain.Role DO to the proto Role DTO.
+func convertRole(r *accessdomain.Role) *rolev1.Role {
 	return &rolev1.Role{
 		RoleId:            r.ID,
 		RoleName:          r.RoleName,
@@ -61,7 +61,7 @@ func (s *RoleApplication) CreateRole(ctx context.Context, req *rolev1.CreateRole
 	if req.MenuCheckStrictly != nil {
 		strict = *req.MenuCheckStrictly
 	}
-	created, err := s.uc.CreateRole(ctx, &iamdomain.Role{
+	created, err := s.uc.CreateRole(ctx, &accessdomain.Role{
 		RoleName:          in.GetRoleName(),
 		RoleKey:           in.GetRoleKey(),
 		RoleSort:          int(in.GetRoleSort()),
@@ -117,10 +117,10 @@ func (s *RoleApplication) ListRoles(ctx context.Context, req *rolev1.ListRolesRe
 		req.PageSize = 20
 	}
 	roles, err := s.uc.ListRoles(ctx,
-		iamdomain.ListFilter(filter),
-		iamdomain.ListOrderBy(orderBy),
-		iamdomain.ListLimit(int(req.GetPageSize())),
-		iamdomain.ListOffset(int(pageToken.Offset)),
+		accessdomain.ListFilter(filter),
+		accessdomain.ListOrderBy(orderBy),
+		accessdomain.ListLimit(int(req.GetPageSize())),
+		accessdomain.ListOffset(int(pageToken.Offset)),
 	)
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func (s *RoleApplication) UpdateRole(ctx context.Context, req *rolev1.UpdateRole
 		return nil, err
 	}
 	fieldmask.Update(req.GetUpdateMask(), current, req.GetRole())
-	updated, err := s.uc.UpdateRole(ctx, &iamdomain.Role{
+	updated, err := s.uc.UpdateRole(ctx, &accessdomain.Role{
 		ID:       current.GetRoleId(),
 		RoleName: current.GetRoleName(),
 		RoleKey:  current.GetRoleKey(),

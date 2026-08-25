@@ -1,4 +1,4 @@
-package iam
+package access
 
 import (
 	"context"
@@ -7,12 +7,12 @@ import (
 	"sort"
 
 	"glex/internal/crossdomain/authn"
-	iamdomain "glex/internal/domain/iam"
+	accessdomain "glex/internal/domain/access"
 )
 
 // MenuUsecase holds the menu business rules.
 type MenuUsecase struct {
-	repo    iamdomain.MenuRepo
+	repo    accessdomain.MenuRepo
 	tx      Transaction
 	revoker authn.SessionRevoker
 	logger  *slog.Logger
@@ -21,26 +21,26 @@ type MenuUsecase struct {
 // NewMenuUsecase creates a MenuUsecase. tx wraps security writes together
 // with their session revocation; revoker performs the revocation through the
 // authn crossdomain contract.
-func NewMenuUsecase(repo iamdomain.MenuRepo, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *MenuUsecase {
+func NewMenuUsecase(repo accessdomain.MenuRepo, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *MenuUsecase {
 	return &MenuUsecase{
 		repo:    repo,
 		tx:      tx,
 		revoker: revoker,
-		logger:  logger.With(slog.String("component", "application.iam.menu")),
+		logger:  logger.With(slog.String("component", "application.access.menu")),
 	}
 }
 
 // CreateMenu validates the type and sibling-name uniqueness, then persists.
 // Uniqueness is defense-in-depth at the domain layer; there is no DB unique
 // constraint on (parent_id, menu_name).
-func (uc *MenuUsecase) CreateMenu(ctx context.Context, m *iamdomain.Menu) (*iamdomain.Menu, error) {
+func (uc *MenuUsecase) CreateMenu(ctx context.Context, m *accessdomain.Menu) (*accessdomain.Menu, error) {
 	if err := validateMenuType(m.MenuType); err != nil {
 		return nil, err
 	}
 	if err := uc.assertSiblingUnique(ctx, m, false); err != nil {
 		return nil, err
 	}
-	var created *iamdomain.Menu
+	var created *accessdomain.Menu
 	if err := uc.tx.InTx(ctx, func(ctx context.Context) error {
 		var err error
 		created, err = uc.repo.CreateMenu(ctx, m)
@@ -52,12 +52,12 @@ func (uc *MenuUsecase) CreateMenu(ctx context.Context, m *iamdomain.Menu) (*iamd
 }
 
 // GetMenu returns the menu with the given id.
-func (uc *MenuUsecase) GetMenu(ctx context.Context, id int64) (*iamdomain.Menu, error) {
+func (uc *MenuUsecase) GetMenu(ctx context.Context, id int64) (*accessdomain.Menu, error) {
 	return uc.repo.FindByID(ctx, id)
 }
 
 // ListMenuTree loads the flat list and builds the menu tree in memory.
-func (uc *MenuUsecase) ListMenuTree(ctx context.Context, opts ...iamdomain.ListOption) ([]*iamdomain.Menu, error) {
+func (uc *MenuUsecase) ListMenuTree(ctx context.Context, opts ...accessdomain.ListOption) ([]*accessdomain.Menu, error) {
 	menus, err := uc.repo.ListMenus(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -66,28 +66,28 @@ func (uc *MenuUsecase) ListMenuTree(ctx context.Context, opts ...iamdomain.ListO
 }
 
 // ListUserRouteTree builds the current System User's routes from fresh
-// Role-Assignment/iamdomain.Menu-Grant data. An ordinary user receives granted
+// Role-Assignment/accessdomain.Menu-Grant data. An ordinary user receives granted
 // routeable nodes plus their active ancestors. A currently assigned active
 // superadmin Role receives every active routeable node. The shared buildTree
 // helper then applies the existing sibling ordering and orphan behavior.
-func (uc *MenuUsecase) ListUserRouteTree(ctx context.Context, systemUserID int64) ([]*iamdomain.Menu, error) {
+func (uc *MenuUsecase) ListUserRouteTree(ctx context.Context, systemUserID int64) ([]*accessdomain.Menu, error) {
 	access, err := uc.repo.LoadRouteAccess(ctx, systemUserID)
 	if err != nil {
 		return nil, err
 	}
 	if access == nil {
-		return []*iamdomain.Menu{}, nil
+		return []*accessdomain.Menu{}, nil
 	}
 
-	all := make(map[int64]*iamdomain.Menu, len(access.ActiveMenus))
+	all := make(map[int64]*accessdomain.Menu, len(access.ActiveMenus))
 	for _, m := range access.ActiveMenus {
 		if m != nil {
 			all[m.ID] = m
 		}
 	}
 
-	selected := make(map[int64]*iamdomain.Menu, len(all))
-	if hasExactRoleKey(access.RoleKeys, "superadmin") {
+	selected := make(map[int64]*accessdomain.Menu, len(all))
+	if hasExactRoleKey(access.RoleKeys, accessdomain.SuperadminRoleKey) {
 		for id, m := range all {
 			selected[id] = m
 		}
@@ -120,7 +120,7 @@ func (uc *MenuUsecase) ListUserRouteTree(ctx context.Context, systemUserID int64
 
 	// Preserve the repository's (parent_id, order_num, id) order. buildTree's
 	// stable order_num sort then retains id as the deterministic tie-break.
-	menus := make([]*iamdomain.Menu, 0, len(selected))
+	menus := make([]*accessdomain.Menu, 0, len(selected))
 	for _, m := range access.ActiveMenus {
 		if m != nil {
 			if _, ok := selected[m.ID]; ok {
@@ -146,9 +146,9 @@ func hasExactRoleKey(roleKeys []string, want string) bool {
 // (perms/status), affected users' Login Sessions are revoked inside the same
 // transaction. That failure behavior is an implementation detail for this
 // operation rather than a stable business guarantee.
-func (uc *MenuUsecase) UpdateMenu(ctx context.Context, m *iamdomain.Menu) (*iamdomain.Menu, error) {
+func (uc *MenuUsecase) UpdateMenu(ctx context.Context, m *accessdomain.Menu) (*accessdomain.Menu, error) {
 	if m.ParentID == m.ID {
-		return nil, iamdomain.ErrMenuParentInvalid
+		return nil, accessdomain.ErrMenuParentInvalid
 	}
 	if err := validateMenuType(m.MenuType); err != nil {
 		return nil, err
@@ -156,7 +156,7 @@ func (uc *MenuUsecase) UpdateMenu(ctx context.Context, m *iamdomain.Menu) (*iamd
 	if err := uc.assertSiblingUnique(ctx, m, true); err != nil {
 		return nil, err
 	}
-	var updated *iamdomain.Menu
+	var updated *accessdomain.Menu
 	if err := uc.tx.InTx(ctx, func(ctx context.Context) error {
 		result, err := uc.repo.UpdateMenu(ctx, m)
 		if err != nil {
@@ -182,7 +182,7 @@ func (uc *MenuUsecase) DeleteMenu(ctx context.Context, id int64) error {
 		return err
 	}
 	if has {
-		return iamdomain.ErrMenuHasChildren
+		return accessdomain.ErrMenuHasChildren
 	}
 	return uc.tx.InTx(ctx, func(ctx context.Context) error {
 		affected, err := uc.repo.DeleteMenu(ctx, id)
@@ -196,10 +196,10 @@ func (uc *MenuUsecase) DeleteMenu(ctx context.Context, id int64) error {
 // assertSiblingUnique checks no other menu shares (parent_id, menu_name). When
 // excludeSelf is set (update), a match bearing the same id is allowed. A
 // not-found from the repo is the expected "available" case.
-func (uc *MenuUsecase) assertSiblingUnique(ctx context.Context, m *iamdomain.Menu, excludeSelf bool) error {
+func (uc *MenuUsecase) assertSiblingUnique(ctx context.Context, m *accessdomain.Menu, excludeSelf bool) error {
 	existing, err := uc.repo.FindByParentAndName(ctx, m.ParentID, m.MenuName)
 	if err != nil {
-		if errors.Is(err, iamdomain.ErrMenuNotFound) {
+		if errors.Is(err, accessdomain.ErrMenuNotFound) {
 			return nil
 		}
 		return err
@@ -207,13 +207,13 @@ func (uc *MenuUsecase) assertSiblingUnique(ctx context.Context, m *iamdomain.Men
 	if excludeSelf && existing.ID == m.ID {
 		return nil
 	}
-	return iamdomain.ErrMenuNameConflict
+	return accessdomain.ErrMenuNameConflict
 }
 
 // validateMenuType rejects anything outside the MenuType enum range.
 func validateMenuType(t int32) error {
-	if t < iamdomain.MenuTypeDirectory || t > iamdomain.MenuTypeButton {
-		return iamdomain.ErrMenuTypeInvalid
+	if t < accessdomain.MenuTypeDirectory || t > accessdomain.MenuTypeButton {
+		return accessdomain.ErrMenuTypeInvalid
 	}
 	return nil
 }
@@ -223,8 +223,8 @@ func validateMenuType(t int32) error {
 // parent id; sibling groups are sorted by order_num. Orphans — whose parent is
 // missing (e.g. soft-deleted) — are dropped from the tree (they remain in the
 // store and are still reachable by id).
-func buildTree(menus []*iamdomain.Menu) []*iamdomain.Menu {
-	byParent := make(map[int64][]*iamdomain.Menu)
+func buildTree(menus []*accessdomain.Menu) []*accessdomain.Menu {
+	byParent := make(map[int64][]*accessdomain.Menu)
 	for _, m := range menus {
 		byParent[m.ParentID] = append(byParent[m.ParentID], m)
 	}
@@ -234,8 +234,8 @@ func buildTree(menus []*iamdomain.Menu) []*iamdomain.Menu {
 		})
 	}
 	roots := byParent[0]
-	var attach func(nodes []*iamdomain.Menu)
-	attach = func(nodes []*iamdomain.Menu) {
+	var attach func(nodes []*accessdomain.Menu)
+	attach = func(nodes []*accessdomain.Menu) {
 		for _, n := range nodes {
 			n.Children = byParent[n.ID]
 			attach(n.Children)

@@ -1,4 +1,4 @@
-package iaminfra
+package accessinfra
 
 import (
 	"glex/internal/infra/store"
@@ -6,29 +6,66 @@ import (
 	"context"
 
 	"github.com/go-kratos/aip-go/ents"
-	"glex/internal/domain/iam"
+	"glex/internal/domain/access"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/user"
 )
 
-// userRoleRepo implements iam.UserRoleRepo over the sys_user_role join table
-// (Role Assignment, 角色分配). Pattern: the role↔menu repo (sys_role_menu) —
+// userRoleRepo implements access.UserRoleRepo over the sys_user_role join
+// table (Role Assignment, 角色分配). Pattern: the role↔menu repo (sys_role_menu) —
 // ent M2M edge traversal for reads, delete-then-insert in one tx for writes.
+// The user rows it reaches through the edge are access's storage reality until
+// the tables split (ADR 0016); they surface only as RoleUser snapshots.
 type userRoleRepo struct {
 	data *store.Data
 }
 
 // NewUserRoleRepo creates a new UserRoleRepo instance.
-func NewUserRoleRepo(data *store.Data) iam.UserRoleRepo {
+func NewUserRoleRepo(data *store.Data) access.UserRoleRepo {
 	return &userRoleRepo{data: data}
+}
+
+// toRoleUser maps an ent User PO to the by-role endpoint's RoleUser snapshot.
+// The credential column is deliberately not mapped: it is authn's (ADR 0016).
+func toRoleUser(po *ent.User) *access.RoleUser {
+	u := &access.RoleUser{
+		ID:        po.ID,
+		UserName:  po.UserName,
+		NickName:  po.NickName,
+		Gender:    int32(po.Gender),
+		Status:    int32(po.Status),
+		Avatar:    po.Avatar,
+		Remark:    po.Remark,
+		CreateBy:  po.CreateBy,
+		UpdateBy:  po.UpdateBy,
+		LoginIP:   po.LoginIP,
+		LoginDate: po.LoginDate,
+		CreatedAt: po.CreatedAt,
+		UpdatedAt: po.UpdatedAt,
+	}
+	if po.Email != nil {
+		u.Email = *po.Email
+	}
+	if po.PhoneNumber != nil {
+		u.PhoneNumber = *po.PhoneNumber
+	}
+	return u
+}
+
+// UserExists reports whether the System User exists and is not soft-deleted —
+// the storage behind the by-user endpoints' existence gate.
+func (r *userRoleRepo) UserExists(ctx context.Context, userID int64) (bool, error) {
+	return r.data.DB.User(ctx).Query().
+		Where(user.IDEQ(userID), user.DeletedAtIsNil()).
+		Exist(ctx)
 }
 
 // ListRoleAssignments reads every active role (the dialog's "all roles") with
 // whether the user is assigned it, ordered by (role_sort, role_id). The user
 // edge is filtered to the target user, so a non-empty Edges.Users means
 // assigned; user existence itself is checked by RoleAssignmentUsecase.
-func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([]*iam.RoleAssignment, error) {
+func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([]*access.RoleAssignment, error) {
 	pos, err := r.data.DB.Role(ctx).Query().
 		Where(role.DeletedAtIsNil()).
 		Order(role.ByRoleSort(), role.ByID()).
@@ -39,9 +76,9 @@ func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([
 	if err != nil {
 		return nil, err
 	}
-	assignments := make([]*iam.RoleAssignment, 0, len(pos))
+	assignments := make([]*access.RoleAssignment, 0, len(pos))
 	for _, po := range pos {
-		assignments = append(assignments, &iam.RoleAssignment{
+		assignments = append(assignments, &access.RoleAssignment{
 			Role:     toBizRole(po),
 			Assigned: len(po.Edges.Users) > 0,
 		})
@@ -60,7 +97,7 @@ func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleI
 			return nil, err
 		}
 		if count != len(sortedIDs(roleIDs)) {
-			return nil, iam.ErrRoleNotFound
+			return nil, access.ErrRoleNotFound
 		}
 	}
 	_, err := r.data.DB.User(ctx).UpdateOneID(userID).
@@ -69,7 +106,7 @@ func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleI
 		Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrUserNotFound
+			return nil, access.ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -79,8 +116,8 @@ func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleI
 // ListRoleUsers lists the active users assigned the role, applying the given
 // list options (filter/order/offset/limit). The role's existence is checked
 // by RoleAssignmentUsecase.
-func (r *userRoleRepo) ListRoleUsers(ctx context.Context, roleID int64, opts ...iam.ListOption) ([]*iam.User, error) {
-	o := iam.ListOptions{Limit: 20}
+func (r *userRoleRepo) ListRoleUsers(ctx context.Context, roleID int64, opts ...access.ListOption) ([]*access.RoleUser, error) {
+	o := access.ListOptions{Limit: 20}
 	for _, opt := range opts {
 		opt(&o)
 	}
@@ -97,9 +134,9 @@ func (r *userRoleRepo) ListRoleUsers(ctx context.Context, roleID int64, opts ...
 	if err != nil {
 		return nil, err
 	}
-	users := make([]*iam.User, 0, len(pos))
+	users := make([]*access.RoleUser, 0, len(pos))
 	for _, po := range pos {
-		users = append(users, toBiz(po))
+		users = append(users, toRoleUser(po))
 	}
 	return users, nil
 }

@@ -9,6 +9,7 @@ import (
 
 	iamapp "glex/internal/application/iam"
 	authnimpl "glex/internal/crossdomain/authn/impl"
+	access "glex/internal/domain/access"
 	authndomain "glex/internal/domain/authn"
 	iam "glex/internal/domain/iam"
 	"glex/internal/infra/ent"
@@ -27,9 +28,9 @@ type securityIntegration struct {
 	client    *ent.Client
 	sessions  authndomain.LoginSessionRepo
 	users     iam.UserRepo
-	roles     iam.RoleRepo
-	menus     iam.MenuRepo
-	userRoles iam.UserRoleRepo
+	roles     access.RoleRepo
+	menus     access.MenuRepo
+	userRoles access.UserRoleRepo
 	graph     *authGraph
 	seed      *integrationSeeder
 }

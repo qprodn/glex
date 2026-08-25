@@ -1,4 +1,4 @@
-package iaminfra
+package accessinfra
 
 import "sort"
 

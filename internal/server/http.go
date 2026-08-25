@@ -7,6 +7,7 @@ import (
 	menuv1 "glex/api/iam/menu/v1"
 	rolev1 "glex/api/iam/role/v1"
 	userv1 "glex/api/iam/user/v1"
+	accessapp "glex/internal/application/access"
 	authnapp "glex/internal/application/authn"
 	iamapp "glex/internal/application/iam"
 	"glex/internal/conf"
@@ -20,17 +21,17 @@ import (
 	"github.com/go-kratos/kratos/v3/transport/http"
 )
 
-// authServiceServer joins the authn-owned login/logout endpoints with iam's
-// role-assignment endpoints behind the one proto AuthService until the
-// contracts split (ticket 06). Each span implements its own methods; the
+// authServiceServer joins the authn-owned login/logout endpoints with
+// access's role-assignment endpoints behind the one proto AuthService until
+// the contracts split (ticket 06). Each span implements its own methods; the
 // embedded Unimplemented fallbacks are shadowed by the concrete methods.
 type authServiceServer struct {
 	*authnapp.LoginApplication
-	*iamapp.RoleAssignmentApplication
+	*accessapp.RoleAssignmentApplication
 }
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, user *iamapp.UserApplication, menu *iamapp.MenuApplication, role *iamapp.RoleApplication, assignment *iamapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, authenticator authndomain.Authenticator, logger *slog.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, user *iamapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, authenticator authndomain.Authenticator, logger *slog.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Filter(
 			requestid.HTTP(requestid.WithLogger(logger)),

@@ -1,7 +1,7 @@
-package iam
+package access
 
 import (
-	. "glex/internal/domain/iam"
+	. "glex/internal/domain/access"
 
 	"context"
 	"testing"

@@ -1,4 +1,4 @@
-package iaminfra
+package accessinfra
 
 import (
 	"glex/internal/infra/store"
@@ -7,16 +7,16 @@ import (
 	"time"
 
 	"github.com/go-kratos/aip-go/ents"
-	"glex/internal/domain/iam"
+	"glex/internal/domain/access"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/user"
 )
 
-// toBizRole maps an ent Role PO to a iam.Role DO.
-func toBizRole(po *ent.Role) *iam.Role {
-	return &iam.Role{
+// toBizRole maps an ent Role PO to a access.Role DO.
+func toBizRole(po *ent.Role) *access.Role {
+	return &access.Role{
 		ID:                po.ID,
 		RoleName:          po.RoleName,
 		RoleKey:           po.RoleKey,
@@ -36,51 +36,51 @@ type roleRepo struct {
 }
 
 // NewRoleRepo creates a new RoleRepo instance.
-func NewRoleRepo(data *store.Data) iam.RoleRepo {
+func NewRoleRepo(data *store.Data) access.RoleRepo {
 	return &roleRepo{data: data}
 }
 
-func (r *roleRepo) FindByID(ctx context.Context, id int64) (*iam.Role, error) {
+func (r *roleRepo) FindByID(ctx context.Context, id int64) (*access.Role, error) {
 	po, err := r.data.DB.Role(ctx).Query().
 		Where(role.IDEQ(id), role.DeletedAtIsNil()).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrRoleNotFound
+			return nil, access.ErrRoleNotFound
 		}
 		return nil, err
 	}
 	return toBizRole(po), nil
 }
 
-func (r *roleRepo) FindByRoleName(ctx context.Context, roleName string) (*iam.Role, error) {
+func (r *roleRepo) FindByRoleName(ctx context.Context, roleName string) (*access.Role, error) {
 	po, err := r.data.DB.Role(ctx).Query().
 		Where(role.RoleNameEQ(roleName), role.DeletedAtIsNil()).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrRoleNotFound
+			return nil, access.ErrRoleNotFound
 		}
 		return nil, err
 	}
 	return toBizRole(po), nil
 }
 
-func (r *roleRepo) FindByRoleKey(ctx context.Context, roleKey string) (*iam.Role, error) {
+func (r *roleRepo) FindByRoleKey(ctx context.Context, roleKey string) (*access.Role, error) {
 	po, err := r.data.DB.Role(ctx).Query().
 		Where(role.RoleKeyEQ(roleKey), role.DeletedAtIsNil()).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrRoleNotFound
+			return nil, access.ErrRoleNotFound
 		}
 		return nil, err
 	}
 	return toBizRole(po), nil
 }
 
-func (r *roleRepo) ListRoles(ctx context.Context, opts ...iam.ListOption) ([]*iam.Role, error) {
-	o := iam.ListOptions{Limit: 20}
+func (r *roleRepo) ListRoles(ctx context.Context, opts ...access.ListOption) ([]*access.Role, error) {
+	o := access.ListOptions{Limit: 20}
 	for _, opt := range opts {
 		opt(&o)
 	}
@@ -96,7 +96,7 @@ func (r *roleRepo) ListRoles(ctx context.Context, opts ...iam.ListOption) ([]*ia
 	if err != nil {
 		return nil, err
 	}
-	roles := make([]*iam.Role, 0, len(pos))
+	roles := make([]*access.Role, 0, len(pos))
 	for _, po := range pos {
 		roles = append(roles, toBizRole(po))
 	}
@@ -105,7 +105,7 @@ func (r *roleRepo) ListRoles(ctx context.Context, opts ...iam.ListOption) ([]*ia
 
 // CreateRole inserts the role row and its initial Menu Grant. The caller owns
 // the transaction.
-func (r *roleRepo) CreateRole(ctx context.Context, ro *iam.Role, menuIDs []int64) (*iam.Role, error) {
+func (r *roleRepo) CreateRole(ctx context.Context, ro *access.Role, menuIDs []int64) (*access.Role, error) {
 	po, err := r.data.DB.Role(ctx).Create().
 		SetID(newSnowflakeID()).
 		SetRoleName(ro.RoleName).
@@ -125,12 +125,12 @@ func (r *roleRepo) CreateRole(ctx context.Context, ro *iam.Role, menuIDs []int64
 // UpdateRole reads the record and assigned users, applies the mutation, and
 // returns both snapshots for RoleUsecase revocation classification. The
 // caller owns the transaction.
-func (r *roleRepo) UpdateRole(ctx context.Context, ro *iam.Role) (*iam.RoleUpdate, error) {
-	result := &iam.RoleUpdate{}
+func (r *roleRepo) UpdateRole(ctx context.Context, ro *access.Role) (*access.RoleUpdate, error) {
+	result := &access.RoleUpdate{}
 	current, err := r.data.DB.Role(ctx).Query().Where(role.IDEQ(ro.ID), role.DeletedAtIsNil()).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrRoleNotFound
+			return nil, access.ErrRoleNotFound
 		}
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func (r *roleRepo) DeleteRole(ctx context.Context, id int64) ([]int64, error) {
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrRoleNotFound
+			return nil, access.ErrRoleNotFound
 		}
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (r *roleRepo) DeleteRole(ctx context.Context, id int64) ([]int64, error) {
 // ListRoleMenuLinks reads the role's granted menus (soft-deleted excluded)
 // with their parent ids, ordered by (parent_id, order_num) — the ordering the
 // role editor's tree expects.
-func (r *roleRepo) ListRoleMenuLinks(ctx context.Context, roleID int64) ([]*iam.RoleMenuLink, error) {
+func (r *roleRepo) ListRoleMenuLinks(ctx context.Context, roleID int64) ([]*access.RoleMenuLink, error) {
 	pos, err := r.data.DB.Role(ctx).Query().
 		Where(role.IDEQ(roleID), role.DeletedAtIsNil()).
 		QueryMenus().
@@ -190,9 +190,9 @@ func (r *roleRepo) ListRoleMenuLinks(ctx context.Context, roleID int64) ([]*iam.
 	if err != nil {
 		return nil, err
 	}
-	links := make([]*iam.RoleMenuLink, 0, len(pos))
+	links := make([]*access.RoleMenuLink, 0, len(pos))
 	for _, po := range pos {
-		links = append(links, &iam.RoleMenuLink{MenuID: po.ID, ParentID: po.ParentID})
+		links = append(links, &access.RoleMenuLink{MenuID: po.ID, ParentID: po.ParentID})
 	}
 	return links, nil
 }
@@ -208,7 +208,7 @@ func (r *roleRepo) ReplaceRoleMenus(ctx context.Context, roleID int64, menuIDs [
 			return nil, err
 		}
 		if count != len(sortedIDs(menuIDs)) {
-			return nil, iam.ErrRoleMenuNotFound
+			return nil, access.ErrRoleMenuNotFound
 		}
 	}
 	userIDs, err := r.data.DB.Role(ctx).Query().Where(role.IDEQ(roleID), role.DeletedAtIsNil()).QueryUsers().
@@ -223,7 +223,7 @@ func (r *roleRepo) ReplaceRoleMenus(ctx context.Context, roleID int64, menuIDs [
 		Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrRoleNotFound
+			return nil, access.ErrRoleNotFound
 		}
 		return nil, err
 	}

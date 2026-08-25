@@ -1,4 +1,4 @@
-package iam
+package access
 
 import (
 	"context"
@@ -6,14 +6,14 @@ import (
 	"log/slog"
 
 	"glex/internal/crossdomain/authn"
-	iamdomain "glex/internal/domain/iam"
+	accessdomain "glex/internal/domain/access"
 )
 
 // RoleUsecase holds the role business rules.
 type RoleUsecase struct {
-	repo         iamdomain.RoleRepo
-	menuRepo     iamdomain.MenuRepo
-	userRoleRepo iamdomain.UserRoleRepo
+	repo         accessdomain.RoleRepo
+	menuRepo     accessdomain.MenuRepo
+	userRoleRepo accessdomain.UserRoleRepo
 	tx           Transaction
 	revoker      authn.SessionRevoker
 	logger       *slog.Logger
@@ -21,17 +21,17 @@ type RoleUsecase struct {
 
 // NewRoleUsecase creates a RoleUsecase. menuRepo backs Menu Grant validation
 // (granted menus must exist and not be soft-deleted); userRoleRepo backs the
-// "a role with users cannot be deleted/disabled" guard (iamdomain.Role Assignment); tx
+// "a role with users cannot be deleted/disabled" guard (accessdomain.Role Assignment); tx
 // wraps security writes together with their session revocation; revoker
 // performs the revocation through the authn crossdomain contract.
-func NewRoleUsecase(repo iamdomain.RoleRepo, menuRepo iamdomain.MenuRepo, userRoleRepo iamdomain.UserRoleRepo, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *RoleUsecase {
+func NewRoleUsecase(repo accessdomain.RoleRepo, menuRepo accessdomain.MenuRepo, userRoleRepo accessdomain.UserRoleRepo, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *RoleUsecase {
 	return &RoleUsecase{
 		repo:         repo,
 		menuRepo:     menuRepo,
 		userRoleRepo: userRoleRepo,
 		tx:           tx,
 		revoker:      revoker,
-		logger:       logger.With(slog.String("component", "application.iam.role")),
+		logger:       logger.With(slog.String("component", "application.access.role")),
 	}
 }
 
@@ -39,7 +39,7 @@ func NewRoleUsecase(repo iamdomain.RoleRepo, menuRepo iamdomain.MenuRepo, userRo
 // role_name/role_key must be non-blank and unique among active roles, and
 // every menu id must exist (duplicates silently deduped). The role row and
 // its links commit in one transaction.
-func (uc *RoleUsecase) CreateRole(ctx context.Context, r *iamdomain.Role, menuIDs []int64) (*iamdomain.Role, error) {
+func (uc *RoleUsecase) CreateRole(ctx context.Context, r *accessdomain.Role, menuIDs []int64) (*accessdomain.Role, error) {
 	if err := uc.validate(r); err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (uc *RoleUsecase) CreateRole(ctx context.Context, r *iamdomain.Role, menuID
 	if err != nil {
 		return nil, err
 	}
-	var created *iamdomain.Role
+	var created *accessdomain.Role
 	if err := uc.tx.InTx(ctx, func(ctx context.Context) error {
 		var err error
 		created, err = uc.repo.CreateRole(ctx, r, unique)
@@ -68,7 +68,7 @@ func (uc *RoleUsecase) CreateRole(ctx context.Context, r *iamdomain.Role, menuID
 // invalidates Authorization Snapshots (role_key/status), assigned users'
 // Login Sessions are currently revoked inside the same transaction. That
 // failure behavior is not a stable business guarantee for Role updates.
-func (uc *RoleUsecase) UpdateRole(ctx context.Context, r *iamdomain.Role) (*iamdomain.Role, error) {
+func (uc *RoleUsecase) UpdateRole(ctx context.Context, r *accessdomain.Role) (*accessdomain.Role, error) {
 	if err := uc.validate(r); err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (uc *RoleUsecase) UpdateRole(ctx context.Context, r *iamdomain.Role) (*iamd
 	if err := uc.assertRoleDisableAllowed(ctx, r); err != nil {
 		return nil, err
 	}
-	var updated *iamdomain.Role
+	var updated *accessdomain.Role
 	if err := uc.tx.InTx(ctx, func(ctx context.Context) error {
 		result, err := uc.repo.UpdateRole(ctx, r)
 		if err != nil {
@@ -96,12 +96,12 @@ func (uc *RoleUsecase) UpdateRole(ctx context.Context, r *iamdomain.Role) (*iamd
 }
 
 // GetRole returns the role with the given id.
-func (uc *RoleUsecase) GetRole(ctx context.Context, id int64) (*iamdomain.Role, error) {
+func (uc *RoleUsecase) GetRole(ctx context.Context, id int64) (*accessdomain.Role, error) {
 	return uc.repo.FindByID(ctx, id)
 }
 
 // ListRoles lists roles matching the given options.
-func (uc *RoleUsecase) ListRoles(ctx context.Context, opts ...iamdomain.ListOption) ([]*iamdomain.Role, error) {
+func (uc *RoleUsecase) ListRoles(ctx context.Context, opts ...accessdomain.ListOption) ([]*accessdomain.Role, error) {
 	return uc.repo.ListRoles(ctx, opts...)
 }
 
@@ -117,7 +117,7 @@ func (uc *RoleUsecase) DeleteRole(ctx context.Context, id int64) error {
 		return err
 	}
 	if n > 0 {
-		return iamdomain.ErrRoleAssigned
+		return accessdomain.ErrRoleAssigned
 	}
 	return uc.tx.InTx(ctx, func(ctx context.Context) error {
 		affected, err := uc.repo.DeleteRole(ctx, id)
@@ -192,9 +192,9 @@ func (uc *RoleUsecase) UpdateRoleMenus(ctx context.Context, roleID int64, menuID
 }
 
 // validate rejects blank role_name/role_key (Q4: non-blank is the only rule).
-func (uc *RoleUsecase) validate(r *iamdomain.Role) error {
+func (uc *RoleUsecase) validate(r *accessdomain.Role) error {
 	if r.RoleName == "" || r.RoleKey == "" {
-		return iamdomain.ErrRoleInvalid
+		return accessdomain.ErrRoleInvalid
 	}
 	return nil
 }
@@ -203,20 +203,20 @@ func (uc *RoleUsecase) validate(r *iamdomain.Role) error {
 // role, ignoring the record with excludeID (0 = none). A not-found from the
 // repo is the expected "available" case. Checks run against active rows only,
 // so soft-deleted values are reusable.
-func (uc *RoleUsecase) assertUnique(ctx context.Context, r *iamdomain.Role, excludeID int64) error {
+func (uc *RoleUsecase) assertUnique(ctx context.Context, r *accessdomain.Role, excludeID int64) error {
 	if existing, err := uc.repo.FindByRoleName(ctx, r.RoleName); err != nil {
-		if !errors.Is(err, iamdomain.ErrRoleNotFound) {
+		if !errors.Is(err, accessdomain.ErrRoleNotFound) {
 			return err
 		}
 	} else if existing != nil && existing.ID != excludeID {
-		return iamdomain.ErrRoleNameConflict
+		return accessdomain.ErrRoleNameConflict
 	}
 	if existing, err := uc.repo.FindByRoleKey(ctx, r.RoleKey); err != nil {
-		if !errors.Is(err, iamdomain.ErrRoleNotFound) {
+		if !errors.Is(err, accessdomain.ErrRoleNotFound) {
 			return err
 		}
 	} else if existing != nil && existing.ID != excludeID {
-		return iamdomain.ErrRoleKeyConflict
+		return accessdomain.ErrRoleKeyConflict
 	}
 	return nil
 }
@@ -234,7 +234,7 @@ func (uc *RoleUsecase) assertMenusGrantable(ctx context.Context, menuIDs []int64
 		return nil, err
 	}
 	if len(menus) != len(unique) {
-		return nil, iamdomain.ErrRoleMenuNotFound
+		return nil, accessdomain.ErrRoleMenuNotFound
 	}
 	return unique, nil
 }
@@ -242,7 +242,7 @@ func (uc *RoleUsecase) assertMenusGrantable(ctx context.Context, menuIDs []int64
 // assertRoleDisableAllowed rejects an update that *changes* the role's status
 // to disabled (1) while users are still assigned. Re-disabling an already
 // disabled role is a no-op and passes; other status directions are free.
-func (uc *RoleUsecase) assertRoleDisableAllowed(ctx context.Context, r *iamdomain.Role) error {
+func (uc *RoleUsecase) assertRoleDisableAllowed(ctx context.Context, r *accessdomain.Role) error {
 	if r.Status != 1 {
 		return nil
 	}
@@ -258,7 +258,7 @@ func (uc *RoleUsecase) assertRoleDisableAllowed(ctx context.Context, r *iamdomai
 		return err
 	}
 	if n > 0 {
-		return iamdomain.ErrRoleAssigned
+		return accessdomain.ErrRoleAssigned
 	}
 	return nil
 }

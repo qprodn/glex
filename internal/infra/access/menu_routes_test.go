@@ -1,4 +1,4 @@
-package iaminfra
+package accessinfra
 
 import (
 	"glex/internal/infra/store"
@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"glex/internal/domain/access"
 	authndomain "glex/internal/domain/authn"
-	"glex/internal/domain/iam"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
@@ -36,8 +36,8 @@ func TestMenuRepoLoadRouteAccessQueriesAssignmentsGrantsAndActiveMenus(t *testin
 		WillReturnRows(sqlmock.NewRows([]string{menu.FieldID}).AddRow(int64(10)).AddRow(int64(11)))
 	mock.ExpectQuery(`SELECT .* FROM "sys_menu"`).
 		WillReturnRows(sqlmock.NewRows(menu.Columns).
-			AddRow(int64(9), "System", int64(0), 1, "system", "", "", int8(0), int8(1), int8(iam.MenuTypeDirectory), int8(0), int8(0), "", "system", "", "", int64(0), int64(0), now, now, nil).
-			AddRow(int64(10), "Users", int64(9), 1, "users", "system/user/index", "", int8(0), int8(1), int8(iam.MenuTypeMenu), int8(0), int8(0), "system:user:list", "user", "", "", int64(0), int64(0), now, now, nil))
+			AddRow(int64(9), "System", int64(0), 1, "system", "", "", int8(0), int8(1), int8(access.MenuTypeDirectory), int8(0), int8(0), "", "system", "", "", int64(0), int64(0), now, now, nil).
+			AddRow(int64(10), "Users", int64(9), 1, "users", "system/user/index", "", int8(0), int8(1), int8(access.MenuTypeMenu), int8(0), int8(0), "system:user:list", "user", "", "", int64(0), int64(0), now, now, nil))
 
 	access, err := repo.LoadRouteAccess(t.Context(), 42)
 	if err != nil {

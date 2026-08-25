@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"glex/internal/crossdomain/access"
 	authndomain "glex/internal/domain/authn"
 
 	"github.com/mileusna/useragent"
@@ -26,20 +27,24 @@ type LoginUsecase struct {
 	login       authndomain.AuthLoginBackend
 	counterRepo authndomain.LoginCounterRepo
 	sessionRepo authndomain.LoginSessionRepo
+	authorizer  access.AuthorizationResolver
 	tx          Transaction
 	logger      *slog.Logger
 	now         func() time.Time
 }
 
 // NewLoginUsecase creates a LoginUsecase. login backs the account protocol
-// (lookup, revalidation, Authorization Snapshot, credential issuance);
-// counterRepo owns the two login failure counters; sessionRepo backs Logout;
-// tx owns the login transaction boundary.
-func NewLoginUsecase(login authndomain.AuthLoginBackend, counterRepo authndomain.LoginCounterRepo, sessionRepo authndomain.LoginSessionRepo, tx Transaction, logger *slog.Logger) *LoginUsecase {
+// (lookup, revalidation, credential issuance); counterRepo owns the two login
+// failure counters; sessionRepo backs Logout; authorizer fills the
+// Authorization Snapshot through the access crossdomain contract (login never
+// derives permissions itself, ADR 0016/0017); tx owns the login transaction
+// boundary.
+func NewLoginUsecase(login authndomain.AuthLoginBackend, counterRepo authndomain.LoginCounterRepo, sessionRepo authndomain.LoginSessionRepo, authorizer access.AuthorizationResolver, tx Transaction, logger *slog.Logger) *LoginUsecase {
 	return &LoginUsecase{
 		login:       login,
 		counterRepo: counterRepo,
 		sessionRepo: sessionRepo,
+		authorizer:  authorizer,
 		tx:          tx,
 		logger:      logger.With(slog.String("component", "application.authn.login")),
 		now:         time.Now,
@@ -99,7 +104,7 @@ func (uc *LoginUsecase) Login(ctx context.Context, req *LoginRequest) (*authndom
 		if err != nil {
 			return err
 		}
-		snapshot, err := uc.login.LoadSnapshot(ctx, locked.ID, locked.UserName)
+		snapshot, err := uc.loadAuthorization(ctx, locked)
 		if err != nil {
 			return err
 		}
@@ -143,6 +148,26 @@ func (uc *LoginUsecase) invalidLogin(ctx context.Context, userName, sourceIP str
 		return authndomain.NewLoginLocked(remaining)
 	}
 	return authndomain.ErrInvalidCredentials
+}
+
+// loadAuthorization fills the Authorization Snapshot's authorization content
+// through the access crossdomain contract — login never derives permissions
+// itself (ADR 0016). The carrier fields (identity) are authn's own; any
+// resolution failure is the authorization backend being unavailable.
+func (uc *LoginUsecase) loadAuthorization(ctx context.Context, locked *authndomain.LoginAccount) (*authndomain.AuthorizationSnapshot, error) {
+	resolution, err := uc.authorizer.ResolveAuthorization(ctx, locked.ID)
+	if err != nil {
+		return nil, authndomain.ErrAuthBackendUnavailable
+	}
+	snapshot := &authndomain.AuthorizationSnapshot{
+		SystemUserID: locked.ID,
+		UserName:     locked.UserName,
+	}
+	if resolution != nil {
+		snapshot.RoleKeys = resolution.RoleKeys
+		snapshot.Permissions = resolution.Permissions
+	}
+	return snapshot, nil
 }
 
 func loginClientMetadata(raw string) (deviceType, browser, os string) {

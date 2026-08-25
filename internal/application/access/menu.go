@@ -1,4 +1,4 @@
-package iam
+package access
 
 import (
 	"context"
@@ -8,8 +8,8 @@ import (
 	"unicode"
 
 	menuv1 "glex/api/iam/menu/v1"
+	accessdomain "glex/internal/domain/access"
 	authndomain "glex/internal/domain/authn"
-	iamdomain "glex/internal/domain/iam"
 
 	"go.einride.tech/aip/fieldmask"
 	"go.einride.tech/aip/filtering"
@@ -18,10 +18,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// convertMenu maps a iamdomain.Menu DO to the proto Menu DTO, recursing into children.
+// convertMenu maps a accessdomain.Menu DO to the proto Menu DTO, recursing into children.
 // children is read-only: it is populated here for ListMenus and never read on
 // the write path.
-func convertMenu(m *iamdomain.Menu) *menuv1.Menu {
+func convertMenu(m *accessdomain.Menu) *menuv1.Menu {
 	out := &menuv1.Menu{
 		MenuId:     m.ID,
 		MenuName:   m.MenuName,
@@ -67,21 +67,21 @@ func capitalizedRouteName(path string, menuID int64) string {
 	return fmt.Sprintf("%s%d", string(runes), menuID)
 }
 
-func isMenuFrame(m *iamdomain.Menu) bool {
-	return m.ParentID == 0 && m.MenuType == iamdomain.MenuTypeMenu && m.IsFrame == 0
+func isMenuFrame(m *accessdomain.Menu) bool {
+	return m.ParentID == 0 && m.MenuType == accessdomain.MenuTypeMenu && m.IsFrame == 0
 }
 
-func isInnerLink(m *iamdomain.Menu) bool {
+func isInnerLink(m *accessdomain.Menu) bool {
 	path := strings.ToLower(m.Path)
 	return m.IsFrame == 0 && (strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://"))
 }
 
-func routePath(m *iamdomain.Menu) string {
+func routePath(m *accessdomain.Menu) string {
 	path := m.Path
 	if m.ParentID != 0 && isInnerLink(m) {
 		path = innerLinkPath(path)
 	}
-	if m.ParentID == 0 && m.MenuType == iamdomain.MenuTypeDirectory && m.IsFrame == 0 {
+	if m.ParentID == 0 && m.MenuType == accessdomain.MenuTypeDirectory && m.IsFrame == 0 {
 		return "/" + strings.TrimPrefix(path, "/")
 	}
 	if isMenuFrame(m) {
@@ -90,14 +90,14 @@ func routePath(m *iamdomain.Menu) string {
 	return path
 }
 
-func routeComponent(m *iamdomain.Menu) string {
+func routeComponent(m *accessdomain.Menu) string {
 	if m.Component != "" && !isMenuFrame(m) {
 		return m.Component
 	}
 	if m.Component == "" && m.ParentID != 0 && isInnerLink(m) {
 		return "InnerLink"
 	}
-	if m.Component == "" && m.ParentID != 0 && m.MenuType == iamdomain.MenuTypeDirectory {
+	if m.Component == "" && m.ParentID != 0 && m.MenuType == accessdomain.MenuTypeDirectory {
 		return "ParentView"
 	}
 	return "Layout"
@@ -126,11 +126,11 @@ type MenuApplication struct {
 }
 
 type menuUsecase interface {
-	CreateMenu(context.Context, *iamdomain.Menu) (*iamdomain.Menu, error)
-	GetMenu(context.Context, int64) (*iamdomain.Menu, error)
-	ListMenuTree(context.Context, ...iamdomain.ListOption) ([]*iamdomain.Menu, error)
-	ListUserRouteTree(context.Context, int64) ([]*iamdomain.Menu, error)
-	UpdateMenu(context.Context, *iamdomain.Menu) (*iamdomain.Menu, error)
+	CreateMenu(context.Context, *accessdomain.Menu) (*accessdomain.Menu, error)
+	GetMenu(context.Context, int64) (*accessdomain.Menu, error)
+	ListMenuTree(context.Context, ...accessdomain.ListOption) ([]*accessdomain.Menu, error)
+	ListUserRouteTree(context.Context, int64) ([]*accessdomain.Menu, error)
+	UpdateMenu(context.Context, *accessdomain.Menu) (*accessdomain.Menu, error)
 	DeleteMenu(context.Context, int64) error
 }
 
@@ -149,7 +149,7 @@ func newMenuApplication(uc menuUsecase, logger *slog.Logger) *MenuApplication {
 // CreateMenu creates a menu.
 func (s *MenuApplication) CreateMenu(ctx context.Context, req *menuv1.CreateMenuRequest) (*menuv1.Menu, error) {
 	in := req.GetMenu()
-	created, err := s.uc.CreateMenu(ctx, &iamdomain.Menu{
+	created, err := s.uc.CreateMenu(ctx, &accessdomain.Menu{
 		MenuName:   in.GetMenuName(),
 		ParentID:   in.GetParentId(),
 		OrderNum:   int(in.GetOrderNum()),
@@ -204,8 +204,8 @@ func (s *MenuApplication) ListMenus(ctx context.Context, req *menuv1.ListMenusRe
 		return nil, err
 	}
 	roots, err := s.uc.ListMenuTree(ctx,
-		iamdomain.ListFilter(filter),
-		iamdomain.ListOrderBy(orderBy),
+		accessdomain.ListFilter(filter),
+		accessdomain.ListOrderBy(orderBy),
 	)
 	if err != nil {
 		return nil, err
@@ -227,7 +227,7 @@ func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*me
 	if err != nil {
 		return nil, err
 	}
-	toMeta := func(m *iamdomain.Menu) *menuv1.RouterMeta {
+	toMeta := func(m *accessdomain.Menu) *menuv1.RouterMeta {
 		link := ""
 		if strings.HasPrefix(strings.ToLower(m.Path), "http://") || strings.HasPrefix(strings.ToLower(m.Path), "https://") {
 			link = m.Path
@@ -240,8 +240,8 @@ func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*me
 			ActiveMenu: m.ActiveMenu,
 		}
 	}
-	var toRouter func(*iamdomain.Menu) *menuv1.Router
-	toRouter = func(m *iamdomain.Menu) *menuv1.Router {
+	var toRouter func(*accessdomain.Menu) *menuv1.Router
+	toRouter = func(m *accessdomain.Menu) *menuv1.Router {
 		menuFrame := isMenuFrame(m)
 		path := routePath(m)
 		router := &menuv1.Router{
@@ -252,7 +252,7 @@ func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*me
 			Query:     m.QueryParam,
 			Meta:      toMeta(m),
 		}
-		if len(m.Children) > 0 && m.MenuType == iamdomain.MenuTypeDirectory {
+		if len(m.Children) > 0 && m.MenuType == accessdomain.MenuTypeDirectory {
 			router.AlwaysShow = true
 			router.Redirect = "noRedirect"
 			router.Children = make([]*menuv1.Router, 0, len(m.Children))
@@ -296,7 +296,7 @@ func (s *MenuApplication) UpdateMenu(ctx context.Context, req *menuv1.UpdateMenu
 		return nil, err
 	}
 	fieldmask.Update(req.GetUpdateMask(), current, req.GetMenu())
-	updated, err := s.uc.UpdateMenu(ctx, &iamdomain.Menu{
+	updated, err := s.uc.UpdateMenu(ctx, &accessdomain.Menu{
 		ID:         current.GetMenuId(),
 		MenuName:   current.GetMenuName(),
 		ParentID:   current.GetParentId(),

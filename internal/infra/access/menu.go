@@ -1,4 +1,4 @@
-package iaminfra
+package accessinfra
 
 import (
 	"glex/internal/infra/store"
@@ -8,18 +8,18 @@ import (
 	"time"
 
 	"github.com/go-kratos/aip-go/ents"
+	"glex/internal/domain/access"
 	authndomain "glex/internal/domain/authn"
-	"glex/internal/domain/iam"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/user"
 )
 
-// toBizMenu maps an ent Menu PO to a iam.Menu DO. Children is left nil — the
-// tree is assembled in domain (see iam.buildTree).
-func toBizMenu(po *ent.Menu) *iam.Menu {
-	return &iam.Menu{
+// toBizMenu maps an ent Menu PO to a access.Menu DO. Children is left nil — the
+// tree is assembled in domain (see access.buildTree).
+func toBizMenu(po *ent.Menu) *access.Menu {
+	return &access.Menu{
 		ID:         po.ID,
 		MenuName:   po.MenuName,
 		ParentID:   po.ParentID,
@@ -49,33 +49,33 @@ type menuRepo struct {
 }
 
 // NewMenuRepo creates a new MenuRepo instance.
-func NewMenuRepo(data *store.Data) iam.MenuRepo {
+func NewMenuRepo(data *store.Data) access.MenuRepo {
 	return &menuRepo{
 		data:   data,
-		logger: data.Logger.With(slog.String("component", "infra.iam.menu")),
+		logger: data.Logger.With(slog.String("component", "infra.access.menu")),
 	}
 }
 
-func (r *menuRepo) FindByID(ctx context.Context, id int64) (*iam.Menu, error) {
+func (r *menuRepo) FindByID(ctx context.Context, id int64) (*access.Menu, error) {
 	po, err := r.data.DB.Menu(ctx).Query().
 		Where(menu.IDEQ(id), menu.DeletedAtIsNil()).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrMenuNotFound
+			return nil, access.ErrMenuNotFound
 		}
 		return nil, err
 	}
 	return toBizMenu(po), nil
 }
 
-func (r *menuRepo) FindByParentAndName(ctx context.Context, parentID int64, name string) (*iam.Menu, error) {
+func (r *menuRepo) FindByParentAndName(ctx context.Context, parentID int64, name string) (*access.Menu, error) {
 	po, err := r.data.DB.Menu(ctx).Query().
 		Where(menu.ParentIDEQ(parentID), menu.MenuNameEQ(name), menu.DeletedAtIsNil()).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrMenuNotFound
+			return nil, access.ErrMenuNotFound
 		}
 		return nil, err
 	}
@@ -94,9 +94,9 @@ func (r *menuRepo) HasChildren(ctx context.Context, id int64) (bool, error) {
 
 // ListMenus returns the non-deleted menus as a flat list. It does not apply
 // offset/limit: menus are a small, tree-shaped set and ListMenus serves the
-// whole tree. Final sibling ordering is applied by iam.buildTree.
-func (r *menuRepo) ListMenus(ctx context.Context, opts ...iam.ListOption) ([]*iam.Menu, error) {
-	o := iam.ListOptions{}
+// whole tree. Final sibling ordering is applied by access.buildTree.
+func (r *menuRepo) ListMenus(ctx context.Context, opts ...access.ListOption) ([]*access.Menu, error) {
+	o := access.ListOptions{}
 	for _, opt := range opts {
 		opt(&o)
 	}
@@ -107,7 +107,7 @@ func (r *menuRepo) ListMenus(ctx context.Context, opts ...iam.ListOption) ([]*ia
 	if err != nil {
 		return nil, err
 	}
-	menus := make([]*iam.Menu, 0, len(pos))
+	menus := make([]*access.Menu, 0, len(pos))
 	for _, po := range pos {
 		menus = append(menus, toBizMenu(po))
 	}
@@ -118,7 +118,7 @@ func (r *menuRepo) ListMenus(ctx context.Context, opts ...iam.ListOption) ([]*ia
 // active Role Assignments, their Menu Grants, and all active routeable Menus.
 // It intentionally does not consult Functional Permission handles or an
 // Account Session snapshot.
-func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*iam.MenuRouteAccess, error) {
+func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*access.MenuRouteAccess, error) {
 	assignedRoles, err := r.data.DB.Role(ctx).Query().
 		Where(
 			role.DeletedAtIsNil(),
@@ -157,25 +157,25 @@ func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*ia
 		Where(
 			menu.DeletedAtIsNil(),
 			menu.StatusEQ(0),
-			menu.MenuTypeIn(int8(iam.MenuTypeDirectory), int8(iam.MenuTypeMenu)),
+			menu.MenuTypeIn(int8(access.MenuTypeDirectory), int8(access.MenuTypeMenu)),
 		).
 		Order(menu.ByParentID(), menu.ByOrderNum(), menu.ByID()).
 		All(ctx)
 	if err != nil {
 		return nil, authnBackendError(ctx, r.logger, "load_active_route_menus", err)
 	}
-	menus := make([]*iam.Menu, 0, len(pos))
+	menus := make([]*access.Menu, 0, len(pos))
 	for _, po := range pos {
 		menus = append(menus, toBizMenu(po))
 	}
-	return &iam.MenuRouteAccess{
+	return &access.MenuRouteAccess{
 		RoleKeys:       roleKeys,
 		GrantedMenuIDs: grantedMenuIDs,
 		ActiveMenus:    menus,
 	}, nil
 }
 
-func (r *menuRepo) CreateMenu(ctx context.Context, m *iam.Menu) (*iam.Menu, error) {
+func (r *menuRepo) CreateMenu(ctx context.Context, m *access.Menu) (*access.Menu, error) {
 	po, err := r.data.DB.Menu(ctx).Create().
 		SetID(newSnowflakeID()).
 		SetMenuName(m.MenuName).
@@ -203,12 +203,12 @@ func (r *menuRepo) CreateMenu(ctx context.Context, m *iam.Menu) (*iam.Menu, erro
 // UpdateMenu re-reads the record and its affected users, applies the mutation,
 // and returns the persisted menu with its pre-image for MenuUsecase
 // revocation classification. The caller owns the transaction.
-func (r *menuRepo) UpdateMenu(ctx context.Context, m *iam.Menu) (*iam.MenuUpdate, error) {
-	result := &iam.MenuUpdate{}
+func (r *menuRepo) UpdateMenu(ctx context.Context, m *access.Menu) (*access.MenuUpdate, error) {
+	result := &access.MenuUpdate{}
 	current, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(m.ID), menu.DeletedAtIsNil()).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrMenuNotFound
+			return nil, access.ErrMenuNotFound
 		}
 		return nil, err
 	}
@@ -249,7 +249,7 @@ func (r *menuRepo) UpdateMenu(ctx context.Context, m *iam.Menu) (*iam.MenuUpdate
 
 // ListByIDs returns the active menus among the given ids (soft-deleted rows
 // are excluded, so the caller can detect unknown ids by length mismatch).
-func (r *menuRepo) ListByIDs(ctx context.Context, ids []int64) ([]*iam.Menu, error) {
+func (r *menuRepo) ListByIDs(ctx context.Context, ids []int64) ([]*access.Menu, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -259,7 +259,7 @@ func (r *menuRepo) ListByIDs(ctx context.Context, ids []int64) ([]*iam.Menu, err
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*iam.Menu, 0, len(pos))
+	out := make([]*access.Menu, 0, len(pos))
 	for _, po := range pos {
 		out = append(out, toBizMenu(po))
 	}
@@ -285,7 +285,7 @@ func (r *menuRepo) DeleteMenu(ctx context.Context, id int64) ([]int64, error) {
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrMenuNotFound
+			return nil, access.ErrMenuNotFound
 		}
 		return nil, err
 	}

@@ -5,16 +5,12 @@ import (
 
 	"context"
 	"log/slog"
-	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"glex/internal/conf"
 	authndomain "glex/internal/domain/authn"
 	"glex/internal/infra/ent"
-	"glex/internal/infra/ent/menu"
-	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/user"
 
 	"github.com/sa-tokens/sa-token-go/core"
@@ -24,8 +20,6 @@ import (
 const (
 	authorizationSnapshotSystemUserIDKey = "glex.system_user_id"
 	authorizationSnapshotUserNameKey     = "glex.user_name"
-	superadminRoleKey                    = "superadmin"
-	superadminPermission                 = "*:*:*"
 )
 
 type authLoginRepo struct {
@@ -104,16 +98,6 @@ func (r *authLoginRepo) Revalidate(ctx context.Context, systemUserID int64, user
 	}, nil
 }
 
-// LoadSnapshot freshly reads the shared Authorization Snapshot inside the
-// caller's transaction.
-func (r *authLoginRepo) LoadSnapshot(ctx context.Context, systemUserID int64, userName string) (*authndomain.AuthorizationSnapshot, error) {
-	snapshot, err := loadAuthorizationSnapshot(ctx, r.data.DB, systemUserID, userName)
-	if err != nil {
-		return nil, authDatabaseBackendError(ctx, r.logger, "load_authorization_snapshot", err)
-	}
-	return snapshot, nil
-}
-
 // RecordLogin persists the login IP and time on the System User row inside
 // the caller's transaction.
 func (r *authLoginRepo) RecordLogin(ctx context.Context, systemUserID int64, sourceIP string, loginTime time.Time) error {
@@ -162,80 +146,6 @@ func (r *authLoginRepo) DiscardCredential(ctx context.Context, systemUserID int6
 		_ = r.manager.DeleteSession(strconv.FormatInt(systemUserID, 10))
 	}
 	return nil
-}
-
-func loadAuthorizationSnapshot(ctx context.Context, db *ent.Database, systemUserID int64, userName string) (*authndomain.AuthorizationSnapshot, error) {
-	roles, err := db.Role(ctx).Query().
-		Where(
-			role.DeletedAtIsNil(),
-			role.StatusEQ(0),
-			role.HasUsersWith(user.IDEQ(systemUserID), user.DeletedAtIsNil()),
-		).
-		Order(role.ByRoleKey(), role.ByID()).
-		All(ctx)
-	if err != nil {
-		return nil, err
-	}
-	roleIDs := make([]int64, 0, len(roles))
-	for _, assignedRole := range roles {
-		roleIDs = append(roleIDs, assignedRole.ID)
-	}
-	menus := make([]*ent.Menu, 0)
-	if len(roleIDs) > 0 {
-		menus, err = db.Menu(ctx).Query().
-			Where(
-				menu.DeletedAtIsNil(),
-				menu.StatusEQ(0),
-				menu.HasRolesWith(role.IDIn(roleIDs...)),
-			).
-			Order(menu.ByPerms(), menu.ByID()).
-			All(ctx)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return toBizAuthorizationSnapshot(systemUserID, userName, roles, menus), nil
-}
-
-func toBizAuthorizationSnapshot(systemUserID int64, userName string, roles []*ent.Role, menus []*ent.Menu) *authndomain.AuthorizationSnapshot {
-	roleKeys := make([]string, 0, len(roles))
-	superadmin := false
-	for _, assignedRole := range roles {
-		key := assignedRole.RoleKey
-		if strings.TrimSpace(key) == "" {
-			continue
-		}
-		roleKeys = append(roleKeys, key)
-		if key == superadminRoleKey {
-			superadmin = true
-		}
-	}
-	permissions := make([]string, 0, len(menus)+1)
-	seen := make(map[string]struct{}, len(menus)+1)
-	for _, grantedMenu := range menus {
-		permission := strings.TrimSpace(grantedMenu.Perms)
-		if permission == "" || permission == superadminPermission && !superadmin {
-			continue
-		}
-		if _, ok := seen[permission]; ok {
-			continue
-		}
-		seen[permission] = struct{}{}
-		permissions = append(permissions, permission)
-	}
-	if superadmin {
-		if _, ok := seen[superadminPermission]; !ok {
-			permissions = append(permissions, superadminPermission)
-		}
-	}
-	sort.Strings(roleKeys)
-	sort.Strings(permissions)
-	return &authndomain.AuthorizationSnapshot{
-		SystemUserID: systemUserID,
-		UserName:     userName,
-		RoleKeys:     roleKeys,
-		Permissions:  permissions,
-	}
 }
 
 // loginAndReplaceAuthorizationSnapshot is deliberately the only project call
