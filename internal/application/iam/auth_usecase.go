@@ -26,23 +26,23 @@ type AuthUsecase struct {
 	userRepo    iamdomain.UserRepo
 	roleRepo    iamdomain.RoleRepo
 	linkRepo    iamdomain.UserRoleRepo
-	loginRepo   iamdomain.AuthLoginRepo
+	login       iamdomain.AuthLoginBackend
 	counterRepo iamdomain.LoginCounterRepo
 	sessionRepo iamdomain.LoginSessionRepo
-	tx          iamdomain.Transaction
+	tx          Transaction
 	logger      *slog.Logger
 	now         func() time.Time
 }
 
 // NewAuthUsecase creates an AuthUsecase. userRepo/roleRepo back existence
-// checks; linkRepo owns the sys_user_role rows; tx wraps the login protocol
-// and Role Assignment replacement.
-func NewAuthUsecase(userRepo iamdomain.UserRepo, roleRepo iamdomain.RoleRepo, linkRepo iamdomain.UserRoleRepo, loginRepo iamdomain.AuthLoginRepo, counterRepo iamdomain.LoginCounterRepo, sessionRepo iamdomain.LoginSessionRepo, tx iamdomain.Transaction, logger *slog.Logger) *AuthUsecase {
+// checks; linkRepo owns the sys_user_role rows; tx owns the login protocol and
+// Role Assignment replacement transaction boundaries.
+func NewAuthUsecase(userRepo iamdomain.UserRepo, roleRepo iamdomain.RoleRepo, linkRepo iamdomain.UserRoleRepo, login iamdomain.AuthLoginBackend, counterRepo iamdomain.LoginCounterRepo, sessionRepo iamdomain.LoginSessionRepo, tx Transaction, logger *slog.Logger) *AuthUsecase {
 	return &AuthUsecase{
 		userRepo:    userRepo,
 		roleRepo:    roleRepo,
 		linkRepo:    linkRepo,
-		loginRepo:   loginRepo,
+		login:       login,
 		counterRepo: counterRepo,
 		sessionRepo: sessionRepo,
 		tx:          tx,
@@ -64,7 +64,7 @@ func (uc *AuthUsecase) Logout(ctx context.Context, principal *iamdomain.Principa
 // enforces the two failure counters, validates System iamdomain.User state only after bcrypt
 // succeeds, and delegates token/snapshot creation to the data wrapper.
 func (uc *AuthUsecase) Login(ctx context.Context, req *LoginRequest) (*iamdomain.LoginResult, error) {
-	if req == nil || uc.loginRepo == nil || uc.counterRepo == nil {
+	if req == nil || uc.login == nil || uc.counterRepo == nil {
 		return nil, iamdomain.ErrInvalidCredentials
 	}
 	userName := strings.TrimSpace(req.UserName)
@@ -76,7 +76,7 @@ func (uc *AuthUsecase) Login(ctx context.Context, req *LoginRequest) (*iamdomain
 
 	u, err := uc.userRepo.FindByUserName(ctx, userName)
 	if err != nil {
-		if !errors.Is(err, iamdomain.ErrUserNotFound) {
+		if !errors.Is(err, iamdomain.ErrUserNotFound) && !errors.Is(err, iamdomain.ErrUserNameAmbiguous) {
 			return nil, err
 		}
 		_ = passwordMatches(invalidCredentialHash, req.Password)
@@ -90,7 +90,7 @@ func (uc *AuthUsecase) Login(ctx context.Context, req *LoginRequest) (*iamdomain
 	}
 	// Clear before issuing a bearer credential: a Redis failure cannot leave an
 	// unreturned but live Login Session behind. The login repo revalidates the
-	// password hash and status under the authorization lock.
+	// password hash and status inside the Application transaction.
 	if err := uc.counterRepo.ClearUserName(ctx, userName); err != nil {
 		return nil, err
 	}
@@ -98,21 +98,20 @@ func (uc *AuthUsecase) Login(ctx context.Context, req *LoginRequest) (*iamdomain
 	loginTime := uc.now()
 	var result *iamdomain.LoginResult
 	err = uc.tx.InTx(ctx, func(ctx context.Context) error {
-		locked, err := uc.loginRepo.LockAndRevalidate(ctx, u.ID, u.UserName, u.Password)
+		locked, err := uc.login.Revalidate(ctx, u.ID, u.UserName, u.Password)
 		if err != nil {
 			return err
 		}
-		snapshot, err := uc.loginRepo.LoadSnapshot(ctx, locked.ID, locked.UserName)
+		snapshot, err := uc.login.LoadSnapshot(ctx, locked.ID, locked.UserName)
 		if err != nil {
 			return err
 		}
-		if err := uc.loginRepo.RecordLogin(ctx, locked.ID, req.SourceIP, loginTime); err != nil {
+		if err := uc.login.RecordLogin(ctx, locked.ID, req.SourceIP, loginTime); err != nil {
 			return err
 		}
-		// Redis is deliberately last: a Redis failure rolls the PostgreSQL
-		// writes back, and a commit failure after Redis is compensated by
-		// discarding the credential below (ADR-0010 ordering).
-		result, err = uc.loginRepo.IssueCredential(ctx, snapshot, &iamdomain.LoginSession{
+		// Credential issuance is deliberately last. A commit failure after a
+		// successful issue is compensated by discarding the credential below.
+		result, err = uc.login.IssueCredential(ctx, snapshot, &iamdomain.LoginSession{
 			SystemUserID: locked.ID,
 			UserName:     locked.UserName,
 			DeviceType:   deviceType,
@@ -131,7 +130,7 @@ func (uc *AuthUsecase) Login(ctx context.Context, req *LoginRequest) (*iamdomain
 			// Every Redis write succeeded, so the failure is the commit:
 			// tear the credential down (best-effort — a leftover token
 			// expires on its own).
-			_ = uc.loginRepo.DiscardCredential(ctx, u.ID, result.AccessToken)
+			_ = uc.login.DiscardCredential(ctx, u.ID, result.AccessToken)
 		}
 		return nil, err
 	}
@@ -187,7 +186,9 @@ func (uc *AuthUsecase) ListUserRoles(ctx context.Context, userID int64) ([]*iamd
 // UpdateUserRoles replaces the user's Role Assignment: role_ids are validated
 // (exist, not soft-deleted) and deduped, then stored as a full replacement
 // (an empty list clears all) in one transaction that also revokes the user's
-// Login Sessions. Returns the updated assignment.
+// Login Sessions. Redis revocation failure rolling back the PostgreSQL
+// replacement is part of this Usecase's business contract. Returns the
+// updated assignment.
 func (uc *AuthUsecase) UpdateUserRoles(ctx context.Context, userID int64, roleIDs []int64) ([]*iamdomain.RoleAssignment, error) {
 	if _, err := uc.userRepo.FindByID(ctx, userID); err != nil {
 		return nil, err

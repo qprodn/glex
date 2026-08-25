@@ -22,9 +22,8 @@ type UserRoleRepo interface {
 	ListRoleAssignments(ctx context.Context, userID int64) ([]*RoleAssignment, error)
 	// ReplaceUserRoles is a security write: it atomically replaces the user's
 	// Role Assignment with roleIDs (full replacement; an empty list clears
-	// all) under the authorization locks. roleIDs are stored verbatim —
-	// validated and deduped by the usecase first — and the System User
-	// identities whose sessions must be revoked ({userID}) are returned.
+	// all). roleIDs are stored verbatim after AuthUsecase validation and
+	// deduplication; affected System User identities ({userID}) are returned.
 	ReplaceUserRoles(ctx context.Context, userID int64, roleIDs []int64) ([]int64, error)
 	// ListRoleUsers lists the active users assigned the role, matching the
 	// given options (filter/order/offset/limit).

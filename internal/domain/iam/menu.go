@@ -2,6 +2,7 @@ package iam
 
 import (
 	"context"
+	"sort"
 	"time"
 )
 
@@ -40,6 +41,100 @@ type Menu struct {
 	Children   []*Menu
 }
 
+// Validate enforces the invariants a Menu must satisfy before persistence.
+func (m *Menu) Validate() error {
+	if m == nil || m.MenuType < MenuTypeDirectory || m.MenuType > MenuTypeButton {
+		return ErrMenuTypeInvalid
+	}
+	if m.ID != 0 && m.ParentID == m.ID {
+		return ErrMenuParentInvalid
+	}
+	return nil
+}
+
+// BuildMenuTree assembles an ordered forest from a flat menu list. Orphans
+// remain absent from the returned roots.
+func BuildMenuTree(menus []*Menu) []*Menu {
+	byParent := make(map[int64][]*Menu)
+	for _, menu := range menus {
+		if menu != nil {
+			byParent[menu.ParentID] = append(byParent[menu.ParentID], menu)
+		}
+	}
+	for _, siblings := range byParent {
+		sort.SliceStable(siblings, func(i, j int) bool { return siblings[i].OrderNum < siblings[j].OrderNum })
+	}
+	roots := byParent[0]
+	var attach func([]*Menu)
+	attach = func(nodes []*Menu) {
+		for _, node := range nodes {
+			node.Children = byParent[node.ID]
+			attach(node.Children)
+		}
+	}
+	attach(roots)
+	return roots
+}
+
+// SelectUserRouteTree resolves the active, granted route menus and their
+// ancestors, then returns them as an ordered tree.
+func SelectUserRouteTree(access *MenuRouteAccess) []*Menu {
+	if access == nil {
+		return []*Menu{}
+	}
+	all := make(map[int64]*Menu, len(access.ActiveMenus))
+	for _, menu := range access.ActiveMenus {
+		if menu != nil {
+			all[menu.ID] = menu
+		}
+	}
+	selected := make(map[int64]*Menu, len(all))
+	if containsRoleKey(access.RoleKeys, "superadmin") {
+		for id, menu := range all {
+			selected[id] = menu
+		}
+	} else {
+		for _, id := range access.GrantedMenuIDs {
+			menu, ok := all[id]
+			if !ok {
+				continue
+			}
+			selected[id] = menu
+			seen := map[int64]struct{}{menu.ID: {}}
+			for parentID := menu.ParentID; parentID != 0; {
+				if _, cycle := seen[parentID]; cycle {
+					break
+				}
+				seen[parentID] = struct{}{}
+				parent, ok := all[parentID]
+				if !ok {
+					break
+				}
+				selected[parent.ID] = parent
+				parentID = parent.ParentID
+			}
+		}
+	}
+	menus := make([]*Menu, 0, len(selected))
+	for _, menu := range access.ActiveMenus {
+		if menu != nil {
+			if _, ok := selected[menu.ID]; ok {
+				menus = append(menus, menu)
+			}
+		}
+	}
+	return BuildMenuTree(menus)
+}
+
+func containsRoleKey(roleKeys []string, want string) bool {
+	for _, roleKey := range roleKeys {
+		if roleKey == want {
+			return true
+		}
+	}
+	return false
+}
+
 // MenuRouteAccess is the freshly loaded authorization data used to build one
 // System User's route tree. It deliberately carries menu ids rather than
 // Functional Permission handles: routes follow active Role Assignments and
@@ -53,8 +148,7 @@ type MenuRouteAccess struct {
 
 // MenuUpdate pairs the persisted Menu with its pre-image and the active
 // System Users reaching the menu through active Roles — identities whose
-// Authorization Snapshot the write may invalidate, discovered under the
-// authorization locks.
+// Authorization Snapshot the write may invalidate.
 type MenuUpdate struct {
 	Menu            *Menu
 	Previous        *Menu
@@ -76,13 +170,11 @@ type MenuRepo interface {
 	// included in ActiveMenus.
 	LoadRouteAccess(ctx context.Context, systemUserID int64) (*MenuRouteAccess, error)
 	CreateMenu(ctx context.Context, m *Menu) (*Menu, error)
-	// UpdateMenu is a security write: it takes the Menu, Role, and System User
-	// authorization locks, mutates under them, and returns the persisted menu
-	// with its pre-image and the affected users. Pair the result with
-	// revocation inside Transaction.InTx (see MenuUsecase.UpdateMenu).
+	// UpdateMenu returns the persisted menu with its pre-image and the users
+	// currently affected. The Application Usecase owns the transaction.
 	UpdateMenu(ctx context.Context, m *Menu) (*MenuUpdate, error)
 	// DeleteMenu is a security write: it soft-deletes the menu and
-	// hard-deletes its role links under the authorization locks, and returns
+	// hard-deletes its role links, and returns
 	// the System User identities reaching the menu.
 	DeleteMenu(ctx context.Context, id int64) ([]int64, error)
 }

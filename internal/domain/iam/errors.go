@@ -29,6 +29,9 @@ var (
 
 	// ErrUserNotFound: the requested user does not exist.
 	ErrUserNotFound = errors.NotFound("USER_NOT_FOUND", "user not found")
+	// ErrUserNameAmbiguous means an accepted best-effort uniqueness race left
+	// more than one active System User with the same login identifier.
+	ErrUserNameAmbiguous = errors.Conflict("USER_NAME_AMBIGUOUS", "user_name identifies multiple users")
 	// ErrUserNameConflict: user_name already taken.
 	ErrUserNameConflict = errors.Conflict("USER_NAME_CONFLICT", "user_name already exists")
 	// ErrEmailConflict: email already taken.

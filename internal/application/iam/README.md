@@ -1,8 +1,9 @@
 # IAM Application
 
-This package implements the generated IAM Kratos interfaces and owns IAM
-operation orchestration: DTO ↔ domain conversion, transactions, authorization
-checks, compensation, and coordination between IAM ports.
+This package implements the generated IAM Kratos interfaces as inbound
+adapters. It parses protocol concerns such as DTO validation, AIP options, and
+field masks, converts DTOs to domain inputs, and delegates to IAM Usecases.
 
-It may import API DTOs and `internal/domain/iam`. It must never import
-`internal/infra`, Ent, Redis, or concrete adapters.
+It may import API DTOs and `internal/domain/iam`. Transport entries only adapt
+DTOs; same-package Usecases own transactions, compensation, and calls to
+Domain ports. It never imports Infrastructure.

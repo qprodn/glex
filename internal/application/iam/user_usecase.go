@@ -11,14 +11,14 @@ import (
 // UserUsecase holds the system-user business rules.
 type UserUsecase struct {
 	repo    iamdomain.UserRepo
-	tx      iamdomain.Transaction
+	tx      Transaction
 	revoker iamdomain.SessionRevoker
 	logger  *slog.Logger
 }
 
 // NewUserUsecase creates a UserUsecase. tx wraps security writes together
 // with their session revocation; revoker performs the revocation.
-func NewUserUsecase(repo iamdomain.UserRepo, tx iamdomain.Transaction, revoker iamdomain.SessionRevoker, logger *slog.Logger) *UserUsecase {
+func NewUserUsecase(repo iamdomain.UserRepo, tx Transaction, revoker iamdomain.SessionRevoker, logger *slog.Logger) *UserUsecase {
 	return &UserUsecase{
 		repo:    repo,
 		tx:      tx,
@@ -42,14 +42,21 @@ func (uc *UserUsecase) CreateUser(ctx context.Context, u *iamdomain.User) (*iamd
 		return nil, err
 	}
 	u.Password = hashed
-	return uc.repo.CreateUser(ctx, u)
+	var created *iamdomain.User
+	if err := uc.tx.InTx(ctx, func(ctx context.Context) error {
+		var err error
+		created, err = uc.repo.CreateUser(ctx, u)
+		return err
+	}); err != nil {
+		return nil, err
+	}
+	return created, nil
 }
 
 // UpdateUser applies a partial update. Empty password means "leave unchanged";
 // a non-empty password is bcrypt-hashed before persisting. Uniqueness is
 // checked in code, excluding the record being updated. The mutation and the
-// session revocation it classifies commit together: a Redis failure rolls the
-// PostgreSQL write back (ADR-0010 ordering).
+// session revocation it classifies currently execute in the same transaction.
 func (uc *UserUsecase) UpdateUser(ctx context.Context, u *iamdomain.User) (*iamdomain.User, error) {
 	if err := uc.assertUnique(ctx, u, u.ID); err != nil {
 		return nil, err
@@ -109,8 +116,8 @@ func (uc *UserUsecase) ListUsers(ctx context.Context, opts ...iamdomain.ListOpti
 	return uc.repo.ListUsers(ctx, opts...)
 }
 
-// DeleteUser soft-deletes the user with the given id and revokes their Login
-// Sessions in the same transaction: a Redis failure rolls the delete back.
+// DeleteUser soft-deletes the user with the given id and currently revokes
+// their Login Sessions in the same transaction.
 func (uc *UserUsecase) DeleteUser(ctx context.Context, id int64) error {
 	return uc.tx.InTx(ctx, func(ctx context.Context) error {
 		affected, err := uc.repo.DeleteUser(ctx, id)

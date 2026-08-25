@@ -18,10 +18,9 @@ while leaving its previous token valid. Registration, oldest-Session eviction,
 and revocation therefore use project-owned atomic Redis operations, and the
 wrapper deletes the shared snapshot when its index shows no remaining Sessions.
 Moreover, v0.2.4 `Manager.Login` rewrites the whole account Session from an
-initially empty value whenever it issues a new token. Every login must therefore
-take the same per-user PostgreSQL advisory lock and rebuild Roles and Functional
-Permissions in the account Session before returning the token; no caller may use
-`Manager.Login` directly. Existing requests can observe the brief empty interval
-as a false permission denial, which we accept, but it cannot grant additional
-permission. Data-scope authorization remains out of scope until its own domain
-model exists.
+initially empty value whenever it issues a new token. The login Usecase rebuilds
+Roles and Functional Permissions in that account Session before returning the
+token; no caller may use `Manager.Login` directly. Concurrent login and
+authorization changes are best-effort, so an existing request can observe a
+brief empty or stale snapshot. Data-scope authorization remains out of scope
+until its own domain model exists.

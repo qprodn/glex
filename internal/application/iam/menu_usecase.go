@@ -12,14 +12,14 @@ import (
 // MenuUsecase holds the menu business rules.
 type MenuUsecase struct {
 	repo    iamdomain.MenuRepo
-	tx      iamdomain.Transaction
+	tx      Transaction
 	revoker iamdomain.SessionRevoker
 	logger  *slog.Logger
 }
 
 // NewMenuUsecase creates a MenuUsecase. tx wraps security writes together
 // with their session revocation; revoker performs the revocation.
-func NewMenuUsecase(repo iamdomain.MenuRepo, tx iamdomain.Transaction, revoker iamdomain.SessionRevoker, logger *slog.Logger) *MenuUsecase {
+func NewMenuUsecase(repo iamdomain.MenuRepo, tx Transaction, revoker iamdomain.SessionRevoker, logger *slog.Logger) *MenuUsecase {
 	return &MenuUsecase{
 		repo:    repo,
 		tx:      tx,
@@ -38,7 +38,15 @@ func (uc *MenuUsecase) CreateMenu(ctx context.Context, m *iamdomain.Menu) (*iamd
 	if err := uc.assertSiblingUnique(ctx, m, false); err != nil {
 		return nil, err
 	}
-	return uc.repo.CreateMenu(ctx, m)
+	var created *iamdomain.Menu
+	if err := uc.tx.InTx(ctx, func(ctx context.Context) error {
+		var err error
+		created, err = uc.repo.CreateMenu(ctx, m)
+		return err
+	}); err != nil {
+		return nil, err
+	}
+	return created, nil
 }
 
 // GetMenu returns the menu with the given id.
@@ -134,8 +142,8 @@ func hasExactRoleKey(roleKeys []string, want string) bool {
 // cannot zero it), and enforces sibling-name uniqueness excluding self, then
 // persists. When the write invalidates Authorization Snapshots
 // (perms/status), affected users' Login Sessions are revoked inside the same
-// transaction: a Redis failure rolls the PostgreSQL write back (ADR-0010
-// ordering).
+// transaction. That failure behavior is an implementation detail for this
+// operation rather than a stable business guarantee.
 func (uc *MenuUsecase) UpdateMenu(ctx context.Context, m *iamdomain.Menu) (*iamdomain.Menu, error) {
 	if m.ParentID == m.ID {
 		return nil, iamdomain.ErrMenuParentInvalid

@@ -134,9 +134,9 @@ type authGraph struct {
 	rdb        *redis.Client
 	manager    *core.Manager
 	sessions   iam.LoginSessionRepo
-	login      iam.AuthLoginRepo
+	login      iam.AuthLoginBackend
 	authorizer iam.Authenticator
-	tx         iam.Transaction
+	tx         *store.TxManager
 	revoker    iam.SessionRevoker
 	counter    iam.LoginCounterRepo
 	users      iam.UserRepo
@@ -176,7 +176,7 @@ func (s *integrationStores) newGraph(t *testing.T) *authGraph {
 	revoker := NewSessionRevoker(sessions)
 	tx := store.NewTxManager(data)
 	counter := NewLoginCounterRepo(data, s.conf)
-	loginRepo := NewAuthLoginRepo(data, manager, sessions, s.conf)
+	loginRepo := NewAuthLoginBackend(data, manager, sessions, s.conf)
 	users := NewUserRepo(data)
 	roles := NewRoleRepo(data)
 	menus := NewMenuRepo(data)
@@ -281,7 +281,7 @@ func (s *integrationSeeder) menu(t *testing.T, g *authGraph, perms string, statu
 }
 
 // loginOnGraph runs the full production login usecase — counter gate, bcrypt
-// verify, advisory lock, snapshot load, last-login write, credential issuance
+// verify, revalidation, snapshot load, last-login write, credential issuance
 // — on one graph, and returns the registered Session plus the bearer
 // credential exactly once.
 func loginOnGraph(t *testing.T, g *authGraph, systemUserID int64, deviceType string) (*iam.LoginSession, string) {

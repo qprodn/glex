@@ -13,7 +13,7 @@ type RoleUsecase struct {
 	repo         iamdomain.RoleRepo
 	menuRepo     iamdomain.MenuRepo
 	userRoleRepo iamdomain.UserRoleRepo
-	tx           iamdomain.Transaction
+	tx           Transaction
 	revoker      iamdomain.SessionRevoker
 	logger       *slog.Logger
 }
@@ -23,7 +23,7 @@ type RoleUsecase struct {
 // "a role with users cannot be deleted/disabled" guard (iamdomain.Role Assignment); tx
 // wraps security writes together with their session revocation; revoker
 // performs the revocation.
-func NewRoleUsecase(repo iamdomain.RoleRepo, menuRepo iamdomain.MenuRepo, userRoleRepo iamdomain.UserRoleRepo, tx iamdomain.Transaction, revoker iamdomain.SessionRevoker, logger *slog.Logger) *RoleUsecase {
+func NewRoleUsecase(repo iamdomain.RoleRepo, menuRepo iamdomain.MenuRepo, userRoleRepo iamdomain.UserRoleRepo, tx Transaction, revoker iamdomain.SessionRevoker, logger *slog.Logger) *RoleUsecase {
 	return &RoleUsecase{
 		repo:         repo,
 		menuRepo:     menuRepo,
@@ -49,7 +49,15 @@ func (uc *RoleUsecase) CreateRole(ctx context.Context, r *iamdomain.Role, menuID
 	if err != nil {
 		return nil, err
 	}
-	return uc.repo.CreateRole(ctx, r, unique)
+	var created *iamdomain.Role
+	if err := uc.tx.InTx(ctx, func(ctx context.Context) error {
+		var err error
+		created, err = uc.repo.CreateRole(ctx, r, unique)
+		return err
+	}); err != nil {
+		return nil, err
+	}
+	return created, nil
 }
 
 // UpdateRole validates and persists a role, excluding the record being
@@ -57,8 +65,8 @@ func (uc *RoleUsecase) CreateRole(ctx context.Context, r *iamdomain.Role, menuID
 // grant is replaced only via UpdateRoleMenus). Disabling a role that still
 // has users assigned is rejected (RuoYi: 角色已分配，不能禁用). When the write
 // invalidates Authorization Snapshots (role_key/status), assigned users'
-// Login Sessions are revoked inside the same transaction: a Redis failure
-// rolls the PostgreSQL write back (ADR-0010 ordering).
+// Login Sessions are currently revoked inside the same transaction. That
+// failure behavior is not a stable business guarantee for Role updates.
 func (uc *RoleUsecase) UpdateRole(ctx context.Context, r *iamdomain.Role) (*iamdomain.Role, error) {
 	if err := uc.validate(r); err != nil {
 		return nil, err
@@ -160,7 +168,8 @@ func (uc *RoleUsecase) ListRoleMenus(ctx context.Context, roleID int64) ([]int64
 // (exist, not soft-deleted) and deduped, then stored together with
 // menuCheckStrictly in one transaction (full replacement; an empty list
 // clears all grants) that also revokes the assigned users' Login Sessions.
-// Returns the persisted (deduped) ids.
+// Redis revocation failure rolling back the PostgreSQL replacement is part of
+// this Usecase's business contract. Returns the persisted (deduped) ids.
 func (uc *RoleUsecase) UpdateRoleMenus(ctx context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool) ([]int64, error) {
 	if _, err := uc.repo.FindByID(ctx, roleID); err != nil {
 		return nil, err

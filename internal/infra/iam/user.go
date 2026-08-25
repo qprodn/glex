@@ -69,6 +69,9 @@ func (r *userRepo) FindByUserName(ctx context.Context, userName string) (*iam.Us
 		if ent.IsNotFound(err) {
 			return nil, iam.ErrUserNotFound
 		}
+		if ent.IsNotSingular(err) {
+			return nil, iam.ErrUserNameAmbiguous
+		}
 		return nil, err
 	}
 	return toBiz(po), nil
@@ -147,110 +150,56 @@ func (r *userRepo) CreateUser(ctx context.Context, u *iam.User) (*iam.User, erro
 	return toBiz(po), nil
 }
 
-// UpdateUser takes the System User authorization lock, re-reads the record
-// under it, applies the mutation, and returns the persisted record with its
-// pre-image for the usecase's revocation classification. A security write —
-// pair with SessionRevocation inside Transaction.InTx (see
-// UserUsecase.UpdateUser).
+// UpdateUser re-reads the record, applies the mutation, and returns the
+// persisted record with its pre-image for UserUsecase revocation
+// classification. The caller owns the surrounding transaction.
 func (r *userRepo) UpdateUser(ctx context.Context, u *iam.User) (*iam.UserUpdate, error) {
 	result := &iam.UserUpdate{}
-	err := r.data.DB.InTx(ctx, func(ctx context.Context) error {
-		if err := lockSystemUsers(ctx, r.data.DB, u.ID); err != nil {
-			if ent.IsNotFound(err) {
-				return iam.ErrUserNotFound
-			}
-			return err
+	current, err := r.data.DB.User(ctx).Query().Where(user.IDEQ(u.ID), user.DeletedAtIsNil()).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, iam.ErrUserNotFound
 		}
-		current, err := r.data.DB.User(ctx).Query().Where(user.IDEQ(u.ID), user.DeletedAtIsNil()).Only(ctx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				return iam.ErrUserNotFound
-			}
-			return err
-		}
-		upd := r.data.DB.User(ctx).UpdateOneID(u.ID).
-			SetUserName(u.UserName).
-			SetNickName(u.NickName).
-			SetGender(int8(u.Gender)).
-			SetStatus(int8(u.Status)).
-			SetAvatar(u.Avatar).
-			SetRemark(u.Remark)
-		if u.Password != "" {
-			upd.SetPassword(u.Password)
-		}
-		if u.Email != "" {
-			upd.SetEmail(u.Email)
-		}
-		if u.PhoneNumber != "" {
-			upd.SetPhoneNumber(u.PhoneNumber)
-		}
-		po, err := upd.Save(ctx)
-		if err != nil {
-			return err
-		}
-		result.User = toBiz(po)
-		result.Previous = toBiz(current)
-		return nil
-	})
+		return nil, err
+	}
+	upd := r.data.DB.User(ctx).UpdateOneID(u.ID).
+		SetUserName(u.UserName).
+		SetNickName(u.NickName).
+		SetGender(int8(u.Gender)).
+		SetStatus(int8(u.Status)).
+		SetAvatar(u.Avatar).
+		SetRemark(u.Remark)
+	if u.Password != "" {
+		upd.SetPassword(u.Password)
+	}
+	if u.Email != "" {
+		upd.SetEmail(u.Email)
+	}
+	if u.PhoneNumber != "" {
+		upd.SetPhoneNumber(u.PhoneNumber)
+	}
+	po, err := upd.Save(ctx)
 	if err != nil {
 		return nil, err
 	}
+	result.User = toBiz(po)
+	result.Previous = toBiz(current)
 	return result, nil
 }
 
 // DeleteUser soft-deletes the user and hard-deletes its Role Assignment
-// (sys_user_role rows) under the authorization locks (RuoYi semantics: a
-// deleted user loses its role links for good), returning the System User
-// identities whose sessions must be revoked (always {id}). A security write —
-// pair with SessionRevocation inside Transaction.InTx.
+// (sys_user_role rows). A deleted user loses its role links for good. The
+// caller owns the transaction and session-revocation ordering.
 func (r *userRepo) DeleteUser(ctx context.Context, id int64) ([]int64, error) {
-	var affected []int64
-	err := r.data.DB.InTx(ctx, func(ctx context.Context) error {
-		if err := lockRoleAssignment(ctx, r.data.DB, id); err != nil {
-			if ent.IsNotFound(err) {
-				return iam.ErrUserNotFound
-			}
-			return err
-		}
-		roleIDs, err := r.data.DB.User(ctx).Query().Where(user.IDEQ(id), user.DeletedAtIsNil()).QueryRoles().IDs(ctx)
-		if err != nil {
-			return err
-		}
-		if err := lockRoles(ctx, r.data.DB, roleIDs...); err != nil {
-			return err
-		}
-		if err := lockSystemUsers(ctx, r.data.DB, id); err != nil {
-			if ent.IsNotFound(err) {
-				return iam.ErrUserNotFound
-			}
-			return err
-		}
-		if exists, err := r.data.DB.User(ctx).Query().Where(user.IDEQ(id), user.DeletedAtIsNil()).Exist(ctx); err != nil {
-			return err
-		} else if !exists {
-			return iam.ErrUserNotFound
-		}
-		// The relationship seam above prevents another replacement while the
-		// concrete Role/User locks are acquired. Re-read under those locks
-		// before clearing the Role Assignment.
-		if _, err := r.data.DB.User(ctx).Query().Where(user.IDEQ(id), user.DeletedAtIsNil()).QueryRoles().IDs(ctx); err != nil {
-			return err
-		}
-		err = r.data.DB.User(ctx).UpdateOneID(id).
-			SetDeletedAt(time.Now()).
-			ClearRoles().
-			Exec(ctx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				return iam.ErrUserNotFound
-			}
-			return err
-		}
-		affected = []int64{id}
-		return nil
-	})
+	err := r.data.DB.User(ctx).UpdateOneID(id).
+		SetDeletedAt(time.Now()).
+		ClearRoles().
+		Exec(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, iam.ErrUserNotFound
+		}
 		return nil, err
 	}
-	return affected, nil
+	return []int64{id}, nil
 }

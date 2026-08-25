@@ -9,8 +9,10 @@ import (
 	"log/slog"
 
 	"glex/internal/application"
+	iamapp "glex/internal/application/iam"
 	"glex/internal/conf"
 	"glex/internal/infra"
+	"glex/internal/infra/store"
 	"glex/internal/server"
 
 	"github.com/go-kratos/kratos/v3"
@@ -19,5 +21,11 @@ import (
 
 // wireApp init kratos application.
 func wireApp(*conf.Server, *conf.Data, *conf.Auth, *slog.Logger) (*kratos.App, func(), error) {
-	panic(wire.Build(server.ProviderSet, infra.ProviderSet, application.ProviderSet, newApp))
+	panic(wire.Build(
+		server.ProviderSet,
+		infra.ProviderSet,
+		wire.Bind(new(iamapp.Transaction), new(*store.TxManager)),
+		application.ProviderSet,
+		newApp,
+	))
 }

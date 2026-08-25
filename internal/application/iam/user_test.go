@@ -13,14 +13,15 @@ import (
 // fakeUserRepo is an in-memory UserRepo for testing the usecase in isolation
 // from the infrastructure layer.
 type fakeUserRepo struct {
-	byID    map[int64]*User
-	byName  map[string]*User
-	byEmail map[string]*User
-	byPhone map[string]*User
-	nextID  int64
-	created []*User
-	updated []*UserUpdate
-	deleted []int64
+	byID        map[int64]*User
+	byName      map[string]*User
+	byEmail     map[string]*User
+	byPhone     map[string]*User
+	userNameErr error
+	nextID      int64
+	created     []*User
+	updated     []*UserUpdate
+	deleted     []int64
 }
 
 func newFakeUserRepo() *fakeUserRepo {
@@ -42,6 +43,9 @@ func (r *fakeUserRepo) FindByID(_ context.Context, id int64) (*User, error) {
 }
 
 func (r *fakeUserRepo) FindByUserName(_ context.Context, name string) (*User, error) {
+	if r.userNameErr != nil {
+		return nil, r.userNameErr
+	}
 	u, ok := r.byName[name]
 	if !ok {
 		return nil, ErrUserNotFound

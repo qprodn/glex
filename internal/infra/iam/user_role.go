@@ -27,7 +27,7 @@ func NewUserRoleRepo(data *store.Data) iam.UserRoleRepo {
 // ListRoleAssignments reads every active role (the dialog's "all roles") with
 // whether the user is assigned it, ordered by (role_sort, role_id). The user
 // edge is filtered to the target user, so a non-empty Edges.Users means
-// assigned; user existence itself is checked by the usecase.
+// assigned; user existence itself is checked by AuthUsecase.
 func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([]*iam.RoleAssignment, error) {
 	pos, err := r.data.DB.Role(ctx).Query().
 		Where(role.DeletedAtIsNil()).
@@ -49,75 +49,36 @@ func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([
 	return assignments, nil
 }
 
-// ReplaceUserRoles atomically replaces the user's Role Assignment (RuoYi's
-// delete-then-insert) under the authorization locks, returning the System
-// User identities whose sessions must be revoked ({userID}). roleIDs are
-// stored verbatim; the usecase validates and dedupes them first. A security
-// write — pair with SessionRevocation inside Transaction.InTx.
+// ReplaceUserRoles replaces the user's Role Assignment, returning the System
+// User identities whose sessions must be revoked ({userID}). AuthUsecase
+// validates and dedupes roleIDs and owns the transaction and Redis rollback
+// contract.
 func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleIDs []int64) ([]int64, error) {
-	var affected []int64
-	err := r.data.DB.InTx(ctx, func(ctx context.Context) error {
-		if err := lockRoleAssignment(ctx, r.data.DB, userID); err != nil {
-			if ent.IsNotFound(err) {
-				return iam.ErrUserNotFound
-			}
-			return err
-		}
-		oldRoleIDs, err := r.data.DB.User(ctx).Query().Where(user.IDEQ(userID), user.DeletedAtIsNil()).QueryRoles().IDs(ctx)
+	if len(roleIDs) > 0 {
+		count, err := r.data.DB.Role(ctx).Query().Where(role.IDIn(roleIDs...), role.DeletedAtIsNil()).Count(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if err := lockRoles(ctx, r.data.DB, appendIDs(oldRoleIDs, roleIDs)...); err != nil {
-			if ent.IsNotFound(err) {
-				return iam.ErrRoleNotFound
-			}
-			return err
+		if count != len(sortedIDs(roleIDs)) {
+			return nil, iam.ErrRoleNotFound
 		}
-		if len(roleIDs) > 0 {
-			count, err := r.data.DB.Role(ctx).Query().Where(role.IDIn(roleIDs...), role.DeletedAtIsNil()).Count(ctx)
-			if err != nil {
-				return err
-			}
-			if count != len(sortedIDs(roleIDs)) {
-				return iam.ErrRoleNotFound
-			}
-		}
-		if err := lockSystemUsers(ctx, r.data.DB, userID); err != nil {
-			if ent.IsNotFound(err) {
-				return iam.ErrUserNotFound
-			}
-			return err
-		}
-		if exists, err := r.data.DB.User(ctx).Query().Where(user.IDEQ(userID), user.DeletedAtIsNil()).Exist(ctx); err != nil {
-			return err
-		} else if !exists {
-			return iam.ErrUserNotFound
-		}
-		if _, err := r.data.DB.User(ctx).Query().Where(user.IDEQ(userID), user.DeletedAtIsNil()).QueryRoles().IDs(ctx); err != nil {
-			return err
-		}
-		_, err = r.data.DB.User(ctx).UpdateOneID(userID).
-			ClearRoles().
-			AddRoleIDs(roleIDs...).
-			Save(ctx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				return iam.ErrUserNotFound
-			}
-			return err
-		}
-		affected = []int64{userID}
-		return nil
-	})
+	}
+	_, err := r.data.DB.User(ctx).UpdateOneID(userID).
+		ClearRoles().
+		AddRoleIDs(roleIDs...).
+		Save(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, iam.ErrUserNotFound
+		}
 		return nil, err
 	}
-	return affected, nil
+	return []int64{userID}, nil
 }
 
 // ListRoleUsers lists the active users assigned the role, applying the given
 // list options (filter/order/offset/limit). The role's existence is checked
-// by the usecase.
+// by AuthUsecase.
 func (r *userRoleRepo) ListRoleUsers(ctx context.Context, roleID int64, opts ...iam.ListOption) ([]*iam.User, error) {
 	o := iam.ListOptions{Limit: 20}
 	for _, opt := range opts {

@@ -1,6 +1,8 @@
 package server
 
 import (
+	"log/slog"
+
 	authv1 "glex/api/iam/auth/v1"
 	menuv1 "glex/api/iam/menu/v1"
 	rolev1 "glex/api/iam/role/v1"
@@ -9,17 +11,23 @@ import (
 	"glex/internal/conf"
 	"glex/internal/domain/iam"
 	authmw "glex/pkg/middleware/auth"
+	"glex/pkg/middleware/requestid"
 	"glex/pkg/validate"
 
+	"github.com/go-kratos/kratos/v3/middleware/logging"
 	"github.com/go-kratos/kratos/v3/middleware/recovery"
 	"github.com/go-kratos/kratos/v3/transport/http"
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, user *iamapp.UserApplication, menu *iamapp.MenuApplication, role *iamapp.RoleApplication, auth *iamapp.AuthApplication, online *iamapp.OnlineSessionApplication, authenticator iam.Authenticator) *http.Server {
+func NewHTTPServer(c *conf.Server, user *iamapp.UserApplication, menu *iamapp.MenuApplication, role *iamapp.RoleApplication, auth *iamapp.AuthApplication, online *iamapp.OnlineSessionApplication, authenticator iam.Authenticator, logger *slog.Logger) *http.Server {
 	var opts = []http.ServerOption{
+		http.Filter(
+			requestid.HTTP(requestid.WithLogger(logger)),
+		),
 		http.Middleware(
-			recovery.Recovery(),
+			logging.Server(logger),
+			recovery.Recovery(recovery.WithLogger(logger)),
 			authmw.Middleware(authenticatorAdapter{authenticator: authenticator}, authRoutes()),
 			validate.Middleware(),
 		),

@@ -5,7 +5,6 @@ import (
 
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -146,8 +145,6 @@ func TestAuthLoginPrimitivesRunInOrderAndKeepRedisLast(t *testing.T) {
 	loginTime := time.Unix(1_700_000_000, 0)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(`SELECT .* FROM "sys_user".*pg_advisory_xact_lock`).
-		WillReturnRows(sqlmock.NewRows([]string{user.FieldID}).AddRow(int64(42)))
 	mock.ExpectQuery(`SELECT .* FROM "sys_user"`).
 		WillReturnRows(sqlmock.NewRows(user.Columns).AddRow(
 			int64(42), "alice", "Alice", nil, nil, int8(0), int8(0), "hash", "", "", int64(0), int64(0), "", nil, loginTime, loginTime, nil,
@@ -173,7 +170,7 @@ func TestAuthLoginPrimitivesRunInOrderAndKeepRedisLast(t *testing.T) {
 	// transaction, the Redis primitive last, commit after it.
 	var result *iam.LoginResult
 	err := repo.data.DB.InTx(t.Context(), func(ctx context.Context) error {
-		locked, err := repo.LockAndRevalidate(ctx, 42, "alice", "hash")
+		locked, err := repo.Revalidate(ctx, 42, "alice", "hash")
 		if err != nil {
 			return err
 		}
@@ -223,7 +220,7 @@ func TestAuthLoginPrimitivesRunInOrderAndKeepRedisLast(t *testing.T) {
 	}
 }
 
-func TestAuthLoginLockAndRevalidateRejectsStaleHashUnderLock(t *testing.T) {
+func TestAuthLoginRevalidateRejectsStaleHash(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("sqlmock.New: %v", err)
@@ -234,15 +231,11 @@ func TestAuthLoginLockAndRevalidateRejectsStaleHashUnderLock(t *testing.T) {
 	repo := &authLoginRepo{data: &store.Data{DB: ent.NewDatabaseFromClient(client)}, logger: testLogger()}
 	now := time.Unix(1_700_000_000, 0)
 
-	mock.ExpectBegin()
-	mock.ExpectQuery(`SELECT .* FROM "sys_user".*pg_advisory_xact_lock`).
-		WillReturnRows(sqlmock.NewRows([]string{user.FieldID}).AddRow(int64(42)))
 	mock.ExpectQuery(`SELECT .* FROM "sys_user"`).
 		WillReturnRows(sqlmock.NewRows(user.Columns).AddRow(
 			int64(42), "alice", "Alice", nil, nil, int8(0), int8(0), "new-hash", "", "", int64(0), int64(0), "", nil, now, now, nil,
 		))
-	mock.ExpectRollback()
-	_, err = repo.LockAndRevalidate(t.Context(), 42, "alice", "old-hash")
+	_, err = repo.Revalidate(t.Context(), 42, "alice", "old-hash")
 	if !errors.Is(err, iam.ErrInvalidCredentials) {
 		t.Fatalf("stale password = %v, want INVALID_CREDENTIALS", err)
 	}
@@ -260,9 +253,9 @@ func TestAuthLoginMapsDatabaseDriverErrors(t *testing.T) {
 	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
 	t.Cleanup(func() { _ = client.Close() })
 	repo := &authLoginRepo{data: &store.Data{DB: ent.NewDatabaseFromClient(client)}, logger: testLogger()}
-	mock.ExpectBegin().WillReturnError(errors.New("database unavailable"))
+	mock.ExpectQuery(`SELECT .* FROM "sys_user"`).WillReturnError(errors.New("database unavailable"))
 
-	_, err = repo.LockAndRevalidate(t.Context(), 42, "alice", "hash")
+	_, err = repo.Revalidate(t.Context(), 42, "alice", "hash")
 	if !errors.Is(err, iam.ErrAuthBackendUnavailable) {
 		t.Fatalf("database error = %v, want ErrAuthBackendUnavailable", err)
 	}
@@ -333,28 +326,5 @@ func TestAuthLoginDiscardCredentialTearsDownTokenAndLastSession(t *testing.T) {
 	// Discard is idempotent.
 	if err := repo.DiscardCredential(t.Context(), 42, result.AccessToken); err != nil {
 		t.Fatalf("DiscardCredential (repeat): %v", err)
-	}
-}
-
-func TestAuthLoginAdvisoryLockQueryKeepsLockKeyOffParameterBinding(t *testing.T) {
-	table := entsql.Table("sys_user")
-	selector := entsql.Dialect(dialect.Postgres).Select(table.C("user_id")).From(table)
-	selector.Where(entsql.EQ(table.C("user_id"), 42))
-	systemUserAuthorizationLock(42)(selector)
-	query, args := selector.Query()
-
-	// The lock must embed a literal integer hash of the namespaced lock key:
-	// a "?" placeholder is invalid PostgreSQL syntax, and a bound parameter
-	// gets silently renumbered onto the WHERE argument by ent's ORDER BY
-	// merge — which would lock on the bare entity id instead.
-	want := fmt.Sprintf("pg_advisory_xact_lock(%d)", advisoryLockHash("glex:authorization:system-user:42"))
-	if !strings.Contains(query, want) {
-		t.Fatalf("lock query = %q, want %q", query, want)
-	}
-	if len(args) != 1 || args[0] != 42 {
-		t.Fatalf("lock args = %#v, want only the WHERE argument — the lock key must not depend on parameter binding", args)
-	}
-	if advisoryLockHash("glex:authorization:system-user:42") == advisoryLockHash("glex:authorization:role:42") {
-		t.Fatal("lock kinds must hash to distinct advisory-lock integers")
 	}
 }

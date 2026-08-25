@@ -175,7 +175,38 @@ internal/biz/
 
 一句话总结：**Coze 不是用统一文件模板获得一致性，而是用领域边界获得一致性；域内文件是否只放接口、只放实体或同时放逻辑，由该领域的复杂度决定。**
 
-## 主要一手来源
+## 专项：crossdomain 跨域防腐层怎么做的（2026-08-25 补充调研）
+
+针对 glex 拆分 iam 的跨域契约设计，专项调研了 crossdomain 层的完整机制。快照仍为 `main` 分支。
+
+### 包结构（16 个提供方包，形状统一）
+
+```text
+backend/crossdomain/<provider>/     # 按提供方命名：user、permission、conversation、plugin…共 16 个
+├── contract.go                     # 消费方视角的最小接口 + defaultSVC 机制 + mockgen 指令
+├── model/                          # 扁平 DTO 快照（标量 ID、json 标签、无方法）
+├── impl/                           # InitDomainService(提供方 domain service) → 契约接口，纯透传适配器
+└── <provider>mock/                 # mockgen 生成的测试替身
+```
+
+### 四个关键机制
+
+1. **契约按消费方裁剪，不镜像提供方全量服务。** [`crossdomain/permission/contract.go`](https://github.com/coze-dev/coze-studio/blob/main/backend/crossdomain/permission/contract.go) 的 `Permission` 接口只有一个方法：`CheckAuthz(ctx, *model.CheckAuthzData) (*model.CheckAuthzResult, error)`；[`crossdomain/user/contract.go`](https://github.com/coze-dev/coze-studio/blob/main/backend/crossdomain/user/contract.go) 的 `User` 只有两个空间查询。
+2. **适配器住在 crossdomain 里，不放 infra。** [`crossdomain/user/impl/user.go`](https://github.com/coze-dev/coze-studio/blob/main/backend/crossdomain/user/impl/user.go)：`InitDomainService(u service.User) crossuser.User` 返回包裹提供方 domain service 的透传结构体。契约甚至可以直接类型别名提供方 entity（`type EntitySpace = entity.Space`），或内联定义请求结构体（conversation 的 `ClearConversationHistoryReq`）。
+3. **组合根分层注册默认服务。** [`application/application.go`](https://github.com/coze-dev/coze-studio/blob/main/backend/application/application.go) 按 basic/primary/complex 依赖层级调用 `cross<provider>.SetDefaultSVC(<provider>Impl.InitDomainService(<providerApp>.DomainSVC))`，每个契约包自带 `var defaultSVC` + `DefaultSVC()`/`SetDefaultSVC()`。
+4. **服务定位器式消费，调用点可深入其他域的 domain 层。** 代码搜索 `DefaultSVC().` 命中 30+ 处，遍布 `domain/workflow/internal/nodes/...`、`domain/agent/singleagent/...`、`domain/knowledge/...` 等域内深处，例如 workflow 插件节点内联调用 `crossplugin.DefaultSVC().MGetOnlinePlugins(ctx, []int64{pluginID})`。域与域之间因此零直接 import——这正是 wiki 所称"跨域防腐层：定义跨域 API、实现跨域 API、防止域之间的直接依赖"。
+
+### model/ 快照的形状
+
+[`crossdomain/conversation/model/conversation.go`](https://github.com/coze-dev/coze-studio/blob/main/backend/crossdomain/conversation/model/conversation.go)：`Conversation` 是扁平 DTO（int64 ID、string Ext、unix 时间戳，无方法），请求类型 `GetCurrent` 也是扁平结构。可以引用 API 生成类型（`common.Scene`），也存在包内重复定义枚举的瑕疵——说明快照以"消费方够用"为准，不追求与域模型同构。
+
+### glex 的采纳与有意偏离（ADR 0017）
+
+采纳：`internal/crossdomain/<provider>` 固定形状（contract.go / model / impl / mock）；适配器住 crossdomain、包提供方 domain 能力；所有跨模块调用不分调用方数量一律走防腐层（取代 0016 的"单调用方留 domain 端口"规则）；契约只返回小快照。
+
+有意偏离：**不搬 `defaultSVC` 全局服务定位器**。Coze 需要它是因为手写 DI 且调用点深入域内；glex 用 Wire、跨域调用点都在 Usecase 层，消费保留构造器注入，cmd 仍是唯一组合根，域包仍不 import crossdomain。另外 glex 禁止契约别名提供方 DO——快照必须落在 model/ 包，避免消费方反向 import 提供方 domain。
+
+
 
 - [Coze Studio 官方开发规范：后端目录结构](https://github.com/coze-dev/coze-studio/wiki/7.-Development-Standards)
 - [仓库内后端架构说明](https://github.com/coze-dev/coze-studio/blob/fefb05ff27be1da939612fbf9faf5db62583b8ae/CLAUDE.md#L86-L106)

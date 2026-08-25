@@ -29,7 +29,7 @@ type fakeAuthLoginRepo struct {
 	discarded []string
 }
 
-func (r *fakeAuthLoginRepo) LockAndRevalidate(_ context.Context, systemUserID int64, _, _ string) (*User, error) {
+func (r *fakeAuthLoginRepo) Revalidate(_ context.Context, systemUserID int64, _, _ string) (*User, error) {
 	r.steps = append(r.steps, "lock")
 	if r.lockErr != nil {
 		return nil, r.lockErr
@@ -141,6 +141,23 @@ func TestLoginUnknownUserAndBadPasswordAreIndistinguishable(t *testing.T) {
 				t.Fatalf("failures/steps = %d/%v, want 1/[]", counters.failures, issuer.steps)
 			}
 		})
+	}
+}
+
+func TestLoginAmbiguousUserNameIsIndistinguishableFromInvalidCredentials(t *testing.T) {
+	users := newFakeUserRepo()
+	users.userNameErr = ErrUserNameAmbiguous
+	issuer := &fakeAuthLoginRepo{}
+	counters := &fakeLoginCounterRepo{}
+
+	_, err := newLoginUsecase(users, issuer, counters).Login(t.Context(), &LoginRequest{
+		UserName: "alice", Password: "wrong", SourceIP: "192.0.2.10",
+	})
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("Login error = %v, want ErrInvalidCredentials", err)
+	}
+	if counters.failures != 1 || len(issuer.steps) != 0 {
+		t.Fatalf("ambiguous UserName must not authenticate: failures=%d steps=%v", counters.failures, issuer.steps)
 	}
 }
 

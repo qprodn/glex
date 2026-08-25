@@ -199,71 +199,50 @@ func (r *menuRepo) CreateMenu(ctx context.Context, m *iam.Menu) (*iam.Menu, erro
 	return toBizMenu(po), nil
 }
 
-// UpdateMenu takes the Menu, Role, and System User authorization locks,
-// re-reads the record and its affected users under them, applies the
-// mutation, and returns the persisted menu with its pre-image and the
-// affected users for the usecase's revocation classification. A security
-// write — pair with SessionRevocation inside Transaction.InTx (see
-// MenuUsecase.UpdateMenu).
+// UpdateMenu re-reads the record and its affected users, applies the mutation,
+// and returns the persisted menu with its pre-image for MenuUsecase
+// revocation classification. The caller owns the transaction.
 func (r *menuRepo) UpdateMenu(ctx context.Context, m *iam.Menu) (*iam.MenuUpdate, error) {
 	result := &iam.MenuUpdate{}
-	err := r.data.DB.InTx(ctx, func(ctx context.Context) error {
-		if err := lockMenus(ctx, r.data.DB, m.ID); err != nil {
-			if ent.IsNotFound(err) {
-				return iam.ErrMenuNotFound
-			}
-			return err
+	current, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(m.ID), menu.DeletedAtIsNil()).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, iam.ErrMenuNotFound
 		}
-		current, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(m.ID), menu.DeletedAtIsNil()).Only(ctx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				return iam.ErrMenuNotFound
-			}
-			return err
-		}
-		roleIDs, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(m.ID)).QueryRoles().
-			Where(role.DeletedAtIsNil()).IDs(ctx)
-		if err != nil {
-			return err
-		}
-		if err := lockRoles(ctx, r.data.DB, roleIDs...); err != nil {
-			return err
-		}
-		userIDs, err := systemUserIDsForRoles(ctx, r.data.DB, roleIDs)
-		if err != nil {
-			return err
-		}
-		if err := lockSystemUsers(ctx, r.data.DB, userIDs...); err != nil {
-			return err
-		}
-		po, err := r.data.DB.Menu(ctx).UpdateOneID(m.ID).
-			SetMenuName(m.MenuName).
-			SetParentID(m.ParentID).
-			SetOrderNum(m.OrderNum).
-			SetPath(m.Path).
-			SetComponent(m.Component).
-			SetQueryParam(m.QueryParam).
-			SetIsFrame(int8(m.IsFrame)).
-			SetIsCache(int8(m.IsCache)).
-			SetMenuType(int8(m.MenuType)).
-			SetVisible(int8(m.Visible)).
-			SetStatus(int8(m.Status)).
-			SetPerms(m.Perms).
-			SetIcon(m.Icon).
-			SetActiveMenu(m.ActiveMenu).
-			SetExt(m.Ext).
-			Save(ctx)
-		if err != nil {
-			return err
-		}
-		result.Menu = toBizMenu(po)
-		result.Previous = toBizMenu(current)
-		result.AffectedUserIDs = userIDs
-		return nil
-	})
+		return nil, err
+	}
+	roleIDs, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(m.ID)).QueryRoles().
+		Where(role.DeletedAtIsNil()).IDs(ctx)
 	if err != nil {
 		return nil, err
 	}
+	userIDs, err := systemUserIDsForRoles(ctx, r.data.DB, roleIDs)
+	if err != nil {
+		return nil, err
+	}
+	po, err := r.data.DB.Menu(ctx).UpdateOneID(m.ID).
+		SetMenuName(m.MenuName).
+		SetParentID(m.ParentID).
+		SetOrderNum(m.OrderNum).
+		SetPath(m.Path).
+		SetComponent(m.Component).
+		SetQueryParam(m.QueryParam).
+		SetIsFrame(int8(m.IsFrame)).
+		SetIsCache(int8(m.IsCache)).
+		SetMenuType(int8(m.MenuType)).
+		SetVisible(int8(m.Visible)).
+		SetStatus(int8(m.Status)).
+		SetPerms(m.Perms).
+		SetIcon(m.Icon).
+		SetActiveMenu(m.ActiveMenu).
+		SetExt(m.Ext).
+		Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result.Menu = toBizMenu(po)
+	result.Previous = toBizMenu(current)
+	result.AffectedUserIDs = userIDs
 	return result, nil
 }
 
@@ -286,57 +265,30 @@ func (r *menuRepo) ListByIDs(ctx context.Context, ids []int64) ([]*iam.Menu, err
 	return out, nil
 }
 
-// DeleteMenu soft-deletes the menu and hard-deletes its role links under the
-// authorization locks: a deleted menu leaves no trace in sys_role_menu (RuoYi
-// parity, so the link table never dangles). Returns the System User
-// identities reaching the menu. A security write — pair with
-// SessionRevocation inside Transaction.InTx.
+// DeleteMenu soft-deletes the menu and hard-deletes its role links. It returns
+// the System User identities observed before deletion; the caller owns the
+// transaction and revocation ordering.
 func (r *menuRepo) DeleteMenu(ctx context.Context, id int64) ([]int64, error) {
-	var affected []int64
-	err := r.data.DB.InTx(ctx, func(ctx context.Context) error {
-		if err := lockMenus(ctx, r.data.DB, id); err != nil {
-			if ent.IsNotFound(err) {
-				return iam.ErrMenuNotFound
-			}
-			return err
-		}
-		if exists, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(id), menu.DeletedAtIsNil()).Exist(ctx); err != nil {
-			return err
-		} else if !exists {
-			return iam.ErrMenuNotFound
-		}
-		roleIDs, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(id)).QueryRoles().
-			Where(role.DeletedAtIsNil()).IDs(ctx)
-		if err != nil {
-			return err
-		}
-		if err := lockRoles(ctx, r.data.DB, roleIDs...); err != nil {
-			return err
-		}
-		userIDs, err := systemUserIDsForRoles(ctx, r.data.DB, roleIDs)
-		if err != nil {
-			return err
-		}
-		if err := lockSystemUsers(ctx, r.data.DB, userIDs...); err != nil {
-			return err
-		}
-		err = r.data.DB.Menu(ctx).UpdateOneID(id).
-			SetDeletedAt(time.Now()).
-			ClearRoles().
-			Exec(ctx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				return iam.ErrMenuNotFound
-			}
-			return err
-		}
-		affected = userIDs
-		return nil
-	})
+	roleIDs, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(id), menu.DeletedAtIsNil()).QueryRoles().
+		Where(role.DeletedAtIsNil()).IDs(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return affected, nil
+	userIDs, err := systemUserIDsForRoles(ctx, r.data.DB, roleIDs)
+	if err != nil {
+		return nil, err
+	}
+	err = r.data.DB.Menu(ctx).UpdateOneID(id).
+		SetDeletedAt(time.Now()).
+		ClearRoles().
+		Exec(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, iam.ErrMenuNotFound
+		}
+		return nil, err
+	}
+	return userIDs, nil
 }
 
 func systemUserIDsForRoles(ctx context.Context, db *ent.Database, roleIDs []int64) ([]int64, error) {

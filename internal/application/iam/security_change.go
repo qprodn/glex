@@ -9,9 +9,8 @@ import (
 
 // revokeSystemUsers batches revocations for the affected System Users —
 // filtered to required policies, deduplicated per user (last policy wins),
-// sorted by id — and performs them as the LAST step of the surrounding
-// Transaction closure, so a Redis failure rolls the database mutation back
-// (ADR-0010 ordering).
+// sorted by id — and performs them at the caller-selected point in its
+// Application transaction.
 func revokeSystemUsers(ctx context.Context, revoker iamdomain.SessionRevoker, revocations ...iamdomain.SystemUserSessionRevocation) error {
 	byUser := make(map[int64]iamdomain.SessionRevocation, len(revocations))
 	for _, revocation := range revocations {

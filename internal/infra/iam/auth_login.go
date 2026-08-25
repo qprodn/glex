@@ -4,7 +4,6 @@ import (
 	"glex/internal/infra/store"
 
 	"context"
-	"errors"
 	"log/slog"
 	"sort"
 	"strconv"
@@ -37,9 +36,7 @@ type authLoginRepo struct {
 	fixedLifetime time.Duration
 }
 
-// NewAuthLoginRepo constructs the sole data wrapper permitted to issue bearer
-// credentials through Manager.Login.
-func NewAuthLoginRepo(data *store.Data, manager *core.Manager, sessions iam.LoginSessionRepo, c *conf.Auth) iam.AuthLoginRepo {
+func newAuthLoginAdapter(data *store.Data, manager *core.Manager, sessions iam.LoginSessionRepo, c *conf.Auth) *authLoginRepo {
 	return &authLoginRepo{
 		data:          data,
 		logger:        data.Logger.With(slog.String("component", "infra.iam.auth_login")),
@@ -49,83 +46,41 @@ func NewAuthLoginRepo(data *store.Data, manager *core.Manager, sessions iam.Logi
 	}
 }
 
-// authLoginTxError keeps transaction-machinery failures (begin/commit/
-// rollback) inside the 503 boundary: domain errors the closure already
-// classified pass through unchanged.
-func authLoginTxError(ctx context.Context, logger *slog.Logger, operation string, err error) error {
-	if err == nil ||
-		errors.Is(err, iam.ErrInvalidCredentials) ||
-		errors.Is(err, iam.ErrSystemUserDisabled) ||
-		errors.Is(err, iam.ErrAuthBackendUnavailable) {
-		return err
-	}
-	return authDatabaseBackendError(ctx, logger, operation, err)
+// NewAuthLoginBackend constructs the database and credential capabilities
+// consumed by the login Application Usecase.
+func NewAuthLoginBackend(data *store.Data, manager *core.Manager, sessions iam.LoginSessionRepo, c *conf.Auth) iam.AuthLoginBackend {
+	return newAuthLoginAdapter(data, manager, sessions, c)
 }
 
-// LockAndRevalidate acquires the System User's authorization advisory lock and
-// re-reads the account under it. Join-or-begin via InTx: inside the login
-// orchestration the lock is held until the outermost transaction commits.
-func (r *authLoginRepo) LockAndRevalidate(ctx context.Context, systemUserID int64, userName, passwordHash string) (*iam.User, error) {
+// Revalidate re-reads the account inside the caller's Application transaction.
+func (r *authLoginRepo) Revalidate(ctx context.Context, systemUserID int64, userName, passwordHash string) (*iam.User, error) {
 	if systemUserID <= 0 || userName == "" || passwordHash == "" {
 		return nil, iam.ErrInvalidCredentials
 	}
-	var current *ent.User
-	err := r.data.DB.InTx(ctx, func(ctx context.Context) error {
-		// Global authorization-lock order is Menu, Role, then System User, with
-		// ascending IDs inside each type. Login takes exactly one System User
-		// lock; security-changing mutations finish their upstream locks before
-		// sharing this exact identity lock with login and before performing
-		// Redis writes. This is a separate statement from the authoritative
-		// re-read below: under READ COMMITTED, the second statement receives a
-		// snapshot taken only after any previous lock holder commits.
-		if _, err := r.data.DB.User(ctx).Query().
-			Where(user.IDEQ(systemUserID)).
-			Select(user.FieldID).
-			Order(systemUserAuthorizationLock(systemUserID)).
-			Only(ctx); err != nil {
-			if ent.IsNotFound(err) {
-				return iam.ErrInvalidCredentials
-			}
-			return authDatabaseBackendError(ctx, r.logger, "acquire_system_user_authorization_lock", err)
-		}
-		var err error
-		current, err = r.data.DB.User(ctx).Query().
-			Where(user.IDEQ(systemUserID), user.DeletedAtIsNil()).
-			Only(ctx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				return iam.ErrInvalidCredentials
-			}
-			return authDatabaseBackendError(ctx, r.logger, "reload_login_system_user", err)
-		}
-		if current.UserName != userName || current.Password != passwordHash {
-			return iam.ErrInvalidCredentials
-		}
-		if current.Status != 0 {
-			return iam.ErrSystemUserDisabled
-		}
-		return nil
-	})
+	current, err := r.data.DB.User(ctx).Query().
+		Where(user.IDEQ(systemUserID), user.DeletedAtIsNil()).
+		Only(ctx)
 	if err != nil {
-		return nil, authLoginTxError(ctx, r.logger, "begin_login_transaction", err)
+		if ent.IsNotFound(err) {
+			return nil, iam.ErrInvalidCredentials
+		}
+		return nil, authDatabaseBackendError(ctx, r.logger, "reload_login_system_user", err)
+	}
+	if current.UserName != userName || current.Password != passwordHash {
+		return nil, iam.ErrInvalidCredentials
+	}
+	if current.Status != 0 {
+		return nil, iam.ErrSystemUserDisabled
 	}
 	return toBiz(current), nil
 }
 
-// LoadSnapshot freshly reads the shared Authorization Snapshot for the locked
-// System User, inside the caller's transaction.
+// LoadSnapshot freshly reads the shared Authorization Snapshot inside the
+// caller's transaction.
 func (r *authLoginRepo) LoadSnapshot(ctx context.Context, systemUserID int64, userName string) (*iam.AuthorizationSnapshot, error) {
-	var snapshot *iam.AuthorizationSnapshot
-	err := r.data.DB.InTx(ctx, func(ctx context.Context) error {
-		var err error
-		snapshot, err = loadAuthorizationSnapshot(ctx, r.data.DB, systemUserID, userName)
-		if err != nil {
-			return authDatabaseBackendError(ctx, r.logger, "load_authorization_snapshot", err)
-		}
-		return nil
-	})
+	snapshot, err := loadAuthorizationSnapshot(ctx, r.data.DB, systemUserID, userName)
 	if err != nil {
-		return nil, authLoginTxError(ctx, r.logger, "load_authorization_snapshot", err)
+		return nil, authDatabaseBackendError(ctx, r.logger, "load_authorization_snapshot", err)
 	}
 	return snapshot, nil
 }
@@ -133,15 +88,13 @@ func (r *authLoginRepo) LoadSnapshot(ctx context.Context, systemUserID int64, us
 // RecordLogin persists the login IP and time on the System User row inside
 // the caller's transaction.
 func (r *authLoginRepo) RecordLogin(ctx context.Context, systemUserID int64, sourceIP string, loginTime time.Time) error {
-	return authLoginTxError(ctx, r.logger, "update_last_login", r.data.DB.InTx(ctx, func(ctx context.Context) error {
-		if err := r.data.DB.User(ctx).UpdateOneID(systemUserID).
-			SetLoginIP(sourceIP).
-			SetLoginDate(loginTime).
-			Exec(ctx); err != nil {
-			return authDatabaseBackendError(ctx, r.logger, "update_last_login", err)
-		}
-		return nil
-	}))
+	if err := r.data.DB.User(ctx).UpdateOneID(systemUserID).
+		SetLoginIP(sourceIP).
+		SetLoginDate(loginTime).
+		Exec(ctx); err != nil {
+		return authDatabaseBackendError(ctx, r.logger, "update_last_login", err)
+	}
+	return nil
 }
 
 // IssueCredential mints the bearer credential (the only Manager.Login call

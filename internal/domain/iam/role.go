@@ -22,9 +22,47 @@ type Role struct {
 	UpdatedAt         time.Time
 }
 
+// Validate enforces the invariants a Role must satisfy before persistence.
+func (r *Role) Validate() error {
+	if r == nil || r.RoleName == "" || r.RoleKey == "" {
+		return ErrRoleInvalid
+	}
+	return nil
+}
+
+// CheckedMenuIDs shapes the persisted Menu Grant for the role editor. Under
+// strict checking, linked parents of other linked menus are represented by
+// their children and omitted from the returned checked keys.
+func (r *Role) CheckedMenuIDs(links []*RoleMenuLink) []int64 {
+	ids := make([]int64, 0, len(links))
+	if r != nil && r.MenuCheckStrictly {
+		parents := make(map[int64]struct{}, len(links))
+		for _, link := range links {
+			if link != nil && link.ParentID != 0 {
+				parents[link.ParentID] = struct{}{}
+			}
+		}
+		for _, link := range links {
+			if link == nil {
+				continue
+			}
+			if _, halfChecked := parents[link.MenuID]; !halfChecked {
+				ids = append(ids, link.MenuID)
+			}
+		}
+		return ids
+	}
+	for _, link := range links {
+		if link != nil {
+			ids = append(ids, link.MenuID)
+		}
+	}
+	return ids
+}
+
 // RoleMenuLink is one row of a role's Menu Grant as read from storage: the
 // granted menu id and its parent id. The read path uses ParentID to shape
-// checkedKeys (see RoleUsecase.ListRoleMenus).
+// checkedKeys in the Application Usecase.
 type RoleMenuLink struct {
 	MenuID   int64
 	ParentID int64
@@ -32,7 +70,7 @@ type RoleMenuLink struct {
 
 // RoleUpdate pairs the persisted Role with its pre-image and the active
 // System Users assigned it — identities whose Authorization Snapshot the
-// write may invalidate, discovered under the authorization locks.
+// write may invalidate.
 type RoleUpdate struct {
 	Role            *Role
 	Previous        *Role
@@ -46,25 +84,21 @@ type RoleRepo interface {
 	FindByRoleName(ctx context.Context, roleName string) (*Role, error)
 	FindByRoleKey(ctx context.Context, roleKey string) (*Role, error)
 	ListRoles(ctx context.Context, opts ...ListOption) ([]*Role, error)
-	// CreateRole persists the role and its initial Menu Grant in one
-	// transaction. menuIDs are stored verbatim (deduped and validated by the
-	// usecase first).
+	// CreateRole persists the role and its initial Menu Grant. menuIDs are
+	// stored verbatim after the Application Usecase validates and dedupes them.
 	CreateRole(ctx context.Context, r *Role, menuIDs []int64) (*Role, error)
-	// UpdateRole is a security write: it takes the Role and System User
-	// authorization locks, mutates under them, and returns the persisted role
-	// with its pre-image and assigned users. Pair the result with revocation
-	// inside Transaction.InTx (see RoleUsecase.UpdateRole).
+	// UpdateRole returns the persisted role with its pre-image and currently
+	// assigned users. The Application Usecase owns the transaction.
 	UpdateRole(ctx context.Context, r *Role) (*RoleUpdate, error)
 	// DeleteRole is a security write: it soft-deletes the role and
-	// hard-deletes its Menu Grant under the authorization locks, and returns
+	// hard-deletes its Menu Grant, and returns
 	// the System User identities assigned the role at delete time.
 	DeleteRole(ctx context.Context, id int64) ([]int64, error)
 	// ListRoleMenuLinks returns the role's granted menus with their parent
 	// ids, ordered by (parent_id, order_num); soft-deleted menus excluded.
 	ListRoleMenuLinks(ctx context.Context, roleID int64) ([]*RoleMenuLink, error)
 	// ReplaceRoleMenus is a security write: it atomically replaces the role's
-	// Menu Grant with menuIDs and writes menuCheckStrictly (full replacement —
-	// RuoYi's delete-then-insert) under the authorization locks, and returns
-	// the System User identities assigned the role.
+	// Menu Grant with menuIDs and writes menuCheckStrictly (full replacement),
+	// and returns the System User identities currently assigned the role.
 	ReplaceRoleMenus(ctx context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool) ([]int64, error)
 }
