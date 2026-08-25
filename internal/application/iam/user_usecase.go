@@ -6,6 +6,8 @@ import (
 	"log/slog"
 
 	iamdomain "glex/internal/domain/iam"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // UserUsecase holds the system-user business rules.
@@ -159,4 +161,15 @@ func (uc *UserUsecase) assertUnique(ctx context.Context, u *iamdomain.User, excl
 		}
 	}
 	return nil
+}
+
+// hashPassword hashes a plaintext password using bcrypt. Used by the User
+// Usecase (not at the transport boundary), so callers cannot accidentally
+// persist plaintext by skipping it.
+func hashPassword(password string) (string, error) {
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashed), nil
 }

@@ -2,7 +2,10 @@ package iam
 
 import (
 	"context"
+	"strconv"
 	"time"
+
+	"github.com/go-kratos/kratos/v3/errors"
 )
 
 // LoginAccountStore owns the transactional database side of login. Its
@@ -42,4 +45,24 @@ type CredentialIssuer interface {
 type AuthLoginBackend interface {
 	LoginAccountStore
 	CredentialIssuer
+}
+
+var (
+	// ErrInvalidCredentials: the presented password is wrong (or the System
+	// User is gone, renamed, or its password hash changed).
+	ErrInvalidCredentials = errors.Unauthorized("INVALID_CREDENTIALS", "invalid username or password")
+	// ErrSystemUserDisabled: the System User exists but is disabled.
+	ErrSystemUserDisabled = errors.Forbidden("ACCOUNT_DISABLED", "System User is disabled")
+)
+
+// NewLoginLocked returns the stable LOGIN_LOCKED reason together with a
+// rounded-up remaining duration. The metadata does not identify which counter
+// (username or source IP) caused the lock.
+func NewLoginLocked(remaining time.Duration) error {
+	seconds := int64((remaining + time.Second - 1) / time.Second)
+	if seconds < 1 {
+		seconds = 1
+	}
+	return errors.Unauthorized("LOGIN_LOCKED", "login temporarily locked").
+		WithMetadata(map[string]string{"remaining_seconds": strconv.FormatInt(seconds, 10)})
 }

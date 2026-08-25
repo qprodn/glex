@@ -3,6 +3,8 @@ package iam
 import (
 	"context"
 	"time"
+
+	"github.com/go-kratos/kratos/v3/errors"
 )
 
 // Role is a role domain object (角色), ported from RuoYi sys_role.
@@ -28,6 +30,11 @@ func (r *Role) Validate() error {
 		return ErrRoleInvalid
 	}
 	return nil
+}
+
+// AuthorizationChangedFrom classifies Role writes that invalidate snapshots.
+func (r *Role) AuthorizationChangedFrom(current *Role) bool {
+	return r != nil && current != nil && (r.RoleKey != current.RoleKey || r.Status != current.Status)
 }
 
 // CheckedMenuIDs shapes the persisted Menu Grant for the role editor. Under
@@ -102,3 +109,20 @@ type RoleRepo interface {
 	// and returns the System User identities currently assigned the role.
 	ReplaceRoleMenus(ctx context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool) ([]int64, error)
 }
+
+var (
+	// ErrRoleNotFound: the requested role does not exist.
+	ErrRoleNotFound = errors.NotFound("ROLE_NOT_FOUND", "role not found")
+	// ErrRoleNameConflict: role_name already exists.
+	ErrRoleNameConflict = errors.Conflict("ROLE_NAME_CONFLICT", "role_name already exists")
+	// ErrRoleKeyConflict: role_key already exists.
+	ErrRoleKeyConflict = errors.Conflict("ROLE_KEY_CONFLICT", "role_key already exists")
+	// ErrRoleInvalid: role_name/role_key is blank.
+	ErrRoleInvalid = errors.BadRequest("ROLE_INVALID", "role_name and role_key are required")
+	// ErrRoleMenuNotFound: one or more menu ids in a Menu Grant do not exist
+	// (or are soft-deleted).
+	ErrRoleMenuNotFound = errors.BadRequest("ROLE_MENU_NOT_FOUND", "one or more menu ids do not exist")
+	// ErrRoleAssigned: the role still has users assigned and cannot be
+	// deleted or disabled (RuoYi: 已分配，不能删除/禁用).
+	ErrRoleAssigned = errors.BadRequest("ROLE_ASSIGNED", "role is assigned to users and cannot be deleted or disabled")
+)

@@ -3,6 +3,8 @@ package iam
 import (
 	"context"
 	"time"
+
+	"github.com/go-kratos/kratos/v3/errors"
 )
 
 // LoginSession is one revocable sign-in by a System User. ID is the public,
@@ -62,3 +64,59 @@ type LoginSessionRepo interface {
 	RevokeSystemUser(ctx context.Context, systemUserID int64, exceptSessionID string) error
 	RevokeSystemUsers(ctx context.Context, revocations []SystemUserSessionRevocation) error
 }
+
+// SessionRevocation is the explicit domain policy for a security-changing
+// write. Its fields are private so callers cannot encode policy with an empty
+// Session ID or an arbitrary primitive value.
+type SessionRevocation struct {
+	required           bool
+	preservedSessionID string
+}
+
+// RevokeAllLoginSessions is the default policy for administrative security
+// changes.
+func RevokeAllLoginSessions() SessionRevocation {
+	return SessionRevocation{required: true}
+}
+
+// PreserveLoginSession revokes every Login Session except sessionID. An empty
+// ID safely degrades to all-Session revocation.
+func PreserveLoginSession(sessionID string) SessionRevocation {
+	return SessionRevocation{required: true, preservedSessionID: sessionID}
+}
+
+// Required reports whether a Redis revocation is part of this change.
+func (r SessionRevocation) Required() bool { return r.required }
+
+// PreservedSessionID returns the one Session excluded from revocation, if any.
+func (r SessionRevocation) PreservedSessionID() string { return r.preservedSessionID }
+
+// SystemUserSessionRevocation is one affected System User in an atomic Redis
+// revocation batch.
+type SystemUserSessionRevocation struct {
+	SystemUserID int64
+	Policy       SessionRevocation
+}
+
+// SessionRevoker is the slice of LoginSessionRepo that a security-changing
+// write pairs with its database mutation. Implemented by the Login Session
+// repository.
+type SessionRevoker interface {
+	RevokeSystemUsers(ctx context.Context, revocations []SystemUserSessionRevocation) error
+}
+
+var (
+	// ErrLoginSessionNotFound: the Session ID is absent or expired.
+	ErrLoginSessionNotFound = errors.NotFound("TOKEN_INVALID", "Login Session not found")
+	// ErrLoginSessionNotOwned: a System User attempted to remove another
+	// System User's Login Session.
+	ErrLoginSessionNotOwned = errors.Forbidden("PERMISSION_DENIED", "Login Session belongs to another System User")
+	// Authentication-state errors are mapped by data so no sa-token or Redis
+	// error crosses the repository boundary.
+	ErrTokenInvalid           = errors.Unauthorized("TOKEN_INVALID", "invalid token")
+	ErrTokenExpired           = errors.Unauthorized("TOKEN_EXPIRED", "token expired")
+	ErrTokenIdleTimeout       = errors.Unauthorized("TOKEN_IDLE_TIMEOUT", "Login Session idle timeout")
+	ErrLoginSessionKickedOut  = errors.Unauthorized("SESSION_KICKED_OUT", "Login Session kicked out")
+	ErrLoginSessionReplaced   = errors.Unauthorized("SESSION_REPLACED", "Login Session replaced")
+	ErrAuthBackendUnavailable = errors.ServiceUnavailable("AUTH_BACKEND_UNAVAILABLE", "authentication backend unavailable")
+)

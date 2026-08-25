@@ -3,6 +3,8 @@ package iam
 import (
 	"context"
 	"time"
+
+	"github.com/go-kratos/kratos/v3/errors"
 )
 
 // User is a system-user domain object (系统用户), ported from RuoYi sys_user.
@@ -24,6 +26,22 @@ type User struct {
 	LoginDate   *time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+}
+
+// SessionRevocationFrom classifies System User writes. Status changes always
+// revoke all Sessions. Password writes use the caller's explicit self/admin
+// policy; other profile writes do not affect authorization.
+func (u *User) SessionRevocationFrom(current *User, passwordPolicy SessionRevocation) SessionRevocation {
+	if u == nil || current == nil {
+		return SessionRevocation{}
+	}
+	if u.Status != current.Status {
+		return RevokeAllLoginSessions()
+	}
+	if u.Password != "" {
+		return passwordPolicy
+	}
+	return SessionRevocation{}
 }
 
 // CurrentUserInfo combines the current System User record with the immutable
@@ -60,3 +78,19 @@ type UserRepo interface {
 	// whose sessions must be revoked (always {id}).
 	DeleteUser(ctx context.Context, id int64) ([]int64, error)
 }
+
+var (
+	// ErrUserNotFound: the requested user does not exist.
+	ErrUserNotFound = errors.NotFound("USER_NOT_FOUND", "user not found")
+	// ErrUserNameAmbiguous means an accepted best-effort uniqueness race left
+	// more than one active System User with the same login identifier.
+	ErrUserNameAmbiguous = errors.Conflict("USER_NAME_AMBIGUOUS", "user_name identifies multiple users")
+	// ErrUserNameConflict: user_name already taken.
+	ErrUserNameConflict = errors.Conflict("USER_NAME_CONFLICT", "user_name already exists")
+	// ErrEmailConflict: email already taken.
+	ErrEmailConflict = errors.Conflict("EMAIL_CONFLICT", "email already exists")
+	// ErrPhoneConflict: phone_number already taken.
+	ErrPhoneConflict = errors.Conflict("PHONE_CONFLICT", "phone_number already exists")
+	// ErrPasswordRequired: create called without a password.
+	ErrPasswordRequired = errors.BadRequest("PASSWORD_REQUIRED", "password is required")
+)

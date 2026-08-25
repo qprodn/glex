@@ -3,6 +3,8 @@ package iam
 import (
 	"context"
 
+	"github.com/go-kratos/kratos/v3/errors"
+
 	authmw "glex/pkg/middleware/auth"
 )
 
@@ -87,3 +89,16 @@ func PrincipalFromContext(ctx context.Context) (*Principal, bool) {
 type Authenticator interface {
 	Authenticate(ctx context.Context, bearerToken string) (*Principal, error)
 }
+
+var (
+	// ErrCredentialMissing: no authenticated Principal is present in the
+	// context.
+	ErrCredentialMissing = errors.Unauthorized("CREDENTIAL_MISSING", "Authorization credential is required")
+	// ErrCredentialMalformed: the Authorization header does not carry a single
+	// bearer credential. Raised by the HTTP middleware's own mirror of this
+	// error.
+	ErrCredentialMalformed = errors.Unauthorized("CREDENTIAL_MALFORMED", "Authorization credential is malformed")
+	// ErrPermissionDenied: the Principal lacks the Functional Permission an
+	// RPC requires. Raised by the HTTP middleware's own mirror of this error.
+	ErrPermissionDenied = errors.Forbidden("PERMISSION_DENIED", "Functional Permission denied")
+)

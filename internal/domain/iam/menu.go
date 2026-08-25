@@ -4,6 +4,8 @@ import (
 	"context"
 	"sort"
 	"time"
+
+	"github.com/go-kratos/kratos/v3/errors"
 )
 
 // MenuType values for Menu.MenuType (mirror of the api/iam/menu/v1 MenuType
@@ -50,6 +52,11 @@ func (m *Menu) Validate() error {
 		return ErrMenuParentInvalid
 	}
 	return nil
+}
+
+// AuthorizationChangedFrom classifies Menu writes that invalidate snapshots.
+func (m *Menu) AuthorizationChangedFrom(current *Menu) bool {
+	return m != nil && current != nil && (m.Perms != current.Perms || m.Status != current.Status)
 }
 
 // BuildMenuTree assembles an ordered forest from a flat menu list. Orphans
@@ -178,3 +185,16 @@ type MenuRepo interface {
 	// the System User identities reaching the menu.
 	DeleteMenu(ctx context.Context, id int64) ([]int64, error)
 }
+
+var (
+	// ErrMenuNotFound: the requested menu does not exist.
+	ErrMenuNotFound = errors.NotFound("MENU_NOT_FOUND", "menu not found")
+	// ErrMenuHasChildren: the menu still has children and cannot be deleted.
+	ErrMenuHasChildren = errors.BadRequest("MENU_HAS_CHILDREN", "menu has children")
+	// ErrMenuNameConflict: menu_name already exists under the same parent.
+	ErrMenuNameConflict = errors.Conflict("MENU_NAME_CONFLICT", "menu_name already exists under this parent")
+	// ErrMenuParentInvalid: a menu cannot be its own parent.
+	ErrMenuParentInvalid = errors.BadRequest("MENU_PARENT_INVALID", "a menu cannot be its own parent")
+	// ErrMenuTypeInvalid: menu_type is not a valid MenuType.
+	ErrMenuTypeInvalid = errors.BadRequest("MENU_TYPE_INVALID", "invalid menu_type")
+)

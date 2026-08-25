@@ -31,12 +31,12 @@ func wireApp(confServer *conf.Server, data *conf.Data, auth *conf.Auth, logger *
 	userRepo := iaminfra.NewUserRepo(storeData)
 	txManager := store.NewTxManager(storeData)
 	storage := iaminfra.NewAuthStorage(storeData, auth)
-	manager, cleanup2, err := iaminfra.NewAuthManager(storage, auth)
+	v, cleanup2, err := iaminfra.NewAuthManager(storage, auth)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	loginSessionRepo := iaminfra.NewLoginSessionRepo(storeData, manager, auth)
+	loginSessionRepo := iaminfra.NewLoginSessionRepo(storeData, v, auth)
 	sessionRevoker := iaminfra.NewSessionRevoker(loginSessionRepo)
 	userUsecase := iam.NewUserUsecase(userRepo, txManager, sessionRevoker, logger)
 	userApplication := iam.NewUserApplication(userUsecase, logger)
@@ -48,13 +48,13 @@ func wireApp(confServer *conf.Server, data *conf.Data, auth *conf.Auth, logger *
 	roleUsecase := iam.NewRoleUsecase(roleRepo, menuRepo, userRoleRepo, txManager, sessionRevoker, logger)
 	roleApplication := iam.NewRoleApplication(roleUsecase, logger)
 	grpcServer := server.NewGRPCServer(confServer, userApplication, menuApplication, roleApplication, logger)
-	authLoginBackend := iaminfra.NewAuthLoginBackend(storeData, manager, loginSessionRepo, auth)
+	authLoginBackend := iaminfra.NewAuthLoginBackend(storeData, v, loginSessionRepo, auth)
 	loginCounterRepo := iaminfra.NewLoginCounterRepo(storeData, auth)
 	authUsecase := iam.NewAuthUsecase(userRepo, roleRepo, userRoleRepo, authLoginBackend, loginCounterRepo, loginSessionRepo, txManager, logger)
 	authApplication := iam.NewAuthApplication(authUsecase, logger)
 	loginSessionUsecase := iam.NewLoginSessionUsecase(loginSessionRepo, logger)
 	onlineSessionApplication := iam.NewOnlineSessionApplication(loginSessionUsecase, logger)
-	authenticator := iaminfra.NewAuthenticator(manager, loginSessionRepo)
+	authenticator := iaminfra.NewAuthenticator(v, loginSessionRepo)
 	httpServer := server.NewHTTPServer(confServer, userApplication, menuApplication, roleApplication, authApplication, onlineSessionApplication, authenticator, logger)
 	app := newApp(logger, grpcServer, httpServer)
 	return app, func() {

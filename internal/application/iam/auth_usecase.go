@@ -10,6 +10,7 @@ import (
 	iamdomain "glex/internal/domain/iam"
 
 	"github.com/mileusna/useragent"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // LoginRequest contains credentials and authoritative request metadata for
@@ -250,4 +251,12 @@ func (uc *AuthUsecase) assertRolesAssignable(ctx context.Context, assignments []
 		}
 	}
 	return unique, nil
+}
+
+// invalidCredentialHash makes unknown-user verification consume the same
+// bcrypt work as a wrong password without depending on any real System User.
+const invalidCredentialHash = "$2a$10$7EqJtq98hPqEX7fNZaFWoO5jQFKP3N8wJYnAqH.G2L/tW8G8zN2qG"
+
+func passwordMatches(hash, password string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }
