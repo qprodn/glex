@@ -8,6 +8,7 @@ import (
 	"unicode"
 
 	menuv1 "glex/api/iam/menu/v1"
+	authndomain "glex/internal/domain/authn"
 	iamdomain "glex/internal/domain/iam"
 
 	"go.einride.tech/aip/fieldmask"
@@ -218,9 +219,9 @@ func (s *MenuApplication) ListMenus(ctx context.Context, req *menuv1.ListMenusRe
 
 // GetRouters returns the current System User's freshly resolved route tree.
 func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*menuv1.RouterTree, error) {
-	principal, ok := iamdomain.PrincipalFromContext(ctx)
+	principal, ok := authndomain.PrincipalFromContext(ctx)
 	if !ok {
-		return nil, iamdomain.ErrCredentialMissing
+		return nil, authndomain.ErrCredentialMissing
 	}
 	roots, err := s.uc.ListUserRouteTree(ctx, principal.SystemUserID())
 	if err != nil {

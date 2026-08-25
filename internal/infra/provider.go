@@ -1,6 +1,7 @@
 package infra
 
 import (
+	authninfra "glex/internal/infra/authn"
 	iaminfra "glex/internal/infra/iam"
 	"glex/internal/infra/store"
 
@@ -8,4 +9,4 @@ import (
 )
 
 // ProviderSet contains all infrastructure adapters used by the composition root.
-var ProviderSet = wire.NewSet(store.ProviderSet, iaminfra.ProviderSet)
+var ProviderSet = wire.NewSet(store.ProviderSet, iaminfra.ProviderSet, authninfra.ProviderSet)

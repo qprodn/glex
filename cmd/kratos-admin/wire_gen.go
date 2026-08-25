@@ -8,9 +8,11 @@ package main
 
 import (
 	"github.com/go-kratos/kratos/v3"
+	"glex/internal/application/authn"
 	"glex/internal/application/iam"
 	"glex/internal/conf"
 	"glex/internal/crossdomain/authn/impl"
+	"glex/internal/infra/authn"
 	"glex/internal/infra/iam"
 	"glex/internal/infra/store"
 	"glex/internal/server"
@@ -30,16 +32,18 @@ func wireApp(confServer *conf.Server, data *conf.Data, auth *conf.Auth, logger *
 		return nil, nil, err
 	}
 	userRepo := iaminfra.NewUserRepo(storeData)
+	credentialRepo := authninfra.NewCredentialRepo(storeData)
+	credentialWriter := impl.NewCredentialWriter(credentialRepo)
 	txManager := store.NewTxManager(storeData)
-	storage := iaminfra.NewAuthStorage(storeData, auth)
-	v, cleanup2, err := iaminfra.NewAuthManager(storage, auth)
+	storage := authninfra.NewAuthStorage(storeData, auth)
+	v, cleanup2, err := authninfra.NewAuthManager(storage, auth)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	loginSessionRepo := iaminfra.NewLoginSessionRepo(storeData, v, auth)
+	loginSessionRepo := authninfra.NewLoginSessionRepo(storeData, v, auth)
 	sessionRevoker := impl.NewSessionRevoker(loginSessionRepo)
-	userUsecase := iam.NewUserUsecase(userRepo, txManager, sessionRevoker, logger)
+	userUsecase := iam.NewUserUsecase(userRepo, credentialWriter, txManager, sessionRevoker, logger)
 	userApplication := iam.NewUserApplication(userUsecase, logger)
 	menuRepo := iaminfra.NewMenuRepo(storeData)
 	menuUsecase := iam.NewMenuUsecase(menuRepo, txManager, sessionRevoker, logger)
@@ -49,14 +53,16 @@ func wireApp(confServer *conf.Server, data *conf.Data, auth *conf.Auth, logger *
 	roleUsecase := iam.NewRoleUsecase(roleRepo, menuRepo, userRoleRepo, txManager, sessionRevoker, logger)
 	roleApplication := iam.NewRoleApplication(roleUsecase, logger)
 	grpcServer := server.NewGRPCServer(confServer, userApplication, menuApplication, roleApplication, logger)
-	authLoginBackend := iaminfra.NewAuthLoginBackend(storeData, v, loginSessionRepo, auth)
-	loginCounterRepo := iaminfra.NewLoginCounterRepo(storeData, auth)
-	authUsecase := iam.NewAuthUsecase(userRepo, roleRepo, userRoleRepo, authLoginBackend, loginCounterRepo, loginSessionRepo, sessionRevoker, txManager, logger)
-	authApplication := iam.NewAuthApplication(authUsecase, logger)
-	loginSessionUsecase := iam.NewLoginSessionUsecase(loginSessionRepo, logger)
-	onlineSessionApplication := iam.NewOnlineSessionApplication(loginSessionUsecase, logger)
-	authenticator := iaminfra.NewAuthenticator(v, loginSessionRepo)
-	httpServer := server.NewHTTPServer(confServer, userApplication, menuApplication, roleApplication, authApplication, onlineSessionApplication, authenticator, logger)
+	roleAssignmentUsecase := iam.NewRoleAssignmentUsecase(userRepo, roleRepo, userRoleRepo, sessionRevoker, txManager, logger)
+	roleAssignmentApplication := iam.NewRoleAssignmentApplication(roleAssignmentUsecase, logger)
+	authLoginBackend := authninfra.NewAuthLoginBackend(storeData, v, loginSessionRepo, auth)
+	loginCounterRepo := authninfra.NewLoginCounterRepo(storeData, auth)
+	loginUsecase := authn.NewLoginUsecase(authLoginBackend, loginCounterRepo, loginSessionRepo, txManager, logger)
+	loginApplication := authn.NewLoginApplication(loginUsecase, logger)
+	loginSessionUsecase := authn.NewLoginSessionUsecase(loginSessionRepo, logger)
+	onlineSessionApplication := authn.NewOnlineSessionApplication(loginSessionUsecase, logger)
+	authenticator := authninfra.NewAuthenticator(v, loginSessionRepo)
+	httpServer := server.NewHTTPServer(confServer, userApplication, menuApplication, roleApplication, roleAssignmentApplication, loginApplication, onlineSessionApplication, authenticator, logger)
 	app := newApp(logger, grpcServer, httpServer)
 	return app, func() {
 		cleanup2()

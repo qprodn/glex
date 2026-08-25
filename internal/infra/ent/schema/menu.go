@@ -58,7 +58,7 @@ func (Menu) Fields() []ent.Field {
 		// RuoYi uses varchar(2000) here; glex keeps varchar(256) for uniform
 		// ent↔schema.sql alignment (ADR convention).
 		field.String("ext").Default(""),
-		// Audit; written by the auth module (0 until then).
+		// Audit; written by the access module (0 until then).
 		field.Int64("create_by").Optional().Default(0),
 		field.Int64("update_by").Optional().Default(0),
 		field.Time("created_at").Default(time.Now).Immutable(),

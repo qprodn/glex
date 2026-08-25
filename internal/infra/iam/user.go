@@ -12,7 +12,8 @@ import (
 	"glex/internal/infra/ent/user"
 )
 
-// toBiz maps an ent User PO to a iam.User DO.
+// toBiz maps an ent User PO to a iam.User DO. The credential column is
+// deliberately not mapped: only authn's adapters read it (ADR 0016).
 func toBiz(po *ent.User) *iam.User {
 	u := &iam.User{
 		ID:        po.ID,
@@ -20,7 +21,6 @@ func toBiz(po *ent.User) *iam.User {
 		NickName:  po.NickName,
 		Gender:    int32(po.Gender),
 		Status:    int32(po.Status),
-		Password:  po.Password,
 		Avatar:    po.Avatar,
 		Remark:    po.Remark,
 		CreateBy:  po.CreateBy,
@@ -134,7 +134,6 @@ func (r *userRepo) CreateUser(ctx context.Context, u *iam.User) (*iam.User, erro
 		SetNickName(u.NickName).
 		SetGender(int8(u.Gender)).
 		SetStatus(int8(u.Status)).
-		SetPassword(u.Password).
 		SetAvatar(u.Avatar).
 		SetRemark(u.Remark)
 	if u.Email != "" {
@@ -169,9 +168,6 @@ func (r *userRepo) UpdateUser(ctx context.Context, u *iam.User) (*iam.UserUpdate
 		SetStatus(int8(u.Status)).
 		SetAvatar(u.Avatar).
 		SetRemark(u.Remark)
-	if u.Password != "" {
-		upd.SetPassword(u.Password)
-	}
 	if u.Email != "" {
 		upd.SetEmail(u.Email)
 	}

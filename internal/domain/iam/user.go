@@ -16,21 +16,27 @@ type User struct {
 	Email       string
 	PhoneNumber string
 	Gender      int32
-	Password    string
-	Status      int32
-	Avatar      string
-	Remark      string
-	CreateBy    int64
-	UpdateBy    int64
-	LoginIP     string
-	LoginDate   *time.Time
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	// Password carries the caller's requested plaintext credential on
+	// create/update requests only. It is never populated on reads and never
+	// persisted by this module: the stored hash belongs to authn and is
+	// written solely through its credential capability (ADR 0016).
+	Password  string
+	Status    int32
+	Avatar    string
+	Remark    string
+	CreateBy  int64
+	UpdateBy  int64
+	LoginIP   string
+	LoginDate *time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
-// SessionRevocationFrom classifies System User writes. Status changes always
-// revoke all Sessions. Password writes use the caller's explicit self/admin
-// policy; other profile writes do not affect authorization.
+// SessionRevocationFrom classifies System User writes. The receiver is the
+// requested change. Status changes always revoke all Sessions. Password
+// requests (a non-empty request Password, delegated to authn's credential
+// capability) use the caller's explicit self/admin policy; other profile
+// writes do not affect authorization.
 func (u *User) SessionRevocationFrom(current *User, passwordPolicy SessionRevocation) SessionRevocation {
 	if u == nil || current == nil {
 		return SessionRevocation{}

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	authndomain "glex/internal/domain/authn"
 	iamdomain "glex/internal/domain/iam"
 
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -15,10 +16,10 @@ import (
 type currentUserUsecase struct {
 	userUsecase
 	info      *iamdomain.CurrentUserInfo
-	principal *iamdomain.Principal
+	principal *authndomain.Principal
 }
 
-func (u *currentUserUsecase) GetCurrentUserInfo(_ context.Context, principal *iamdomain.Principal) (*iamdomain.CurrentUserInfo, error) {
+func (u *currentUserUsecase) GetCurrentUserInfo(_ context.Context, principal *authndomain.Principal) (*iamdomain.CurrentUserInfo, error) {
 	u.principal = principal
 	return u.info, nil
 }
@@ -48,7 +49,7 @@ func TestGetInfoUsesPrincipalSnapshotAndNeverExposesPassword(t *testing.T) {
 		RoleKeys: []string{"operator"}, Permissions: []string{"system:user:list"},
 	}}
 	service := newUserApplication(uc, testLogger())
-	ctx := iamdomain.WithPrincipal(t.Context(), iamdomain.NewPrincipal(
+	ctx := authndomain.WithPrincipal(t.Context(), authndomain.NewPrincipal(
 		42, "alice", "safe-session-id", []string{"operator"}, []string{"system:user:list"},
 	))
 
@@ -84,7 +85,7 @@ func TestGetRoutersCallsUsecaseEveryTimeAndProjectsRouteMetadata(t *testing.T) {
 		{},
 	}}
 	service := newMenuApplication(uc, testLogger())
-	ctx := iamdomain.WithPrincipal(t.Context(), iamdomain.NewPrincipal(42, "alice", "session-id", nil, []string{"unrelated:permission"}))
+	ctx := authndomain.WithPrincipal(t.Context(), authndomain.NewPrincipal(42, "alice", "session-id", nil, []string{"unrelated:permission"}))
 
 	first, err := service.GetRouters(ctx, &emptypb.Empty{})
 	if err != nil {
@@ -123,7 +124,7 @@ func TestGetRoutersUsesRuoYiPathComponentAndFrameSemantics(t *testing.T) {
 		{ID: 3, ParentID: 0, MenuName: "Dashboard", Path: "dashboard", Component: "dashboard/index", MenuType: iamdomain.MenuTypeMenu, IsFrame: 0},
 	}}}
 	service := newMenuApplication(uc, testLogger())
-	ctx := iamdomain.WithPrincipal(t.Context(), iamdomain.NewPrincipal(42, "alice", "session-id", nil, nil))
+	ctx := authndomain.WithPrincipal(t.Context(), authndomain.NewPrincipal(42, "alice", "session-id", nil, nil))
 
 	reply, err := service.GetRouters(ctx, &emptypb.Empty{})
 	if err != nil {
@@ -153,11 +154,11 @@ func TestGetRoutersUsesRuoYiPathComponentAndFrameSemantics(t *testing.T) {
 
 func TestCurrentUserHandlersRequirePrincipal(t *testing.T) {
 	userService := newUserApplication(&currentUserUsecase{}, testLogger())
-	if _, err := userService.GetInfo(t.Context(), &emptypb.Empty{}); err != iamdomain.ErrCredentialMissing {
+	if _, err := userService.GetInfo(t.Context(), &emptypb.Empty{}); err != authndomain.ErrCredentialMissing {
 		t.Fatalf("GetInfo without Principal = %v", err)
 	}
 	menuService := newMenuApplication(&currentRouteMenuUsecase{}, testLogger())
-	if _, err := menuService.GetRouters(t.Context(), &emptypb.Empty{}); err != iamdomain.ErrCredentialMissing {
+	if _, err := menuService.GetRouters(t.Context(), &emptypb.Empty{}); err != authndomain.ErrCredentialMissing {
 		t.Fatalf("GetRouters without Principal = %v", err)
 	}
 }

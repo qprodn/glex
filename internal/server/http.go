@@ -7,9 +7,10 @@ import (
 	menuv1 "glex/api/iam/menu/v1"
 	rolev1 "glex/api/iam/role/v1"
 	userv1 "glex/api/iam/user/v1"
+	authnapp "glex/internal/application/authn"
 	iamapp "glex/internal/application/iam"
 	"glex/internal/conf"
-	"glex/internal/domain/iam"
+	authndomain "glex/internal/domain/authn"
 	authmw "glex/pkg/middleware/auth"
 	"glex/pkg/middleware/requestid"
 	"glex/pkg/validate"
@@ -19,8 +20,17 @@ import (
 	"github.com/go-kratos/kratos/v3/transport/http"
 )
 
+// authServiceServer joins the authn-owned login/logout endpoints with iam's
+// role-assignment endpoints behind the one proto AuthService until the
+// contracts split (ticket 06). Each span implements its own methods; the
+// embedded Unimplemented fallbacks are shadowed by the concrete methods.
+type authServiceServer struct {
+	*authnapp.LoginApplication
+	*iamapp.RoleAssignmentApplication
+}
+
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, user *iamapp.UserApplication, menu *iamapp.MenuApplication, role *iamapp.RoleApplication, auth *iamapp.AuthApplication, online *iamapp.OnlineSessionApplication, authenticator iam.Authenticator, logger *slog.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, user *iamapp.UserApplication, menu *iamapp.MenuApplication, role *iamapp.RoleApplication, assignment *iamapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, authenticator authndomain.Authenticator, logger *slog.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Filter(
 			requestid.HTTP(requestid.WithLogger(logger)),
@@ -45,7 +55,10 @@ func NewHTTPServer(c *conf.Server, user *iamapp.UserApplication, menu *iamapp.Me
 	userv1.RegisterUserServiceHTTPServer(srv, user)
 	menuv1.RegisterMenuServiceHTTPServer(srv, menu)
 	rolev1.RegisterRoleServiceHTTPServer(srv, role)
-	authv1.RegisterAuthServiceHTTPServer(srv, auth)
+	authv1.RegisterAuthServiceHTTPServer(srv, authServiceServer{
+		LoginApplication:          login,
+		RoleAssignmentApplication: assignment,
+	})
 	authv1.RegisterOnlineSessionServiceHTTPServer(srv, online)
 	return srv
 }

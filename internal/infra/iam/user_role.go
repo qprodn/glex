@@ -27,7 +27,7 @@ func NewUserRoleRepo(data *store.Data) iam.UserRoleRepo {
 // ListRoleAssignments reads every active role (the dialog's "all roles") with
 // whether the user is assigned it, ordered by (role_sort, role_id). The user
 // edge is filtered to the target user, so a non-empty Edges.Users means
-// assigned; user existence itself is checked by AuthUsecase.
+// assigned; user existence itself is checked by RoleAssignmentUsecase.
 func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([]*iam.RoleAssignment, error) {
 	pos, err := r.data.DB.Role(ctx).Query().
 		Where(role.DeletedAtIsNil()).
@@ -50,7 +50,7 @@ func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([
 }
 
 // ReplaceUserRoles replaces the user's Role Assignment, returning the System
-// User identities whose sessions must be revoked ({userID}). AuthUsecase
+// User identities whose sessions must be revoked ({userID}). RoleAssignmentUsecase
 // validates and dedupes roleIDs and owns the transaction and Redis rollback
 // contract.
 func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleIDs []int64) ([]int64, error) {
@@ -78,7 +78,7 @@ func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleI
 
 // ListRoleUsers lists the active users assigned the role, applying the given
 // list options (filter/order/offset/limit). The role's existence is checked
-// by AuthUsecase.
+// by RoleAssignmentUsecase.
 func (r *userRoleRepo) ListRoleUsers(ctx context.Context, roleID int64, opts ...iam.ListOption) ([]*iam.User, error) {
 	o := iam.ListOptions{Limit: 20}
 	for _, opt := range opts {

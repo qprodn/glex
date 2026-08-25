@@ -7,11 +7,9 @@ var ProviderSet = wire.NewSet(
 	NewUserUsecase,
 	NewMenuUsecase,
 	NewRoleUsecase,
-	NewAuthUsecase,
-	NewLoginSessionUsecase,
+	NewRoleAssignmentUsecase,
 	NewUserApplication,
 	NewMenuApplication,
 	NewRoleApplication,
-	NewAuthApplication,
-	NewOnlineSessionApplication,
+	NewRoleAssignmentApplication,
 )

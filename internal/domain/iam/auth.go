@@ -4,8 +4,9 @@ import (
 	"context"
 )
 
-// RoleAssignment is one role with whether the user is assigned it — the auth
-// module's read shape for a user's Role Assignment (角色分配), mirroring
+// RoleAssignment is one role with whether the user is assigned it — the
+// role-assignment usecase's read shape for a user's Role Assignment
+// (角色分配), mirroring
 // RuoYi's authRole dialog data (all roles + checked flag).
 type RoleAssignment struct {
 	Role     *Role
@@ -22,7 +23,7 @@ type UserRoleRepo interface {
 	ListRoleAssignments(ctx context.Context, userID int64) ([]*RoleAssignment, error)
 	// ReplaceUserRoles is a security write: it atomically replaces the user's
 	// Role Assignment with roleIDs (full replacement; an empty list clears
-	// all). roleIDs are stored verbatim after AuthUsecase validation and
+	// all). roleIDs are stored verbatim after RoleAssignmentUsecase validation and
 	// deduplication; affected System User identities ({userID}) are returned.
 	ReplaceUserRoles(ctx context.Context, userID int64, roleIDs []int64) ([]int64, error)
 	// ListRoleUsers lists the active users assigned the role, matching the

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	authndomain "glex/internal/domain/authn"
 	"glex/internal/domain/iam"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/menu"
@@ -122,7 +123,7 @@ func TestMenuRepoLoadRouteAccessMapsDatabaseFailures(t *testing.T) {
 			tt.expect(mock, time.Unix(1_700_000_000, 0))
 
 			_, err = repo.LoadRouteAccess(t.Context(), 42)
-			if !errors.Is(err, iam.ErrAuthBackendUnavailable) {
+			if !errors.Is(err, authndomain.ErrAuthBackendUnavailable) {
 				t.Fatalf("LoadRouteAccess database failure = %v, want AUTH_BACKEND_UNAVAILABLE", err)
 			}
 			if err := mock.ExpectationsWereMet(); err != nil {

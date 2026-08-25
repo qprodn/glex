@@ -9,7 +9,7 @@ import (
 
 // Role is a role domain object (角色), ported from RuoYi sys_role.
 // Pure domain model: no proto, no storage tags. Carries a Menu Grant (菜单授权)
-// via the repo; user↔role assignment is deferred to the auth module.
+// via the repo; user↔role assignment is deferred to the role-assignment usecase.
 type Role struct {
 	ID                int64
 	RoleName          string

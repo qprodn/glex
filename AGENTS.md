@@ -117,7 +117,7 @@ PO   Persistent Object    — storage shape owned by Infra.
   composition root.
 - Contracts return small `model/` snapshots, never provider domain objects,
   aggregates, or repositories.
-- Pass authenticated identity through `domain/iam.Principal` when no live IAM
+- Pass authenticated identity through `domain/authn.Principal` when no live IAM
   lookup is needed.
 - If a module becomes remote, keep the capability interface and provide an
   HTTP/gRPC/queue adapter satisfying it. Use events/outbox for cross-service

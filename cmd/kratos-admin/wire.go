@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	"glex/internal/application"
+	authnapp "glex/internal/application/authn"
 	iamapp "glex/internal/application/iam"
 	"glex/internal/conf"
 	authnimpl "glex/internal/crossdomain/authn/impl"
@@ -27,6 +28,7 @@ func wireApp(*conf.Server, *conf.Data, *conf.Auth, *slog.Logger) (*kratos.App, f
 		infra.ProviderSet,
 		authnimpl.ProviderSet,
 		wire.Bind(new(iamapp.Transaction), new(*store.TxManager)),
+		wire.Bind(new(authnapp.Transaction), new(*store.TxManager)),
 		application.ProviderSet,
 		newApp,
 	))

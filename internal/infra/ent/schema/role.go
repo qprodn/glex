@@ -40,7 +40,7 @@ func (Role) Fields() []ent.Field {
 		// stored in sys_role_menu (grants are always stored verbatim).
 		field.Bool("menu_check_strictly").Default(true),
 		field.String("remark").Default(""),
-		// Audit; written by the auth module (0 until then).
+		// Audit; written by the access module (0 until then).
 		field.Int64("create_by").Optional().Default(0),
 		field.Int64("update_by").Optional().Default(0),
 		field.Time("created_at").Default(time.Now).Immutable(),

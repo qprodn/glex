@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	authnmodel "glex/internal/crossdomain/authn/model"
-
-	. "glex/internal/domain/iam"
 )
 
 // fakeTransaction runs fn inline and returns the recorded body error, or —
@@ -72,10 +70,4 @@ func (r *fakeSessionRevoker) RevokeSystemUsers(_ context.Context, request *authn
 		return r.err
 	}
 	return nil
-}
-
-// stubSessionRepo satisfies LoginSessionRepo for flows that never touch the
-// session store directly; the embedded interface stays nil.
-type stubSessionRepo struct {
-	LoginSessionRepo
 }

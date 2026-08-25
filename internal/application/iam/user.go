@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	userv1 "glex/api/iam/user/v1"
+	authndomain "glex/internal/domain/authn"
 	iamdomain "glex/internal/domain/iam"
 
 	"go.einride.tech/aip/fieldmask"
@@ -55,7 +56,7 @@ type UserApplication struct {
 type userUsecase interface {
 	CreateUser(context.Context, *iamdomain.User) (*iamdomain.User, error)
 	GetUser(context.Context, int64) (*iamdomain.User, error)
-	GetCurrentUserInfo(context.Context, *iamdomain.Principal) (*iamdomain.CurrentUserInfo, error)
+	GetCurrentUserInfo(context.Context, *authndomain.Principal) (*iamdomain.CurrentUserInfo, error)
 	ListUsers(context.Context, ...iamdomain.ListOption) ([]*iamdomain.User, error)
 	UpdateUser(context.Context, *iamdomain.User) (*iamdomain.User, error)
 	DeleteUser(context.Context, int64) error
@@ -105,9 +106,9 @@ func (s *UserApplication) GetUser(ctx context.Context, req *userv1.GetUserReques
 // GetInfo returns the freshly loaded current System User plus the Role keys and
 // Functional Permissions authenticated from the shared Authorization Snapshot.
 func (s *UserApplication) GetInfo(ctx context.Context, _ *emptypb.Empty) (*userv1.CurrentUserInfo, error) {
-	principal, ok := iamdomain.PrincipalFromContext(ctx)
+	principal, ok := authndomain.PrincipalFromContext(ctx)
 	if !ok {
-		return nil, iamdomain.ErrCredentialMissing
+		return nil, authndomain.ErrCredentialMissing
 	}
 	info, err := s.uc.GetCurrentUserInfo(ctx, principal)
 	if err != nil {

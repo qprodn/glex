@@ -1,14 +1,28 @@
 package iam
 
 import (
+	authnmodel "glex/internal/crossdomain/authn/model"
+	authndomain "glex/internal/domain/authn"
 	. "glex/internal/domain/iam"
 
 	"context"
 	"testing"
 
 	"github.com/go-kratos/kratos/v3/errors"
-	"golang.org/x/crypto/bcrypt"
 )
+
+// fakeCredentialWriter records password requests handed to authn's credential
+// capability; iam never hashes or stores the credential itself.
+type fakeCredentialWriter struct {
+	written []*authnmodel.SystemUserCredential
+	err     error
+}
+
+func (w *fakeCredentialWriter) WriteSystemUserCredential(_ context.Context, request *authnmodel.SystemUserCredential) error {
+	snapshot := *request
+	w.written = append(w.written, &snapshot)
+	return w.err
+}
 
 // fakeUserRepo is an in-memory UserRepo for testing the usecase in isolation
 // from the infrastructure layer.
@@ -101,9 +115,10 @@ func (r *fakeUserRepo) DeleteUser(_ context.Context, id int64) ([]int64, error) 
 	return []int64{id}, nil
 }
 
-func TestCreateUser_HashesPassword(t *testing.T) {
+func TestCreateUserDelegatesCredentialToAuthn(t *testing.T) {
 	repo := newFakeUserRepo()
-	uc := NewUserUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	credentials := new(fakeCredentialWriter)
+	uc := NewUserUsecase(repo, credentials, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	_, err := uc.CreateUser(context.Background(), &User{UserName: "bob", NickName: "Bob", Password: "secret"})
 	if err != nil {
@@ -112,18 +127,14 @@ func TestCreateUser_HashesPassword(t *testing.T) {
 	if len(repo.created) != 1 {
 		t.Fatalf("expected 1 created user, got %d", len(repo.created))
 	}
-	stored := repo.created[0].Password
-	if stored == "secret" {
-		t.Fatal("password was stored in plaintext")
-	}
-	if err := bcrypt.CompareHashAndPassword([]byte(stored), []byte("secret")); err != nil {
-		t.Fatalf("stored password is not a valid bcrypt hash of the input: %v", err)
+	if len(credentials.written) != 1 || credentials.written[0].SystemUserID != repo.created[0].ID || credentials.written[0].Password != "secret" {
+		t.Fatalf("credential writes = %#v, want one write of the created user's plaintext", credentials.written)
 	}
 }
 
 func TestCreateUser_PasswordRequired(t *testing.T) {
 	repo := newFakeUserRepo()
-	uc := NewUserUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	uc := NewUserUsecase(repo, new(fakeCredentialWriter), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	_, err := uc.CreateUser(context.Background(), &User{UserName: "bob", Password: ""})
 	if err == nil {
@@ -137,7 +148,7 @@ func TestCreateUser_PasswordRequired(t *testing.T) {
 func TestCreateUser_UserNameConflict(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byName["bob"] = &User{ID: 7, UserName: "bob"}
-	uc := NewUserUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	uc := NewUserUsecase(repo, new(fakeCredentialWriter), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	_, err := uc.CreateUser(context.Background(), &User{UserName: "bob", Password: "secret"})
 	if !errors.Is(err, ErrUserNameConflict) {
@@ -148,7 +159,7 @@ func TestCreateUser_UserNameConflict(t *testing.T) {
 func TestCreateUser_EmailConflict(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byEmail["a@b.com"] = &User{ID: 7, UserName: "someone", Email: "a@b.com"}
-	uc := NewUserUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	uc := NewUserUsecase(repo, new(fakeCredentialWriter), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	_, err := uc.CreateUser(context.Background(), &User{UserName: "bob", Email: "a@b.com", Password: "secret"})
 	if !errors.Is(err, ErrEmailConflict) {
@@ -159,7 +170,7 @@ func TestCreateUser_EmailConflict(t *testing.T) {
 func TestCreateUser_EmptyEmailNotChecked(t *testing.T) {
 	// A user with no email must not trip the email-uniqueness check.
 	repo := newFakeUserRepo()
-	uc := NewUserUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	uc := NewUserUsecase(repo, new(fakeCredentialWriter), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	_, err := uc.CreateUser(context.Background(), &User{UserName: "bob", Password: "secret"})
 	if err != nil {
@@ -169,30 +180,29 @@ func TestCreateUser_EmptyEmailNotChecked(t *testing.T) {
 
 func TestUpdateUser_EmptyPasswordLeftUnchanged(t *testing.T) {
 	repo := newFakeUserRepo()
-	uc := NewUserUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	credentials := new(fakeCredentialWriter)
+	uc := NewUserUsecase(repo, credentials, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	got, err := uc.UpdateUser(context.Background(), &User{ID: 1, UserName: "bob", Password: ""})
+	_, err := uc.UpdateUser(context.Background(), &User{ID: 1, UserName: "bob", Password: ""})
 	if err != nil {
 		t.Fatalf("update user: %v", err)
 	}
-	if got.Password != "" {
-		t.Fatalf("empty password must be passed through unchanged, got %q", got.Password)
+	if len(credentials.written) != 0 {
+		t.Fatalf("empty password must not write a credential, got %#v", credentials.written)
 	}
 }
 
-func TestUpdateUser_HashesNewPassword(t *testing.T) {
+func TestUpdateUserDelegatesNewCredentialToAuthn(t *testing.T) {
 	repo := newFakeUserRepo()
-	uc := NewUserUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	credentials := new(fakeCredentialWriter)
+	uc := NewUserUsecase(repo, credentials, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	got, err := uc.UpdateUser(context.Background(), &User{ID: 1, UserName: "bob", Password: "newsecret"})
+	_, err := uc.UpdateUser(context.Background(), &User{ID: 1, UserName: "bob", Password: "newsecret"})
 	if err != nil {
 		t.Fatalf("update user: %v", err)
 	}
-	if got.Password == "newsecret" {
-		t.Fatal("new password was stored in plaintext")
-	}
-	if err := bcrypt.CompareHashAndPassword([]byte(got.Password), []byte("newsecret")); err != nil {
-		t.Fatalf("updated password is not a valid bcrypt hash: %v", err)
+	if len(credentials.written) != 1 || credentials.written[0].SystemUserID != 1 || credentials.written[0].Password != "newsecret" {
+		t.Fatalf("credential writes = %#v, want one write of user 1's plaintext", credentials.written)
 	}
 }
 
@@ -200,8 +210,8 @@ func TestUpdateUserSelfPasswordPreservesOnlyCurrentSession(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byID[42] = &User{ID: 42, UserName: "alice", Password: "old-hash"}
 	revoker := &fakeSessionRevoker{}
-	uc := NewUserUsecase(repo, newFakeTransaction(), revoker, testLogger())
-	ctx := WithPrincipal(t.Context(), NewPrincipal(42, "alice", "current-session", nil, nil))
+	uc := NewUserUsecase(repo, new(fakeCredentialWriter), newFakeTransaction(), revoker, testLogger())
+	ctx := authndomain.WithPrincipal(t.Context(), authndomain.NewPrincipal(42, "alice", "current-session", nil, nil))
 
 	if _, err := uc.UpdateUser(ctx, &User{ID: 42, UserName: "alice", Password: "newsecret"}); err != nil {
 		t.Fatalf("UpdateUser: %v", err)
@@ -219,8 +229,8 @@ func TestUpdateUserAdministrativePasswordResetRevokesAllSessions(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byID[42] = &User{ID: 42, UserName: "alice", Password: "old-hash"}
 	revoker := &fakeSessionRevoker{}
-	uc := NewUserUsecase(repo, newFakeTransaction(), revoker, testLogger())
-	ctx := WithPrincipal(t.Context(), NewPrincipal(7, "admin", "admin-session", nil, nil))
+	uc := NewUserUsecase(repo, new(fakeCredentialWriter), newFakeTransaction(), revoker, testLogger())
+	ctx := authndomain.WithPrincipal(t.Context(), authndomain.NewPrincipal(7, "admin", "admin-session", nil, nil))
 
 	if _, err := uc.UpdateUser(ctx, &User{ID: 42, UserName: "alice", Password: "reset-secret"}); err != nil {
 		t.Fatalf("UpdateUser: %v", err)
@@ -238,7 +248,7 @@ func TestUpdateUserProfileOnlyChangeSkipsRevocation(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byID[42] = &User{ID: 42, UserName: "alice", NickName: "old"}
 	revoker := &fakeSessionRevoker{}
-	uc := NewUserUsecase(repo, newFakeTransaction(), revoker, testLogger())
+	uc := NewUserUsecase(repo, new(fakeCredentialWriter), newFakeTransaction(), revoker, testLogger())
 
 	if _, err := uc.UpdateUser(context.Background(), &User{ID: 42, UserName: "alice", NickName: "new"}); err != nil {
 		t.Fatalf("UpdateUser: %v", err)
@@ -253,8 +263,8 @@ func TestUpdateUserRevocationFailureFailsTheWrite(t *testing.T) {
 	// surface so the transaction rolls the mutation back.
 	repo := newFakeUserRepo()
 	repo.byID[42] = &User{ID: 42, UserName: "alice", Password: "old-hash"}
-	revoker := &fakeSessionRevoker{err: ErrAuthBackendUnavailable, failOnRequest: 1}
-	uc := NewUserUsecase(repo, newFakeTransaction(), revoker, testLogger())
+	revoker := &fakeSessionRevoker{err: authndomain.ErrAuthBackendUnavailable, failOnRequest: 1}
+	uc := NewUserUsecase(repo, new(fakeCredentialWriter), newFakeTransaction(), revoker, testLogger())
 
 	if _, err := uc.UpdateUser(context.Background(), &User{ID: 42, UserName: "alice", Password: "reset"}); err == nil {
 		t.Fatal("revocation failure must fail UpdateUser")
@@ -264,7 +274,7 @@ func TestUpdateUserRevocationFailureFailsTheWrite(t *testing.T) {
 func TestUpdateUser_UserNameConflict(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byName["bob"] = &User{ID: 7, UserName: "bob"}
-	uc := NewUserUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	uc := NewUserUsecase(repo, new(fakeCredentialWriter), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	_, err := uc.UpdateUser(context.Background(), &User{ID: 2, UserName: "bob"})
 	if !errors.Is(err, ErrUserNameConflict) {
@@ -278,7 +288,7 @@ func TestUpdateUser_SameValuesPass(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byID[5] = &User{ID: 5, UserName: "alice"}
 	repo.byName["alice"] = repo.byID[5]
-	uc := NewUserUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	uc := NewUserUsecase(repo, new(fakeCredentialWriter), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	_, err := uc.UpdateUser(context.Background(), &User{ID: 5, UserName: "alice", Email: "a@b.com"})
 	if err != nil {
@@ -289,7 +299,7 @@ func TestUpdateUser_SameValuesPass(t *testing.T) {
 func TestUpdateUser_EmailConflict(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byEmail["a@b.com"] = &User{ID: 7, UserName: "someone", Email: "a@b.com"}
-	uc := NewUserUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	uc := NewUserUsecase(repo, new(fakeCredentialWriter), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	_, err := uc.UpdateUser(context.Background(), &User{ID: 2, UserName: "bob", Email: "a@b.com"})
 	if !errors.Is(err, ErrEmailConflict) {
@@ -299,7 +309,7 @@ func TestUpdateUser_EmailConflict(t *testing.T) {
 
 func TestUpdateUser_EmptyEmailNotChecked(t *testing.T) {
 	repo := newFakeUserRepo()
-	uc := NewUserUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	uc := NewUserUsecase(repo, new(fakeCredentialWriter), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	_, err := uc.UpdateUser(context.Background(), &User{ID: 1, UserName: "bob"})
 	if err != nil {
@@ -310,10 +320,10 @@ func TestUpdateUser_EmptyEmailNotChecked(t *testing.T) {
 func TestGetCurrentUserInfoReadsUserAndCopiesPrincipalSnapshot(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byID[42] = &User{ID: 42, UserName: "alice", Password: "stored-hash"}
-	uc := NewUserUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	uc := NewUserUsecase(repo, new(fakeCredentialWriter), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 	roleKeys := []string{"operator"}
 	permissions := []string{"system:user:list"}
-	principal := NewPrincipal(42, "alice", "session-id", roleKeys, permissions)
+	principal := authndomain.NewPrincipal(42, "alice", "session-id", roleKeys, permissions)
 
 	info, err := uc.GetCurrentUserInfo(t.Context(), principal)
 	if err != nil {
@@ -330,15 +340,15 @@ func TestGetCurrentUserInfoReadsUserAndCopiesPrincipalSnapshot(t *testing.T) {
 }
 
 func TestGetCurrentUserInfoRequiresPrincipal(t *testing.T) {
-	uc := NewUserUsecase(newFakeUserRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
-	if _, err := uc.GetCurrentUserInfo(t.Context(), nil); !errors.Is(err, ErrCredentialMissing) {
+	uc := NewUserUsecase(newFakeUserRepo(), new(fakeCredentialWriter), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	if _, err := uc.GetCurrentUserInfo(t.Context(), nil); !errors.Is(err, authndomain.ErrCredentialMissing) {
 		t.Fatalf("GetCurrentUserInfo(nil) = %v", err)
 	}
 }
 
 func TestDeleteSystemUserDelegatesSecurityTrigger(t *testing.T) {
 	repo := newFakeUserRepo()
-	uc := NewUserUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	uc := NewUserUsecase(repo, new(fakeCredentialWriter), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	if err := uc.DeleteUser(t.Context(), 42); err != nil {
 		t.Fatalf("DeleteUser: %v", err)
