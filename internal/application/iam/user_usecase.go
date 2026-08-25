@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 
+	"glex/internal/crossdomain/authn"
 	iamdomain "glex/internal/domain/iam"
 
 	"golang.org/x/crypto/bcrypt"
@@ -14,13 +15,14 @@ import (
 type UserUsecase struct {
 	repo    iamdomain.UserRepo
 	tx      Transaction
-	revoker iamdomain.SessionRevoker
+	revoker authn.SessionRevoker
 	logger  *slog.Logger
 }
 
 // NewUserUsecase creates a UserUsecase. tx wraps security writes together
-// with their session revocation; revoker performs the revocation.
-func NewUserUsecase(repo iamdomain.UserRepo, tx Transaction, revoker iamdomain.SessionRevoker, logger *slog.Logger) *UserUsecase {
+// with their session revocation; revoker performs the revocation through the
+// authn crossdomain contract.
+func NewUserUsecase(repo iamdomain.UserRepo, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *UserUsecase {
 	return &UserUsecase{
 		repo:    repo,
 		tx:      tx,

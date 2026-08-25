@@ -1,10 +1,12 @@
 package iam
 
 import (
-	. "glex/internal/domain/iam"
-
 	"context"
 	"testing"
+
+	authnmodel "glex/internal/crossdomain/authn/model"
+
+	. "glex/internal/domain/iam"
 )
 
 // fakeTransaction runs fn inline and returns the recorded body error, or —
@@ -54,40 +56,26 @@ func assertSteps(t *testing.T, steps *[]string, want ...string) {
 	}
 }
 
-// fakeSessionRevoker records each revocation batch.
+// fakeSessionRevoker records each revocation request against the authn
+// crossdomain contract.
 type fakeSessionRevoker struct {
-	batches     [][]SystemUserSessionRevocation
-	err         error
-	failOnBatch int // 1-based; when >0, the nth batch fails
+	requests      []*authnmodel.RevocationRequest
+	err           error
+	failOnRequest int // 1-based; when >0, the nth request fails
 }
 
-func (r *fakeSessionRevoker) RevokeSystemUsers(_ context.Context, revocations []SystemUserSessionRevocation) error {
-	batch := append([]SystemUserSessionRevocation(nil), revocations...)
-	r.batches = append(r.batches, batch)
-	if r.failOnBatch > 0 && len(r.batches) == r.failOnBatch && r.err != nil {
+func (r *fakeSessionRevoker) RevokeSystemUsers(_ context.Context, request *authnmodel.RevocationRequest) error {
+	snapshot := *request
+	snapshot.SystemUserIDs = append([]int64(nil), request.SystemUserIDs...)
+	r.requests = append(r.requests, &snapshot)
+	if r.failOnRequest > 0 && len(r.requests) == r.failOnRequest && r.err != nil {
 		return r.err
 	}
 	return nil
 }
 
-// recordingSessionRepo is a LoginSessionRepo whose only live method is
-// RevokeSystemUsers; the embedded interface stays nil because the flows under
-// test never call the rest.
-type recordingSessionRepo struct {
+// stubSessionRepo satisfies LoginSessionRepo for flows that never touch the
+// session store directly; the embedded interface stays nil.
+type stubSessionRepo struct {
 	LoginSessionRepo
-	revocations []SystemUserSessionRevocation
-	err         error
-}
-
-func (r *recordingSessionRepo) RevokeSystemUsers(_ context.Context, revocations []SystemUserSessionRevocation) error {
-	r.revocations = append(r.revocations, revocations...)
-	return r.err
-}
-
-func revokedUserIDs(revocations []SystemUserSessionRevocation) []int64 {
-	ids := make([]int64, 0, len(revocations))
-	for _, revocation := range revocations {
-		ids = append(ids, revocation.SystemUserID)
-	}
-	return ids
 }

@@ -103,7 +103,7 @@ func newLoginUsecase(users *fakeUserRepo, issuer *fakeAuthLoginRepo, counters *f
 }
 
 func newLoginUsecaseWithTx(users *fakeUserRepo, issuer *fakeAuthLoginRepo, counters *fakeLoginCounterRepo, tx *fakeTransaction) *AuthUsecase {
-	uc := NewAuthUsecase(users, newFakeRoleRepo(), newFakeUserRoleRepo(), issuer, counters, &recordingSessionRepo{}, tx, testLogger())
+	uc := NewAuthUsecase(users, newFakeRoleRepo(), newFakeUserRoleRepo(), issuer, counters, &stubSessionRepo{}, new(fakeSessionRevoker), tx, testLogger())
 	uc.now = func() time.Time { return time.Unix(1_700_000_000, 0) }
 	return uc
 }

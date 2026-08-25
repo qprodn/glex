@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"glex/internal/crossdomain/authn"
 	iamdomain "glex/internal/domain/iam"
 
 	"github.com/mileusna/useragent"
@@ -30,15 +31,18 @@ type AuthUsecase struct {
 	login       iamdomain.AuthLoginBackend
 	counterRepo iamdomain.LoginCounterRepo
 	sessionRepo iamdomain.LoginSessionRepo
+	revoker     authn.SessionRevoker
 	tx          Transaction
 	logger      *slog.Logger
 	now         func() time.Time
 }
 
 // NewAuthUsecase creates an AuthUsecase. userRepo/roleRepo back existence
-// checks; linkRepo owns the sys_user_role rows; tx owns the login protocol and
-// Role Assignment replacement transaction boundaries.
-func NewAuthUsecase(userRepo iamdomain.UserRepo, roleRepo iamdomain.RoleRepo, linkRepo iamdomain.UserRoleRepo, login iamdomain.AuthLoginBackend, counterRepo iamdomain.LoginCounterRepo, sessionRepo iamdomain.LoginSessionRepo, tx Transaction, logger *slog.Logger) *AuthUsecase {
+// checks; linkRepo owns the sys_user_role rows; sessionRepo backs Logout;
+// revoker performs Role Assignment revocations through the authn crossdomain
+// contract; tx owns the login protocol and Role Assignment replacement
+// transaction boundaries.
+func NewAuthUsecase(userRepo iamdomain.UserRepo, roleRepo iamdomain.RoleRepo, linkRepo iamdomain.UserRoleRepo, login iamdomain.AuthLoginBackend, counterRepo iamdomain.LoginCounterRepo, sessionRepo iamdomain.LoginSessionRepo, revoker authn.SessionRevoker, tx Transaction, logger *slog.Logger) *AuthUsecase {
 	return &AuthUsecase{
 		userRepo:    userRepo,
 		roleRepo:    roleRepo,
@@ -46,6 +50,7 @@ func NewAuthUsecase(userRepo iamdomain.UserRepo, roleRepo iamdomain.RoleRepo, li
 		login:       login,
 		counterRepo: counterRepo,
 		sessionRepo: sessionRepo,
+		revoker:     revoker,
 		tx:          tx,
 		logger:      logger.With(slog.String("component", "application.iam.auth")),
 		now:         time.Now,
@@ -207,7 +212,7 @@ func (uc *AuthUsecase) UpdateUserRoles(ctx context.Context, userID int64, roleID
 		if err != nil {
 			return err
 		}
-		return revokeAllSystemUsers(ctx, uc.sessionRepo, affected...)
+		return revokeAllSystemUsers(ctx, uc.revoker, affected...)
 	}); err != nil {
 		return nil, err
 	}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	iamapp "glex/internal/application/iam"
+	authnimpl "glex/internal/crossdomain/authn/impl"
 	"glex/internal/domain/iam"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/user"
@@ -172,7 +173,7 @@ func TestSecurityChangeCommitFailureKeepsSessionsRevokedIntegration(t *testing.T
 	t.Cleanup(cleanupManager)
 	data := &store.Data{DB: ent.NewDatabaseFromClient(client), Redis: rdb, Logger: testLogger(), RedisReadTimeout: time.Second, RedisWriteTimeout: time.Second}
 	sessions := NewLoginSessionRepo(data, manager, testAuthConf())
-	revoker := NewSessionRevoker(sessions)
+	revoker := authnimpl.NewSessionRevoker(sessions)
 	tx := store.NewTxManager(data)
 	uc := iamapp.NewUserUsecase(NewUserRepo(data), tx, revoker, testLogger())
 

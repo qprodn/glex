@@ -16,6 +16,8 @@ import (
 
 	iamapp "glex/internal/application/iam"
 	"glex/internal/conf"
+	authncrossdomain "glex/internal/crossdomain/authn"
+	authnimpl "glex/internal/crossdomain/authn/impl"
 	"glex/internal/domain/iam"
 
 	"github.com/redis/go-redis/v9"
@@ -137,7 +139,7 @@ type authGraph struct {
 	login      iam.AuthLoginBackend
 	authorizer iam.Authenticator
 	tx         *store.TxManager
-	revoker    iam.SessionRevoker
+	revoker    authncrossdomain.SessionRevoker
 	counter    iam.LoginCounterRepo
 	users      iam.UserRepo
 	roles      iam.RoleRepo
@@ -173,7 +175,7 @@ func (s *integrationStores) newGraph(t *testing.T) *authGraph {
 	}
 	t.Cleanup(cleanupManager)
 	sessions := NewLoginSessionRepo(data, manager, s.conf)
-	revoker := NewSessionRevoker(sessions)
+	revoker := authnimpl.NewSessionRevoker(sessions)
 	tx := store.NewTxManager(data)
 	counter := NewLoginCounterRepo(data, s.conf)
 	loginRepo := NewAuthLoginBackend(data, manager, sessions, s.conf)
@@ -200,7 +202,7 @@ func (s *integrationStores) newGraph(t *testing.T) *authGraph {
 		userUC:     iamapp.NewUserUsecase(users, tx, revoker, s.logger),
 		roleUC:     iamapp.NewRoleUsecase(roles, menus, userRoles, tx, revoker, s.logger),
 		menuUC:     iamapp.NewMenuUsecase(menus, tx, revoker, s.logger),
-		authUC:     iamapp.NewAuthUsecase(users, roles, userRoles, loginRepo, counter, sessions, tx, s.logger),
+		authUC:     iamapp.NewAuthUsecase(users, roles, userRoles, loginRepo, counter, sessions, revoker, tx, s.logger),
 	}
 }
 

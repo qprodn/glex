@@ -98,13 +98,6 @@ type SystemUserSessionRevocation struct {
 	Policy       SessionRevocation
 }
 
-// SessionRevoker is the slice of LoginSessionRepo that a security-changing
-// write pairs with its database mutation. Implemented by the Login Session
-// repository.
-type SessionRevoker interface {
-	RevokeSystemUsers(ctx context.Context, revocations []SystemUserSessionRevocation) error
-}
-
 var (
 	// ErrLoginSessionNotFound: the Session ID is absent or expired.
 	ErrLoginSessionNotFound = errors.NotFound("TOKEN_INVALID", "Login Session not found")

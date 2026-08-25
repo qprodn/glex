@@ -11,6 +11,7 @@ import (
 	"glex/internal/application"
 	iamapp "glex/internal/application/iam"
 	"glex/internal/conf"
+	authnimpl "glex/internal/crossdomain/authn/impl"
 	"glex/internal/infra"
 	"glex/internal/infra/store"
 	"glex/internal/server"
@@ -24,6 +25,7 @@ func wireApp(*conf.Server, *conf.Data, *conf.Auth, *slog.Logger) (*kratos.App, f
 	panic(wire.Build(
 		server.ProviderSet,
 		infra.ProviderSet,
+		authnimpl.ProviderSet,
 		wire.Bind(new(iamapp.Transaction), new(*store.TxManager)),
 		application.ProviderSet,
 		newApp,

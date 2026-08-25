@@ -10,6 +10,7 @@ import (
 	"github.com/go-kratos/kratos/v3"
 	"glex/internal/application/iam"
 	"glex/internal/conf"
+	"glex/internal/crossdomain/authn/impl"
 	"glex/internal/infra/iam"
 	"glex/internal/infra/store"
 	"glex/internal/server"
@@ -37,7 +38,7 @@ func wireApp(confServer *conf.Server, data *conf.Data, auth *conf.Auth, logger *
 		return nil, nil, err
 	}
 	loginSessionRepo := iaminfra.NewLoginSessionRepo(storeData, v, auth)
-	sessionRevoker := iaminfra.NewSessionRevoker(loginSessionRepo)
+	sessionRevoker := impl.NewSessionRevoker(loginSessionRepo)
 	userUsecase := iam.NewUserUsecase(userRepo, txManager, sessionRevoker, logger)
 	userApplication := iam.NewUserApplication(userUsecase, logger)
 	menuRepo := iaminfra.NewMenuRepo(storeData)
@@ -50,7 +51,7 @@ func wireApp(confServer *conf.Server, data *conf.Data, auth *conf.Auth, logger *
 	grpcServer := server.NewGRPCServer(confServer, userApplication, menuApplication, roleApplication, logger)
 	authLoginBackend := iaminfra.NewAuthLoginBackend(storeData, v, loginSessionRepo, auth)
 	loginCounterRepo := iaminfra.NewLoginCounterRepo(storeData, auth)
-	authUsecase := iam.NewAuthUsecase(userRepo, roleRepo, userRoleRepo, authLoginBackend, loginCounterRepo, loginSessionRepo, txManager, logger)
+	authUsecase := iam.NewAuthUsecase(userRepo, roleRepo, userRoleRepo, authLoginBackend, loginCounterRepo, loginSessionRepo, sessionRevoker, txManager, logger)
 	authApplication := iam.NewAuthApplication(authUsecase, logger)
 	loginSessionUsecase := iam.NewLoginSessionUsecase(loginSessionRepo, logger)
 	onlineSessionApplication := iam.NewOnlineSessionApplication(loginSessionUsecase, logger)

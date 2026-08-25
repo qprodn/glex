@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 
+	"glex/internal/crossdomain/authn"
 	iamdomain "glex/internal/domain/iam"
 )
 
@@ -14,7 +15,7 @@ type RoleUsecase struct {
 	menuRepo     iamdomain.MenuRepo
 	userRoleRepo iamdomain.UserRoleRepo
 	tx           Transaction
-	revoker      iamdomain.SessionRevoker
+	revoker      authn.SessionRevoker
 	logger       *slog.Logger
 }
 
@@ -22,8 +23,8 @@ type RoleUsecase struct {
 // (granted menus must exist and not be soft-deleted); userRoleRepo backs the
 // "a role with users cannot be deleted/disabled" guard (iamdomain.Role Assignment); tx
 // wraps security writes together with their session revocation; revoker
-// performs the revocation.
-func NewRoleUsecase(repo iamdomain.RoleRepo, menuRepo iamdomain.MenuRepo, userRoleRepo iamdomain.UserRoleRepo, tx Transaction, revoker iamdomain.SessionRevoker, logger *slog.Logger) *RoleUsecase {
+// performs the revocation through the authn crossdomain contract.
+func NewRoleUsecase(repo iamdomain.RoleRepo, menuRepo iamdomain.MenuRepo, userRoleRepo iamdomain.UserRoleRepo, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *RoleUsecase {
 	return &RoleUsecase{
 		repo:         repo,
 		menuRepo:     menuRepo,

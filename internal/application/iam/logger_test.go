@@ -18,7 +18,7 @@ func TestUsecasesReceiveComponentLogger(t *testing.T) {
 	NewUserUsecase(nil, nil, nil, logger).logger.Info("configured")
 	NewMenuUsecase(nil, nil, nil, logger).logger.Info("configured")
 	NewRoleUsecase(nil, nil, nil, nil, nil, logger).logger.Info("configured")
-	NewAuthUsecase(nil, nil, nil, nil, nil, nil, nil, logger).logger.Info("configured")
+	NewAuthUsecase(nil, nil, nil, nil, nil, nil, nil, nil, logger).logger.Info("configured")
 	NewLoginSessionUsecase(nil, logger).logger.Info("configured")
 
 	for _, component := range []string{

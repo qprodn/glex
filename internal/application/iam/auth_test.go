@@ -42,10 +42,11 @@ func (r *fakeUserRoleRepo) ReplaceUserRoles(_ context.Context, userID int64, rol
 	return []int64{userID}, nil
 }
 
-// newAuthUsecase wires the auth usecase with the test transaction and a
-// recording session repo (the revocation sink of UpdateUserRoles).
+// newAuthUsecase wires the auth usecase with the test transaction and a nil
+// stub session store; flows under test reach the session world only through
+// the injected revocation fake.
 func newAuthUsecase(users UserRepo, link UserRoleRepo) *AuthUsecase {
-	return NewAuthUsecase(users, newFakeRoleRepo(), link, nil, nil, &recordingSessionRepo{}, newFakeTransaction(), testLogger())
+	return NewAuthUsecase(users, newFakeRoleRepo(), link, nil, nil, &stubSessionRepo{}, new(fakeSessionRevoker), newFakeTransaction(), testLogger())
 }
 
 func (r *fakeUserRoleRepo) ListRoleUsers(context.Context, int64, ...ListOption) ([]*User, error) {
@@ -133,7 +134,8 @@ func TestAuthUpdateUserRoles_FullReplacement(t *testing.T) {
 		{ID: 3, RoleName: "访客", RoleKey: "guest", RoleSort: 3},
 	}
 	link.links[10] = []int64{1, 2}
-	uc := newAuthUsecase(users, link)
+	revoker := &fakeSessionRevoker{}
+	uc := NewAuthUsecase(users, newFakeRoleRepo(), link, nil, nil, &stubSessionRepo{}, revoker, newFakeTransaction(), testLogger())
 
 	// Replace with [2, 3] — duplicates are silently deduped.
 	got, err := uc.UpdateUserRoles(context.Background(), 10, []int64{2, 3, 2})
@@ -142,6 +144,9 @@ func TestAuthUpdateUserRoles_FullReplacement(t *testing.T) {
 	}
 	if len(link.replaced) != 1 || link.replaced[0] != 10 {
 		t.Fatalf("expected exactly one replacement of user 10, got %v", link.replaced)
+	}
+	if len(revoker.requests) != 1 || len(revoker.requests[0].SystemUserIDs) != 1 || revoker.requests[0].SystemUserIDs[0] != 10 {
+		t.Fatalf("revocation requests = %#v, want one request revoking user 10", revoker.requests)
 	}
 	want := []int64{2, 3}
 	if len(link.links[10]) != 2 || link.links[10][0] != want[0] || link.links[10][1] != want[1] {

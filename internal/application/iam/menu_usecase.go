@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"sort"
 
+	"glex/internal/crossdomain/authn"
 	iamdomain "glex/internal/domain/iam"
 )
 
@@ -13,13 +14,14 @@ import (
 type MenuUsecase struct {
 	repo    iamdomain.MenuRepo
 	tx      Transaction
-	revoker iamdomain.SessionRevoker
+	revoker authn.SessionRevoker
 	logger  *slog.Logger
 }
 
 // NewMenuUsecase creates a MenuUsecase. tx wraps security writes together
-// with their session revocation; revoker performs the revocation.
-func NewMenuUsecase(repo iamdomain.MenuRepo, tx Transaction, revoker iamdomain.SessionRevoker, logger *slog.Logger) *MenuUsecase {
+// with their session revocation; revoker performs the revocation through the
+// authn crossdomain contract.
+func NewMenuUsecase(repo iamdomain.MenuRepo, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *MenuUsecase {
 	return &MenuUsecase{
 		repo:    repo,
 		tx:      tx,

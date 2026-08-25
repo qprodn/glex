@@ -206,12 +206,12 @@ func TestUpdateUserSelfPasswordPreservesOnlyCurrentSession(t *testing.T) {
 	if _, err := uc.UpdateUser(ctx, &User{ID: 42, UserName: "alice", Password: "newsecret"}); err != nil {
 		t.Fatalf("UpdateUser: %v", err)
 	}
-	if len(revoker.batches) != 1 || len(revoker.batches[0]) != 1 {
-		t.Fatalf("revocation batches = %#v, want one single-user batch", revoker.batches)
+	if len(revoker.requests) != 1 || len(revoker.requests[0].SystemUserIDs) != 1 {
+		t.Fatalf("revocation requests = %#v, want one single-user request", revoker.requests)
 	}
-	policy := revoker.batches[0][0]
-	if policy.SystemUserID != 42 || policy.Policy.PreservedSessionID() != "current-session" {
-		t.Fatalf("revocation = {%d, %#v}, want {42, preserve current-session}", policy.SystemUserID, policy.Policy)
+	request := revoker.requests[0]
+	if request.SystemUserIDs[0] != 42 || request.PreservedSessionID != "current-session" {
+		t.Fatalf("request = %#v, want {42, preserve current-session}", request)
 	}
 }
 
@@ -225,12 +225,12 @@ func TestUpdateUserAdministrativePasswordResetRevokesAllSessions(t *testing.T) {
 	if _, err := uc.UpdateUser(ctx, &User{ID: 42, UserName: "alice", Password: "reset-secret"}); err != nil {
 		t.Fatalf("UpdateUser: %v", err)
 	}
-	if len(revoker.batches) != 1 || len(revoker.batches[0]) != 1 {
-		t.Fatalf("revocation batches = %#v, want one single-user batch", revoker.batches)
+	if len(revoker.requests) != 1 || len(revoker.requests[0].SystemUserIDs) != 1 {
+		t.Fatalf("revocation requests = %#v, want one single-user request", revoker.requests)
 	}
-	policy := revoker.batches[0][0]
-	if policy.SystemUserID != 42 || !policy.Policy.Required() || policy.Policy.PreservedSessionID() != "" {
-		t.Fatalf("revocation = {%d, %#v}, want {42, revoke-all}", policy.SystemUserID, policy.Policy)
+	request := revoker.requests[0]
+	if request.SystemUserIDs[0] != 42 || request.PreservedSessionID != "" {
+		t.Fatalf("request = %#v, want {42, revoke-all}", request)
 	}
 }
 
@@ -243,8 +243,8 @@ func TestUpdateUserProfileOnlyChangeSkipsRevocation(t *testing.T) {
 	if _, err := uc.UpdateUser(context.Background(), &User{ID: 42, UserName: "alice", NickName: "new"}); err != nil {
 		t.Fatalf("UpdateUser: %v", err)
 	}
-	if len(revoker.batches) != 0 {
-		t.Fatalf("profile-only update must not revoke, got %#v", revoker.batches)
+	if len(revoker.requests) != 0 {
+		t.Fatalf("profile-only update must not revoke, got %#v", revoker.requests)
 	}
 }
 
@@ -253,7 +253,7 @@ func TestUpdateUserRevocationFailureFailsTheWrite(t *testing.T) {
 	// surface so the transaction rolls the mutation back.
 	repo := newFakeUserRepo()
 	repo.byID[42] = &User{ID: 42, UserName: "alice", Password: "old-hash"}
-	revoker := &fakeSessionRevoker{err: ErrAuthBackendUnavailable, failOnBatch: 1}
+	revoker := &fakeSessionRevoker{err: ErrAuthBackendUnavailable, failOnRequest: 1}
 	uc := NewUserUsecase(repo, newFakeTransaction(), revoker, testLogger())
 
 	if _, err := uc.UpdateUser(context.Background(), &User{ID: 42, UserName: "alice", Password: "reset"}); err == nil {
