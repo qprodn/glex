@@ -1,4 +1,4 @@
-package iam
+package user
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 	"glex/internal/crossdomain/authn"
 	authnmodel "glex/internal/crossdomain/authn/model"
-	iamdomain "glex/internal/domain/iam"
+	userdomain "glex/internal/domain/user"
 )
 
 // revokeSystemUsers assembles the flat revocation request for the affected
@@ -17,8 +17,8 @@ import (
 // Login Session: the only producer of a preserved policy is a single-user self
 // password change, and conflicting preserves are rejected rather than
 // silently resolved.
-func revokeSystemUsers(ctx context.Context, revoker authn.SessionRevoker, revocations ...iamdomain.SystemUserSessionRevocation) error {
-	byUser := make(map[int64]iamdomain.SessionRevocation, len(revocations))
+func revokeSystemUsers(ctx context.Context, revoker authn.SessionRevoker, revocations ...userdomain.SystemUserSessionRevocation) error {
+	byUser := make(map[int64]userdomain.SessionRevocation, len(revocations))
 	for _, revocation := range revocations {
 		if revocation.SystemUserID > 0 && revocation.Policy.Required() {
 			byUser[revocation.SystemUserID] = revocation.Policy
@@ -52,9 +52,9 @@ func revokeSystemUsers(ctx context.Context, revoker authn.SessionRevoker, revoca
 // revokeAllSystemUsers revokes every Login Session of the given System Users
 // (the default administrative policy).
 func revokeAllSystemUsers(ctx context.Context, revoker authn.SessionRevoker, systemUserIDs ...int64) error {
-	revocations := make([]iamdomain.SystemUserSessionRevocation, 0, len(systemUserIDs))
+	revocations := make([]userdomain.SystemUserSessionRevocation, 0, len(systemUserIDs))
 	for _, id := range systemUserIDs {
-		revocations = append(revocations, iamdomain.SystemUserSessionRevocation{SystemUserID: id, Policy: iamdomain.RevokeAllLoginSessions()})
+		revocations = append(revocations, userdomain.SystemUserSessionRevocation{SystemUserID: id, Policy: userdomain.RevokeAllLoginSessions()})
 	}
 	return revokeSystemUsers(ctx, revoker, revocations...)
 }

@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	iamapp "glex/internal/application/iam"
+	userapp "glex/internal/application/user"
 	authnimpl "glex/internal/crossdomain/authn/impl"
 	access "glex/internal/domain/access"
 	authndomain "glex/internal/domain/authn"
-	iam "glex/internal/domain/iam"
+	userdomain "glex/internal/domain/user"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/user"
-	iaminfra "glex/internal/infra/iam"
+	userinfra "glex/internal/infra/user"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
@@ -27,7 +27,7 @@ type securityIntegration struct {
 	data      *store.Data
 	client    *ent.Client
 	sessions  authndomain.LoginSessionRepo
-	users     iam.UserRepo
+	users     userdomain.UserRepo
 	roles     access.RoleRepo
 	menus     access.MenuRepo
 	userRoles access.UserRoleRepo
@@ -178,7 +178,7 @@ func TestSecurityChangeCommitFailureKeepsSessionsRevokedIntegration(t *testing.T
 	sessions := NewLoginSessionRepo(data, manager, testAuthConf())
 	revoker := authnimpl.NewSessionRevoker(sessions)
 	tx := store.NewTxManager(data)
-	uc := iamapp.NewUserUsecase(iaminfra.NewUserRepo(data), authnimpl.NewCredentialWriter(NewCredentialRepo(data)), tx, revoker, testLogger())
+	uc := userapp.NewUserUsecase(userinfra.NewUserRepo(data), authnimpl.NewCredentialWriter(NewCredentialRepo(data)), tx, revoker, testLogger())
 
 	token := issueTestBearer(t, manager, 42, "alice", "desktop")
 	created, err := sessions.Create(t.Context(), token, &authndomain.LoginSession{SystemUserID: 42, UserName: "alice", DeviceType: "desktop", LoginTime: time.Unix(1_700_000_000, 0)})
@@ -201,7 +201,7 @@ func TestSecurityChangeCommitFailureKeepsSessionsRevokedIntegration(t *testing.T
 		))
 	mock.ExpectCommit().WillReturnError(commitFailure)
 
-	_, err = uc.UpdateUser(t.Context(), &iam.User{ID: 42, UserName: "alice", NickName: "Alice", Status: 1})
+	_, err = uc.UpdateUser(t.Context(), &userdomain.User{ID: 42, UserName: "alice", NickName: "Alice", Status: 1})
 	if !errors.Is(err, commitFailure) {
 		t.Fatalf("UpdateUser error = %v, want injected commit failure", err)
 	}

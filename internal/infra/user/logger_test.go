@@ -1,4 +1,4 @@
-package iaminfra
+package userinfra
 
 import "log/slog"
 

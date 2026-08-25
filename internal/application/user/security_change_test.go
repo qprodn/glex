@@ -1,10 +1,10 @@
-package iam
+package user
 
 import (
 	"context"
 	"testing"
 
-	. "glex/internal/domain/iam"
+	. "glex/internal/domain/user"
 )
 
 func TestRevokeSystemUsersAssemblesSortedDedupedRequest(t *testing.T) {

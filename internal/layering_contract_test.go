@@ -104,26 +104,26 @@ func TestDomainPackagesAreIslands(t *testing.T) {
 
 // TestModuleSplitBoundaries pins the module split of ADR 0016: the authn and
 // access application modules are reachable from the other modules only
-// through the crossdomain contracts and the Principal context, iam (the
-// remaining System User span) reaches access the same way, and neither authn
-// nor access reaches into another module's application or infra.
+// through the crossdomain contracts and the Principal context, user (the
+// System User module) reaches access the same way, and none of the three
+// reaches into another module's application or infra.
 func TestModuleSplitBoundaries(t *testing.T) {
 	importViolation(t, filepath.Join("application", "authn"), []string{
-		"glex/internal/domain/iam",
-		"glex/internal/application/iam",
-		"glex/internal/infra/iam",
+		"glex/internal/domain/user",
+		"glex/internal/application/user",
+		"glex/internal/infra/user",
 		"glex/internal/domain/access",
 		"glex/internal/application/access",
 		"glex/internal/infra/access",
 	}, true)
 	importViolation(t, filepath.Join("application", "access"), []string{
-		"glex/internal/domain/iam",
-		"glex/internal/application/iam",
-		"glex/internal/infra/iam",
+		"glex/internal/domain/user",
+		"glex/internal/application/user",
+		"glex/internal/infra/user",
 		"glex/internal/application/authn",
 		"glex/internal/infra/authn",
 	}, true)
-	importViolation(t, filepath.Join("application", "iam"), []string{
+	importViolation(t, filepath.Join("application", "user"), []string{
 		"glex/internal/application/authn",
 		"glex/internal/infra/authn",
 		"glex/internal/domain/access",

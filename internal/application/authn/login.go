@@ -15,8 +15,8 @@ import (
 
 // LoginApplication implements the authn span of the proto AuthService: the
 // Login/Logout endpoints. The role-assignment span of the same proto service
-// stays with iam until the contracts split (ticket 06); server joins the two
-// spans at registration.
+// stays with access until the contracts split (ticket 06); server joins the
+// two spans at registration.
 type LoginApplication struct {
 	authv1.UnimplementedAuthServiceServer
 

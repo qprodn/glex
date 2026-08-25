@@ -1,4 +1,4 @@
-package iam
+package user
 
 import (
 	"context"
@@ -8,26 +8,26 @@ import (
 	"time"
 
 	authndomain "glex/internal/domain/authn"
-	iamdomain "glex/internal/domain/iam"
+	userdomain "glex/internal/domain/user"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type currentUserUsecase struct {
 	userUsecase
-	info      *iamdomain.CurrentUserInfo
+	info      *userdomain.CurrentUserInfo
 	principal *authndomain.Principal
 }
 
-func (u *currentUserUsecase) GetCurrentUserInfo(_ context.Context, principal *authndomain.Principal) (*iamdomain.CurrentUserInfo, error) {
+func (u *currentUserUsecase) GetCurrentUserInfo(_ context.Context, principal *authndomain.Principal) (*userdomain.CurrentUserInfo, error) {
 	u.principal = principal
 	return u.info, nil
 }
 
 func TestGetInfoUsesPrincipalSnapshotAndNeverExposesPassword(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
-	uc := &currentUserUsecase{info: &iamdomain.CurrentUserInfo{
-		User: &iamdomain.User{
+	uc := &currentUserUsecase{info: &userdomain.CurrentUserInfo{
+		User: &userdomain.User{
 			ID: 42, UserName: "alice", NickName: "Alice", Password: "bcrypt-secret-hash",
 			Email: "alice@example.com", LoginDate: &now, CreatedAt: now, UpdatedAt: now,
 		},

@@ -1,4 +1,4 @@
-package iam
+package user
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 
 	userv1 "glex/api/iam/user/v1"
 	authndomain "glex/internal/domain/authn"
-	iamdomain "glex/internal/domain/iam"
+	userdomain "glex/internal/domain/user"
 
 	"go.einride.tech/aip/fieldmask"
 	"go.einride.tech/aip/filtering"
@@ -16,9 +16,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// convertUser maps a iamdomain.User DO to the proto User DTO. Password is deliberately
+// convertUser maps a userdomain.User DO to the proto User DTO. Password is deliberately
 // omitted — it is write-only (accepted on create/update, never returned).
-func convertUser(m *iamdomain.User) *userv1.User {
+func convertUser(m *userdomain.User) *userv1.User {
 	u := &userv1.User{
 		UserId:      m.ID,
 		UserName:    m.UserName,
@@ -54,11 +54,11 @@ type UserApplication struct {
 }
 
 type userUsecase interface {
-	CreateUser(context.Context, *iamdomain.User) (*iamdomain.User, error)
-	GetUser(context.Context, int64) (*iamdomain.User, error)
-	GetCurrentUserInfo(context.Context, *authndomain.Principal) (*iamdomain.CurrentUserInfo, error)
-	ListUsers(context.Context, ...iamdomain.ListOption) ([]*iamdomain.User, error)
-	UpdateUser(context.Context, *iamdomain.User) (*iamdomain.User, error)
+	CreateUser(context.Context, *userdomain.User) (*userdomain.User, error)
+	GetUser(context.Context, int64) (*userdomain.User, error)
+	GetCurrentUserInfo(context.Context, *authndomain.Principal) (*userdomain.CurrentUserInfo, error)
+	ListUsers(context.Context, ...userdomain.ListOption) ([]*userdomain.User, error)
+	UpdateUser(context.Context, *userdomain.User) (*userdomain.User, error)
 	DeleteUser(context.Context, int64) error
 }
 
@@ -77,7 +77,7 @@ func newUserApplication(uc userUsecase, logger *slog.Logger) *UserApplication {
 // CreateUser creates a system user.
 func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUserRequest) (*userv1.User, error) {
 	in := req.GetUser()
-	created, err := s.uc.CreateUser(ctx, &iamdomain.User{
+	created, err := s.uc.CreateUser(ctx, &userdomain.User{
 		UserName:    in.GetUserName(),
 		NickName:    in.GetNickName(),
 		Email:       in.GetEmail(),
@@ -171,10 +171,10 @@ func (s *UserApplication) ListUsers(ctx context.Context, req *userv1.ListUsersRe
 		req.PageSize = 20
 	}
 	users, err := s.uc.ListUsers(ctx,
-		iamdomain.ListFilter(filter),
-		iamdomain.ListOrderBy(orderBy),
-		iamdomain.ListLimit(int(req.GetPageSize())),
-		iamdomain.ListOffset(int(pageToken.Offset)),
+		userdomain.ListFilter(filter),
+		userdomain.ListOrderBy(orderBy),
+		userdomain.ListLimit(int(req.GetPageSize())),
+		userdomain.ListOffset(int(pageToken.Offset)),
 	)
 	if err != nil {
 		return nil, err
@@ -200,7 +200,7 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 		return nil, err
 	}
 	fieldmask.Update(req.GetUpdateMask(), current, req.GetUser())
-	updated, err := s.uc.UpdateUser(ctx, &iamdomain.User{
+	updated, err := s.uc.UpdateUser(ctx, &userdomain.User{
 		ID:          current.GetUserId(),
 		UserName:    current.GetUserName(),
 		NickName:    current.GetNickName(),

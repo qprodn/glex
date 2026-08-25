@@ -1,4 +1,4 @@
-package iam
+package user
 
 // SessionRevocation is the explicit policy for a security-changing write in
 // this module: whether Login Sessions must be revoked, and the one Session a

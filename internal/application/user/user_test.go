@@ -1,9 +1,9 @@
-package iam
+package user
 
 import (
 	authnmodel "glex/internal/crossdomain/authn/model"
 	authndomain "glex/internal/domain/authn"
-	. "glex/internal/domain/iam"
+	. "glex/internal/domain/user"
 
 	"context"
 	"testing"
@@ -12,7 +12,7 @@ import (
 )
 
 // fakeCredentialWriter records password requests handed to authn's credential
-// capability; iam never hashes or stores the credential itself.
+// capability; the user module never hashes or stores the credential itself.
 type fakeCredentialWriter struct {
 	written []*authnmodel.SystemUserCredential
 	err     error

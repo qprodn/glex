@@ -10,14 +10,14 @@ import (
 	"github.com/go-kratos/kratos/v3"
 	"glex/internal/application/access"
 	"glex/internal/application/authn"
-	"glex/internal/application/iam"
+	"glex/internal/application/user"
 	"glex/internal/conf"
 	impl2 "glex/internal/crossdomain/access/impl"
 	"glex/internal/crossdomain/authn/impl"
 	"glex/internal/infra/access"
 	"glex/internal/infra/authn"
-	"glex/internal/infra/iam"
 	"glex/internal/infra/store"
+	"glex/internal/infra/user"
 	"glex/internal/server"
 	"log/slog"
 )
@@ -34,7 +34,7 @@ func wireApp(confServer *conf.Server, data *conf.Data, auth *conf.Auth, logger *
 	if err != nil {
 		return nil, nil, err
 	}
-	userRepo := iaminfra.NewUserRepo(storeData)
+	userRepo := userinfra.NewUserRepo(storeData)
 	credentialRepo := authninfra.NewCredentialRepo(storeData)
 	credentialWriter := impl.NewCredentialWriter(credentialRepo)
 	txManager := store.NewTxManager(storeData)
@@ -46,8 +46,8 @@ func wireApp(confServer *conf.Server, data *conf.Data, auth *conf.Auth, logger *
 	}
 	loginSessionRepo := authninfra.NewLoginSessionRepo(storeData, v, auth)
 	sessionRevoker := impl.NewSessionRevoker(loginSessionRepo)
-	userUsecase := iam.NewUserUsecase(userRepo, credentialWriter, txManager, sessionRevoker, logger)
-	userApplication := iam.NewUserApplication(userUsecase, logger)
+	userUsecase := user.NewUserUsecase(userRepo, credentialWriter, txManager, sessionRevoker, logger)
+	userApplication := user.NewUserApplication(userUsecase, logger)
 	menuRepo := accessinfra.NewMenuRepo(storeData)
 	menuUsecase := access.NewMenuUsecase(menuRepo, txManager, sessionRevoker, logger)
 	menuApplication := access.NewMenuApplication(menuUsecase, logger)

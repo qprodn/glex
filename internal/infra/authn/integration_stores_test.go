@@ -16,7 +16,7 @@ import (
 
 	accessapp "glex/internal/application/access"
 	authnapp "glex/internal/application/authn"
-	iamapp "glex/internal/application/iam"
+	userapp "glex/internal/application/user"
 	"glex/internal/conf"
 	accesscrossdomain "glex/internal/crossdomain/access"
 	accessimpl "glex/internal/crossdomain/access/impl"
@@ -24,9 +24,9 @@ import (
 	authnimpl "glex/internal/crossdomain/authn/impl"
 	access "glex/internal/domain/access"
 	authndomain "glex/internal/domain/authn"
-	iam "glex/internal/domain/iam"
+	userdomain "glex/internal/domain/user"
 	accessinfra "glex/internal/infra/access"
-	iaminfra "glex/internal/infra/iam"
+	userinfra "glex/internal/infra/user"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sa-tokens/sa-token-go/core"
@@ -150,11 +150,11 @@ type authGraph struct {
 	revoker      authncrossdomain.SessionRevoker
 	counter      authndomain.LoginCounterRepo
 	resolver     accesscrossdomain.AuthorizationResolver
-	users        iam.UserRepo
+	users        userdomain.UserRepo
 	roles        access.RoleRepo
 	menus        access.MenuRepo
 	userRoles    access.UserRoleRepo
-	userUC       *iamapp.UserUsecase
+	userUC       *userapp.UserUsecase
 	roleUC       *accessapp.RoleUsecase
 	menuUC       *accessapp.MenuUsecase
 	authUC       *authnapp.LoginUsecase
@@ -189,7 +189,7 @@ func (s *integrationStores) newGraph(t *testing.T) *authGraph {
 	tx := store.NewTxManager(data)
 	counter := NewLoginCounterRepo(data, s.conf)
 	loginRepo := NewAuthLoginBackend(data, manager, sessions, s.conf)
-	users := iaminfra.NewUserRepo(data)
+	users := userinfra.NewUserRepo(data)
 	roles := accessinfra.NewRoleRepo(data)
 	menus := accessinfra.NewMenuRepo(data)
 	userRoles := accessinfra.NewUserRoleRepo(data)
@@ -211,7 +211,7 @@ func (s *integrationStores) newGraph(t *testing.T) *authGraph {
 		roles:        roles,
 		menus:        menus,
 		userRoles:    userRoles,
-		userUC:       iamapp.NewUserUsecase(users, authnimpl.NewCredentialWriter(NewCredentialRepo(data)), tx, revoker, s.logger),
+		userUC:       userapp.NewUserUsecase(users, authnimpl.NewCredentialWriter(NewCredentialRepo(data)), tx, revoker, s.logger),
 		roleUC:       accessapp.NewRoleUsecase(roles, menus, userRoles, tx, revoker, s.logger),
 		menuUC:       accessapp.NewMenuUsecase(menus, tx, revoker, s.logger),
 		authUC:       authnapp.NewLoginUsecase(loginRepo, counter, sessions, resolver, tx, s.logger),

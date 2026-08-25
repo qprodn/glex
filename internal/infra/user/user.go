@@ -1,4 +1,4 @@
-package iaminfra
+package userinfra
 
 import (
 	"glex/internal/infra/store"
@@ -7,15 +7,15 @@ import (
 	"time"
 
 	"github.com/go-kratos/aip-go/ents"
-	"glex/internal/domain/iam"
+	userdomain "glex/internal/domain/user"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/user"
 )
 
-// toBiz maps an ent User PO to a iam.User DO. The credential column is
+// toBiz maps an ent User PO to a userdomain.User DO. The credential column is
 // deliberately not mapped: only authn's adapters read it (ADR 0016).
-func toBiz(po *ent.User) *iam.User {
-	u := &iam.User{
+func toBiz(po *ent.User) *userdomain.User {
+	u := &userdomain.User{
 		ID:        po.ID,
 		UserName:  po.UserName,
 		NickName:  po.NickName,
@@ -44,67 +44,67 @@ type userRepo struct {
 }
 
 // NewUserRepo creates a new UserRepo instance.
-func NewUserRepo(data *store.Data) iam.UserRepo {
+func NewUserRepo(data *store.Data) userdomain.UserRepo {
 	return &userRepo{data: data}
 }
 
-func (r *userRepo) FindByID(ctx context.Context, id int64) (*iam.User, error) {
+func (r *userRepo) FindByID(ctx context.Context, id int64) (*userdomain.User, error) {
 	po, err := r.data.DB.User(ctx).Query().
 		Where(user.IDEQ(id), user.DeletedAtIsNil()).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrUserNotFound
+			return nil, userdomain.ErrUserNotFound
 		}
 		return nil, err
 	}
 	return toBiz(po), nil
 }
 
-func (r *userRepo) FindByUserName(ctx context.Context, userName string) (*iam.User, error) {
+func (r *userRepo) FindByUserName(ctx context.Context, userName string) (*userdomain.User, error) {
 	po, err := r.data.DB.User(ctx).Query().
 		Where(user.UserNameEQ(userName), user.DeletedAtIsNil()).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrUserNotFound
+			return nil, userdomain.ErrUserNotFound
 		}
 		if ent.IsNotSingular(err) {
-			return nil, iam.ErrUserNameAmbiguous
+			return nil, userdomain.ErrUserNameAmbiguous
 		}
 		return nil, err
 	}
 	return toBiz(po), nil
 }
 
-func (r *userRepo) FindByEmail(ctx context.Context, email string) (*iam.User, error) {
+func (r *userRepo) FindByEmail(ctx context.Context, email string) (*userdomain.User, error) {
 	po, err := r.data.DB.User(ctx).Query().
 		Where(user.EmailEQ(email), user.DeletedAtIsNil()).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrUserNotFound
+			return nil, userdomain.ErrUserNotFound
 		}
 		return nil, err
 	}
 	return toBiz(po), nil
 }
 
-func (r *userRepo) FindByPhoneNumber(ctx context.Context, phone string) (*iam.User, error) {
+func (r *userRepo) FindByPhoneNumber(ctx context.Context, phone string) (*userdomain.User, error) {
 	po, err := r.data.DB.User(ctx).Query().
 		Where(user.PhoneNumberEQ(phone), user.DeletedAtIsNil()).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrUserNotFound
+			return nil, userdomain.ErrUserNotFound
 		}
 		return nil, err
 	}
 	return toBiz(po), nil
 }
 
-func (r *userRepo) ListUsers(ctx context.Context, opts ...iam.ListOption) ([]*iam.User, error) {
-	o := iam.ListOptions{Limit: 20}
+func (r *userRepo) ListUsers(ctx context.Context, opts ...userdomain.ListOption) ([]*userdomain.User, error) {
+	o := userdomain.ListOptions{Limit: 20}
 	for _, opt := range opts {
 		opt(&o)
 	}
@@ -120,14 +120,14 @@ func (r *userRepo) ListUsers(ctx context.Context, opts ...iam.ListOption) ([]*ia
 	if err != nil {
 		return nil, err
 	}
-	users := make([]*iam.User, 0, len(pos))
+	users := make([]*userdomain.User, 0, len(pos))
 	for _, po := range pos {
 		users = append(users, toBiz(po))
 	}
 	return users, nil
 }
 
-func (r *userRepo) CreateUser(ctx context.Context, u *iam.User) (*iam.User, error) {
+func (r *userRepo) CreateUser(ctx context.Context, u *userdomain.User) (*userdomain.User, error) {
 	b := r.data.DB.User(ctx).Create().
 		SetID(newSnowflakeID()).
 		SetUserName(u.UserName).
@@ -152,12 +152,12 @@ func (r *userRepo) CreateUser(ctx context.Context, u *iam.User) (*iam.User, erro
 // UpdateUser re-reads the record, applies the mutation, and returns the
 // persisted record with its pre-image for UserUsecase revocation
 // classification. The caller owns the surrounding transaction.
-func (r *userRepo) UpdateUser(ctx context.Context, u *iam.User) (*iam.UserUpdate, error) {
-	result := &iam.UserUpdate{}
+func (r *userRepo) UpdateUser(ctx context.Context, u *userdomain.User) (*userdomain.UserUpdate, error) {
+	result := &userdomain.UserUpdate{}
 	current, err := r.data.DB.User(ctx).Query().Where(user.IDEQ(u.ID), user.DeletedAtIsNil()).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrUserNotFound
+			return nil, userdomain.ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -193,7 +193,7 @@ func (r *userRepo) DeleteUser(ctx context.Context, id int64) ([]int64, error) {
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, iam.ErrUserNotFound
+			return nil, userdomain.ErrUserNotFound
 		}
 		return nil, err
 	}

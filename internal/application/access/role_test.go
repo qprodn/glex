@@ -146,7 +146,7 @@ func TestCreateRole_Success(t *testing.T) {
 		t.Fatalf("expected 1 created role, got %d", len(repo.created))
 	}
 	// The DO passes through as-is; the nil→true default lives at the service
-	// boundary (request presence), not in iam.
+	// boundary (request presence), not in the domain.
 	if !got.MenuCheckStrictly {
 		t.Fatal("expected menu_check_strictly to persist")
 	}
