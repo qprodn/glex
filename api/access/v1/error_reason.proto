@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package access.v1;
+
+option go_package = "glex/api/access/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.access.v1";
+
+// ErrorReason is the stable vocabulary for the `reason` field of the error
+// body. Values are wire-visible: protojson encodes them as their names, so
+// clients branch on the name (e.g. "ROLE_NOT_FOUND") rather than on an HTTP
+// status. Surfaced in `biz` as `ErrRole<Cause>` / `ErrMenu<Cause>`. The
+// integer tags are internal to the enum; only the names cross the wire.
+enum ErrorReason {
+  // Unset. Never returned; reserved by proto3 for the zero value.
+  ERROR_REASON_UNSPECIFIED = 0;
+
+  // Role reasons (RoleService, RoleAssignmentService).
+  // The requested role does not exist.
+  ROLE_NOT_FOUND = 1;
+  // The role_name already exists.
+  ROLE_NAME_CONFLICT = 2;
+  // The role_key already exists.
+  ROLE_KEY_CONFLICT = 3;
+  // role_name/role_key is blank.
+  ROLE_INVALID = 4;
+  // One or more menu ids in a Menu Grant do not exist (or are soft-deleted).
+  ROLE_MENU_NOT_FOUND = 5;
+  // The role still has users assigned and cannot be deleted or disabled.
+  ROLE_ASSIGNED = 6;
+
+  // Menu reasons (MenuService).
+  // The requested menu does not exist.
+  MENU_NOT_FOUND = 7;
+  // The menu still has children and cannot be deleted.
+  MENU_HAS_CHILDREN = 8;
+  // The menu_name already exists under the same parent.
+  MENU_NAME_CONFLICT = 9;
+  // A menu cannot be its own parent.
+  MENU_PARENT_INVALID = 10;
+  // The menu_type is not a valid MenuType.
+  MENU_TYPE_INVALID = 11;
+}

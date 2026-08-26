@@ -9,18 +9,18 @@ import (
 
 	"glex/internal/crossdomain/authn"
 	"glex/internal/crossdomain/authn/model"
-	iam "glex/internal/domain/iam"
+	authndomain "glex/internal/domain/authn"
 )
 
 // sessionRevoker satisfies the revocation contract by wrapping the Login
 // Session repository.
 type sessionRevoker struct {
-	sessions iam.LoginSessionRepo
+	sessions authndomain.LoginSessionRepo
 }
 
 // NewSessionRevoker adapts the Login Session repository to the crossdomain
 // revocation contract.
-func NewSessionRevoker(sessions iam.LoginSessionRepo) authn.SessionRevoker {
+func NewSessionRevoker(sessions authndomain.LoginSessionRepo) authn.SessionRevoker {
 	return &sessionRevoker{sessions: sessions}
 }
 
@@ -31,12 +31,5 @@ func (s *sessionRevoker) RevokeSystemUsers(ctx context.Context, request *model.R
 	if request == nil || len(request.SystemUserIDs) == 0 {
 		return nil
 	}
-	batch := make([]iam.SystemUserSessionRevocation, 0, len(request.SystemUserIDs))
-	for _, id := range request.SystemUserIDs {
-		batch = append(batch, iam.SystemUserSessionRevocation{
-			SystemUserID: id,
-			Policy:       iam.PreserveLoginSession(request.PreservedSessionID),
-		})
-	}
-	return s.sessions.RevokeSystemUsers(ctx, batch)
+	return s.sessions.RevokeSystemUsers(ctx, request.SystemUserIDs, request.PreservedSessionID)
 }

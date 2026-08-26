@@ -3,10 +3,10 @@ package server
 import (
 	"log/slog"
 
-	menuv1 "glex/api/iam/menu/v1"
-	rolev1 "glex/api/iam/role/v1"
-	userv1 "glex/api/iam/user/v1"
-	iamapp "glex/internal/application/iam"
+	accessv1 "glex/api/access/v1"
+	userv1 "glex/api/user/v1"
+	accessapp "glex/internal/application/access"
+	userapp "glex/internal/application/user"
 	"glex/internal/conf"
 	"glex/pkg/middleware/requestid"
 	"glex/pkg/validate"
@@ -17,7 +17,7 @@ import (
 )
 
 // NewGRPCServer new a gRPC server.
-func NewGRPCServer(c *conf.Server, user *iamapp.UserApplication, menu *iamapp.MenuApplication, role *iamapp.RoleApplication, logger *slog.Logger) *grpc.Server {
+func NewGRPCServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, logger *slog.Logger) *grpc.Server {
 	var opts = []grpc.ServerOption{
 		grpc.Middleware(
 			requestid.Server(requestid.WithLogger(logger)),
@@ -37,7 +37,7 @@ func NewGRPCServer(c *conf.Server, user *iamapp.UserApplication, menu *iamapp.Me
 	}
 	srv := grpc.NewServer(opts...)
 	userv1.RegisterUserServiceServer(srv, user)
-	menuv1.RegisterMenuServiceServer(srv, menu)
-	rolev1.RegisterRoleServiceServer(srv, role)
+	accessv1.RegisterMenuServiceServer(srv, menu)
+	accessv1.RegisterRoleServiceServer(srv, role)
 	return srv
 }

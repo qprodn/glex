@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package authn.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "glex/api/authn/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.authn.v1";
+
+// LoginRequest contains the credentials used to create one Login Session.
+message LoginRequest {
+  string username = 1 [(google.api.field_behavior) = REQUIRED];
+  string password = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+// LoginReply returns the bearer credential exactly once, at login. The token
+// is never included in Principal or OnlineSession.
+message LoginReply {
+  string access_token = 1;
+  // Remaining fixed lifetime in seconds.
+  int64 expire_in = 2;
+}
+
+// Principal is the authenticated identity projected at the transport boundary.
+// session_id is a non-secret management handle, never a bearer credential.
+message Principal {
+  int64 user_id = 1;
+  string user_name = 2;
+  string session_id = 3;
+  repeated string role_keys = 4;
+  repeated string permissions = 5;
+}
+
+// AuthService owns login/logout for Login Sessions. The user↔role link it
+// once hosted moved to access.v1.RoleAssignmentService.
+service AuthService {
+  // Login creates one Login Session from a username and password.
+  rpc Login(LoginRequest) returns (LoginReply) {
+    option (google.api.http) = {
+      post: "/auth/login"
+      body: "*"
+    };
+  }
+  // Logout idempotently revokes the presented valid Login Session. Missing or
+  // confirmed-invalid credentials also succeed under OPTIONAL authentication.
+  rpc Logout(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/auth/logout"
+      body: "*"
+    };
+  }
+}

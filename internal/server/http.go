@@ -3,13 +3,14 @@ package server
 import (
 	"log/slog"
 
-	authv1 "glex/api/iam/auth/v1"
-	menuv1 "glex/api/iam/menu/v1"
-	rolev1 "glex/api/iam/role/v1"
-	userv1 "glex/api/iam/user/v1"
-	iamapp "glex/internal/application/iam"
+	accessv1 "glex/api/access/v1"
+	authnv1 "glex/api/authn/v1"
+	userv1 "glex/api/user/v1"
+	accessapp "glex/internal/application/access"
+	authnapp "glex/internal/application/authn"
+	userapp "glex/internal/application/user"
 	"glex/internal/conf"
-	"glex/internal/domain/iam"
+	authndomain "glex/internal/domain/authn"
 	authmw "glex/pkg/middleware/auth"
 	"glex/pkg/middleware/requestid"
 	"glex/pkg/validate"
@@ -20,7 +21,7 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, user *iamapp.UserApplication, menu *iamapp.MenuApplication, role *iamapp.RoleApplication, auth *iamapp.AuthApplication, online *iamapp.OnlineSessionApplication, authenticator iam.Authenticator, logger *slog.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, authenticator authndomain.Authenticator, logger *slog.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Filter(
 			requestid.HTTP(requestid.WithLogger(logger)),
@@ -43,9 +44,10 @@ func NewHTTPServer(c *conf.Server, user *iamapp.UserApplication, menu *iamapp.Me
 	}
 	srv := http.NewServer(opts...)
 	userv1.RegisterUserServiceHTTPServer(srv, user)
-	menuv1.RegisterMenuServiceHTTPServer(srv, menu)
-	rolev1.RegisterRoleServiceHTTPServer(srv, role)
-	authv1.RegisterAuthServiceHTTPServer(srv, auth)
-	authv1.RegisterOnlineSessionServiceHTTPServer(srv, online)
+	accessv1.RegisterMenuServiceHTTPServer(srv, menu)
+	accessv1.RegisterRoleServiceHTTPServer(srv, role)
+	accessv1.RegisterRoleAssignmentServiceHTTPServer(srv, assignment)
+	authnv1.RegisterAuthServiceHTTPServer(srv, login)
+	authnv1.RegisterOnlineSessionServiceHTTPServer(srv, online)
 	return srv
 }

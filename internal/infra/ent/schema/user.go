@@ -37,13 +37,16 @@ func (User) Fields() []ent.Field {
 		field.Int8("status").Default(0).SchemaType(map[string]string{
 			dialect.Postgres: "smallint",
 		}),
+		// The credential column: read and written only by authn's adapters
+		// (ADR 0016); it stays on this table until a service split forces a
+		// dedicated credential store.
 		field.String("password").Default(""),
 		field.String("avatar").Optional().Default("").MaxLen(256),
 		field.String("remark").Optional().Default(""),
-		// Audit; written by the auth module (0 until then).
+		// Audit; written by the admin flows (0 until then).
 		field.Int64("create_by").Optional().Default(0),
 		field.Int64("update_by").Optional().Default(0),
-		// Last-login fields; written by the auth module, read-only here.
+		// Last-login fields; written by the authn module, read-only here.
 		field.String("login_ip").Optional().Default(""),
 		field.Time("login_date").Optional().Nillable(),
 		field.Time("created_at").Default(time.Now).Immutable(),
@@ -64,7 +67,7 @@ func (User) Annotations() []entschema.Annotation {
 // Edges of the User. M2M to Role via the join table sys_user_role — exactly
 // RuoYi's shape: columns user_id + role_id, composite PK (user_id, role_id),
 // no timestamps/soft delete (hard-deleted rows, full-replacement semantics).
-// The link is the auth module's Role Assignment (角色分配), not the user
+// The link is the access module's Role Assignment (角色分配), not the user
 // module's concern.
 func (User) Edges() []ent.Edge {
 	return []ent.Edge{
