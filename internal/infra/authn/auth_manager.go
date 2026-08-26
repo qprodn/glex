@@ -13,10 +13,12 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
-// authManagerKeyPrefix is explicit because the Login Session Lua scripts must
+// AuthManagerKeyPrefix is explicit because the Login Session Lua scripts must
 // atomically update the same sa-token keys as Manager. Upstream otherwise
-// supplies this value implicitly when Config.KeyPrefix is empty.
-const authManagerKeyPrefix = "satoken"
+// supplies this value implicitly when Config.KeyPrefix is empty. It is the
+// project-owned part of the Redis key contract: the whole-graph integration
+// suites and operational tooling share it when addressing raw keys.
+const AuthManagerKeyPrefix = "satoken"
 
 // NewAuthManager constructs the sa-token Manager after explicitly validating
 // the auth configuration. The Manager stays inside data; every caller above
@@ -43,7 +45,7 @@ func NewAuthManager(storage adapter.Storage, c *conf.Auth) (*core.Manager, func(
 	cfg.MaxRefresh = -1
 	// The storage adapter owns the glex auth namespace. Keep the upstream
 	// manager prefix explicit so project Lua scripts share its key contract.
-	cfg.KeyPrefix = authManagerKeyPrefix
+	cfg.KeyPrefix = AuthManagerKeyPrefix
 	// Credential transport is project-owned (strict Bearer header only); the
 	// Manager never reads tokens from cookies, body, or its own header logic.
 	cfg.IsReadHeader = true

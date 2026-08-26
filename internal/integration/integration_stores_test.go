@@ -1,14 +1,13 @@
-package authninfra
+package integration
 
 import (
-	"glex/internal/infra/store"
-
 	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -26,18 +25,25 @@ import (
 	authndomain "glex/internal/domain/authn"
 	userdomain "glex/internal/domain/user"
 	accessinfra "glex/internal/infra/access"
+	authninfra "glex/internal/infra/authn"
+	"glex/internal/infra/ent"
+	"glex/internal/infra/store"
 	userinfra "glex/internal/infra/user"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sa-tokens/sa-token-go/core"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/protobuf/proto"
-
-	"glex/internal/infra/ent"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
-// The integration fixtures in this package run against real PostgreSQL and
-// Redis, gated on two environment variables the runner supplies:
+// The whole-graph integration suites construct the user, access, and authn
+// modules together through the same constructors the Wire composition root
+// binds, so they are the safety net for the cross-module seams of ADR 0016:
+// login fills its Authorization Snapshot through the access crossdomain
+// contract, and cross-module security changes revoke through the authn
+// contract. They run against real PostgreSQL and Redis, gated on two
+// environment variables the runner supplies:
 //
 //	GLEX_TEST_POSTGRES_DSN  e.g. postgres://postgres@127.0.0.1:5432/glex_test?sslmode=disable
 //	GLEX_TEST_REDIS_ADDR    e.g. 127.0.0.1:6379
@@ -45,11 +51,42 @@ import (
 // No credential is embedded here. Each test owns a unique glex auth namespace
 // and unlinks it on cleanup, so repeated runs against the same stores never
 // observe each other's state.
-
 const (
 	integrationPostgresDSNEnv = "GLEX_TEST_POSTGRES_DSN"
 	integrationRedisAddrEnv   = "GLEX_TEST_REDIS_ADDR"
 )
+
+func testAuthConf() *conf.Auth {
+	return &conf.Auth{
+		FixedLifetime:                  durationpb.New(7 * 24 * time.Hour),
+		IdleLifetime:                   durationpb.New(30 * time.Minute),
+		MaxSessionsPerUser:             5,
+		RedisNamespace:                 "glex:auth",
+		EdgeProxyAuthoritativeSourceIp: true,
+		UsernameLoginCounter: &conf.Auth_LoginCounter{
+			MaxFailures: 5,
+			Window:      durationpb.New(10 * time.Minute),
+		},
+		SourceIpLoginCounter: &conf.Auth_LoginCounter{
+			MaxFailures: 20,
+			Window:      durationpb.New(10 * time.Minute),
+		},
+	}
+}
+
+func testLogger() *slog.Logger {
+	return slog.New(slog.DiscardHandler)
+}
+
+// normalizeNamespace mirrors the authn storage adapter's namespace rule so
+// tests can address the raw Redis keys a graph writes.
+func normalizeNamespace(ns string) string {
+	ns = strings.TrimSpace(ns)
+	if ns == "" {
+		return ""
+	}
+	return strings.TrimSuffix(ns, ":") + ":"
+}
 
 // integrationStores describes the shared real stores for one test: a DSN, a
 // Redis address, and the auth configuration (with a per-test namespace) every
@@ -132,12 +169,13 @@ func (s *integrationStores) adminRedis(t *testing.T) *redis.Client {
 	return rdb
 }
 
-// authGraph is one independent application/provider graph — its own
-// PostgreSQL and Redis clients and its own Manager — composed from the same
-// constructors data.ProviderSet wires in production (Data and the storage
-// adapter are built directly so every graph can point at the shared stores).
-// Two graphs over the same stores behave like two service instances: all
-// shared state must live in PostgreSQL and Redis, never in process memory.
+// authGraph is one independent application/provider graph — its own PostgreSQL
+// and Redis clients and its own Manager — composing the three modules through
+// their exported constructors the way cmd wires them in production (Data and
+// the storage adapter are built directly so every graph can point at the
+// shared stores). Two graphs over the same stores behave like two service
+// instances: all shared state must live in PostgreSQL and Redis, never in
+// process memory.
 type authGraph struct {
 	data         *store.Data
 	db           *ent.Client
@@ -178,17 +216,16 @@ func (s *integrationStores) newGraph(t *testing.T) *authGraph {
 		RedisReadTimeout:  time.Second,
 		RedisWriteTimeout: time.Second,
 	}
-	storage := newAuthStorage(rdb, s.conf.GetRedisNamespace(), time.Second, time.Second, s.logger)
-	manager, cleanupManager, err := NewAuthManager(storage, s.conf)
+	manager, cleanupManager, err := authninfra.NewAuthManager(authninfra.NewAuthStorage(data, s.conf), s.conf)
 	if err != nil {
 		t.Fatalf("NewAuthManager: %v", err)
 	}
 	t.Cleanup(cleanupManager)
-	sessions := NewLoginSessionRepo(data, manager, s.conf)
+	sessions := authninfra.NewLoginSessionRepo(data, manager, s.conf)
 	revoker := authnimpl.NewSessionRevoker(sessions)
 	tx := store.NewTxManager(data)
-	counter := NewLoginCounterRepo(data, s.conf)
-	loginRepo := NewAuthLoginBackend(data, manager, sessions, s.conf)
+	counter := authninfra.NewLoginCounterRepo(data, s.conf)
+	login := authninfra.NewAuthLoginBackend(data, manager, sessions, s.conf)
 	users := userinfra.NewUserRepo(data)
 	roles := accessinfra.NewRoleRepo(data)
 	menus := accessinfra.NewMenuRepo(data)
@@ -201,8 +238,8 @@ func (s *integrationStores) newGraph(t *testing.T) *authGraph {
 		rdb:          rdb,
 		manager:      manager,
 		sessions:     sessions,
-		login:        loginRepo,
-		authorizer:   NewAuthenticator(manager, sessions),
+		login:        login,
+		authorizer:   authninfra.NewAuthenticator(manager, sessions),
 		tx:           tx,
 		revoker:      revoker,
 		counter:      counter,
@@ -211,10 +248,10 @@ func (s *integrationStores) newGraph(t *testing.T) *authGraph {
 		roles:        roles,
 		menus:        menus,
 		userRoles:    userRoles,
-		userUC:       userapp.NewUserUsecase(users, authnimpl.NewCredentialWriter(NewCredentialRepo(data)), tx, revoker, s.logger),
+		userUC:       userapp.NewUserUsecase(users, authnimpl.NewCredentialWriter(authninfra.NewCredentialRepo(data)), tx, revoker, s.logger),
 		roleUC:       accessapp.NewRoleUsecase(roles, menus, userRoles, tx, revoker, s.logger),
 		menuUC:       accessapp.NewMenuUsecase(menus, tx, revoker, s.logger),
-		authUC:       authnapp.NewLoginUsecase(loginRepo, counter, sessions, resolver, tx, s.logger),
+		authUC:       authnapp.NewLoginUsecase(login, counter, sessions, resolver, tx, s.logger),
 		assignmentUC: accessapp.NewRoleAssignmentUsecase(roles, userRoles, revoker, tx, s.logger),
 	}
 }
@@ -296,9 +333,9 @@ func (s *integrationSeeder) menu(t *testing.T, g *authGraph, perms string, statu
 }
 
 // loginOnGraph runs the full production login usecase — counter gate, bcrypt
-// verify, revalidation, snapshot load, last-login write, credential issuance
-// — on one graph, and returns the registered Session plus the bearer
-// credential exactly once.
+// verify, revalidation, Authorization Resolution through the access
+// crossdomain contract, last-login write, credential issuance — on one graph,
+// and returns the registered Session plus the bearer credential exactly once.
 func loginOnGraph(t *testing.T, g *authGraph, systemUserID int64, deviceType string) (*authndomain.LoginSession, string) {
 	t.Helper()
 	session, token, err := issueOnGraph(t.Context(), g, systemUserID, deviceType)

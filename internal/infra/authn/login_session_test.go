@@ -186,10 +186,14 @@ func TestConcurrentRegistrationKeepsFiveUsableSessionsAndReplacesOldest(t *testi
 	}
 }
 
+// realRedisAddrEnv is the same runner-supplied address the whole-graph
+// integration suites gate on; this repo-level concurrency contract shares it.
+const realRedisAddrEnv = "GLEX_TEST_REDIS_ADDR"
+
 func TestConcurrentRegistrationAgainstRealRedis(t *testing.T) {
-	addr := os.Getenv(integrationRedisAddrEnv)
+	addr := os.Getenv(realRedisAddrEnv)
 	if addr == "" {
-		t.Skipf("set %s to run the real-Redis concurrency contract", integrationRedisAddrEnv)
+		t.Skipf("set %s to run the real-Redis concurrency contract", realRedisAddrEnv)
 	}
 	rdb := redis.NewClient(&redis.Options{Addr: addr})
 	t.Cleanup(func() { _ = rdb.Close() })
@@ -349,14 +353,14 @@ func TestLogoutOldSessionDoesNotHideNewerTokenAndLastLogoutDeletesAccountSession
 	if lookedUp.ID != second.ID {
 		t.Fatalf("FindByToken ID = %q, want %q", lookedUp.ID, second.ID)
 	}
-	if exists, err := rdb.Exists(t.Context(), "glex:auth:"+authManagerKeyPrefix+satokensession.AccountSessionKeyPrefix+"42").Result(); err != nil || exists != 1 {
+	if exists, err := rdb.Exists(t.Context(), "glex:auth:"+AuthManagerKeyPrefix+satokensession.AccountSessionKeyPrefix+"42").Result(); err != nil || exists != 1 {
 		t.Fatalf("Account Session after first Logout: exists=%d err=%v, want present", exists, err)
 	}
 
 	if err := repo.Logout(t.Context(), second.ID); err != nil {
 		t.Fatalf("Logout(last): %v", err)
 	}
-	if exists, err := rdb.Exists(t.Context(), "glex:auth:"+authManagerKeyPrefix+satokensession.AccountSessionKeyPrefix+"42").Result(); err != nil || exists != 0 {
+	if exists, err := rdb.Exists(t.Context(), "glex:auth:"+AuthManagerKeyPrefix+satokensession.AccountSessionKeyPrefix+"42").Result(); err != nil || exists != 0 {
 		t.Fatalf("Account Session after last Logout: exists=%d err=%v, want deleted", exists, err)
 	}
 	listed, err := repo.ListBySystemUser(t.Context(), 42)
@@ -396,7 +400,7 @@ func TestSnowflakeSystemUserIDKeepsOwnershipAndLastSessionCleanupExact(t *testin
 	if err := repo.LogoutOwned(t.Context(), systemUserID, session.ID); err != nil {
 		t.Fatalf("LogoutOwned(Snowflake ID): %v", err)
 	}
-	accountKey := "glex:auth:" + authManagerKeyPrefix + satokensession.AccountSessionKeyPrefix + strconv.FormatInt(systemUserID, 10)
+	accountKey := "glex:auth:" + AuthManagerKeyPrefix + satokensession.AccountSessionKeyPrefix + strconv.FormatInt(systemUserID, 10)
 	if exists, err := rdb.Exists(t.Context(), accountKey).Result(); err != nil || exists != 0 {
 		t.Fatalf("Account Session after Snowflake owner's last Logout: exists=%d err=%v, want deleted", exists, err)
 	}
@@ -460,7 +464,7 @@ func TestRevokeSystemUserSessionsCanPreserveCurrentSession(t *testing.T) {
 	if _, err := repo.FindByToken(t.Context(), currentToken); !errors.Is(err, authndomain.ErrLoginSessionKickedOut) {
 		t.Fatalf("current Session state after full revoke = %v, want kicked out", err)
 	}
-	accountKey := "glex:auth:" + authManagerKeyPrefix + satokensession.AccountSessionKeyPrefix + "42"
+	accountKey := "glex:auth:" + AuthManagerKeyPrefix + satokensession.AccountSessionKeyPrefix + "42"
 	if exists, err := rdb.Exists(t.Context(), accountKey).Result(); err != nil || exists != 0 {
 		t.Fatalf("Account Session after full revoke: exists=%d err=%v, want deleted", exists, err)
 	}
@@ -473,7 +477,7 @@ func TestRevokeSystemUsersIsOneAtomicValidatedBatch(t *testing.T) {
 
 	// A malformed later user's metadata makes the Lua validation phase fail.
 	// Because validation precedes every write, the earlier user remains live.
-	if err := rdb.Set(t.Context(), "glex:auth:"+loginSessionMetadataPrefix+second.ID, "{", time.Hour).Err(); err != nil {
+	if err := rdb.Set(t.Context(), "glex:auth:"+LoginSessionMetadataPrefix+second.ID, "{", time.Hour).Err(); err != nil {
 		t.Fatalf("corrupt later metadata: %v", err)
 	}
 	err := repo.RevokeSystemUsers(t.Context(), []int64{42, 84}, "")

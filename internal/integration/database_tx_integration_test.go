@@ -1,4 +1,4 @@
-package authninfra
+package integration
 
 import (
 	"context"

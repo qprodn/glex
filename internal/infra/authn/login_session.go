@@ -27,9 +27,13 @@ import (
 )
 
 const (
-	loginSessionKeyPrefix      = "login-session:"
+	loginSessionKeyPrefix = "login-session:"
+	// LoginSessionMetadataPrefix addresses the authoritative metadata of one
+	// Login Session. It is exported as part of the Redis key contract: the
+	// whole-graph integration suites corrupt these keys deliberately to prove
+	// failures classify as backend errors, never as authentication denials.
+	LoginSessionMetadataPrefix = loginSessionKeyPrefix + "meta:"
 	loginSessionUserKeyPrefix  = loginSessionKeyPrefix + "user:"
-	loginSessionMetadataPrefix = loginSessionKeyPrefix + "meta:"
 	loginSessionTokenKeyPrefix = loginSessionKeyPrefix + "token:"
 	loginSessionAllKey         = loginSessionKeyPrefix + "all"
 	loginSessionSequenceKey    = loginSessionKeyPrefix + "sequence"
@@ -297,21 +301,21 @@ func (r *loginSessionRepo) Create(ctx context.Context, bearerToken string, sessi
 		result, err := createLoginSessionScript.Run(writeCtx, r.rdb, []string{
 			r.key(loginSessionUserKeyPrefix + po.SystemUserID),
 			r.key(loginSessionAllKey),
-			r.key(loginSessionMetadataPrefix + po.ID),
+			r.key(LoginSessionMetadataPrefix + po.ID),
 			r.key(loginSessionTokenKeyPrefix + po.Fingerprint),
 			r.key(loginSessionSequenceKey),
-			r.key(authManagerKeyPrefix + satokenmanager.TokenKeyPrefix + bearerToken),
+			r.key(AuthManagerKeyPrefix + satokenmanager.TokenKeyPrefix + bearerToken),
 		},
 			po.ID,
 			payload,
 			r.lifetime.Milliseconds(),
 			r.maxSessions,
-			r.key(loginSessionMetadataPrefix),
+			r.key(LoginSessionMetadataPrefix),
 			r.key(loginSessionTokenKeyPrefix),
-			r.key(authManagerKeyPrefix+satokenmanager.TokenKeyPrefix),
-			r.key(authManagerKeyPrefix+satokenmanager.AccountKeyPrefix),
-			r.key(authManagerKeyPrefix+satokensession.TokenSessionKeyPrefix),
-			r.key(authManagerKeyPrefix+satokenmanager.RenewKeyPrefix),
+			r.key(AuthManagerKeyPrefix+satokenmanager.TokenKeyPrefix),
+			r.key(AuthManagerKeyPrefix+satokenmanager.AccountKeyPrefix),
+			r.key(AuthManagerKeyPrefix+satokensession.TokenSessionKeyPrefix),
+			r.key(AuthManagerKeyPrefix+satokenmanager.RenewKeyPrefix),
 			po.SystemUserID,
 			po.DeviceType,
 			(2 * r.lifetime).Milliseconds(),
@@ -385,7 +389,7 @@ func (r *loginSessionRepo) missingTokenError(ctx context.Context, bearerToken st
 func (r *loginSessionRepo) findPO(ctx context.Context, sessionID string) (*loginSessionPO, error) {
 	readCtx, cancel := context.WithTimeout(ctx, store.BoundedTimeout(r.readTimeout, store.DefaultAuthReadTimeout))
 	defer cancel()
-	encoded, err := r.rdb.Get(readCtx, r.key(loginSessionMetadataPrefix+sessionID)).Result()
+	encoded, err := r.rdb.Get(readCtx, r.key(LoginSessionMetadataPrefix+sessionID)).Result()
 	if errors.Is(err, redis.Nil) {
 		return nil, authndomain.ErrLoginSessionNotFound
 	}
@@ -443,7 +447,7 @@ func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...au
 	}
 	keys := make([]string, len(ids))
 	for i, id := range ids {
-		keys[i] = r.key(loginSessionMetadataPrefix + id)
+		keys[i] = r.key(LoginSessionMetadataPrefix + id)
 	}
 	values, err := r.rdb.MGet(readCtx, keys...).Result()
 	if err != nil {
@@ -652,15 +656,15 @@ func (r *loginSessionRepo) RevokeSystemUsers(ctx context.Context, systemUserIDs 
 	writeCtx, cancel := context.WithTimeout(ctx, store.BoundedTimeout(r.writeTimeout, store.DefaultAuthWriteTimeout))
 	defer cancel()
 	args := []any{
-		r.key(loginSessionMetadataPrefix),
+		r.key(LoginSessionMetadataPrefix),
 		r.key(loginSessionTokenKeyPrefix),
 		r.key(loginSessionUserKeyPrefix),
 		r.key(loginSessionAllKey),
-		r.key(authManagerKeyPrefix + satokenmanager.TokenKeyPrefix),
-		r.key(authManagerKeyPrefix + satokenmanager.AccountKeyPrefix),
-		r.key(authManagerKeyPrefix + satokensession.TokenSessionKeyPrefix),
-		r.key(authManagerKeyPrefix + satokenmanager.RenewKeyPrefix),
-		r.key(authManagerKeyPrefix + satokensession.AccountSessionKeyPrefix),
+		r.key(AuthManagerKeyPrefix + satokenmanager.TokenKeyPrefix),
+		r.key(AuthManagerKeyPrefix + satokenmanager.AccountKeyPrefix),
+		r.key(AuthManagerKeyPrefix + satokensession.TokenSessionKeyPrefix),
+		r.key(AuthManagerKeyPrefix + satokenmanager.RenewKeyPrefix),
+		r.key(AuthManagerKeyPrefix + satokensession.AccountSessionKeyPrefix),
 	}
 	for _, systemUserID := range systemUserIDs {
 		args = append(args, strconv.FormatInt(systemUserID, 10), exceptSessionID)
@@ -683,15 +687,15 @@ func (r *loginSessionRepo) revoke(ctx context.Context, sessionID string, expecte
 		sessionID,
 		expectedOwner,
 		state,
-		r.key(loginSessionMetadataPrefix),
+		r.key(LoginSessionMetadataPrefix),
 		r.key(loginSessionTokenKeyPrefix),
 		r.key(loginSessionUserKeyPrefix),
 		r.key(loginSessionAllKey),
-		r.key(authManagerKeyPrefix+satokenmanager.TokenKeyPrefix),
-		r.key(authManagerKeyPrefix+satokenmanager.AccountKeyPrefix),
-		r.key(authManagerKeyPrefix+satokensession.TokenSessionKeyPrefix),
-		r.key(authManagerKeyPrefix+satokenmanager.RenewKeyPrefix),
-		r.key(authManagerKeyPrefix+satokensession.AccountSessionKeyPrefix),
+		r.key(AuthManagerKeyPrefix+satokenmanager.TokenKeyPrefix),
+		r.key(AuthManagerKeyPrefix+satokenmanager.AccountKeyPrefix),
+		r.key(AuthManagerKeyPrefix+satokensession.TokenSessionKeyPrefix),
+		r.key(AuthManagerKeyPrefix+satokenmanager.RenewKeyPrefix),
+		r.key(AuthManagerKeyPrefix+satokensession.AccountSessionKeyPrefix),
 	).Int()
 	if err != nil {
 		return authRedisBackendError(ctx, r.logger, "revoke_login_session", err)

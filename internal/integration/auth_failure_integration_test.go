@@ -1,19 +1,21 @@
-package authninfra
+package integration
 
 import (
-	"glex/internal/infra/store"
-
+	"bytes"
 	"errors"
 	"log/slog"
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	authnapp "glex/internal/application/authn"
 	"glex/internal/conf"
 	authndomain "glex/internal/domain/authn"
+	authninfra "glex/internal/infra/authn"
+	"glex/internal/infra/store"
 
 	"github.com/redis/go-redis/v9"
 	satokenmanager "github.com/sa-tokens/sa-token-go/core/manager"
@@ -105,7 +107,7 @@ func TestLoginWriteFailureRollsBackAndRegistersNothingIntegration(t *testing.T) 
 }
 
 func authManagerTokenKeyPattern() string {
-	return authManagerKeyPrefix + satokenmanager.TokenKeyPrefix + "*"
+	return authninfra.AuthManagerKeyPrefix + satokenmanager.TokenKeyPrefix + "*"
 }
 
 // TestRedisTimeoutFailsBoundedAndUnavailable runs the authentication stack
@@ -141,14 +143,13 @@ func TestRedisTimeoutFailsBoundedAndUnavailable(t *testing.T) {
 	conf := proto.Clone(testAuthConf()).(*conf.Auth)
 	conf.RedisNamespace = "glex:test:blackhole"
 	data := &store.Data{Redis: rdb, Logger: testLogger(), RedisReadTimeout: timeout, RedisWriteTimeout: timeout}
-	storage := newAuthStorage(rdb, conf.RedisNamespace, timeout, timeout, testLogger())
-	manager, cleanupManager, err := NewAuthManager(storage, conf)
+	manager, cleanupManager, err := authninfra.NewAuthManager(authninfra.NewAuthStorage(data, conf), conf)
 	if err != nil {
 		t.Fatalf("NewAuthManager: %v", err)
 	}
 	t.Cleanup(cleanupManager)
-	sessions := NewLoginSessionRepo(data, manager, conf)
-	authenticator := NewAuthenticator(manager, sessions)
+	sessions := authninfra.NewLoginSessionRepo(data, manager, conf)
+	authenticator := authninfra.NewAuthenticator(manager, sessions)
 
 	start := time.Now()
 	_, authErr := authenticator.Authenticate(t.Context(), "any-bearer")
@@ -169,7 +170,7 @@ func TestMalformedLoginSessionMetadataReturnsServiceUnavailableIntegration(t *te
 	session, token := loginOnGraph(t, h.graphs[0], uid, "desktop")
 
 	admin := h.stores.adminRedis(t)
-	if err := admin.Set(t.Context(), h.stores.rawKey(loginSessionMetadataPrefix+session.ID), "{", time.Hour).Err(); err != nil {
+	if err := admin.Set(t.Context(), h.stores.rawKey(authninfra.LoginSessionMetadataPrefix+session.ID), "{", time.Hour).Err(); err != nil {
 		t.Fatalf("corrupt Login Session metadata: %v", err)
 	}
 
@@ -235,7 +236,7 @@ func TestRevokeBatchValidatesAllBeforeWritingAgainstRealRedisIntegration(t *test
 	secondSession, _ := loginOnGraph(t, h.graphs[1], second, "mobile")
 
 	admin := h.stores.adminRedis(t)
-	if err := admin.Set(t.Context(), h.stores.rawKey(loginSessionMetadataPrefix+secondSession.ID), "{", time.Hour).Err(); err != nil {
+	if err := admin.Set(t.Context(), h.stores.rawKey(authninfra.LoginSessionMetadataPrefix+secondSession.ID), "{", time.Hour).Err(); err != nil {
 		t.Fatalf("corrupt later metadata: %v", err)
 	}
 
@@ -248,6 +249,25 @@ func TestRevokeBatchValidatesAllBeforeWritingAgainstRealRedisIntegration(t *test
 	if _, err := h.graphs[1].sessions.FindByID(t.Context(), firstSession.ID); err != nil {
 		t.Fatalf("earlier Session was partially revoked: %v", err)
 	}
+}
+
+// syncBuffer is a mutex-guarded buffer the log-capture test reads while the
+// graphs still write from their own goroutines.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }
 
 // TestIntegrationFlowsNeverLogBearerTokens drives a mixed success/failure
@@ -271,7 +291,7 @@ func TestIntegrationFlowsNeverLogBearerTokensIntegration(t *testing.T) {
 		t.Fatalf("Kickout: %v", err)
 	}
 	if err := h.stores.adminRedis(t).Set(t.Context(),
-		h.stores.rawKey(loginSessionMetadataPrefix+first.ID), "{", time.Hour).Err(); err != nil {
+		h.stores.rawKey(authninfra.LoginSessionMetadataPrefix+first.ID), "{", time.Hour).Err(); err != nil {
 		t.Fatalf("corrupt metadata: %v", err)
 	}
 	_, _ = h.graphs[1].authorizer.Authenticate(t.Context(), firstToken)

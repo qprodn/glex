@@ -3,8 +3,8 @@ package infra
 import (
 	accessinfra "glex/internal/infra/access"
 	authninfra "glex/internal/infra/authn"
-	userinfra "glex/internal/infra/user"
 	"glex/internal/infra/store"
+	userinfra "glex/internal/infra/user"
 
 	"github.com/google/wire"
 )

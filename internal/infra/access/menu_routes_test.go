@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"glex/internal/domain/access"
-	authndomain "glex/internal/domain/authn"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
@@ -123,8 +122,8 @@ func TestMenuRepoLoadRouteAccessMapsDatabaseFailures(t *testing.T) {
 			tt.expect(mock, time.Unix(1_700_000_000, 0))
 
 			_, err = repo.LoadRouteAccess(t.Context(), 42)
-			if !errors.Is(err, authndomain.ErrAuthBackendUnavailable) {
-				t.Fatalf("LoadRouteAccess database failure = %v, want AUTH_BACKEND_UNAVAILABLE", err)
+			if !errors.Is(err, access.ErrRouteAccessUnavailable) {
+				t.Fatalf("LoadRouteAccess database failure = %v, want ErrRouteAccessUnavailable", err)
 			}
 			if err := mock.ExpectationsWereMet(); err != nil {
 				t.Fatalf("SQL expectations: %v", err)

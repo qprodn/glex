@@ -45,7 +45,7 @@ func TestAuthenticatorBuildsPrincipalAndRefreshesActivity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal TokenInfo: %v", err)
 	}
-	key := "glex:auth:" + authManagerKeyPrefix + manager.TokenKeyPrefix + token
+	key := "glex:auth:" + AuthManagerKeyPrefix + manager.TokenKeyPrefix + token
 	if err := rdb.Set(t.Context(), key, encoded, 7*24*time.Hour).Err(); err != nil {
 		t.Fatalf("set old active time: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestAuthenticatorPreservesSessionFailureDistinctions(t *testing.T) {
 func TestAuthenticatorDistinguishesFixedExpiryFromUnknownToken(t *testing.T) {
 	sessions, tokenManager, rdb := newTestLoginSessionRepo(t)
 	_, token := createManagedLoginSession(t, sessions, tokenManager, 42, "alice", "desktop", time.Now())
-	tokenKey := "glex:auth:" + authManagerKeyPrefix + manager.TokenKeyPrefix + token
+	tokenKey := "glex:auth:" + AuthManagerKeyPrefix + manager.TokenKeyPrefix + token
 	fingerprintKey := "glex:auth:" + loginSessionTokenKeyPrefix + tokenFingerprint(token)
 	tokenTTL, err := rdb.PTTL(t.Context(), tokenKey).Result()
 	if err != nil {
@@ -184,7 +184,7 @@ func makeManagedTokenIdle(t *testing.T, rdb *redis.Client, tokenManager *core.Ma
 	if err != nil {
 		return err
 	}
-	key := "glex:auth:" + authManagerKeyPrefix + manager.TokenKeyPrefix + token
+	key := "glex:auth:" + AuthManagerKeyPrefix + manager.TokenKeyPrefix + token
 	return rdb.Set(t.Context(), key, encoded, 7*24*time.Hour).Err()
 }
 

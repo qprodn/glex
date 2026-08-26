@@ -1,4 +1,4 @@
-package authninfra
+package integration
 
 import (
 	"errors"
@@ -9,6 +9,7 @@ import (
 
 	"glex/internal/conf"
 	authndomain "glex/internal/domain/authn"
+	authninfra "glex/internal/infra/authn"
 
 	satokensession "github.com/sa-tokens/sa-token-go/core/session"
 )
@@ -41,7 +42,7 @@ func newCrossInstanceIntegrationWithLogger(t *testing.T, logger *slog.Logger, co
 // accountSessionKey returns the raw Redis key of the shared Account Session,
 // used to assert cleanup on the last Logout.
 func (h *crossInstanceIntegration) accountSessionKey(systemUserID int64) string {
-	return h.stores.rawKey(authManagerKeyPrefix + satokensession.AccountSessionKeyPrefix + strconv.FormatInt(systemUserID, 10))
+	return h.stores.rawKey(authninfra.AuthManagerKeyPrefix + satokensession.AccountSessionKeyPrefix + strconv.FormatInt(systemUserID, 10))
 }
 
 // requireSessionsOnEveryGraph asserts the authoritative index agrees on every
@@ -158,7 +159,9 @@ func TestTwoInstancesKeepSameDeviceSessionsDistinctIntegration(t *testing.T) {
 // TestSecondInstanceLoginRebuildsSharedAuthorizationSnapshot proves a login on
 // one instance rebuilds the single shared Account Snapshot from current
 // PostgreSQL state after Manager.Login wipes it — and that every instance, and
-// every older credential, immediately serves the rebuilt snapshot.
+// every older credential, immediately serves the rebuilt snapshot. The
+// snapshot content itself is resolved through the access crossdomain contract,
+// so this is the login → Authorization Snapshot seam over two graphs.
 func TestSecondInstanceLoginRebuildsSharedAuthorizationSnapshotIntegration(t *testing.T) {
 	h := newCrossInstanceIntegration(t)
 	g := h.graphs[0]

@@ -1,8 +1,6 @@
-package authninfra
+package integration
 
 import (
-	"glex/internal/infra/store"
-
 	"errors"
 	"testing"
 	"time"
@@ -12,8 +10,10 @@ import (
 	access "glex/internal/domain/access"
 	authndomain "glex/internal/domain/authn"
 	userdomain "glex/internal/domain/user"
+	authninfra "glex/internal/infra/authn"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/store"
 	userinfra "glex/internal/infra/user"
 
 	"entgo.io/ent/dialect"
@@ -68,10 +68,18 @@ func (h *securityIntegration) menu(t *testing.T, perms string, status int8) int6
 
 func (h *securityIntegration) session(t *testing.T, systemUserID int64) string {
 	t.Helper()
-	token := issueTestBearer(t, h.graph.manager, systemUserID, integrationUserName(systemUserID), "desktop")
-	created, err := h.sessions.Create(t.Context(), token, &authndomain.LoginSession{SystemUserID: systemUserID, UserName: integrationUserName(systemUserID), DeviceType: "desktop", LoginTime: time.Now()})
+	// The production credential issuer (not a test-only mint): manager login,
+	// snapshot replacement, and authoritative registration in one call.
+	result, err := h.graph.login.IssueCredential(t.Context(), &authndomain.AuthorizationSnapshot{
+		SystemUserID: systemUserID,
+		UserName:     integrationUserName(systemUserID),
+	}, &authndomain.LoginSession{SystemUserID: systemUserID, UserName: integrationUserName(systemUserID), DeviceType: "desktop", LoginTime: time.Now()})
 	if err != nil {
-		t.Fatalf("create Login Session: %v", err)
+		t.Fatalf("issue Login Session: %v", err)
+	}
+	created, err := h.sessions.FindByToken(t.Context(), result.AccessToken)
+	if err != nil {
+		t.Fatalf("load issued Login Session: %v", err)
 	}
 	return created.ID
 }
@@ -83,7 +91,9 @@ func (h *securityIntegration) requireRevoked(t *testing.T, sessionID string) {
 
 // TestSecurityChangeTriggersRevokeAffectedSessionsIntegration covers the two
 // Usecases whose Redis ordering is a business requirement: Role Assignment
-// and Menu Grant replacement.
+// and Menu Grant replacement. Both are cross-module security changes: the
+// access Usecases revoke through the authn contract while their PostgreSQL
+// transaction is still open.
 func TestSecurityChangeTriggersRevokeAffectedSessionsIntegration(t *testing.T) {
 	h := newSecurityIntegration(t)
 
@@ -121,12 +131,25 @@ func TestRoleAssignmentAndMenuGrantRedisFailureRollsBackIntegration(t *testing.T
 		if _, err := h.graph.assignmentUC.UpdateUserRoles(t.Context(), uid, []int64{rid}); err == nil {
 			t.Fatal("UpdateUserRoles succeeded through injected Redis failure")
 		}
+		// ListRoleAssignments lists every role in the shared database, so the
+		// rollback is asserted relative to this test's own seed: the role is
+		// present but unassigned, and nothing at all is assigned to the
+		// (globally unique) System User.
 		assignments, err := h.userRoles.ListRoleAssignments(t.Context(), uid)
 		if err != nil {
 			t.Fatalf("ListRoleAssignments: %v", err)
 		}
-		if len(assignments) != 1 || assignments[0].Assigned {
-			t.Fatalf("Role Assignment after Redis failure = %#v", assignments)
+		seeded := false
+		for _, assignment := range assignments {
+			if assignment.Assigned {
+				t.Fatalf("Role Assignment after Redis failure left %q assigned", assignment.Role.RoleKey)
+			}
+			if assignment.Role.ID == rid {
+				seeded = true
+			}
+		}
+		if !seeded {
+			t.Fatalf("seeded role %d missing from Role Assignments", rid)
 		}
 	})
 
@@ -156,7 +179,10 @@ func TestRoleAssignmentAndMenuGrantRedisFailureRollsBackIntegration(t *testing.T
 // TestSecurityChangeCommitFailureKeepsSessionsRevokedIntegration injects a
 // PostgreSQL commit failure through sqlmock while the revoker runs against
 // real (miniredis) Redis: the mutation must not surface, and the already-run
-// revocation deliberately stays — the fail-safe direction of ADR-0010.
+// revocation deliberately stays — the fail-safe direction of ADR-0010. The
+// graph is composed from the modules' exported constructors only, proving the
+// cross-module seam (user Usecase → authn revocation contract) needs no
+// test-only wiring.
 func TestSecurityChangeCommitFailureKeepsSessionsRevokedIntegration(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
@@ -168,22 +194,26 @@ func TestSecurityChangeCommitFailureKeepsSessionsRevokedIntegration(t *testing.T
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = rdb.Close() })
-	storage := newAuthStorage(rdb, "glex:auth", time.Second, time.Second, testLogger())
-	manager, cleanupManager, err := NewAuthManager(storage, testAuthConf())
+	conf := testAuthConf()
+	data := &store.Data{DB: ent.NewDatabaseFromClient(client), Redis: rdb, Logger: testLogger(), RedisReadTimeout: time.Second, RedisWriteTimeout: time.Second}
+	manager, cleanupManager, err := authninfra.NewAuthManager(authninfra.NewAuthStorage(data, conf), conf)
 	if err != nil {
 		t.Fatalf("NewAuthManager: %v", err)
 	}
 	t.Cleanup(cleanupManager)
-	data := &store.Data{DB: ent.NewDatabaseFromClient(client), Redis: rdb, Logger: testLogger(), RedisReadTimeout: time.Second, RedisWriteTimeout: time.Second}
-	sessions := NewLoginSessionRepo(data, manager, testAuthConf())
+	sessions := authninfra.NewLoginSessionRepo(data, manager, conf)
+	login := authninfra.NewAuthLoginBackend(data, manager, sessions, conf)
 	revoker := authnimpl.NewSessionRevoker(sessions)
 	tx := store.NewTxManager(data)
-	uc := userapp.NewUserUsecase(userinfra.NewUserRepo(data), authnimpl.NewCredentialWriter(NewCredentialRepo(data)), tx, revoker, testLogger())
+	uc := userapp.NewUserUsecase(userinfra.NewUserRepo(data), authnimpl.NewCredentialWriter(authninfra.NewCredentialRepo(data)), tx, revoker, testLogger())
 
-	token := issueTestBearer(t, manager, 42, "alice", "desktop")
-	created, err := sessions.Create(t.Context(), token, &authndomain.LoginSession{SystemUserID: 42, UserName: "alice", DeviceType: "desktop", LoginTime: time.Unix(1_700_000_000, 0)})
+	issued, err := login.IssueCredential(t.Context(), &authndomain.AuthorizationSnapshot{SystemUserID: 42, UserName: "alice"}, &authndomain.LoginSession{SystemUserID: 42, UserName: "alice", DeviceType: "desktop", LoginTime: time.Unix(1_700_000_000, 0)})
 	if err != nil {
 		t.Fatalf("seed Login Session: %v", err)
+	}
+	created, err := sessions.FindByToken(t.Context(), issued.AccessToken)
+	if err != nil {
+		t.Fatalf("load seeded Login Session: %v", err)
 	}
 
 	commitFailure := errors.New("injected PostgreSQL commit failure")

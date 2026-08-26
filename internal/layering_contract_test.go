@@ -1,20 +1,21 @@
 package internal_test
 
 import (
+	"fmt"
 	"go/parser"
 	"go/token"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 )
 
-// importViolation scans every non-test Go file under root (relative to the
-// repository's internal/ directory) and reports imports matching any
-// forbidden prefix.
+// importViolation scans every Go file under root (relative to the repository's
+// internal/ directory) and reports imports matching any forbidden prefix.
 func importViolation(t *testing.T, root string, forbiddenPrefixes []string, skipTestFiles bool) {
 	t.Helper()
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
@@ -58,10 +59,17 @@ func TestLayerImportsFollowDDDDependencyDirection(t *testing.T) {
 		"domain": {
 			"glex/api/",
 			"glex/internal/application",
+			"glex/internal/crossdomain",
 			"glex/internal/infra",
 			"glex/internal/server",
 		},
 		"application": {
+			"glex/internal/infra",
+			"glex/internal/server",
+		},
+		"crossdomain": {
+			"glex/api/",
+			"glex/internal/application",
 			"glex/internal/infra",
 			"glex/internal/server",
 		},
@@ -81,8 +89,9 @@ func TestLayerImportsFollowDDDDependencyDirection(t *testing.T) {
 }
 
 // TestDomainPackagesAreIslands pins ADR 0016's package-level boundaries: a
-// domain package never imports another domain package. Modules interact only
-// through ports, snapshots, and the crossdomain layer.
+// domain package never imports another domain package, and (per the layer
+// rules above) nothing new at all — modules interact only through ports,
+// snapshots, and the crossdomain layer.
 func TestDomainPackagesAreIslands(t *testing.T) {
 	entries, err := os.ReadDir(filepath.Join(osDir(), "domain"))
 	if err != nil {
@@ -102,34 +111,46 @@ func TestDomainPackagesAreIslands(t *testing.T) {
 	}
 }
 
-// TestModuleSplitBoundaries pins the module split of ADR 0016: the authn and
-// access application modules are reachable from the other modules only
-// through the crossdomain contracts and the Principal context, user (the
-// System User module) reaches access the same way, and none of the three
-// reaches into another module's application or infra.
+// TestModuleSplitBoundaries pins the module split of ADR 0016 in both the
+// application and the infra layer: the user, access, and authn modules reach
+// each other only through the crossdomain contracts and the Principal
+// context, never through another module's domain, application, infra, or
+// (for infra adapters) crossdomain packages.
+//
+// One sanctioned exception at import granularity: the application modules may
+// import domain/authn for the Principal identity carrier (ADR 0016 —
+// authenticated identity crosses the seam as domain/authn.Principal; GetInfo
+// and GetRouters read the snapshot, adding no cross-module port).
 func TestModuleSplitBoundaries(t *testing.T) {
-	importViolation(t, filepath.Join("application", "authn"), []string{
-		"glex/internal/domain/user",
-		"glex/internal/application/user",
-		"glex/internal/infra/user",
-		"glex/internal/domain/access",
-		"glex/internal/application/access",
-		"glex/internal/infra/access",
-	}, true)
-	importViolation(t, filepath.Join("application", "access"), []string{
-		"glex/internal/domain/user",
-		"glex/internal/application/user",
-		"glex/internal/infra/user",
-		"glex/internal/application/authn",
-		"glex/internal/infra/authn",
-	}, true)
-	importViolation(t, filepath.Join("application", "user"), []string{
-		"glex/internal/application/authn",
-		"glex/internal/infra/authn",
-		"glex/internal/domain/access",
-		"glex/internal/application/access",
-		"glex/internal/infra/access",
-	}, true)
+	for _, module := range []string{"user", "access", "authn"} {
+		var appForbidden, infraForbidden []string
+		for _, other := range []string{"user", "access", "authn"} {
+			if other == module {
+				continue
+			}
+			appForbidden = append(appForbidden,
+				fmt.Sprintf("glex/internal/domain/%s", other),
+				fmt.Sprintf("glex/internal/application/%s", other),
+				fmt.Sprintf("glex/internal/infra/%s", other))
+			// Infra adapters never make cross-module calls: another module's
+			// crossdomain contracts are consumed by Application Usecases.
+			infraForbidden = append(infraForbidden,
+				fmt.Sprintf("glex/internal/domain/%s", other),
+				fmt.Sprintf("glex/internal/application/%s", other),
+				fmt.Sprintf("glex/internal/infra/%s", other),
+				fmt.Sprintf("glex/internal/crossdomain/%s", other))
+		}
+		if module != "authn" {
+			// domain/authn stays importable by the user and access
+			// application modules for the Principal carrier only.
+			appForbidden = slices.DeleteFunc(appForbidden, func(p string) bool {
+				return p == "glex/internal/domain/authn"
+			})
+		}
+		importViolation(t, filepath.Join("application", module), appForbidden, true)
+		// The infra adapters' tests are module-clean, so they are pinned too.
+		importViolation(t, filepath.Join("infra", module), infraForbidden, false)
+	}
 }
 
 // osDir returns this file's directory (internal/).

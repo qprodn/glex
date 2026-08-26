@@ -198,3 +198,13 @@ var (
 	// ErrMenuTypeInvalid: menu_type is not a valid MenuType.
 	ErrMenuTypeInvalid = errors.BadRequest("MENU_TYPE_INVALID", "invalid menu_type")
 )
+
+var (
+	// ErrRouteAccessUnavailable: route resolution (which feeds the
+	// authenticated GetRouters endpoint) could not read its backing store.
+	// It is the access-owned twin of authn's AUTH_BACKEND_UNAVAILABLE with an
+	// identical wire shape (code, reason, message), so the endpoint's 503
+	// contract is unchanged while access depends on no authn type — the same
+	// wire-compatibility ruling as access's ErrUserNotFound.
+	ErrRouteAccessUnavailable = errors.ServiceUnavailable("AUTH_BACKEND_UNAVAILABLE", "authentication backend unavailable")
+)

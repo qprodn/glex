@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-kratos/aip-go/ents"
 	"glex/internal/domain/access"
-	authndomain "glex/internal/domain/authn"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
@@ -132,7 +131,7 @@ func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*ac
 		Order(role.ByRoleKey(), role.ByID()).
 		All(ctx)
 	if err != nil {
-		return nil, authnBackendError(ctx, r.logger, "load_route_role_assignments", err)
+		return nil, routeAccessError(ctx, r.logger, "load_route_role_assignments", err)
 	}
 
 	roleKeys := make([]string, 0, len(assignedRoles))
@@ -149,7 +148,7 @@ func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*ac
 			QueryMenus().
 			IDs(ctx)
 		if err != nil {
-			return nil, authnBackendError(ctx, r.logger, "load_route_menu_grants", err)
+			return nil, routeAccessError(ctx, r.logger, "load_route_menu_grants", err)
 		}
 	}
 
@@ -162,7 +161,7 @@ func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*ac
 		Order(menu.ByParentID(), menu.ByOrderNum(), menu.ByID()).
 		All(ctx)
 	if err != nil {
-		return nil, authnBackendError(ctx, r.logger, "load_active_route_menus", err)
+		return nil, routeAccessError(ctx, r.logger, "load_active_route_menus", err)
 	}
 	menus := make([]*access.Menu, 0, len(pos))
 	for _, po := range pos {
@@ -302,13 +301,14 @@ func systemUserIDsForRoles(ctx context.Context, db *ent.Database, roleIDs []int6
 	).IDs(ctx)
 }
 
-// authnBackendError maps a database failure behind an authentication-shaped
-// read (route resolution feeds GetRouters) onto the authn backend's 503
-// error, so no raw driver error crosses the seam.
-func authnBackendError(ctx context.Context, logger *slog.Logger, operation string, err error) error {
+// routeAccessError maps a database failure behind route resolution (which
+// feeds the authenticated GetRouters endpoint) onto access's 503 error — the
+// wire-identical twin of authn's AUTH_BACKEND_UNAVAILABLE — so no raw driver
+// error crosses the seam and access depends on no authn type.
+func routeAccessError(ctx context.Context, logger *slog.Logger, operation string, err error) error {
 	logger.WarnContext(ctx, "authentication-shaped database operation failed",
 		slog.String("operation", operation),
 		slog.Any("error", err),
 	)
-	return authndomain.ErrAuthBackendUnavailable
+	return access.ErrRouteAccessUnavailable
 }
