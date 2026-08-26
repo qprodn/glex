@@ -3,9 +3,8 @@ package server
 import (
 	"log/slog"
 
-	menuv1 "glex/api/iam/menu/v1"
-	rolev1 "glex/api/iam/role/v1"
-	userv1 "glex/api/iam/user/v1"
+	accessv1 "glex/api/access/v1"
+	userv1 "glex/api/user/v1"
 	accessapp "glex/internal/application/access"
 	userapp "glex/internal/application/user"
 	"glex/internal/conf"
@@ -38,7 +37,7 @@ func NewGRPCServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 	}
 	srv := grpc.NewServer(opts...)
 	userv1.RegisterUserServiceServer(srv, user)
-	menuv1.RegisterMenuServiceServer(srv, menu)
-	rolev1.RegisterRoleServiceServer(srv, role)
+	accessv1.RegisterMenuServiceServer(srv, menu)
+	accessv1.RegisterRoleServiceServer(srv, role)
 	return srv
 }

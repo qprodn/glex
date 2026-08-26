@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	menuv1 "glex/api/iam/menu/v1"
+	accessv1 "glex/api/access/v1"
 	accessdomain "glex/internal/domain/access"
 	authndomain "glex/internal/domain/authn"
 
@@ -21,8 +21,8 @@ import (
 // convertMenu maps a accessdomain.Menu DO to the proto Menu DTO, recursing into children.
 // children is read-only: it is populated here for ListMenus and never read on
 // the write path.
-func convertMenu(m *accessdomain.Menu) *menuv1.Menu {
-	out := &menuv1.Menu{
+func convertMenu(m *accessdomain.Menu) *accessv1.Menu {
+	out := &accessv1.Menu{
 		MenuId:     m.ID,
 		MenuName:   m.MenuName,
 		ParentId:   m.ParentID,
@@ -32,7 +32,7 @@ func convertMenu(m *accessdomain.Menu) *menuv1.Menu {
 		QueryParam: m.QueryParam,
 		IsFrame:    m.IsFrame,
 		IsCache:    m.IsCache,
-		MenuType:   menuv1.MenuType(m.MenuType),
+		MenuType:   accessv1.MenuType(m.MenuType),
 		Visible:    m.Visible,
 		Status:     m.Status,
 		Perms:      m.Perms,
@@ -119,7 +119,7 @@ func innerLinkPath(path string) string {
 // enforced by the registered HTTP middleware; this adapter only translates
 // DTOs and delegates business rules.
 type MenuApplication struct {
-	menuv1.UnimplementedMenuServiceServer
+	accessv1.UnimplementedMenuServiceServer
 
 	uc     menuUsecase
 	logger *slog.Logger
@@ -147,7 +147,7 @@ func newMenuApplication(uc menuUsecase, logger *slog.Logger) *MenuApplication {
 }
 
 // CreateMenu creates a menu.
-func (s *MenuApplication) CreateMenu(ctx context.Context, req *menuv1.CreateMenuRequest) (*menuv1.Menu, error) {
+func (s *MenuApplication) CreateMenu(ctx context.Context, req *accessv1.CreateMenuRequest) (*accessv1.Menu, error) {
 	in := req.GetMenu()
 	created, err := s.uc.CreateMenu(ctx, &accessdomain.Menu{
 		MenuName:   in.GetMenuName(),
@@ -173,7 +173,7 @@ func (s *MenuApplication) CreateMenu(ctx context.Context, req *menuv1.CreateMenu
 }
 
 // GetMenu retrieves a menu by id.
-func (s *MenuApplication) GetMenu(ctx context.Context, req *menuv1.GetMenuRequest) (*menuv1.Menu, error) {
+func (s *MenuApplication) GetMenu(ctx context.Context, req *accessv1.GetMenuRequest) (*accessv1.Menu, error) {
 	m, err := s.uc.GetMenu(ctx, req.GetMenuId())
 	if err != nil {
 		return nil, err
@@ -183,7 +183,7 @@ func (s *MenuApplication) GetMenu(ctx context.Context, req *menuv1.GetMenuReques
 
 // ListMenus returns the full menu tree with AIP-160 filter and AIP-132 order.
 // Not paginated (menus are small and tree-shaped).
-func (s *MenuApplication) ListMenus(ctx context.Context, req *menuv1.ListMenusRequest) (*menuv1.MenuTree, error) {
+func (s *MenuApplication) ListMenus(ctx context.Context, req *accessv1.ListMenusRequest) (*accessv1.MenuTree, error) {
 	declarations, err := filtering.NewDeclarations(
 		filtering.DeclareStandardFunctions(),
 		filtering.DeclareIdent("menu_name", filtering.TypeString),
@@ -210,7 +210,7 @@ func (s *MenuApplication) ListMenus(ctx context.Context, req *menuv1.ListMenusRe
 	if err != nil {
 		return nil, err
 	}
-	tree := &menuv1.MenuTree{Menus: make([]*menuv1.Menu, 0, len(roots))}
+	tree := &accessv1.MenuTree{Menus: make([]*accessv1.Menu, 0, len(roots))}
 	for _, m := range roots {
 		tree.Menus = append(tree.Menus, convertMenu(m))
 	}
@@ -218,7 +218,7 @@ func (s *MenuApplication) ListMenus(ctx context.Context, req *menuv1.ListMenusRe
 }
 
 // GetRouters returns the current System User's freshly resolved route tree.
-func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*menuv1.RouterTree, error) {
+func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*accessv1.RouterTree, error) {
 	principal, ok := authndomain.PrincipalFromContext(ctx)
 	if !ok {
 		return nil, authndomain.ErrCredentialMissing
@@ -227,12 +227,12 @@ func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*me
 	if err != nil {
 		return nil, err
 	}
-	toMeta := func(m *accessdomain.Menu) *menuv1.RouterMeta {
+	toMeta := func(m *accessdomain.Menu) *accessv1.RouterMeta {
 		link := ""
 		if strings.HasPrefix(strings.ToLower(m.Path), "http://") || strings.HasPrefix(strings.ToLower(m.Path), "https://") {
 			link = m.Path
 		}
-		return &menuv1.RouterMeta{
+		return &accessv1.RouterMeta{
 			Title:      m.MenuName,
 			Icon:       m.Icon,
 			NoCache:    m.IsCache == 0,
@@ -240,11 +240,11 @@ func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*me
 			ActiveMenu: m.ActiveMenu,
 		}
 	}
-	var toRouter func(*accessdomain.Menu) *menuv1.Router
-	toRouter = func(m *accessdomain.Menu) *menuv1.Router {
+	var toRouter func(*accessdomain.Menu) *accessv1.Router
+	toRouter = func(m *accessdomain.Menu) *accessv1.Router {
 		menuFrame := isMenuFrame(m)
 		path := routePath(m)
-		router := &menuv1.Router{
+		router := &accessv1.Router{
 			Name:      routeName(path, m.ID, menuFrame),
 			Path:      path,
 			Hidden:    m.Visible == 1,
@@ -255,13 +255,13 @@ func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*me
 		if len(m.Children) > 0 && m.MenuType == accessdomain.MenuTypeDirectory {
 			router.AlwaysShow = true
 			router.Redirect = "noRedirect"
-			router.Children = make([]*menuv1.Router, 0, len(m.Children))
+			router.Children = make([]*accessv1.Router, 0, len(m.Children))
 			for _, child := range m.Children {
 				router.Children = append(router.Children, toRouter(child))
 			}
 		} else if menuFrame {
 			router.Meta = nil
-			router.Children = []*menuv1.Router{{
+			router.Children = []*accessv1.Router{{
 				Name:      capitalizedRouteName(m.Path, m.ID),
 				Path:      m.Path,
 				Component: m.Component,
@@ -270,9 +270,9 @@ func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*me
 			}}
 		} else if m.ParentID == 0 && isInnerLink(m) {
 			router.Path = "/"
-			router.Meta = &menuv1.RouterMeta{Title: m.MenuName, Icon: m.Icon}
+			router.Meta = &accessv1.RouterMeta{Title: m.MenuName, Icon: m.Icon}
 			innerPath := innerLinkPath(m.Path)
-			router.Children = []*menuv1.Router{{
+			router.Children = []*accessv1.Router{{
 				Name:      capitalizedRouteName(innerPath, m.ID),
 				Path:      innerPath,
 				Component: "InnerLink",
@@ -281,7 +281,7 @@ func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*me
 		}
 		return router
 	}
-	tree := &menuv1.RouterTree{Routers: make([]*menuv1.Router, 0, len(roots))}
+	tree := &accessv1.RouterTree{Routers: make([]*accessv1.Router, 0, len(roots))}
 	for _, root := range roots {
 		tree.Routers = append(tree.Routers, toRouter(root))
 	}
@@ -290,8 +290,8 @@ func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*me
 
 // UpdateMenu partially updates a menu via field-mask. It loads the current
 // state as a DTO, applies the mask onto it, then persists.
-func (s *MenuApplication) UpdateMenu(ctx context.Context, req *menuv1.UpdateMenuRequest) (*menuv1.Menu, error) {
-	current, err := s.GetMenu(ctx, &menuv1.GetMenuRequest{MenuId: req.GetMenu().GetMenuId()})
+func (s *MenuApplication) UpdateMenu(ctx context.Context, req *accessv1.UpdateMenuRequest) (*accessv1.Menu, error) {
+	current, err := s.GetMenu(ctx, &accessv1.GetMenuRequest{MenuId: req.GetMenu().GetMenuId()})
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +321,7 @@ func (s *MenuApplication) UpdateMenu(ctx context.Context, req *menuv1.UpdateMenu
 }
 
 // DeleteMenu soft-deletes a menu by id; refused while it has children.
-func (s *MenuApplication) DeleteMenu(ctx context.Context, req *menuv1.DeleteMenuRequest) (*emptypb.Empty, error) {
+func (s *MenuApplication) DeleteMenu(ctx context.Context, req *accessv1.DeleteMenuRequest) (*emptypb.Empty, error) {
 	if err := s.uc.DeleteMenu(ctx, req.GetMenuId()); err != nil {
 		return nil, err
 	}

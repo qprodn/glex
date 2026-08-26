@@ -8,7 +8,7 @@ import (
 	"github.com/go-kratos/kratos/v3/errors"
 )
 
-// MenuType values for Menu.MenuType (mirror of the api/iam/menu/v1 MenuType
+// MenuType values for Menu.MenuType (mirror of the api/access/v1 MenuType
 // enum). The DO carries the int32 so domain stays free of proto types.
 const (
 	MenuTypeDirectory int32 = 1 // 目录

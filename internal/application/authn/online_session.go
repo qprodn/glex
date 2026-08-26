@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	authv1 "glex/api/iam/auth/v1"
+	authnv1 "glex/api/authn/v1"
 	authndomain "glex/internal/domain/authn"
 
 	"go.einride.tech/aip/filtering"
@@ -17,7 +17,7 @@ import (
 // OnlineSessionApplication implements the four RuoYi-compatible Login Session
 // operations. Bulk revocation is intentionally absent from the service.
 type OnlineSessionApplication struct {
-	authv1.UnimplementedOnlineSessionServiceServer
+	authnv1.UnimplementedOnlineSessionServiceServer
 
 	uc     *LoginSessionUsecase
 	logger *slog.Logger
@@ -32,7 +32,7 @@ func NewOnlineSessionApplication(uc *LoginSessionUsecase, logger *slog.Logger) *
 }
 
 // ListOnlineSessions lists active Login Sessions across all System Users.
-func (s *OnlineSessionApplication) ListOnlineSessions(ctx context.Context, req *authv1.ListOnlineSessionsRequest) (*authv1.OnlineSessionSet, error) {
+func (s *OnlineSessionApplication) ListOnlineSessions(ctx context.Context, req *authnv1.ListOnlineSessionsRequest) (*authnv1.OnlineSessionSet, error) {
 	declarations, err := filtering.NewDeclarations(
 		filtering.DeclareStandardFunctions(),
 		filtering.DeclareIdent("user_name", filtering.TypeString),
@@ -68,9 +68,9 @@ func (s *OnlineSessionApplication) ListOnlineSessions(ctx context.Context, req *
 	if err != nil {
 		return nil, err
 	}
-	set := &authv1.OnlineSessionSet{Sessions: make([]*authv1.OnlineSession, 0, len(sessions))}
+	set := &authnv1.OnlineSessionSet{Sessions: make([]*authnv1.OnlineSession, 0, len(sessions))}
 	for _, session := range sessions {
-		set.Sessions = append(set.Sessions, &authv1.OnlineSession{
+		set.Sessions = append(set.Sessions, &authnv1.OnlineSession{
 			TokenId:    session.ID,
 			UserName:   session.UserName,
 			DeviceType: session.DeviceType,
@@ -87,7 +87,7 @@ func (s *OnlineSessionApplication) ListOnlineSessions(ctx context.Context, req *
 }
 
 // KickoutOnlineSession revokes one Session ID for an administrator.
-func (s *OnlineSessionApplication) KickoutOnlineSession(ctx context.Context, req *authv1.OnlineSessionRequest) (*emptypb.Empty, error) {
+func (s *OnlineSessionApplication) KickoutOnlineSession(ctx context.Context, req *authnv1.OnlineSessionRequest) (*emptypb.Empty, error) {
 	if err := s.uc.KickoutOnlineSession(ctx, req.GetTokenId()); err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (s *OnlineSessionApplication) KickoutOnlineSession(ctx context.Context, req
 }
 
 // ListMyOnlineSessions lists only the current System User's Login Sessions.
-func (s *OnlineSessionApplication) ListMyOnlineSessions(ctx context.Context, _ *emptypb.Empty) (*authv1.OnlineSessionSet, error) {
+func (s *OnlineSessionApplication) ListMyOnlineSessions(ctx context.Context, _ *emptypb.Empty) (*authnv1.OnlineSessionSet, error) {
 	principal, ok := authndomain.PrincipalFromContext(ctx)
 	if !ok {
 		return nil, authndomain.ErrCredentialMissing
@@ -104,9 +104,9 @@ func (s *OnlineSessionApplication) ListMyOnlineSessions(ctx context.Context, _ *
 	if err != nil {
 		return nil, err
 	}
-	set := &authv1.OnlineSessionSet{Sessions: make([]*authv1.OnlineSession, 0, len(sessions))}
+	set := &authnv1.OnlineSessionSet{Sessions: make([]*authnv1.OnlineSession, 0, len(sessions))}
 	for _, session := range sessions {
-		set.Sessions = append(set.Sessions, &authv1.OnlineSession{
+		set.Sessions = append(set.Sessions, &authnv1.OnlineSession{
 			TokenId:    session.ID,
 			UserName:   session.UserName,
 			DeviceType: session.DeviceType,
@@ -121,7 +121,7 @@ func (s *OnlineSessionApplication) ListMyOnlineSessions(ctx context.Context, _ *
 
 // DeleteMyOnlineSession revokes one Session only after an atomic ownership
 // check against the current System User.
-func (s *OnlineSessionApplication) DeleteMyOnlineSession(ctx context.Context, req *authv1.OnlineSessionRequest) (*emptypb.Empty, error) {
+func (s *OnlineSessionApplication) DeleteMyOnlineSession(ctx context.Context, req *authnv1.OnlineSessionRequest) (*emptypb.Empty, error) {
 	principal, ok := authndomain.PrincipalFromContext(ctx)
 	if !ok {
 		return nil, authndomain.ErrCredentialMissing

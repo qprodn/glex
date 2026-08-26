@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	rolev1 "glex/api/iam/role/v1"
+	accessv1 "glex/api/access/v1"
 	accessdomain "glex/internal/domain/access"
 
 	"go.einride.tech/aip/fieldmask"
@@ -16,8 +16,8 @@ import (
 )
 
 // convertRole maps a accessdomain.Role DO to the proto Role DTO.
-func convertRole(r *accessdomain.Role) *rolev1.Role {
-	return &rolev1.Role{
+func convertRole(r *accessdomain.Role) *accessv1.Role {
+	return &accessv1.Role{
 		RoleId:            r.ID,
 		RoleName:          r.RoleName,
 		RoleKey:           r.RoleKey,
@@ -38,7 +38,7 @@ func convertRole(r *accessdomain.Role) *rolev1.Role {
 // enforced by the registered HTTP middleware; this adapter only translates
 // DTOs and delegates business rules.
 type RoleApplication struct {
-	rolev1.UnimplementedRoleServiceServer
+	accessv1.UnimplementedRoleServiceServer
 
 	uc     *RoleUsecase
 	logger *slog.Logger
@@ -55,7 +55,7 @@ func NewRoleApplication(uc *RoleUsecase, logger *slog.Logger) *RoleApplication {
 // CreateRole creates a role with its optional initial Menu Grant. The
 // presence-aware menu_check_strictly defaults to true (RuoYi default) when
 // absent.
-func (s *RoleApplication) CreateRole(ctx context.Context, req *rolev1.CreateRoleRequest) (*rolev1.Role, error) {
+func (s *RoleApplication) CreateRole(ctx context.Context, req *accessv1.CreateRoleRequest) (*accessv1.Role, error) {
 	in := req.GetRole()
 	strict := true
 	if req.MenuCheckStrictly != nil {
@@ -76,7 +76,7 @@ func (s *RoleApplication) CreateRole(ctx context.Context, req *rolev1.CreateRole
 }
 
 // GetRole retrieves a role by id.
-func (s *RoleApplication) GetRole(ctx context.Context, req *rolev1.GetRoleRequest) (*rolev1.Role, error) {
+func (s *RoleApplication) GetRole(ctx context.Context, req *accessv1.GetRoleRequest) (*accessv1.Role, error) {
 	r, err := s.uc.GetRole(ctx, req.GetRoleId())
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (s *RoleApplication) GetRole(ctx context.Context, req *rolev1.GetRoleReques
 
 // ListRoles lists roles with AIP-160 filter, AIP-132 order, and page-token
 // pagination.
-func (s *RoleApplication) ListRoles(ctx context.Context, req *rolev1.ListRolesRequest) (*rolev1.RoleSet, error) {
+func (s *RoleApplication) ListRoles(ctx context.Context, req *accessv1.ListRolesRequest) (*accessv1.RoleSet, error) {
 	declarations, err := filtering.NewDeclarations(
 		filtering.DeclareStandardFunctions(),
 		filtering.DeclareIdent("role_name", filtering.TypeString),
@@ -125,7 +125,7 @@ func (s *RoleApplication) ListRoles(ctx context.Context, req *rolev1.ListRolesRe
 	if err != nil {
 		return nil, err
 	}
-	set := &rolev1.RoleSet{Roles: make([]*rolev1.Role, 0, len(roles))}
+	set := &accessv1.RoleSet{Roles: make([]*accessv1.Role, 0, len(roles))}
 	for _, r := range roles {
 		set.Roles = append(set.Roles, convertRole(r))
 	}
@@ -137,8 +137,8 @@ func (s *RoleApplication) ListRoles(ctx context.Context, req *rolev1.ListRolesRe
 
 // UpdateRole partially updates a role via field-mask. It loads the current
 // state as a DTO, applies the mask onto it, then persists.
-func (s *RoleApplication) UpdateRole(ctx context.Context, req *rolev1.UpdateRoleRequest) (*rolev1.Role, error) {
-	current, err := s.GetRole(ctx, &rolev1.GetRoleRequest{RoleId: req.GetRole().GetRoleId()})
+func (s *RoleApplication) UpdateRole(ctx context.Context, req *accessv1.UpdateRoleRequest) (*accessv1.Role, error) {
+	current, err := s.GetRole(ctx, &accessv1.GetRoleRequest{RoleId: req.GetRole().GetRoleId()})
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (s *RoleApplication) UpdateRole(ctx context.Context, req *rolev1.UpdateRole
 }
 
 // DeleteRole soft-deletes a role by id (and its Menu Grant, repo side).
-func (s *RoleApplication) DeleteRole(ctx context.Context, req *rolev1.DeleteRoleRequest) (*emptypb.Empty, error) {
+func (s *RoleApplication) DeleteRole(ctx context.Context, req *accessv1.DeleteRoleRequest) (*emptypb.Empty, error) {
 	if err := s.uc.DeleteRole(ctx, req.GetRoleId()); err != nil {
 		return nil, err
 	}
@@ -167,17 +167,17 @@ func (s *RoleApplication) DeleteRole(ctx context.Context, req *rolev1.DeleteRole
 
 // ListRoleMenus returns the role's checkedKeys (granted menu ids shaped by
 // menu_check_strictly).
-func (s *RoleApplication) ListRoleMenus(ctx context.Context, req *rolev1.ListRoleMenusRequest) (*rolev1.RoleMenus, error) {
+func (s *RoleApplication) ListRoleMenus(ctx context.Context, req *accessv1.ListRoleMenusRequest) (*accessv1.RoleMenus, error) {
 	ids, err := s.uc.ListRoleMenus(ctx, req.GetRoleId())
 	if err != nil {
 		return nil, err
 	}
-	return &rolev1.RoleMenus{MenuIds: ids}, nil
+	return &accessv1.RoleMenus{MenuIds: ids}, nil
 }
 
 // UpdateRoleMenus replaces the role's Menu Grant and menu_check_strictly in
 // one transaction; the response echoes the persisted (deduped) grant.
-func (s *RoleApplication) UpdateRoleMenus(ctx context.Context, req *rolev1.UpdateRoleMenusRequest) (*rolev1.RoleMenus, error) {
+func (s *RoleApplication) UpdateRoleMenus(ctx context.Context, req *accessv1.UpdateRoleMenusRequest) (*accessv1.RoleMenus, error) {
 	strict := true
 	if req.MenuCheckStrictly != nil {
 		strict = *req.MenuCheckStrictly
@@ -186,5 +186,5 @@ func (s *RoleApplication) UpdateRoleMenus(ctx context.Context, req *rolev1.Updat
 	if err != nil {
 		return nil, err
 	}
-	return &rolev1.RoleMenus{MenuIds: ids}, nil
+	return &accessv1.RoleMenus{MenuIds: ids}, nil
 }

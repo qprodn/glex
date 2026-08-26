@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package user.v1;
+
+option go_package = "glex/api/user/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.user.v1";
+
+// ErrorReason is the stable vocabulary for the `reason` field of the error
+// body. Values are wire-visible: protojson encodes them as their names, so
+// clients branch on the name (e.g. "USER_NOT_FOUND") rather than on an HTTP
+// status. Surfaced in `biz` as `ErrUser<Cause>`.
+enum ErrorReason {
+  // Unset. Never returned; reserved by proto3 for the zero value.
+  ERROR_REASON_UNSPECIFIED = 0;
+  // The requested user does not exist.
+  USER_NOT_FOUND = 1;
+  // The user_name is already taken.
+  USER_NAME_CONFLICT = 2;
+  // The email is already taken.
+  EMAIL_CONFLICT = 3;
+  // The phone_number is already taken.
+  PHONE_CONFLICT = 4;
+  // A required password was not supplied on create.
+  PASSWORD_REQUIRED = 5;
+}

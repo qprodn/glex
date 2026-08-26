@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package access.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "access/v1/role.proto";
+import "user/v1/user.proto";
+
+option go_package = "glex/api/access/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.access.v1";
+
+// RoleAssignment is one role with whether the user is assigned it (RuoYi's
+// authRole dialog data: all roles plus a checked flag).
+message RoleAssignment {
+  // The role itself.
+  Role role = 1;
+  // Whether the user currently holds this role.
+  bool assigned = 2;
+}
+
+// UserRoles is a user's Role Assignment (角色分配): every active role with its
+// assigned flag, ordered by (role_sort, role_id). Not paginated — roles are a
+// small flat set.
+message UserRoles {
+  repeated RoleAssignment items = 1;
+}
+
+// RoleAssignmentService owns the user↔role link (**Role Assignment**): the
+// three endpoints behind RuoYi's authRole dialog.
+service RoleAssignmentService {
+  // ListUserRoles returns every active role with whether the user is assigned
+  // it — the assign dialog's data in one call.
+  rpc ListUserRoles(ListUserRolesRequest) returns (UserRoles) {
+    option (google.api.http) = {
+      get: "/iam/user/{user_id}/roles"
+    };
+  }
+  // UpdateUserRoles replaces the user's Role Assignment (full replacement;
+  // empty role_ids clears all). Unknown or soft-deleted role ids are rejected
+  // with ROLE_NOT_FOUND; duplicates are silently deduped. Returns the updated
+  // assignment.
+  rpc UpdateUserRoles(UpdateUserRolesRequest) returns (UserRoles) {
+    option (google.api.http) = {
+      put: "/iam/user/{user_id}/roles"
+      body: "*"
+    };
+  }
+  // ListRoleUsers lists the active users assigned the role, with AIP
+  // filter/order/page-token pagination.
+  rpc ListRoleUsers(ListRoleUsersRequest) returns (user.v1.UserSet) {
+    option (google.api.http) = {
+      get: "/iam/role/{role_id}/users"
+    };
+  }
+}
+
+message ListUserRolesRequest {
+  // Required. The id of the user whose roles are read.
+  int64 user_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateUserRolesRequest {
+  // Required. The id of the user whose assignment is replaced.
+  int64 user_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // The complete desired assignment; full replacement (empty = clear all).
+  repeated int64 role_ids = 2;
+}
+
+message ListRoleUsersRequest {
+  // Required. The id of the role whose users are listed.
+  int64 role_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Optional. Page size.
+  int32 page_size = 2;
+  // Optional. Page token from a previous response.
+  string page_token = 3;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `user_name` (e.g. `user_name="admin"`)
+  //   * `status` (e.g. `status=0`)
+  string filter = 4;
+  // Optional. AIP-132 order, e.g. `user_id` or `created_at desc`.
+  string order_by = 5;
+}

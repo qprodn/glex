@@ -6,19 +6,17 @@ import (
 	"strings"
 	"time"
 
-	authv1 "glex/api/iam/auth/v1"
+	authnv1 "glex/api/authn/v1"
 	authndomain "glex/internal/domain/authn"
 
 	"github.com/go-kratos/kratos/v3/transport"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-// LoginApplication implements the authn span of the proto AuthService: the
-// Login/Logout endpoints. The role-assignment span of the same proto service
-// stays with access until the contracts split (ticket 06); server joins the
-// two spans at registration.
+// LoginApplication implements the authn-owned proto AuthService: the
+// Login/Logout endpoints.
 type LoginApplication struct {
-	authv1.UnimplementedAuthServiceServer
+	authnv1.UnimplementedAuthServiceServer
 
 	uc     *LoginUsecase
 	logger *slog.Logger
@@ -35,7 +33,7 @@ func NewLoginApplication(uc *LoginUsecase, logger *slog.Logger) *LoginApplicatio
 // Login creates one Login Session and returns its bearer credential exactly
 // once. Request metadata is read at this transport boundary and passed to the
 // Usecase.
-func (s *LoginApplication) Login(ctx context.Context, req *authv1.LoginRequest) (*authv1.LoginReply, error) {
+func (s *LoginApplication) Login(ctx context.Context, req *authnv1.LoginRequest) (*authnv1.LoginReply, error) {
 	sourceIP, userAgent := "", ""
 	if transporter, ok := transport.FromServerContext(ctx); ok && transporter.RequestHeader() != nil {
 		sourceIP = strings.TrimSpace(transporter.RequestHeader().Get("X-Forwarded-For"))
@@ -50,7 +48,7 @@ func (s *LoginApplication) Login(ctx context.Context, req *authv1.LoginRequest) 
 	if err != nil {
 		return nil, err
 	}
-	return &authv1.LoginReply{
+	return &authnv1.LoginReply{
 		AccessToken: result.AccessToken,
 		ExpireIn:    int64(result.ExpiresIn / time.Second),
 	}, nil

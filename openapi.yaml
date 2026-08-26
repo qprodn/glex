@@ -16,7 +16,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/iam.auth.v1.LoginRequest'
+                            $ref: '#/components/schemas/authn.v1.LoginRequest'
                 required: true
             responses:
                 "200":
@@ -24,7 +24,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.auth.v1.LoginReply'
+                                $ref: '#/components/schemas/authn.v1.LoginReply'
     /auth/logout:
         post:
             tags:
@@ -72,7 +72,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.menu.v1.MenuTree'
+                                $ref: '#/components/schemas/access.v1.MenuTree'
         post:
             tags:
                 - MenuService
@@ -82,7 +82,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/iam.menu.v1.Menu'
+                            $ref: '#/components/schemas/access.v1.Menu'
                 required: true
             responses:
                 "200":
@@ -90,7 +90,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.menu.v1.Menu'
+                                $ref: '#/components/schemas/access.v1.Menu'
     /iam/menu/getRouters:
         get:
             tags:
@@ -106,7 +106,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.menu.v1.RouterTree'
+                                $ref: '#/components/schemas/access.v1.RouterTree'
     /iam/menu/{menu.menu_id}:
         patch:
             tags:
@@ -129,7 +129,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/iam.menu.v1.Menu'
+                            $ref: '#/components/schemas/access.v1.Menu'
                 required: true
             responses:
                 "200":
@@ -137,7 +137,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.menu.v1.Menu'
+                                $ref: '#/components/schemas/access.v1.Menu'
     /iam/menu/{menuId}:
         get:
             tags:
@@ -157,7 +157,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.menu.v1.Menu'
+                                $ref: '#/components/schemas/access.v1.Menu'
         delete:
             tags:
                 - MenuService
@@ -212,7 +212,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.role.v1.RoleSet'
+                                $ref: '#/components/schemas/access.v1.RoleSet'
         post:
             tags:
                 - RoleService
@@ -239,7 +239,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/iam.role.v1.Role'
+                            $ref: '#/components/schemas/access.v1.Role'
                 required: true
             responses:
                 "200":
@@ -247,7 +247,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.role.v1.Role'
+                                $ref: '#/components/schemas/access.v1.Role'
     /iam/role/{role.role_id}:
         patch:
             tags:
@@ -272,7 +272,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/iam.role.v1.Role'
+                            $ref: '#/components/schemas/access.v1.Role'
                 required: true
             responses:
                 "200":
@@ -280,7 +280,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.role.v1.Role'
+                                $ref: '#/components/schemas/access.v1.Role'
     /iam/role/{roleId}:
         get:
             tags:
@@ -300,7 +300,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.role.v1.Role'
+                                $ref: '#/components/schemas/access.v1.Role'
         delete:
             tags:
                 - RoleService
@@ -340,7 +340,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.role.v1.RoleMenus'
+                                $ref: '#/components/schemas/access.v1.RoleMenus'
         put:
             tags:
                 - RoleService
@@ -361,7 +361,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/iam.role.v1.UpdateRoleMenusRequest'
+                            $ref: '#/components/schemas/access.v1.UpdateRoleMenusRequest'
                 required: true
             responses:
                 "200":
@@ -369,15 +369,15 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.role.v1.RoleMenus'
+                                $ref: '#/components/schemas/access.v1.RoleMenus'
     /iam/role/{roleId}/users:
         get:
             tags:
-                - AuthService
+                - RoleAssignmentService
             description: |-
                 ListRoleUsers lists the active users assigned the role, with AIP
                  filter/order/page-token pagination.
-            operationId: AuthService_ListRoleUsers
+            operationId: RoleAssignmentService_ListRoleUsers
             parameters:
                 - name: roleId
                   in: path
@@ -415,7 +415,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.user.v1.UserSet'
+                                $ref: '#/components/schemas/user.v1.UserSet'
     /iam/user:
         get:
             tags:
@@ -456,7 +456,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.user.v1.UserSet'
+                                $ref: '#/components/schemas/user.v1.UserSet'
         post:
             tags:
                 - UserService
@@ -466,7 +466,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/iam.user.v1.User'
+                            $ref: '#/components/schemas/user.v1.User'
                 required: true
             responses:
                 "200":
@@ -474,7 +474,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.user.v1.User'
+                                $ref: '#/components/schemas/user.v1.User'
     /iam/user/getInfo:
         get:
             tags:
@@ -490,7 +490,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.user.v1.CurrentUserInfo'
+                                $ref: '#/components/schemas/user.v1.CurrentUserInfo'
     /iam/user/{user.user_id}:
         patch:
             tags:
@@ -513,7 +513,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/iam.user.v1.User'
+                            $ref: '#/components/schemas/user.v1.User'
                 required: true
             responses:
                 "200":
@@ -521,7 +521,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.user.v1.User'
+                                $ref: '#/components/schemas/user.v1.User'
     /iam/user/{userId}:
         get:
             tags:
@@ -541,7 +541,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.user.v1.User'
+                                $ref: '#/components/schemas/user.v1.User'
         delete:
             tags:
                 - UserService
@@ -561,11 +561,11 @@ paths:
     /iam/user/{userId}/roles:
         get:
             tags:
-                - AuthService
+                - RoleAssignmentService
             description: |-
                 ListUserRoles returns every active role with whether the user is assigned
                  it — the assign dialog's data in one call.
-            operationId: AuthService_ListUserRoles
+            operationId: RoleAssignmentService_ListUserRoles
             parameters:
                 - name: userId
                   in: path
@@ -579,16 +579,16 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.auth.v1.UserRoles'
+                                $ref: '#/components/schemas/access.v1.UserRoles'
         put:
             tags:
-                - AuthService
+                - RoleAssignmentService
             description: |-
                 UpdateUserRoles replaces the user's Role Assignment (full replacement;
                  empty role_ids clears all). Unknown or soft-deleted role ids are rejected
                  with ROLE_NOT_FOUND; duplicates are silently deduped. Returns the updated
                  assignment.
-            operationId: AuthService_UpdateUserRoles
+            operationId: RoleAssignmentService_UpdateUserRoles
             parameters:
                 - name: userId
                   in: path
@@ -600,7 +600,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/iam.auth.v1.UpdateUserRolesRequest'
+                            $ref: '#/components/schemas/access.v1.UpdateUserRolesRequest'
                 required: true
             responses:
                 "200":
@@ -608,7 +608,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.auth.v1.UserRoles'
+                                $ref: '#/components/schemas/access.v1.UserRoles'
     /monitor/online:
         get:
             tags:
@@ -621,7 +621,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.auth.v1.OnlineSessionSet'
+                                $ref: '#/components/schemas/authn.v1.OnlineSessionSet'
     /monitor/online/list:
         get:
             tags:
@@ -654,7 +654,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/iam.auth.v1.OnlineSessionSet'
+                                $ref: '#/components/schemas/authn.v1.OnlineSessionSet'
     /monitor/online/myself/{tokenId}:
         delete:
             tags:
@@ -693,97 +693,7 @@ paths:
                     content: {}
 components:
     schemas:
-        iam.auth.v1.LoginReply:
-            type: object
-            properties:
-                accessToken:
-                    type: string
-                expireIn:
-                    type: string
-                    description: Remaining fixed lifetime in seconds.
-            description: |-
-                LoginReply returns the bearer credential exactly once, at login. The token
-                 is never included in Principal or OnlineSession.
-        iam.auth.v1.LoginRequest:
-            required:
-                - username
-                - password
-            type: object
-            properties:
-                username:
-                    type: string
-                password:
-                    type: string
-            description: LoginRequest contains the credentials used to create one Login Session.
-        iam.auth.v1.OnlineSession:
-            type: object
-            properties:
-                tokenId:
-                    type: string
-                userName:
-                    type: string
-                deviceType:
-                    type: string
-                ipaddr:
-                    type: string
-                browser:
-                    type: string
-                os:
-                    type: string
-                loginTime:
-                    type: string
-                    format: date-time
-            description: |-
-                OnlineSession is the safe management view of one Login Session. token_id is
-                 the non-secret Session ID retained for RuoYi-compatible JSON naming.
-        iam.auth.v1.OnlineSessionSet:
-            type: object
-            properties:
-                sessions:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/iam.auth.v1.OnlineSession'
-                nextPageToken:
-                    type: string
-            description: OnlineSessionSet is a page of active Login Sessions.
-        iam.auth.v1.RoleAssignment:
-            type: object
-            properties:
-                role:
-                    allOf:
-                        - $ref: '#/components/schemas/iam.role.v1.Role'
-                    description: The role itself.
-                assigned:
-                    type: boolean
-                    description: Whether the user currently holds this role.
-            description: |-
-                RoleAssignment is one role with whether the user is assigned it (RuoYi's
-                 authRole dialog data: all roles plus a checked flag).
-        iam.auth.v1.UpdateUserRolesRequest:
-            required:
-                - userId
-            type: object
-            properties:
-                userId:
-                    type: string
-                    description: Required. The id of the user whose assignment is replaced.
-                roleIds:
-                    type: array
-                    items:
-                        type: string
-                    description: The complete desired assignment; full replacement (empty = clear all).
-        iam.auth.v1.UserRoles:
-            type: object
-            properties:
-                items:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/iam.auth.v1.RoleAssignment'
-            description: |-
-                UserRoles is a user's Role Assignment (角色分配): every active role with its
-                 assigned flag, ordered by (role_sort, role_id). Not paginated — roles are a
-                 small flat set.
-        iam.menu.v1.Menu:
+        access.v1.Menu:
             type: object
             properties:
                 menuId:
@@ -799,9 +709,7 @@ components:
                     format: int32
                 path:
                     type: string
-                    description: |-
-                        The routing fields below are inert until the auth module's getRouters
-                         consumes them.
+                    description: The routing fields below are inert until GetRouters consumes them.
                 component:
                     type: string
                 queryParam:
@@ -827,7 +735,9 @@ components:
                     format: int32
                 perms:
                     type: string
-                    description: Permission handle (e.g. "system:user:list"); enforced by the auth module.
+                    description: |-
+                        Permission handle (e.g. "system:user:list"); enforced against the
+                         Principal's Functional Permissions.
                 icon:
                     type: string
                 activeMenu:
@@ -836,7 +746,7 @@ components:
                     type: string
                 createBy:
                     type: string
-                    description: Audit; filled by the auth module.
+                    description: Audit; filled from the authenticated identity.
                 updateBy:
                     type: string
                 createdAt:
@@ -848,68 +758,20 @@ components:
                 children:
                     type: array
                     items:
-                        $ref: '#/components/schemas/iam.menu.v1.Menu'
+                        $ref: '#/components/schemas/access.v1.Menu'
                     description: 'Read-only: populated by ListMenus (the tree), ignored on Create/Update.'
             description: |-
                 Menu is a menu node (菜单), ported from RuoYi sys_menu. Back-office CRUD +
-                 tree only; route generation (getRouters) lives in the auth module.
-        iam.menu.v1.MenuTree:
+                 tree plus the current System User's route projection (GetRouters).
+        access.v1.MenuTree:
             type: object
             properties:
                 menus:
                     type: array
                     items:
-                        $ref: '#/components/schemas/iam.menu.v1.Menu'
+                        $ref: '#/components/schemas/access.v1.Menu'
             description: MenuTree is a forest of root menus, each nesting its descendants.
-        iam.menu.v1.Router:
-            type: object
-            properties:
-                name:
-                    type: string
-                path:
-                    type: string
-                hidden:
-                    type: boolean
-                redirect:
-                    type: string
-                component:
-                    type: string
-                query:
-                    type: string
-                alwaysShow:
-                    type: boolean
-                meta:
-                    $ref: '#/components/schemas/iam.menu.v1.RouterMeta'
-                children:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/iam.menu.v1.Router'
-            description: |-
-                Router is one Directory/Menu node in the current System User's route tree.
-                 Button nodes are never projected as Router values.
-        iam.menu.v1.RouterMeta:
-            type: object
-            properties:
-                title:
-                    type: string
-                icon:
-                    type: string
-                noCache:
-                    type: boolean
-                link:
-                    type: string
-                activeMenu:
-                    type: string
-            description: RouterMeta contains route presentation metadata consumed by the frontend.
-        iam.menu.v1.RouterTree:
-            type: object
-            properties:
-                routers:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/iam.menu.v1.Router'
-            description: RouterTree is the current System User's route forest.
-        iam.role.v1.Role:
+        access.v1.Role:
             type: object
             properties:
                 roleId:
@@ -935,7 +797,7 @@ components:
                     type: string
                 createBy:
                     type: string
-                    description: 'Audit: who created/updated. Filled by the auth module.'
+                    description: 'Audit: who created/updated. Filled from the authenticated identity.'
                 updateBy:
                     type: string
                 createdAt:
@@ -956,7 +818,20 @@ components:
                 Role is a named bundle of permissions (角色), ported from RuoYi sys_role.
                  Back-office CRUD plus the role↔menu link (**Menu Grant**); user↔role and
                  data-scope links are deferred (see CONTEXT.md).
-        iam.role.v1.RoleMenus:
+        access.v1.RoleAssignment:
+            type: object
+            properties:
+                role:
+                    allOf:
+                        - $ref: '#/components/schemas/access.v1.Role'
+                    description: The role itself.
+                assigned:
+                    type: boolean
+                    description: Whether the user currently holds this role.
+            description: |-
+                RoleAssignment is one role with whether the user is assigned it (RuoYi's
+                 authRole dialog data: all roles plus a checked flag).
+        access.v1.RoleMenus:
             type: object
             properties:
                 menuIds:
@@ -964,18 +839,66 @@ components:
                     items:
                         type: string
             description: 'RoleMenus is a role''s Menu Grant: the full set of granted menu ids.'
-        iam.role.v1.RoleSet:
+        access.v1.RoleSet:
             type: object
             properties:
                 roles:
                     type: array
                     items:
-                        $ref: '#/components/schemas/iam.role.v1.Role'
+                        $ref: '#/components/schemas/access.v1.Role'
                 nextPageToken:
                     type: string
                     description: Opaque token for the next page; empty when on the last page.
             description: RoleSet is a page of roles.
-        iam.role.v1.UpdateRoleMenusRequest:
+        access.v1.Router:
+            type: object
+            properties:
+                name:
+                    type: string
+                path:
+                    type: string
+                hidden:
+                    type: boolean
+                redirect:
+                    type: string
+                component:
+                    type: string
+                query:
+                    type: string
+                alwaysShow:
+                    type: boolean
+                meta:
+                    $ref: '#/components/schemas/access.v1.RouterMeta'
+                children:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/access.v1.Router'
+            description: |-
+                Router is one Directory/Menu node in the current System User's route tree.
+                 Button nodes are never projected as Router values.
+        access.v1.RouterMeta:
+            type: object
+            properties:
+                title:
+                    type: string
+                icon:
+                    type: string
+                noCache:
+                    type: boolean
+                link:
+                    type: string
+                activeMenu:
+                    type: string
+            description: RouterMeta contains route presentation metadata consumed by the frontend.
+        access.v1.RouterTree:
+            type: object
+            properties:
+                routers:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/access.v1.Router'
+            description: RouterTree is the current System User's route forest.
+        access.v1.UpdateRoleMenusRequest:
             required:
                 - roleId
             type: object
@@ -993,7 +916,84 @@ components:
                     description: |-
                         Optional. Presence-aware; absent = true (RuoYi default). Written together
                          with the grant in the same transaction.
-        iam.user.v1.CurrentUser:
+        access.v1.UpdateUserRolesRequest:
+            required:
+                - userId
+            type: object
+            properties:
+                userId:
+                    type: string
+                    description: Required. The id of the user whose assignment is replaced.
+                roleIds:
+                    type: array
+                    items:
+                        type: string
+                    description: The complete desired assignment; full replacement (empty = clear all).
+        access.v1.UserRoles:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/access.v1.RoleAssignment'
+            description: |-
+                UserRoles is a user's Role Assignment (角色分配): every active role with its
+                 assigned flag, ordered by (role_sort, role_id). Not paginated — roles are a
+                 small flat set.
+        authn.v1.LoginReply:
+            type: object
+            properties:
+                accessToken:
+                    type: string
+                expireIn:
+                    type: string
+                    description: Remaining fixed lifetime in seconds.
+            description: |-
+                LoginReply returns the bearer credential exactly once, at login. The token
+                 is never included in Principal or OnlineSession.
+        authn.v1.LoginRequest:
+            required:
+                - username
+                - password
+            type: object
+            properties:
+                username:
+                    type: string
+                password:
+                    type: string
+            description: LoginRequest contains the credentials used to create one Login Session.
+        authn.v1.OnlineSession:
+            type: object
+            properties:
+                tokenId:
+                    type: string
+                userName:
+                    type: string
+                deviceType:
+                    type: string
+                ipaddr:
+                    type: string
+                browser:
+                    type: string
+                os:
+                    type: string
+                loginTime:
+                    type: string
+                    format: date-time
+            description: |-
+                OnlineSession is the safe management view of one Login Session. token_id is
+                 the non-secret Session ID retained for RuoYi-compatible JSON naming.
+        authn.v1.OnlineSessionSet:
+            type: object
+            properties:
+                sessions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/authn.v1.OnlineSession'
+                nextPageToken:
+                    type: string
+            description: OnlineSessionSet is a page of active Login Sessions.
+        user.v1.CurrentUser:
             type: object
             properties:
                 userId:
@@ -1034,11 +1034,11 @@ components:
             description: |-
                 CurrentUser is the read-only, password-free System User shape returned by
                  GetInfo. A distinct DTO makes it impossible to expose the stored hash.
-        iam.user.v1.CurrentUserInfo:
+        user.v1.CurrentUserInfo:
             type: object
             properties:
                 user:
-                    $ref: '#/components/schemas/iam.user.v1.CurrentUser'
+                    $ref: '#/components/schemas/user.v1.CurrentUser'
                 roleKeys:
                     type: array
                     items:
@@ -1050,7 +1050,7 @@ components:
             description: |-
                 CurrentUserInfo is the authenticated System User and current Authorization
                  Snapshot exposed to the frontend.
-        iam.user.v1.User:
+        user.v1.User:
             type: object
             properties:
                 userId:
@@ -1086,12 +1086,12 @@ components:
                     type: string
                 createBy:
                     type: string
-                    description: 'Audit: who created/updated. Filled by the auth module.'
+                    description: 'Audit: who created/updated. Filled from the authenticated identity.'
                 updateBy:
                     type: string
                 loginIp:
                     type: string
-                    description: Last login IP/time. Written by the auth module, read-only here.
+                    description: Last login IP/time. Written by the authn module, read-only here.
                 loginDate:
                     type: string
                     format: date-time
@@ -1103,27 +1103,33 @@ components:
                     format: date-time
             description: |-
                 User is a system user (系统用户), ported from RuoYi sys_user. Back-office
-                 CRUD only — login/session lives in the auth module.
-        iam.user.v1.UserSet:
+                 CRUD only — login/session lives in the authn module.
+        user.v1.UserSet:
             type: object
             properties:
                 users:
                     type: array
                     items:
-                        $ref: '#/components/schemas/iam.user.v1.User'
+                        $ref: '#/components/schemas/user.v1.User'
                 nextPageToken:
                     type: string
                     description: Opaque token for the next page; empty when on the last page.
             description: UserSet is a page of users.
 tags:
     - name: AuthService
-      description: AuthService owns login/logout and the user↔role link (**Role Assignment**).
+      description: |-
+        AuthService owns login/logout for Login Sessions. The user↔role link it
+         once hosted moved to access.v1.RoleAssignmentService.
     - name: MenuService
       description: MenuService is the system-menu CRUD + tree service.
     - name: OnlineSessionService
       description: |-
         OnlineSessionService exposes the four RuoYi-compatible Login Session
          management operations. It deliberately has no bulk logout operation.
+    - name: RoleAssignmentService
+      description: |-
+        RoleAssignmentService owns the user↔role link (**Role Assignment**): the
+         three endpoints behind RuoYi's authRole dialog.
     - name: RoleService
       description: RoleService is the system-role CRUD + Menu Grant service.
     - name: UserService

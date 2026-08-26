@@ -4,8 +4,8 @@ import (
 	"context"
 	"log/slog"
 
-	authv1 "glex/api/iam/auth/v1"
-	userv1 "glex/api/iam/user/v1"
+	accessv1 "glex/api/access/v1"
+	userv1 "glex/api/user/v1"
 	accessdomain "glex/internal/domain/access"
 
 	"go.einride.tech/aip/filtering"
@@ -15,8 +15,8 @@ import (
 )
 
 // convertRoleAssignment maps a accessdomain.RoleAssignment DO to the proto DTO.
-func convertRoleAssignment(a *accessdomain.RoleAssignment) *authv1.RoleAssignment {
-	return &authv1.RoleAssignment{
+func convertRoleAssignment(a *accessdomain.RoleAssignment) *accessv1.RoleAssignment {
+	return &accessv1.RoleAssignment{
 		Role:     convertRole(a.Role),
 		Assigned: a.Assigned,
 	}
@@ -49,20 +49,19 @@ func convertRoleUser(m *accessdomain.RoleUser) *userv1.User {
 }
 
 // toUserRoles maps a list of assignments to the UserRoles DTO.
-func toUserRoles(assignments []*accessdomain.RoleAssignment) *authv1.UserRoles {
-	items := make([]*authv1.RoleAssignment, 0, len(assignments))
+func toUserRoles(assignments []*accessdomain.RoleAssignment) *accessv1.UserRoles {
+	items := make([]*accessv1.RoleAssignment, 0, len(assignments))
 	for _, a := range assignments {
 		items = append(items, convertRoleAssignment(a))
 	}
-	return &authv1.UserRoles{Items: items}
+	return &accessv1.UserRoles{Items: items}
 }
 
-// RoleAssignmentApplication implements the access span of the proto
-// AuthService: the three user↔role assignment endpoints. The login/logout
-// span of the same proto service lives with authn; the contracts split in
-// ticket 06 moves these RPCs onto a standalone RoleAssignmentService.
+// RoleAssignmentApplication implements the access-owned
+// RoleAssignmentService: the three user↔role assignment endpoints behind
+// RuoYi's authRole dialog.
 type RoleAssignmentApplication struct {
-	authv1.UnimplementedAuthServiceServer
+	accessv1.UnimplementedRoleAssignmentServiceServer
 
 	uc     *RoleAssignmentUsecase
 	logger *slog.Logger
@@ -78,7 +77,7 @@ func NewRoleAssignmentApplication(uc *RoleAssignmentUsecase, logger *slog.Logger
 
 // ListUserRoles returns every active role with its assigned flag for the
 // user (the assign dialog's data in one call).
-func (s *RoleAssignmentApplication) ListUserRoles(ctx context.Context, req *authv1.ListUserRolesRequest) (*authv1.UserRoles, error) {
+func (s *RoleAssignmentApplication) ListUserRoles(ctx context.Context, req *accessv1.ListUserRolesRequest) (*accessv1.UserRoles, error) {
 	assignments, err := s.uc.ListUserRoles(ctx, req.GetUserId())
 	if err != nil {
 		return nil, err
@@ -88,7 +87,7 @@ func (s *RoleAssignmentApplication) ListUserRoles(ctx context.Context, req *auth
 
 // UpdateUserRoles replaces the user's Role Assignment (full replacement; an
 // empty role_ids clears all) and returns the updated assignment.
-func (s *RoleAssignmentApplication) UpdateUserRoles(ctx context.Context, req *authv1.UpdateUserRolesRequest) (*authv1.UserRoles, error) {
+func (s *RoleAssignmentApplication) UpdateUserRoles(ctx context.Context, req *accessv1.UpdateUserRolesRequest) (*accessv1.UserRoles, error) {
 	assignments, err := s.uc.UpdateUserRoles(ctx, req.GetUserId(), req.GetRoleIds())
 	if err != nil {
 		return nil, err
@@ -99,7 +98,7 @@ func (s *RoleAssignmentApplication) UpdateUserRoles(ctx context.Context, req *au
 // ListRoleUsers lists the active users assigned the role, with AIP-160
 // filter, AIP-132 order, and page-token pagination (same shape as
 // ListUsers).
-func (s *RoleAssignmentApplication) ListRoleUsers(ctx context.Context, req *authv1.ListRoleUsersRequest) (*userv1.UserSet, error) {
+func (s *RoleAssignmentApplication) ListRoleUsers(ctx context.Context, req *accessv1.ListRoleUsersRequest) (*userv1.UserSet, error) {
 	declarations, err := filtering.NewDeclarations(
 		filtering.DeclareStandardFunctions(),
 		filtering.DeclareIdent("user_name", filtering.TypeString),

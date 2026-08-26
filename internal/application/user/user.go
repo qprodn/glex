@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	userv1 "glex/api/iam/user/v1"
+	userv1 "glex/api/user/v1"
 	authndomain "glex/internal/domain/authn"
 	userdomain "glex/internal/domain/user"
 
