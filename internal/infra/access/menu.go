@@ -306,7 +306,7 @@ func systemUserIDsForRoles(ctx context.Context, db *ent.Database, roleIDs []int6
 // wire-identical twin of authn's AUTH_BACKEND_UNAVAILABLE — so no raw driver
 // error crosses the seam and access depends on no authn type.
 func routeAccessError(ctx context.Context, logger *slog.Logger, operation string, err error) error {
-	logger.WarnContext(ctx, "authentication-shaped database operation failed",
+	logger.WarnContext(ctx, "route access database operation failed",
 		slog.String("operation", operation),
 		slog.Any("error", err),
 	)

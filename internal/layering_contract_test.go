@@ -153,6 +153,31 @@ func TestModuleSplitBoundaries(t *testing.T) {
 	}
 }
 
+// TestWholeGraphSuitesAreTestOnly pins the shape of internal/integration: the
+// whole-graph suites compose every module (including crossdomain impl
+// adapters, which only cmd and tests may do), so the tree must never grow
+// production code — a non-test file here would be importable by any layer.
+func TestWholeGraphSuitesAreTestOnly(t *testing.T) {
+	err := filepath.WalkDir("integration", func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() || !strings.HasSuffix(path, ".go") {
+			return nil
+		}
+		if !strings.HasSuffix(path, "_test.go") {
+			t.Errorf("%s is not a _test.go file; internal/integration is test-only", path)
+		}
+		return nil
+	})
+	if err != nil {
+		if os.IsNotExist(err) {
+			t.Fatalf("internal/integration tree is missing")
+		}
+		t.Fatalf("scan integration tree: %v", err)
+	}
+}
+
 // osDir returns this file's directory (internal/).
 func osDir() string {
 	_, filename, _, ok := runtime.Caller(0)
