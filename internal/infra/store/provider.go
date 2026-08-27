@@ -9,7 +9,7 @@ import (
 )
 
 // Module contains shared PostgreSQL, Redis, and transaction providers.
-var Module = fx.Options(
+var Module = fx.Module("store",
 	fx.Provide(provideData, NewTxManager),
 )
 

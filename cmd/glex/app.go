@@ -1,14 +1,16 @@
 package main
 
 import (
-	"glex/internal/application"
 	accessapp "glex/internal/application/access"
 	authnapp "glex/internal/application/authn"
 	userapp "glex/internal/application/user"
 	accessimpl "glex/internal/crossdomain/access/impl"
 	authnimpl "glex/internal/crossdomain/authn/impl"
-	"glex/internal/infra"
+	accessinfra "glex/internal/infra/access"
+	authninfra "glex/internal/infra/authn"
+	lockerinfra "glex/internal/infra/locker"
 	"glex/internal/infra/store"
+	userinfra "glex/internal/infra/user"
 	"glex/internal/server"
 
 	"go.uber.org/fx"
@@ -19,10 +21,20 @@ import (
 // interface, and only the composition root knows that *store.TxManager
 // satisfies all three.
 var appModule = fx.Options(
-	infra.Module,
+	// infrastructure
+	store.Module,
+	userinfra.Module,
+	accessinfra.Module,
+	authninfra.Module,
+	lockerinfra.Module,
+	// crossdomain contract adapters
 	accessimpl.Module,
 	authnimpl.Module,
-	application.Module,
+	// application
+	userapp.Module,
+	accessapp.Module,
+	authnapp.Module,
+	// transport
 	server.Module,
 	fx.Provide(newApp),
 	fx.Provide(

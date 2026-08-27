@@ -7,7 +7,8 @@ import (
 )
 
 // Module wires the Redis locker behind the shared lock.Locker contract.
-var Module = fx.Options(
-	fx.Provide(NewRedisLocker),
+// Nothing consumes the concrete *RedisLocker, so only the interface is
+// provided.
+var Module = fx.Module("locker",
 	fx.Provide(fx.Annotate(NewRedisLocker, fx.As(new(lock.Locker)))),
 )

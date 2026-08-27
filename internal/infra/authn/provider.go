@@ -9,7 +9,7 @@ import (
 )
 
 // Module contains authn persistence, cache, and authentication adapters.
-var Module = fx.Options(
+var Module = fx.Module("authn-infra",
 	fx.Provide(
 		NewAuthStorage,
 		provideAuthManager,
