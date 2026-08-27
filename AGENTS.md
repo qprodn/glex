@@ -13,8 +13,8 @@ carry a snowflake surrogate PK plus a partial unique index on the id pair
 ## Generation and generated files
 
 Regenerate via `make api`, `make config`, `make all`, or the owning generator.
-Never hand-edit `*.pb.go`, `*_grpc.pb.go`, `*_http.pb.go`, Ent-generated files,
-or `wire_gen.go`.
+Never hand-edit `*.pb.go`, `*_grpc.pb.go`, `*_http.pb.go`, or Ent-generated
+files.
 
 ## Commits and security
 

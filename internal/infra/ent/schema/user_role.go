@@ -27,7 +27,7 @@ func (UserRole) Mixin() []ent.Mixin {
 // the pair itself cannot be the PK.
 func (UserRole) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int64("id").StorageKey("user_role_id").Unique().Immutable(),
+		field.Int64("id").StorageKey("id").Unique().Immutable(),
 		field.Int64("user_id"),
 		field.Int64("role_id"),
 	}

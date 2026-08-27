@@ -1,9 +1,9 @@
 package accessinfra
 
-import "github.com/google/wire"
+import "go.uber.org/fx"
 
-// ProviderSet contains access persistence adapters.
-var ProviderSet = wire.NewSet(
+// Module contains access persistence adapters.
+var Module = fx.Provide(
 	NewMenuRepo,
 	NewRoleRepo,
 	NewUserRoleRepo,

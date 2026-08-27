@@ -22,9 +22,9 @@ func (User) Mixin() []ent.Mixin {
 // Fields of the User.
 func (User) Fields() []ent.Field {
 	return []ent.Field{
-		// Snowflake ID; stored in the RuoYi-style user_id column. Set by the repo
+		// Snowflake ID; stored in the id column. Set by the repo
 		// on create (see data.newSnowflakeID).
-		field.Int64("id").StorageKey("user_id").Unique().Immutable(),
+		field.Int64("id").Unique().Immutable(),
 		// Uniqueness is enforced in code (domain checks against active rows), not
 		// by DB constraints — repo-wide convention (see .scratch/role/plan.md).
 		// Soft-deleted values are reusable.

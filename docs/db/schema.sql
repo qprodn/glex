@@ -1,5 +1,5 @@
 create table if not exists sys_user (
-    user_id      bigint       not null,
+    id           bigint       not null,
     user_name    varchar(256) not null,
     nick_name    varchar(256) not null default '',
     email        varchar(256),                       -- nullable; NULL when unset
@@ -16,12 +16,12 @@ create table if not exists sys_user (
     created_at   timestamptz  not null default now(),
     updated_at   timestamptz  not null default now(),
     deleted_at   timestamptz,                        -- soft delete; NULL = active
-    constraint sys_user_pkey primary key (user_id)
+    constraint sys_user_pkey primary key (id)
 );
 
 comment on table sys_user is '系统用户';
 
-comment on column sys_user.user_id is '用户ID';
+comment on column sys_user.id is '用户ID';
 comment on column sys_user.user_name is '用户账号';
 comment on column sys_user.nick_name is '用户昵称';
 comment on column sys_user.email is '用户邮箱；NULL 表示未设置';
@@ -41,7 +41,7 @@ comment on column sys_user.deleted_at is '软删除时间；NULL=未删除';
 
 
 create table if not exists sys_menu (
-    menu_id     bigint       not null,
+    id          bigint       not null,
     menu_name   varchar(256) not null,
     parent_id   bigint       not null default 0,    -- 0 = root
     order_num   integer      not null default 0,
@@ -62,13 +62,13 @@ create table if not exists sys_menu (
     created_at  timestamptz  not null default now(),
     updated_at  timestamptz  not null default now(),
     deleted_at  timestamptz,                        -- soft delete; NULL = active
-    constraint sys_menu_pkey primary key (menu_id)
+    constraint sys_menu_pkey primary key (id)
 );
 -- No unique constraint on (parent_id, menu_name): enforced by a soft biz check.
 
 comment on table sys_menu is '菜单权限表';
 
-comment on column sys_menu.menu_id is '菜单ID';
+comment on column sys_menu.id is '菜单ID';
 comment on column sys_menu.menu_name is '菜单名称；同级唯一性由代码层校验';
 comment on column sys_menu.parent_id is '父菜单ID；0=根节点（自引用）';
 comment on column sys_menu.order_num is '显示顺序';
@@ -92,7 +92,7 @@ comment on column sys_menu.deleted_at is '软删除时间；NULL=未删除';
 
 
 create table if not exists sys_role (
-    role_id            bigint       not null,
+    id                 bigint       not null,
     role_name          varchar(256) not null,
     role_key           varchar(256) not null,               -- permission string (no charset rule)
     role_sort          integer      not null default 0,     -- display order
@@ -104,12 +104,12 @@ create table if not exists sys_role (
     created_at         timestamptz  not null default now(),
     updated_at         timestamptz  not null default now(),
     deleted_at         timestamptz,                         -- soft delete; NULL = active
-    constraint sys_role_pkey primary key (role_id)
+    constraint sys_role_pkey primary key (id)
 );
 
 comment on table sys_role is '角色信息表';
 
-comment on column sys_role.role_id is '角色ID';
+comment on column sys_role.id is '角色ID';
 comment on column sys_role.role_name is '角色名称';
 comment on column sys_role.role_key is '权限字符（无字符集规则）';
 comment on column sys_role.role_sort is '显示顺序';
@@ -124,7 +124,7 @@ comment on column sys_role.deleted_at is '软删除时间；NULL=未删除';
 
 
 create table if not exists sys_role_menu (
-    role_menu_id bigint       not null,
+    id           bigint       not null,
     role_id      bigint       not null,
     menu_id      bigint       not null,
     create_by    bigint       not null default 0,    -- audit; Application stamps from Principal (ADR 0002)
@@ -132,9 +132,9 @@ create table if not exists sys_role_menu (
     created_at   timestamptz  not null default now(),
     updated_at   timestamptz  not null default now(),
     deleted_at   timestamptz,                        -- soft delete; NULL = active
-    constraint sys_role_menu_pkey primary key (role_menu_id),
-    constraint sys_role_menu_sys_role_menu_grants_fkey foreign key (role_id) references sys_role (role_id),
-    constraint sys_role_menu_sys_menu_role_links_fkey foreign key (menu_id) references sys_menu (menu_id)
+    constraint sys_role_menu_pkey primary key (id),
+    constraint sys_role_menu_sys_role_menu_grants_fkey foreign key (role_id) references sys_role (id),
+    constraint sys_role_menu_sys_menu_role_links_fkey foreign key (menu_id) references sys_menu (id)
 );
 
 create unique index if not exists rolemenu_role_id_menu_id
@@ -142,7 +142,7 @@ create unique index if not exists rolemenu_role_id_menu_id
 
 comment on table sys_role_menu is '角色和菜单关联表';
 
-comment on column sys_role_menu.role_menu_id is '主键ID';
+comment on column sys_role_menu.id is '主键ID';
 comment on column sys_role_menu.role_id is '角色ID';
 comment on column sys_role_menu.menu_id is '菜单ID';
 comment on column sys_role_menu.create_by is '创建者用户ID';
@@ -153,7 +153,7 @@ comment on column sys_role_menu.deleted_at is '软删除时间；NULL=未删除'
 
 
 create table if not exists sys_user_role (
-    user_role_id bigint       not null,
+    id           bigint       not null,
     user_id      bigint       not null,
     role_id      bigint       not null,
     create_by    bigint       not null default 0,    -- audit; Application stamps from Principal (ADR 0002)
@@ -161,9 +161,9 @@ create table if not exists sys_user_role (
     created_at   timestamptz  not null default now(),
     updated_at   timestamptz  not null default now(),
     deleted_at   timestamptz,                        -- soft delete; NULL = active
-    constraint sys_user_role_pkey primary key (user_role_id),
-    constraint sys_user_role_sys_user_role_assignments_fkey foreign key (user_id) references sys_user (user_id),
-    constraint sys_user_role_sys_role_user_links_fkey foreign key (role_id) references sys_role (role_id)
+    constraint sys_user_role_pkey primary key (id),
+    constraint sys_user_role_sys_user_role_assignments_fkey foreign key (user_id) references sys_user (id),
+    constraint sys_user_role_sys_role_user_links_fkey foreign key (role_id) references sys_role (id)
 );
 
 create unique index if not exists userrole_user_id_role_id
@@ -171,7 +171,7 @@ create unique index if not exists userrole_user_id_role_id
 
 comment on table sys_user_role is '用户和角色关联表';
 
-comment on column sys_user_role.user_role_id is '主键ID';
+comment on column sys_user_role.id is '主键ID';
 comment on column sys_user_role.user_id is '用户ID';
 comment on column sys_user_role.role_id is '角色ID';
 comment on column sys_user_role.create_by is '创建者用户ID';

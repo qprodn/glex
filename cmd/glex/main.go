@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log/slog"
 	"os"
@@ -14,8 +15,8 @@ import (
 	"github.com/go-kratos/kratos/v3/log"
 	"github.com/go-kratos/kratos/v3/transport/grpc"
 	"github.com/go-kratos/kratos/v3/transport/http"
-
 	_ "go.uber.org/automaxprocs"
+	"go.uber.org/fx"
 )
 
 // go build -ldflags "-X main.Version=x.y.z"
@@ -91,11 +92,28 @@ func main() {
 		panic(err)
 	}
 
-	app, cleanup, err := wireApp(bc.Server, bc.Data, bc.Auth, logger)
-	if err != nil {
+	// fx builds the graph and owns construction-time cleanup ordering; the
+	// kratos App keeps owning the run loop, signal handling, and graceful
+	// server shutdown. Lifecycle hooks run OnStop in LIFO order, so the
+	// sa-token Manager closes before the shared Data connections.
+	var app *kratos.App
+	fxApp := fx.New(
+		fx.Supply(bc.Server, bc.Data, bc.Auth, logger),
+		appModule,
+		fx.Populate(&app),
+	)
+	if err := fxApp.Err(); err != nil {
 		panic(err)
 	}
-	defer cleanup()
+	ctx := context.Background()
+	if err := fxApp.Start(ctx); err != nil {
+		panic(err)
+	}
+	defer func() {
+		if err := fxApp.Stop(ctx); err != nil {
+			logger.Error("failed stopping dependency graph", slog.Any("error", err))
+		}
+	}()
 
 	// start and wait for stop signal
 	if err := app.Run(); err != nil {

@@ -67,7 +67,7 @@ func (r *userRoleRepo) UserExists(ctx context.Context, userID int64) (bool, erro
 }
 
 // ListRoleAssignments reads every active role (the dialog's "all roles") with
-// whether the user is assigned it, ordered by (role_sort, role_id). The
+// whether the user is assigned it, ordered by (role_sort, id). The
 // assigned flag comes from the user's active link rows; user existence itself
 // is checked by RoleAssignmentUsecase.
 func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([]*accessrepo.RoleAssignment, error) {

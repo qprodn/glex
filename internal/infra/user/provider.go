@@ -1,8 +1,8 @@
 package userinfra
 
-import "github.com/google/wire"
+import "go.uber.org/fx"
 
-// ProviderSet contains the user module's persistence adapters.
-var ProviderSet = wire.NewSet(
+// Module contains the user module's persistence adapters.
+var Module = fx.Provide(
 	NewUserRepo,
 )

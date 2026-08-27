@@ -1,8 +1,8 @@
 package impl
 
-import "github.com/google/wire"
+import "go.uber.org/fx"
 
-// ProviderSet contains the crossdomain access contract adapters.
-var ProviderSet = wire.NewSet(
+// Module contains the crossdomain access contract adapters.
+var Module = fx.Provide(
 	NewAuthorizationResolver,
 )

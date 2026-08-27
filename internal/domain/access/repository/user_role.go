@@ -39,14 +39,14 @@ type RoleUser struct {
 
 // UserRoleRepo is the repository interface for user↔role links (the inversion
 // seam declared in domain, implemented in data). The link table is
-// sys_user_role (snowflake PK user_role_id, audit columns, soft delete —
+// sys_user_role (snowflake PK id, audit columns, soft delete —
 // ADR 0002; one active row per (user_id, role_id) pair).
 type UserRoleRepo interface {
 	// UserExists reports whether the System User exists and is not
 	// soft-deleted — the existence gate behind the by-user endpoints.
 	UserExists(ctx context.Context, userID int64) (bool, error)
 	// ListRoleAssignments returns every active role with whether the user is
-	// assigned it, ordered by (role_sort, role_id).
+	// assigned it, ordered by (role_sort, id).
 	ListRoleAssignments(ctx context.Context, userID int64) ([]*RoleAssignment, error)
 	// ReplaceUserRoles is a security write: it atomically replaces the user's
 	// Role Assignment with roleIDs (full replacement of the active set; an

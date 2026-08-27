@@ -1,9 +1,9 @@
 package authn
 
-import "github.com/google/wire"
+import "go.uber.org/fx"
 
-// ProviderSet contains the authn application providers.
-var ProviderSet = wire.NewSet(
+// Module contains the authn application providers.
+var Module = fx.Provide(
 	NewLoginApplication,
 	NewOnlineSessionApplication,
 )

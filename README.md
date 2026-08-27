@@ -13,7 +13,7 @@ Proto generation is driven by [buf](https://buf.build). Dependencies such as
 googleapis are resolved from the Buf Schema Registry (`buf.build/googleapis/googleapis`),
 so there is no vendored `third_party/` directory.
 ```shell
-# Install tooling (buf + wire)
+# Install tooling (buf)
 make init
 # Generate API files (pb.go, grpc, kratos http, openapi.yaml, web TS clients) from api/*.proto
 make api

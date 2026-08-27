@@ -13,7 +13,7 @@ const (
 	// Label holds the string label denoting the rolemenu type in the database.
 	Label = "role_menu"
 	// FieldID holds the string denoting the id field in the database.
-	FieldID = "role_menu_id"
+	FieldID = "id"
 	// FieldCreateBy holds the string denoting the create_by field in the database.
 	FieldCreateBy = "create_by"
 	// FieldUpdateBy holds the string denoting the update_by field in the database.
@@ -32,10 +32,6 @@ const (
 	EdgeRole = "role"
 	// EdgeMenu holds the string denoting the menu edge name in mutations.
 	EdgeMenu = "menu"
-	// RoleFieldID holds the string denoting the ID field of the Role.
-	RoleFieldID = "role_id"
-	// MenuFieldID holds the string denoting the ID field of the Menu.
-	MenuFieldID = "menu_id"
 	// Table holds the table name of the rolemenu in the database.
 	Table = "sys_role_menu"
 	// RoleTable is the table that holds the role relation/edge.
@@ -148,14 +144,14 @@ func ByMenuField(field string, opts ...sql.OrderTermOption) OrderOption {
 func newRoleStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(RoleInverseTable, RoleFieldID),
+		sqlgraph.To(RoleInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, RoleTable, RoleColumn),
 	)
 }
 func newMenuStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(MenuInverseTable, MenuFieldID),
+		sqlgraph.To(MenuInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, MenuTable, MenuColumn),
 	)
 }

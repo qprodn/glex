@@ -3,11 +3,12 @@ package infra
 import (
 	accessinfra "glex/internal/infra/access"
 	authninfra "glex/internal/infra/authn"
+	lockerinfra "glex/internal/infra/locker"
 	"glex/internal/infra/store"
 	userinfra "glex/internal/infra/user"
 
-	"github.com/google/wire"
+	"go.uber.org/fx"
 )
 
-// ProviderSet contains all infrastructure adapters used by the composition root.
-var ProviderSet = wire.NewSet(store.ProviderSet, userinfra.ProviderSet, accessinfra.ProviderSet, authninfra.ProviderSet)
+// Module contains all infrastructure adapters used by the composition root.
+var Module = fx.Options(store.Module, userinfra.Module, accessinfra.Module, authninfra.Module, lockerinfra.Module)

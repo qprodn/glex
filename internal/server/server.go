@@ -1,8 +1,6 @@
 package server
 
-import (
-	"github.com/google/wire"
-)
+import "go.uber.org/fx"
 
-// ProviderSet is server providers.
-var ProviderSet = wire.NewSet(NewGRPCServer, NewHTTPServer)
+// Module is server providers.
+var Module = fx.Provide(NewGRPCServer, NewHTTPServer)

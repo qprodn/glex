@@ -13,7 +13,7 @@ const (
 	// Label holds the string label denoting the user type in the database.
 	Label = "user"
 	// FieldID holds the string denoting the id field in the database.
-	FieldID = "user_id"
+	FieldID = "id"
 	// FieldCreateBy holds the string denoting the create_by field in the database.
 	FieldCreateBy = "create_by"
 	// FieldUpdateBy holds the string denoting the update_by field in the database.
@@ -48,8 +48,6 @@ const (
 	FieldLoginDate = "login_date"
 	// EdgeRoleAssignments holds the string denoting the role_assignments edge name in mutations.
 	EdgeRoleAssignments = "role_assignments"
-	// UserRoleFieldID holds the string denoting the ID field of the UserRole.
-	UserRoleFieldID = "user_role_id"
 	// Table holds the table name of the user in the database.
 	Table = "sys_user"
 	// RoleAssignmentsTable is the table that holds the role_assignments relation/edge.
@@ -225,7 +223,7 @@ func ByRoleAssignments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 func newRoleAssignmentsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(RoleAssignmentsInverseTable, UserRoleFieldID),
+		sqlgraph.To(RoleAssignmentsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, RoleAssignmentsTable, RoleAssignmentsColumn),
 	)
 }

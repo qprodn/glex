@@ -23,9 +23,9 @@ func (Role) Mixin() []ent.Mixin {
 // Fields of the Role.
 func (Role) Fields() []ent.Field {
 	return []ent.Field{
-		// Snowflake ID; stored in the RuoYi-style role_id column. Set by the
+		// Snowflake ID; stored in the id column. Set by the
 		// repo on create (see data.newSnowflakeID).
-		field.Int64("id").StorageKey("role_id").Unique().Immutable(),
+		field.Int64("id").Unique().Immutable(),
 		// Uniqueness is enforced in code (domain checks against active rows), not
 		// by DB constraints — repo-wide convention (see .scratch/role/plan.md).
 		// Soft-deleted values are reusable.

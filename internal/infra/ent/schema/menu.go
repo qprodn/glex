@@ -22,9 +22,9 @@ func (Menu) Mixin() []ent.Mixin {
 // Fields of the Menu.
 func (Menu) Fields() []ent.Field {
 	return []ent.Field{
-		// Snowflake ID; stored in the RuoYi-style menu_id column. Set by the repo
+		// Snowflake ID; stored in the id column. Set by the repo
 		// on create (see data.newSnowflakeID).
-		field.Int64("id").StorageKey("menu_id").Unique().Immutable(),
+		field.Int64("id").Unique().Immutable(),
 		field.String("menu_name"),
 		// Self-reference; 0 = root. No DB unique constraint on (parent_id,
 		// menu_name) — sibling uniqueness is a soft domain check.

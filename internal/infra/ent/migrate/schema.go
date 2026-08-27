@@ -11,7 +11,7 @@ import (
 var (
 	// SysMenuColumns holds the columns for the "sys_menu" table.
 	SysMenuColumns = []*schema.Column{
-		{Name: "menu_id", Type: field.TypeInt64, Increment: true},
+		{Name: "id", Type: field.TypeInt64, Increment: true},
 		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
 		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
 		{Name: "created_at", Type: field.TypeTime},
@@ -41,7 +41,7 @@ var (
 	}
 	// SysRoleColumns holds the columns for the "sys_role" table.
 	SysRoleColumns = []*schema.Column{
-		{Name: "role_id", Type: field.TypeInt64, Increment: true},
+		{Name: "id", Type: field.TypeInt64, Increment: true},
 		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
 		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
 		{Name: "created_at", Type: field.TypeTime},
@@ -62,7 +62,7 @@ var (
 	}
 	// SysRoleMenuColumns holds the columns for the "sys_role_menu" table.
 	SysRoleMenuColumns = []*schema.Column{
-		{Name: "role_menu_id", Type: field.TypeInt64, Increment: true},
+		{Name: "id", Type: field.TypeInt64, Increment: true},
 		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
 		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
 		{Name: "created_at", Type: field.TypeTime},
@@ -103,7 +103,7 @@ var (
 	}
 	// SysUserColumns holds the columns for the "sys_user" table.
 	SysUserColumns = []*schema.Column{
-		{Name: "user_id", Type: field.TypeInt64, Increment: true},
+		{Name: "id", Type: field.TypeInt64, Increment: true},
 		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
 		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
 		{Name: "created_at", Type: field.TypeTime},
@@ -129,7 +129,7 @@ var (
 	}
 	// SysUserRoleColumns holds the columns for the "sys_user_role" table.
 	SysUserRoleColumns = []*schema.Column{
-		{Name: "user_role_id", Type: field.TypeInt64, Increment: true},
+		{Name: "id", Type: field.TypeInt64, Increment: true},
 		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
 		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
 		{Name: "created_at", Type: field.TypeTime},

@@ -5,8 +5,8 @@ import (
 	authnapp "glex/internal/application/authn"
 	userapp "glex/internal/application/user"
 
-	"github.com/google/wire"
+	"go.uber.org/fx"
 )
 
-// ProviderSet contains every application module exposed to the composition root.
-var ProviderSet = wire.NewSet(userapp.ProviderSet, accessapp.ProviderSet, authnapp.ProviderSet)
+// Module contains every application module exposed to the composition root.
+var Module = fx.Options(userapp.Module, accessapp.Module, authnapp.Module)

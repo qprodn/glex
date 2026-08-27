@@ -19,7 +19,7 @@ structurally by a shared ent audit mixin so a new schema cannot forget it.
 Join-table primary keys under soft delete (a re-granted pair would collide
 with its withdrawn generation):
 
-- **Chosen:** snowflake surrogate PK (`role_menu_id` / `user_role_id`) plus a
+- **Chosen:** snowflake surrogate PK (`id` / `id`) plus a
   partial unique index on the id pair `WHERE deleted_at IS NULL`. A re-grant
   inserts a new row; withdrawn generations accumulate as history.
 - **Rejected:** keep the composite PK and resurrect the withdrawn row on

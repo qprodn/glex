@@ -167,7 +167,7 @@ func (s *RoleAssignmentApplication) ListRoleUsers(ctx context.Context, req *acce
 	}
 	if len(orderBy.Fields) == 0 {
 		// Default order: id as a stable tie-break for page-token pagination.
-		orderBy.Fields = []ordering.Field{{Path: "user_id"}}
+		orderBy.Fields = []ordering.Field{{Path: "id"}}
 	}
 	if req.GetPageSize() <= 0 {
 		req.PageSize = 20

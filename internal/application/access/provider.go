@@ -1,9 +1,9 @@
 package access
 
-import "github.com/google/wire"
+import "go.uber.org/fx"
 
-// ProviderSet contains the access application providers.
-var ProviderSet = wire.NewSet(
+// Module contains the access application providers.
+var Module = fx.Provide(
 	NewMenuApplication,
 	NewRoleApplication,
 	NewRoleAssignmentApplication,

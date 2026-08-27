@@ -13,7 +13,7 @@ const (
 	// Label holds the string label denoting the role type in the database.
 	Label = "role"
 	// FieldID holds the string denoting the id field in the database.
-	FieldID = "role_id"
+	FieldID = "id"
 	// FieldCreateBy holds the string denoting the create_by field in the database.
 	FieldCreateBy = "create_by"
 	// FieldUpdateBy holds the string denoting the update_by field in the database.
@@ -40,10 +40,6 @@ const (
 	EdgeMenuGrants = "menu_grants"
 	// EdgeUserLinks holds the string denoting the user_links edge name in mutations.
 	EdgeUserLinks = "user_links"
-	// RoleMenuFieldID holds the string denoting the ID field of the RoleMenu.
-	RoleMenuFieldID = "role_menu_id"
-	// UserRoleFieldID holds the string denoting the ID field of the UserRole.
-	UserRoleFieldID = "user_role_id"
 	// Table holds the table name of the role in the database.
 	Table = "sys_role"
 	// MenuGrantsTable is the table that holds the menu_grants relation/edge.
@@ -202,14 +198,14 @@ func ByUserLinks(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 func newMenuGrantsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(MenuGrantsInverseTable, RoleMenuFieldID),
+		sqlgraph.To(MenuGrantsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, MenuGrantsTable, MenuGrantsColumn),
 	)
 }
 func newUserLinksStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(UserLinksInverseTable, UserRoleFieldID),
+		sqlgraph.To(UserLinksInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, UserLinksTable, UserLinksColumn),
 	)
 }

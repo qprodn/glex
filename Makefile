@@ -5,7 +5,6 @@ VERSION=$(shell git describe --tags --always)
 .PHONY: init
 # init env
 init:
-	go install github.com/google/wire/cmd/wire@latest
 	go install github.com/bufbuild/buf/cmd/buf@latest
 
 .PHONY: config

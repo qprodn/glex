@@ -1,9 +1,9 @@
 package user
 
-import "github.com/google/wire"
+import "go.uber.org/fx"
 
-// ProviderSet contains the user module's application provider (System User
+// Module contains the user module's application provider (System User
 // profiles and their orchestration).
-var ProviderSet = wire.NewSet(
+var Module = fx.Provide(
 	NewUserApplication,
 )

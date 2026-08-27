@@ -32,7 +32,7 @@ func TestMenuRepoLoadRouteAccessQueriesAssignmentsGrantsAndActiveMenus(t *testin
 	mock.ExpectQuery(`SELECT .* FROM "sys_role"`).
 		WillReturnRows(sqlmock.NewRows(role.Columns).
 			AddRow(int64(7), int64(0), int64(0), now, now, nil, "Operator", "operator", 1, int8(0), true, ""))
-	mock.ExpectQuery(`SELECT DISTINCT "sys_menu"."menu_id" FROM "sys_menu" JOIN .*"sys_role_menu"`).
+	mock.ExpectQuery(`SELECT DISTINCT "sys_menu"."id" FROM "sys_menu" JOIN .*"sys_role_menu"`).
 		WillReturnRows(sqlmock.NewRows([]string{menu.FieldID}).AddRow(int64(10)).AddRow(int64(11)))
 	mock.ExpectQuery(`SELECT .* FROM "sys_menu"`).
 		WillReturnRows(sqlmock.NewRows(menu.Columns).
@@ -99,7 +99,7 @@ func TestMenuRepoLoadRouteAccessMapsDatabaseFailures(t *testing.T) {
 				mock.ExpectQuery(`SELECT .* FROM "sys_role"`).
 					WillReturnRows(sqlmock.NewRows(role.Columns).
 						AddRow(int64(7), int64(0), int64(0), now, now, nil, "Operator", "operator", 1, int8(0), true, ""))
-				mock.ExpectQuery(`SELECT DISTINCT "sys_menu"."menu_id" FROM "sys_menu" JOIN .*"sys_role_menu"`).WillReturnError(errors.New("database unavailable"))
+				mock.ExpectQuery(`SELECT DISTINCT "sys_menu"."id" FROM "sys_menu" JOIN .*"sys_role_menu"`).WillReturnError(errors.New("database unavailable"))
 			},
 		},
 		{

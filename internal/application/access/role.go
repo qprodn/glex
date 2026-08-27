@@ -148,7 +148,7 @@ func (s *RoleApplication) ListRoles(ctx context.Context, req *accessv1.ListRoles
 	if len(orderBy.Fields) == 0 {
 		// Default order: display order, then id as a stable tie-break for
 		// page-token pagination.
-		orderBy.Fields = []ordering.Field{{Path: "role_sort"}, {Path: "role_id"}}
+		orderBy.Fields = []ordering.Field{{Path: "role_sort"}, {Path: "id"}}
 	}
 	if req.GetPageSize() <= 0 {
 		req.PageSize = 20
