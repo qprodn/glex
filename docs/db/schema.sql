@@ -21,23 +21,23 @@ create table if not exists sys_user (
 
 comment on table sys_user is '系统用户';
 
-comment on column sys_user.user_id is '用户ID（雪花ID，仓库层生成）';
-comment on column sys_user.user_name is '用户账号；唯一性由代码层校验，软删除后可复用';
+comment on column sys_user.user_id is '用户ID';
+comment on column sys_user.user_name is '用户账号';
 comment on column sys_user.nick_name is '用户昵称';
 comment on column sys_user.email is '用户邮箱；NULL 表示未设置';
 comment on column sys_user.phone_number is '手机号码；NULL 表示未设置';
 comment on column sys_user.gender is '性别：0男 1女 2未知';
 comment on column sys_user.status is '账号状态：0正常 1停用';
-comment on column sys_user.password is '密码（bcrypt 哈希）；仅认证模块的适配器读写（ADR 0016）';
+comment on column sys_user.password is '密码（bcrypt 哈希）';
 comment on column sys_user.avatar is '头像地址';
 comment on column sys_user.remark is '备注';
-comment on column sys_user.create_by is '创建者用户ID；应用层从登录主体写入，0=系统（ADR 0002）';
-comment on column sys_user.update_by is '更新者用户ID；应用层从登录主体写入，0=系统（ADR 0002）';
+comment on column sys_user.create_by is '创建者用户ID';
+comment on column sys_user.update_by is '更新者用户ID';
 comment on column sys_user.login_ip is '最后登录IP；认证模块写入，其余模块只读';
 comment on column sys_user.login_date is '最后登录时间；认证模块写入，其余模块只读';
 comment on column sys_user.created_at is '创建时间';
 comment on column sys_user.updated_at is '更新时间';
-comment on column sys_user.deleted_at is '软删除时间；NULL=未删除，不做硬删除（ADR 0002）';
+comment on column sys_user.deleted_at is '软删除时间；NULL=未删除';
 
 
 create table if not exists sys_menu (
@@ -68,7 +68,7 @@ create table if not exists sys_menu (
 
 comment on table sys_menu is '菜单权限表';
 
-comment on column sys_menu.menu_id is '菜单ID（雪花ID，仓库层生成）';
+comment on column sys_menu.menu_id is '菜单ID';
 comment on column sys_menu.menu_name is '菜单名称；同级唯一性由代码层校验';
 comment on column sys_menu.parent_id is '父菜单ID；0=根节点（自引用）';
 comment on column sys_menu.order_num is '显示顺序';
@@ -83,12 +83,12 @@ comment on column sys_menu.status is '菜单状态：0正常 1停用';
 comment on column sys_menu.perms is '权限标识；由鉴权模块校验';
 comment on column sys_menu.icon is '菜单图标';
 comment on column sys_menu.active_menu is '激活菜单（高亮的路由地址）';
-comment on column sys_menu.ext is '扩展字段（RuoYi 为 varchar(2000)，glex 统一为 256）';
-comment on column sys_menu.create_by is '创建者用户ID；应用层从登录主体写入，0=系统（ADR 0002）';
-comment on column sys_menu.update_by is '更新者用户ID；应用层从登录主体写入，0=系统（ADR 0002）';
+comment on column sys_menu.ext is '扩展字段';
+comment on column sys_menu.create_by is '创建者用户ID';
+comment on column sys_menu.update_by is '更新者用户ID';
 comment on column sys_menu.created_at is '创建时间';
 comment on column sys_menu.updated_at is '更新时间';
-comment on column sys_menu.deleted_at is '软删除时间；NULL=未删除，不做硬删除（ADR 0002）';
+comment on column sys_menu.deleted_at is '软删除时间；NULL=未删除';
 
 
 create table if not exists sys_role (
@@ -109,18 +109,18 @@ create table if not exists sys_role (
 
 comment on table sys_role is '角色信息表';
 
-comment on column sys_role.role_id is '角色ID（雪花ID，仓库层生成）';
+comment on column sys_role.role_id is '角色ID';
 comment on column sys_role.role_name is '角色名称';
-comment on column sys_role.role_key is '权限字符（无字符集规则）；唯一性由代码层校验，软删除后可复用';
+comment on column sys_role.role_key is '权限字符（无字符集规则）';
 comment on column sys_role.role_sort is '显示顺序';
 comment on column sys_role.status is '角色状态：0正常 1停用';
 comment on column sys_role.menu_check_strictly is '菜单树选择项是否关联显示（RuoYi 默认 1）；仅影响角色编辑器的菜单树展示，不影响 sys_role_menu 的存储';
 comment on column sys_role.remark is '备注';
-comment on column sys_role.create_by is '创建者用户ID；应用层从登录主体写入，0=系统（ADR 0002）';
-comment on column sys_role.update_by is '更新者用户ID；应用层从登录主体写入，0=系统（ADR 0002）';
+comment on column sys_role.create_by is '创建者用户ID';
+comment on column sys_role.update_by is '更新者用户ID';
 comment on column sys_role.created_at is '创建时间';
 comment on column sys_role.updated_at is '更新时间';
-comment on column sys_role.deleted_at is '软删除时间；NULL=未删除，不做硬删除（ADR 0002）';
+comment on column sys_role.deleted_at is '软删除时间；NULL=未删除';
 
 
 create table if not exists sys_role_menu (
@@ -142,14 +142,14 @@ create unique index if not exists rolemenu_role_id_menu_id
 
 comment on table sys_role_menu is '角色和菜单关联表';
 
-comment on column sys_role_menu.role_menu_id is '主键ID（雪花ID）；重新授权插入新行，故二元组不作主键';
-comment on column sys_role_menu.role_id is '角色ID；引用 sys_role(role_id)';
-comment on column sys_role_menu.menu_id is '菜单ID；引用 sys_menu(menu_id)';
-comment on column sys_role_menu.create_by is '创建者用户ID；应用层从登录主体写入，0=系统（ADR 0002）';
-comment on column sys_role_menu.update_by is '更新者用户ID；应用层从登录主体写入，0=系统（ADR 0002）';
+comment on column sys_role_menu.role_menu_id is '主键ID';
+comment on column sys_role_menu.role_id is '角色ID';
+comment on column sys_role_menu.menu_id is '菜单ID';
+comment on column sys_role_menu.create_by is '创建者用户ID';
+comment on column sys_role_menu.update_by is '更新者用户ID';
 comment on column sys_role_menu.created_at is '创建时间';
 comment on column sys_role_menu.updated_at is '更新时间';
-comment on column sys_role_menu.deleted_at is '软删除时间；NULL=未删除，不做硬删除（ADR 0002）';
+comment on column sys_role_menu.deleted_at is '软删除时间；NULL=未删除';
 
 
 create table if not exists sys_user_role (
@@ -171,11 +171,11 @@ create unique index if not exists userrole_user_id_role_id
 
 comment on table sys_user_role is '用户和角色关联表';
 
-comment on column sys_user_role.user_role_id is '主键ID（雪花ID）；重新分配插入新行，故二元组不作主键';
-comment on column sys_user_role.user_id is '用户ID；引用 sys_user(user_id)';
-comment on column sys_user_role.role_id is '角色ID；引用 sys_role(role_id)';
-comment on column sys_user_role.create_by is '创建者用户ID；应用层从登录主体写入，0=系统（ADR 0002）';
-comment on column sys_user_role.update_by is '更新者用户ID；应用层从登录主体写入，0=系统（ADR 0002）';
+comment on column sys_user_role.user_role_id is '主键ID';
+comment on column sys_user_role.user_id is '用户ID';
+comment on column sys_user_role.role_id is '角色ID';
+comment on column sys_user_role.create_by is '创建者用户ID';
+comment on column sys_user_role.update_by is '更新者用户ID';
 comment on column sys_user_role.created_at is '创建时间';
 comment on column sys_user_role.updated_at is '更新时间';
-comment on column sys_user_role.deleted_at is '软删除时间；NULL=未删除，不做硬删除（ADR 0002）';
+comment on column sys_user_role.deleted_at is '软删除时间；NULL=未删除';
