@@ -46,8 +46,7 @@ func wireApp(confServer *conf.Server, data *conf.Data, auth *conf.Auth, logger *
 	}
 	loginSessionRepo := authninfra.NewLoginSessionRepo(storeData, v, auth)
 	sessionRevoker := impl.NewSessionRevoker(loginSessionRepo)
-	userUsecase := user.NewUserUsecase(userRepo, credentialWriter, txManager, sessionRevoker, logger)
-	userApplication := user.NewUserApplication(userUsecase, logger)
+	userApplication := user.NewUserApplication(userRepo, credentialWriter, txManager, sessionRevoker, logger)
 	menuRepo := accessinfra.NewMenuRepo(storeData)
 	menuUsecase := access.NewMenuUsecase(menuRepo, txManager, sessionRevoker, logger)
 	menuApplication := access.NewMenuApplication(menuUsecase, logger)

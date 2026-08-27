@@ -15,32 +15,19 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type currentUserUsecase struct {
-	userUsecase
-	info      *userentity.CurrentUserInfo
-	principal *authnentity.Principal
-}
-
-func (u *currentUserUsecase) GetCurrentUserInfo(_ context.Context, principal *authnentity.Principal) (*userentity.CurrentUserInfo, error) {
-	u.principal = principal
-	return u.info, nil
-}
-
-func TestGetInfoUsesPrincipalSnapshotAndNeverExposesPassword(t *testing.T) {
+func TestGetInfoNeverExposesPassword(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
-	uc := &currentUserUsecase{info: &userentity.CurrentUserInfo{
-		User: &userentity.User{
-			ID: 42, UserName: "alice", NickName: "Alice", Password: "bcrypt-secret-hash",
-			Email: "alice@example.com", LoginDate: &now, CreatedAt: now, UpdatedAt: now,
-		},
-		RoleKeys: []string{"operator"}, Permissions: []string{"system:user:list"},
-	}}
-	service := newUserApplication(uc, testLogger())
+	repo := newFakeUserRepo()
+	repo.byID[42] = &userentity.User{
+		ID: 42, UserName: "alice", NickName: "Alice", Password: "bcrypt-secret-hash",
+		Email: "alice@example.com", LoginDate: &now, CreatedAt: now, UpdatedAt: now,
+	}
+	app := newTestUserApplication(repo, new(fakeCredentialWriter), new(fakeSessionRevoker))
 	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(
 		42, "alice", "safe-session-id", []string{"operator"}, []string{"system:user:list"},
 	))
 
-	reply, err := service.GetInfo(ctx, &emptypb.Empty{})
+	reply, err := app.GetInfo(ctx, &emptypb.Empty{})
 	if err != nil {
 		t.Fatalf("GetInfo: %v", err)
 	}
@@ -57,14 +44,11 @@ func TestGetInfoUsesPrincipalSnapshotAndNeverExposesPassword(t *testing.T) {
 	if strings.Contains(string(encoded), "bcrypt-secret-hash") || strings.Contains(string(encoded), "password") {
 		t.Fatalf("GetInfo exposed password data: %s", encoded)
 	}
-	if uc.principal == nil || uc.principal.SystemUserID() != 42 {
-		t.Fatalf("GetInfo did not pass Principal to usecase: %#v", uc.principal)
-	}
 }
 
 func TestCurrentUserHandlersRequirePrincipal(t *testing.T) {
-	userService := newUserApplication(&currentUserUsecase{}, testLogger())
-	if _, err := userService.GetInfo(t.Context(), &emptypb.Empty{}); err != authndomain.ErrCredentialMissing {
+	app := newTestUserApplication(newFakeUserRepo(), new(fakeCredentialWriter), new(fakeSessionRevoker))
+	if _, err := app.GetInfo(context.Background(), &emptypb.Empty{}); err != authndomain.ErrCredentialMissing {
 		t.Fatalf("GetInfo without Principal = %v", err)
 	}
 }

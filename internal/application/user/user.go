@@ -5,11 +5,14 @@ import (
 	"log/slog"
 
 	userv1 "glex/api/user/v1"
+	"glex/internal/crossdomain/authn"
+	authnmodel "glex/internal/crossdomain/authn/model"
 	authndomain "glex/internal/domain/authn"
-	authnentity "glex/internal/domain/authn/entity"
 	authnservice "glex/internal/domain/authn/service"
+	userdomain "glex/internal/domain/user"
 	userentity "glex/internal/domain/user/entity"
 	userrepo "glex/internal/domain/user/repository"
+	userservice "glex/internal/domain/user/service"
 
 	"go.einride.tech/aip/fieldmask"
 	"go.einride.tech/aip/filtering"
@@ -44,43 +47,45 @@ func convertUser(m *userentity.User) *userv1.User {
 	return u
 }
 
-// UserApplication implements the system-user CRUD service.
-//
-// Authentication and the operation's Functional Permission policy are
-// enforced by the registered HTTP middleware. This adapter remains limited to
-// DTO/DO conversion and keeps authorization and mutation rules out of service.
+// UserApplication implements the system-user CRUD service. It owns the
+// module's cross-domain orchestration: the transaction boundary, credential
+// writes through the authn crossdomain contract, and session revocation.
+// Intra-domain rules (uniqueness) live in the domain service; authentication
+// and the operation's Functional Permission policy are enforced by the
+// registered HTTP middleware.
 type UserApplication struct {
 	userv1.UnimplementedUserServiceServer
 
-	uc     userUsecase
-	logger *slog.Logger
+	repo        userrepo.UserRepo
+	credentials authn.CredentialWriter
+	tx          Transaction
+	revoker     authn.SessionRevoker
+	logger      *slog.Logger
 }
 
-type userUsecase interface {
-	CreateUser(context.Context, *userentity.User) (*userentity.User, error)
-	GetUser(context.Context, int64) (*userentity.User, error)
-	GetCurrentUserInfo(context.Context, *authnentity.Principal) (*userentity.CurrentUserInfo, error)
-	ListUsers(context.Context, ...userrepo.ListOption) ([]*userentity.User, error)
-	UpdateUser(context.Context, *userentity.User) (*userentity.User, error)
-	DeleteUser(context.Context, int64) error
-}
-
-// NewUserApplication creates a UserApplication.
-func NewUserApplication(uc *UserUsecase, logger *slog.Logger) *UserApplication {
-	return newUserApplication(uc, logger)
-}
-
-func newUserApplication(uc userUsecase, logger *slog.Logger) *UserApplication {
+// NewUserApplication creates a UserApplication. credentials stores password
+// requests through the authn crossdomain contract (the credential column is
+// authn's, per ADR 0016); tx wraps security writes together with their session
+// revocation; revoker performs the revocation through the authn crossdomain
+// contract.
+func NewUserApplication(repo userrepo.UserRepo, credentials authn.CredentialWriter, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *UserApplication {
 	return &UserApplication{
-		uc:     uc,
-		logger: logger.With(slog.String("component", "application.user")),
+		repo:        repo,
+		credentials: credentials,
+		tx:          tx,
+		revoker:     revoker,
+		logger:      logger.With(slog.String("component", "application.user")),
 	}
 }
 
-// CreateUser creates a system user.
+// CreateUser creates a system user: it validates uniqueness and persists the
+// user together with the initial credential, which authn hashes and stores on
+// the same transaction. Uniqueness is a code check against active rows
+// (repo-wide convention; the DB has no unique constraints) — racy under
+// concurrent creates, accepted.
 func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUserRequest) (*userv1.User, error) {
 	in := req.GetUser()
-	created, err := s.uc.CreateUser(ctx, &userentity.User{
+	u := &userentity.User{
 		UserName:    in.GetUserName(),
 		NickName:    in.GetNickName(),
 		Email:       in.GetEmail(),
@@ -90,8 +95,22 @@ func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUser
 		Status:      in.GetStatus(),
 		Avatar:      in.GetAvatar(),
 		Remark:      in.GetRemark(),
-	})
-	if err != nil {
+	}
+	if u.Password == "" {
+		return nil, userdomain.ErrPasswordRequired
+	}
+	if err := userservice.AssertUnique(ctx, s.repo, u, 0); err != nil {
+		return nil, err
+	}
+	var created *userentity.User
+	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
+		var err error
+		created, err = s.repo.CreateUser(ctx, u)
+		if err != nil {
+			return err
+		}
+		return s.writeCredential(ctx, created.ID, u.Password)
+	}); err != nil {
 		return nil, err
 	}
 	return convertUser(created), nil
@@ -99,7 +118,7 @@ func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUser
 
 // GetUser retrieves a system user by id.
 func (s *UserApplication) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*userv1.User, error) {
-	u, err := s.uc.GetUser(ctx, req.GetUserId())
+	u, err := s.repo.FindByID(ctx, req.GetUserId())
 	if err != nil {
 		return nil, err
 	}
@@ -113,11 +132,10 @@ func (s *UserApplication) GetInfo(ctx context.Context, _ *emptypb.Empty) (*userv
 	if !ok {
 		return nil, authndomain.ErrCredentialMissing
 	}
-	info, err := s.uc.GetCurrentUserInfo(ctx, principal)
+	u, err := s.repo.FindByID(ctx, principal.SystemUserID())
 	if err != nil {
 		return nil, err
 	}
-	u := info.User
 	current := &userv1.CurrentUser{
 		UserId:      u.ID,
 		UserName:    u.UserName,
@@ -139,8 +157,8 @@ func (s *UserApplication) GetInfo(ctx context.Context, _ *emptypb.Empty) (*userv
 	}
 	return &userv1.CurrentUserInfo{
 		User:        current,
-		RoleKeys:    append([]string(nil), info.RoleKeys...),
-		Permissions: append([]string(nil), info.Permissions...),
+		RoleKeys:    append([]string(nil), principal.RoleKeys()...),
+		Permissions: append([]string(nil), principal.Permissions()...),
 	}, nil
 }
 
@@ -173,7 +191,7 @@ func (s *UserApplication) ListUsers(ctx context.Context, req *userv1.ListUsersRe
 	if req.GetPageSize() <= 0 {
 		req.PageSize = 20
 	}
-	users, err := s.uc.ListUsers(ctx,
+	users, err := s.repo.ListUsers(ctx,
 		userrepo.ListFilter(filter),
 		userrepo.ListOrderBy(orderBy),
 		userrepo.ListLimit(int(req.GetPageSize())),
@@ -193,17 +211,20 @@ func (s *UserApplication) ListUsers(ctx context.Context, req *userv1.ListUsersRe
 }
 
 // UpdateUser partially updates a user via field-mask. An empty password in the
-// masked request means "leave unchanged".
+// masked request means "leave unchanged"; a non-empty password is stored
+// through authn's credential capability on the same transaction. The mutation
+// and the session revocation it classifies currently execute in the same
+// transaction.
 func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.User, error) {
 	// Load current state as a DTO, apply the mask onto it, then persist. The DTO
 	// carries no password, so a password outside the mask stays empty and the
-	// usecase treats it as "unchanged".
+	// write path treats it as "unchanged".
 	current, err := s.GetUser(ctx, &userv1.GetUserRequest{UserId: req.GetUser().GetUserId()})
 	if err != nil {
 		return nil, err
 	}
 	fieldmask.Update(req.GetUpdateMask(), current, req.GetUser())
-	updated, err := s.uc.UpdateUser(ctx, &userentity.User{
+	u := &userentity.User{
 		ID:          current.GetUserId(),
 		UserName:    current.GetUserName(),
 		NickName:    current.GetNickName(),
@@ -214,17 +235,60 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 		Status:      current.GetStatus(),
 		Avatar:      current.GetAvatar(),
 		Remark:      current.GetRemark(),
-	})
-	if err != nil {
+	}
+	if err := userservice.AssertUnique(ctx, s.repo, u, u.ID); err != nil {
+		return nil, err
+	}
+	passwordPolicy := userentity.RevokeAllLoginSessions()
+	if u.Password != "" {
+		if principal, ok := authnservice.PrincipalFromContext(ctx); ok && principal.SystemUserID() == u.ID {
+			passwordPolicy = userentity.PreserveLoginSession(principal.SessionID())
+		}
+	}
+	var updated *userentity.User
+	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
+		result, err := s.repo.UpdateUser(ctx, u)
+		if err != nil {
+			return err
+		}
+		updated = result.User
+		if u.Password != "" {
+			if err := s.writeCredential(ctx, u.ID, u.Password); err != nil {
+				return err
+			}
+		}
+		// The receiver is the requested change; the persisted record carries
+		// no password (authn owns the stored hash), so the classification
+		// reads the request's password field.
+		policy := u.SessionRevocationFrom(result.Previous, passwordPolicy)
+		return revokeSystemUsers(ctx, s.revoker, userentity.SystemUserSessionRevocation{SystemUserID: u.ID, Policy: policy})
+	}); err != nil {
 		return nil, err
 	}
 	return convertUser(updated), nil
 }
 
-// DeleteUser soft-deletes a user by id.
+// DeleteUser soft-deletes a user by id and currently revokes their Login
+// Sessions in the same transaction.
 func (s *UserApplication) DeleteUser(ctx context.Context, req *userv1.DeleteUserRequest) (*emptypb.Empty, error) {
-	if err := s.uc.DeleteUser(ctx, req.GetUserId()); err != nil {
+	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
+		affected, err := s.repo.DeleteUser(ctx, req.GetUserId())
+		if err != nil {
+			return err
+		}
+		return revokeAllSystemUsers(ctx, s.revoker, affected...)
+	}); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
+}
+
+// writeCredential delegates a password request to authn's credential
+// capability. It runs inside the caller's transaction so the profile row and
+// the credential commit or roll back together.
+func (s *UserApplication) writeCredential(ctx context.Context, systemUserID int64, password string) error {
+	return s.credentials.WriteSystemUserCredential(ctx, &authnmodel.SystemUserCredential{
+		SystemUserID: systemUserID,
+		Password:     password,
+	})
 }
