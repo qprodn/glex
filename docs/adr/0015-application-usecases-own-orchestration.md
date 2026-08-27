@@ -1,8 +1,12 @@
 ---
-status: accepted
+status: superseded by ADR-0020
 ---
 
 # Application Usecases own orchestration
+
+Superseded. The separate Usecase layer is gone; transport Application
+services own the orchestration inline and domain services own the
+module-local rules; see ADR-0020.
 
 Application Usecases own business ordering, PostgreSQL transaction boundaries,
 and explicit compensation while Domain owns DOs, rules, errors, and port

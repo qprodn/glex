@@ -1,5 +1,9 @@
 # Split the iam domain into user, access, and authn modules
 
+Status: Accepted; layout ruling amended by 0020-coze-style-application-services-and-domain-split.md
+(the Usecase layer no longer exists — Application services own the
+orchestration and domain modules split into entity/repository/service).
+
 The single `iam` package entangled authentication, authorization, and user
 administration in every layer, and we want the option of extracting separate
 services later. We split it into three modules inside the one service —
