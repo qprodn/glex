@@ -103,6 +103,14 @@ exposing its bearer token. Possessing a Session ID does not authenticate a
 request.
 _Avoid_: Token ID, Access Token.
 
+**Online Session** (在线会话):
+The monitoring view over the currently active Login Sessions: what an
+administrator lists and force-revokes (强退) from the online monitor, and what a
+System User lists and revokes among their own sessions. An Online Session is a
+Login Session seen from outside; the term names the view, never a second kind
+of session.
+_Avoid_: Active User, Live Token, Concurrent Login.
+
 **Authorization Snapshot** (授权快照):
 The active Roles and Functional Permissions captured for a System User and
 shared by all of that user's Login Sessions. The snapshot is carried by authn's

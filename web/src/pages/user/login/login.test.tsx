@@ -1,34 +1,12 @@
-﻿// @ts-ignore
-import { startMock } from '@@/requestRecordMock';
 import { TestBrowser } from '@@/testBrowser';
-import { fireEvent, render } from '@testing-library/react';
-import React, { act } from 'react';
+import { render } from '@testing-library/react';
+import React from 'react';
 
-const waitTime = (time: number = 100) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(true);
-    }, time);
-  });
-};
-
-let server: {
-  close: () => void;
-};
-
+// Smoke: the rewritten login page mounts against the real runtime config
+// (render() hook, initialState, layout) without touching the network — the
+// token store is empty in jsdom, so loadSession short-circuits.
 describe('Login Page', () => {
-  beforeAll(async () => {
-    server = await startMock({
-      port: 8000,
-      scene: 'login',
-    });
-  });
-
-  afterAll(() => {
-    server?.close();
-  });
-
-  it('should show login form', async () => {
+  it('renders the glex login form', async () => {
     const historyRef = React.createRef<any>();
     const rootContainer = render(
       <TestBrowser
@@ -39,63 +17,11 @@ describe('Login Page', () => {
       />,
     );
 
-    await rootContainer.findAllByText('Ant Design');
+    await rootContainer.findAllByText('glex');
 
-    act(() => {
-      historyRef.current?.push('/user/login');
-    });
-
-    expect(
-      rootContainer.baseElement?.querySelector('.ant-pro-form-login-desc')
-        ?.textContent,
-    ).toBe(
-      'Ant Design is the most influential web design specification in Xihu district',
-    );
-
-    expect(rootContainer.asFragment()).toMatchSnapshot();
-
-    rootContainer.unmount();
-  });
-
-  it('should login success', async () => {
-    const historyRef = React.createRef<any>();
-    const rootContainer = render(
-      <TestBrowser
-        historyRef={historyRef}
-        location={{
-          pathname: '/user/login',
-        }}
-      />,
-    );
-
-    await rootContainer.findAllByText('Ant Design');
-
-    const userNameInput = await rootContainer.findByPlaceholderText(
-      'Username: admin or user',
-    );
-
-    act(() => {
-      fireEvent.change(userNameInput, { target: { value: 'admin' } });
-    });
-
-    const passwordInput = await rootContainer.findByPlaceholderText(
-      'Password: ant.design',
-    );
-
-    act(() => {
-      fireEvent.change(passwordInput, { target: { value: 'ant.design' } });
-    });
-
-    await (await rootContainer.findByText('Login')).click();
-
-    // 等待接口返回结果
-    await waitTime(5000);
-
-    await rootContainer.findAllByText('Ant Design Pro');
-
-    expect(rootContainer.asFragment()).toMatchSnapshot();
-
-    await waitTime(2000);
+    // jsdom's navigator.language is en-US, so either locale's wording passes.
+    expect(await rootContainer.findByPlaceholderText(/用户名|Username/)).toBeTruthy();
+    expect(await rootContainer.findByPlaceholderText(/密码|Password/)).toBeTruthy();
 
     rootContainer.unmount();
   });

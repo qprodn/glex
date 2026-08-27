@@ -1,12 +1,13 @@
 import { Footer } from "@/components";
-import { type LoginRequest, services } from "@/services";
+import type { LoginRequest } from "@/services/authn/v1";
+import { services } from "@/services";
+import { setToken } from "@/utils/token";
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { LoginForm, ProFormText } from "@ant-design/pro-components";
-import { FormattedMessage, Helmet, SelectLang, useIntl, useModel } from "@umijs/max";
+import { FormattedMessage, Helmet, SelectLang, useIntl } from "@umijs/max";
 import { App } from "antd";
 import { createStyles } from "antd-style";
 import React from "react";
-import { flushSync } from "react-dom";
 import Settings from "../../../../config/defaultSettings";
 
 const useStyles = createStyles(({ token }) => {
@@ -28,7 +29,7 @@ const useStyles = createStyles(({ token }) => {
       height: "100vh",
       overflow: "auto",
       backgroundImage:
-        "url('https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/V-_oS6r-i7wAAAAAAAAAAAAAFl94AQBr')",
+        "linear-gradient(135deg, #1677ff 0%, #36cfc9 100%)",
       backgroundSize: "100% 100%",
     },
   };
@@ -45,28 +46,27 @@ const Lang = () => {
 };
 
 const Login: React.FC = () => {
-  const { setInitialState } = useModel("@@initialState");
   const { styles } = useStyles();
   const { message } = App.useApp();
   const intl = useIntl();
 
   const handleSubmit = async (req: LoginRequest) => {
     try {
-      const userInfo = await services.admin.Login(req);
-      const defaultLoginSuccessMessage = intl.formatMessage({
-        id: "pages.login.success",
-        defaultMessage: "登录成功！",
-      });
-      message.success(defaultLoginSuccessMessage);
-      // set user state
-      flushSync(() => {
-        setInitialState((state) => ({
-          ...state,
-          currentUser: userInfo,
-        }));
-      });
-      const urlParams = new URL(window.location.href).searchParams;
-      window.location.href = urlParams.get("redirect") || "/";
+      const reply = await services.auth.Login(req);
+      if (!reply.accessToken) {
+        return;
+      }
+      // The bearer credential is handed out exactly once (ADR 0018); keep it
+      // and do a full load so render() fetches getInfo + getRouters and the
+      // dynamic routes are injected before the first authenticated paint.
+      setToken(reply.accessToken);
+      message.success(
+        intl.formatMessage({ id: "pages.login.success", defaultMessage: "登录成功！" }),
+      );
+      const redirect = new URL(window.location.href).searchParams.get("redirect");
+      // Only same-origin paths; never bounce to an absolute URL.
+      const safe = redirect?.startsWith("/") && !redirect.startsWith("//") ? redirect : "/";
+      window.location.href = safe;
     } catch {
       // Reporting the failure is handled globally in requestErrorConfig, which
       // maps `reason` to the wording for this locale.
@@ -97,9 +97,10 @@ const Login: React.FC = () => {
             maxWidth: "75vw",
           }}
           logo={<img alt="logo" src="/logo.svg" />}
-          title="Ant Design"
+          title="glex"
           subTitle={intl.formatMessage({
             id: "pages.layouts.userLayout.title",
+            defaultMessage: "Identity & Access 控制台",
           })}
           onFinish={async (values) => {
             await handleSubmit(values as LoginRequest);
@@ -113,16 +114,13 @@ const Login: React.FC = () => {
             }}
             placeholder={intl.formatMessage({
               id: "pages.login.username.placeholder",
-              defaultMessage: "用户名: admin",
+              defaultMessage: "用户名",
             })}
             rules={[
               {
                 required: true,
                 message: (
-                  <FormattedMessage
-                    id="pages.login.username.required"
-                    defaultMessage="请输入用户名!"
-                  />
+                  <FormattedMessage id="pages.login.username.required" defaultMessage="请输入用户名!" />
                 ),
               },
             ]}
@@ -141,10 +139,7 @@ const Login: React.FC = () => {
               {
                 required: true,
                 message: (
-                  <FormattedMessage
-                    id="pages.login.password.required"
-                    defaultMessage="请输入密码！"
-                  />
+                  <FormattedMessage id="pages.login.password.required" defaultMessage="请输入密码！" />
                 ),
               },
             ]}

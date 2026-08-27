@@ -1,26 +1,21 @@
 import { services } from "@/services";
-import {
-  LogoutOutlined,
-  SettingOutlined,
-  UserOutlined,
-} from "@ant-design/icons";
+import { clearToken, LOGIN_PATH } from "@/utils/token";
+import { LogoutOutlined, UserOutlined } from "@ant-design/icons";
 import { history, useModel } from "@umijs/max";
 import type { MenuProps } from "antd";
 import { Spin } from "antd";
 import { createStyles } from "antd-style";
 import React from "react";
-import { flushSync } from "react-dom";
 import HeaderDropdown from "../HeaderDropdown";
 
 export type GlobalHeaderRightProps = {
-  menu?: boolean;
   children?: React.ReactNode;
 };
 
 export const AvatarName = () => {
   const { initialState } = useModel("@@initialState");
   const { currentUser } = initialState || {};
-  return <span className="anticon">{currentUser?.name}</span>;
+  return <span className="anticon">{currentUser?.user?.nickName}</span>;
 };
 
 const useStyles = createStyles(({ token }) => {
@@ -42,54 +37,36 @@ const useStyles = createStyles(({ token }) => {
 });
 
 export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({
-  menu,
   children,
 }) => {
-  /**
-   * 退出登录，并且将当前的 url 保存
-   */
-  const loginOut = async () => {
-    await services.admin.Logout({});
-    const { search, pathname } = window.location;
-    const urlParams = new URL(window.location.href).searchParams;
-    const searchParams = new URLSearchParams({
-      redirect: pathname + search,
-    });
-    /** 此方法会跳转到 redirect 参数所在的位置 */
-    const redirect = urlParams.get("redirect");
-    // Note: There may be security issues, please note
-    if (window.location.pathname !== "/user/login" && !redirect) {
-      history.replace({
-        pathname: "/user/login",
-        search: searchParams.toString(),
-      });
-    }
-  };
   const { styles } = useStyles();
+  const { initialState } = useModel("@@initialState");
 
-  const { initialState, setInitialState } = useModel("@@initialState");
+  // Logout revokes this Login Session server-side, then drops the bearer
+  // token. A full load re-runs render(), so the injected dynamic routes and
+  // the session store are torn down with it.
+  const loginOut = async () => {
+    try {
+      await services.auth.Logout({});
+    } catch {
+      // Idempotent server-side; a failure still logs the browser out.
+    }
+    clearToken();
+    window.location.href = LOGIN_PATH;
+  };
 
   const onMenuClick: MenuProps["onClick"] = (event) => {
     const { key } = event;
     if (key === "logout") {
-      flushSync(() => {
-        setInitialState((s) => ({ ...s, currentUser: undefined }));
-      });
       loginOut();
       return;
     }
-    history.push(`/account/${key}`);
+    history.push(`/${key}`);
   };
 
   const loading = (
     <span className={styles.action}>
-      <Spin
-        size="small"
-        style={{
-          marginLeft: 8,
-          marginRight: 8,
-        }}
-      />
+      <Spin size="small" style={{ marginLeft: 8, marginRight: 8 }} />
     </span>
   );
 
@@ -99,28 +76,17 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({
 
   const { currentUser } = initialState;
 
-  if (!currentUser || !currentUser.name) {
+  if (!currentUser?.user) {
     return loading;
   }
 
-  const menuItems = [
-    ...(menu
-      ? [
-          {
-            key: "center",
-            icon: <UserOutlined />,
-            label: "个人中心",
-          },
-          {
-            key: "settings",
-            icon: <SettingOutlined />,
-            label: "个人设置",
-          },
-          {
-            type: "divider" as const,
-          },
-        ]
-      : []),
+  const menuItems: MenuProps["items"] = [
+    {
+      key: "profile",
+      icon: <UserOutlined />,
+      label: "个人中心",
+    },
+    { type: "divider" },
     {
       key: "logout",
       icon: <LogoutOutlined />,

@@ -24,6 +24,10 @@ export default defineConfig({
    */
   hash: true,
 
+  // esbuild's minifier hoists shared helpers into each async chunk; wrapping
+  // them as IIFEs keeps the chunk-level identifiers from colliding.
+  esbuildMinifyIIFE: true,
+
   publicPath: PUBLIC_PATH,
 
   /**
@@ -83,7 +87,7 @@ export default defineConfig({
    * @name layout 插件
    * @doc https://umijs.org/docs/max/layout-menu
    */
-  title: "Ant Design Pro",
+  title: "glex",
   layout: {
     locale: true,
     ...defaultSettings,
@@ -145,12 +149,6 @@ export default defineConfig({
   ],
   //================ pro 插件配置 =================
   presets: ["umi-presets-pro"],
-  mock: {
-    include: ["mock/**/*", "src/pages/**/_mock.ts"],
-  },
-  utoopack: {},
-  requestRecord: {},
-  exportStatic: {},
   define: {
     "process.env.CI": process.env.CI,
   },

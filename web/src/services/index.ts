@@ -1,5 +1,12 @@
+import { createAuthServiceClient, createOnlineSessionServiceClient } from "@/services/authn/v1";
+import {
+  createMenuServiceClient,
+  createRoleAssignmentServiceClient,
+  createRoleServiceClient,
+} from "@/services/access/v1";
 import { createUserServiceClient } from "@/services/user/v1";
 import { request } from "@umijs/max";
+import { getToken } from "@/utils/token";
 
 type Request = {
   path: string;
@@ -18,6 +25,10 @@ function requestHandler({ path, method, body }: Request) {
   if (body) {
     headers["Content-Type"] = "application/protojson";
   }
+  const token = getToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
   return request("/" + path, {
     method: method,
     data: body,
@@ -29,7 +40,12 @@ function requestHandler({ path, method, body }: Request) {
 // per service is enough. Add a resource by adding one line here; call sites
 // keep importing `services` unchanged.
 export const services = {
+  auth: createAuthServiceClient(requestHandler),
+  online: createOnlineSessionServiceClient(requestHandler),
   user: createUserServiceClient(requestHandler),
+  role: createRoleServiceClient(requestHandler),
+  assignment: createRoleAssignmentServiceClient(requestHandler),
+  menu: createMenuServiceClient(requestHandler),
 };
 
 /**
@@ -53,6 +69,3 @@ export function asServiceError(error: unknown): ServiceError | undefined {
   const data = (error as { response?: { data?: unknown } })?.response?.data;
   return data && typeof data === "object" ? (data as ServiceError) : undefined;
 }
-
-// Re-export DTOs so pages import types and clients from the same place.
-export type * from "@/services/user/v1";

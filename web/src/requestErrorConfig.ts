@@ -1,14 +1,20 @@
 import { asServiceError } from "@/services";
-import { getIntl, history, type RequestConfig } from "@umijs/max";
+import { getIntl, type RequestConfig } from "@umijs/max";
 import { message as toast } from "antd";
-
-const loginPath = "/user/login";
+import { LOGIN_PATH, redirectToLogin } from "@/utils/token";
 
 // User-facing wording per error reason. A reason with no entry here falls back
-// to the server message.
+// to the server message. Kept aligned with api/*/v1/error_reason.proto.
 const reasonMessageId: Record<string, string> = {
   INVALID_CREDENTIALS: "pages.login.invalidCredentials",
+  ACCOUNT_DISABLED: "pages.login.accountDisabled",
+  LOGIN_LOCKED: "pages.login.loginLocked",
   PERMISSION_DENIED: "pages.error.permissionDenied",
+  USER_NAME_CONFLICT: "pages.error.userNameConflict",
+  EMAIL_CONFLICT: "pages.error.emailConflict",
+  PHONE_CONFLICT: "pages.error.phoneConflict",
+  ROLE_ASSIGNED: "pages.error.roleAssigned",
+  MENU_HAS_CHILDREN: "pages.error.menuHasChildren",
 };
 
 /**
@@ -23,20 +29,21 @@ export const errorConfig: RequestConfig = {
 
       const serviceError = asServiceError(error);
       if (serviceError) {
-        // 401 means the cookie is missing or expired. On the login page itself
-        // a 401 is just a failed attempt, so don't redirect there.
+        // 401 means the bearer token is missing, malformed, expired, or the
+        // session was revoked (ADR 0018). On the login page itself a 401 is
+        // just a failed attempt, so don't redirect there.
         if (
           serviceError.code === 401 &&
-          history.location.pathname !== loginPath
+          window.location.pathname !== LOGIN_PATH
         ) {
-          history.push(loginPath);
+          redirectToLogin();
         }
         const messageId =
           serviceError.reason && reasonMessageId[serviceError.reason];
         toast.error(
           messageId
             ? getIntl().formatMessage({ id: messageId })
-            : serviceError.message || "Request failed, please retry."
+            : serviceError.message || "Request failed, please retry.",
         );
         return;
       }

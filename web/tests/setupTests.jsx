@@ -76,3 +76,24 @@ global.ResizeObserver = class ResizeObserver {
   unobserve() {}
   disconnect() {}
 };
+
+// antd v6's rc-form defers watcher notifications through MessageChannel,
+// which jsdom does not implement. The port pair is only a macro-task queue;
+// a silent stub is enough because nothing in these tests relies on the
+// notification itself.
+class FakeMessagePort {
+  constructor() {
+    this.onmessage = null;
+  }
+  postMessage() {}
+  start() {}
+  close() {}
+}
+if (typeof global.MessageChannel === "undefined") {
+  global.MessageChannel = class MessageChannel {
+    constructor() {
+      this.port1 = new FakeMessagePort();
+      this.port2 = new FakeMessagePort();
+    }
+  };
+}
