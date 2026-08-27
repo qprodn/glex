@@ -5,7 +5,8 @@ import (
 	"log/slog"
 
 	accessv1 "glex/api/access/v1"
-	accessdomain "glex/internal/domain/access"
+	accessentity "glex/internal/domain/access/entity"
+	accessrepo "glex/internal/domain/access/repository"
 
 	"go.einride.tech/aip/fieldmask"
 	"go.einride.tech/aip/filtering"
@@ -15,8 +16,8 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// convertRole maps a accessdomain.Role DO to the proto Role DTO.
-func convertRole(r *accessdomain.Role) *accessv1.Role {
+// convertRole maps a accessentity.Role DO to the proto Role DTO.
+func convertRole(r *accessentity.Role) *accessv1.Role {
 	return &accessv1.Role{
 		RoleId:            r.ID,
 		RoleName:          r.RoleName,
@@ -61,7 +62,7 @@ func (s *RoleApplication) CreateRole(ctx context.Context, req *accessv1.CreateRo
 	if req.MenuCheckStrictly != nil {
 		strict = *req.MenuCheckStrictly
 	}
-	created, err := s.uc.CreateRole(ctx, &accessdomain.Role{
+	created, err := s.uc.CreateRole(ctx, &accessentity.Role{
 		RoleName:          in.GetRoleName(),
 		RoleKey:           in.GetRoleKey(),
 		RoleSort:          int(in.GetRoleSort()),
@@ -117,10 +118,10 @@ func (s *RoleApplication) ListRoles(ctx context.Context, req *accessv1.ListRoles
 		req.PageSize = 20
 	}
 	roles, err := s.uc.ListRoles(ctx,
-		accessdomain.ListFilter(filter),
-		accessdomain.ListOrderBy(orderBy),
-		accessdomain.ListLimit(int(req.GetPageSize())),
-		accessdomain.ListOffset(int(pageToken.Offset)),
+		accessrepo.ListFilter(filter),
+		accessrepo.ListOrderBy(orderBy),
+		accessrepo.ListLimit(int(req.GetPageSize())),
+		accessrepo.ListOffset(int(pageToken.Offset)),
 	)
 	if err != nil {
 		return nil, err
@@ -143,7 +144,7 @@ func (s *RoleApplication) UpdateRole(ctx context.Context, req *accessv1.UpdateRo
 		return nil, err
 	}
 	fieldmask.Update(req.GetUpdateMask(), current, req.GetRole())
-	updated, err := s.uc.UpdateRole(ctx, &accessdomain.Role{
+	updated, err := s.uc.UpdateRole(ctx, &accessentity.Role{
 		ID:       current.GetRoleId(),
 		RoleName: current.GetRoleName(),
 		RoleKey:  current.GetRoleKey(),

@@ -6,7 +6,7 @@ import (
 	accessv1 "glex/api/access/v1"
 	authnv1 "glex/api/authn/v1"
 	userv1 "glex/api/user/v1"
-	authndomain "glex/internal/domain/authn"
+	authnrepo "glex/internal/domain/authn/repository"
 	authmw "glex/pkg/middleware/auth"
 )
 
@@ -45,10 +45,10 @@ func authRoutes() map[string]authmw.Route {
 	}
 }
 
-// authenticatorAdapter adapts authndomain.Authenticator to the middleware's
+// authenticatorAdapter adapts authnrepo.Authenticator to the middleware's
 // interface; domain errors pass through with identical status and reason.
 type authenticatorAdapter struct {
-	authenticator authndomain.Authenticator
+	authenticator authnrepo.Authenticator
 }
 
 func (a authenticatorAdapter) Authenticate(ctx context.Context, bearerToken string) (authmw.Principal, error) {

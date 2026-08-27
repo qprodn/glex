@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"glex/internal/domain/access"
+	accessentity "glex/internal/domain/access/entity"
+	accessrepo "glex/internal/domain/access/repository"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
@@ -26,7 +28,7 @@ type authorizationResolver struct {
 
 // NewAuthorizationResolver creates a new AuthorizationResolver instance — the
 // storage-side implementation of access's Authorization Resolution.
-func NewAuthorizationResolver(data *store.Data) access.AuthorizationResolver {
+func NewAuthorizationResolver(data *store.Data) accessrepo.AuthorizationResolver {
 	return &authorizationResolver{
 		data:   data,
 		logger: data.Logger.With(slog.String("component", "infra.access.authorization")),
@@ -37,7 +39,7 @@ func NewAuthorizationResolver(data *store.Data) access.AuthorizationResolver {
 // and their Menu Grants and computes the Role Keys and Functional Permissions
 // captured by an Authorization Snapshot. Reads join the transaction propagated
 // through ctx when one is active.
-func (r *authorizationResolver) ResolveAuthorization(ctx context.Context, systemUserID int64) (*access.AuthorizationResolution, error) {
+func (r *authorizationResolver) ResolveAuthorization(ctx context.Context, systemUserID int64) (*accessrepo.AuthorizationResolution, error) {
 	resolution, err := resolveAuthorization(ctx, r.data.DB, systemUserID)
 	if err != nil {
 		r.logger.WarnContext(ctx, "authorization resolution database operation failed",
@@ -49,7 +51,7 @@ func (r *authorizationResolver) ResolveAuthorization(ctx context.Context, system
 	return resolution, nil
 }
 
-func resolveAuthorization(ctx context.Context, db *ent.Database, systemUserID int64) (*access.AuthorizationResolution, error) {
+func resolveAuthorization(ctx context.Context, db *ent.Database, systemUserID int64) (*accessrepo.AuthorizationResolution, error) {
 	roles, err := db.Role(ctx).Query().
 		Where(
 			role.DeletedAtIsNil(),
@@ -86,7 +88,7 @@ func resolveAuthorization(ctx context.Context, db *ent.Database, systemUserID in
 // resolution: blank Role keys are dropped, permission handles are deduped, and
 // the wildcard `*:*:*` is added only through an exact superadmin Role key (a
 // menu carrying it otherwise is ignored). Both sets are returned sorted.
-func toBizResolution(roles []*ent.Role, menus []*ent.Menu) *access.AuthorizationResolution {
+func toBizResolution(roles []*ent.Role, menus []*ent.Menu) *accessrepo.AuthorizationResolution {
 	roleKeys := make([]string, 0, len(roles))
 	superadmin := false
 	for _, assignedRole := range roles {
@@ -95,7 +97,7 @@ func toBizResolution(roles []*ent.Role, menus []*ent.Menu) *access.Authorization
 			continue
 		}
 		roleKeys = append(roleKeys, key)
-		if key == access.SuperadminRoleKey {
+		if key == accessentity.SuperadminRoleKey {
 			superadmin = true
 		}
 	}
@@ -119,7 +121,7 @@ func toBizResolution(roles []*ent.Role, menus []*ent.Menu) *access.Authorization
 	}
 	sort.Strings(roleKeys)
 	sort.Strings(permissions)
-	return &access.AuthorizationResolution{
+	return &accessrepo.AuthorizationResolution{
 		RoleKeys:    roleKeys,
 		Permissions: permissions,
 	}

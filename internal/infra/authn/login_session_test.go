@@ -13,6 +13,8 @@ import (
 	"time"
 
 	authndomain "glex/internal/domain/authn"
+	authnentity "glex/internal/domain/authn/entity"
+	authnrepo "glex/internal/domain/authn/repository"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
@@ -23,7 +25,7 @@ import (
 	"go.einride.tech/aip/ordering"
 )
 
-func newTestLoginSessionRepo(t *testing.T) (authndomain.LoginSessionRepo, *core.Manager, *redis.Client) {
+func newTestLoginSessionRepo(t *testing.T) (authnrepo.LoginSessionRepo, *core.Manager, *redis.Client) {
 	t.Helper()
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
@@ -43,14 +45,14 @@ func newTestLoginSessionRepo(t *testing.T) (authndomain.LoginSessionRepo, *core.
 	return NewLoginSessionRepo(data, manager, testAuthConf()), manager, rdb
 }
 
-func createManagedLoginSession(t *testing.T, repo authndomain.LoginSessionRepo, manager *core.Manager, userID int64, userName, device string, loginTime time.Time) (*authndomain.LoginSession, string) {
+func createManagedLoginSession(t *testing.T, repo authnrepo.LoginSessionRepo, manager *core.Manager, userID int64, userName, device string, loginTime time.Time) (*authnentity.LoginSession, string) {
 	t.Helper()
 	token := issueTestBearer(t, manager, userID, userName, device)
 	ipAddress := "192.0.2.1"
 	if userName == "bob" {
 		ipAddress = "192.0.2.2"
 	}
-	session, err := repo.Create(t.Context(), token, &authndomain.LoginSession{
+	session, err := repo.Create(t.Context(), token, &authnentity.LoginSession{
 		SystemUserID: userID,
 		UserName:     userName,
 		DeviceType:   device,
@@ -91,7 +93,7 @@ func TestLoginSessionsWithSameDeviceRemainEnumerable(t *testing.T) {
 
 func TestCreateLoginSessionRejectsUnmanagedBearerToken(t *testing.T) {
 	repo, _, _ := newTestLoginSessionRepo(t)
-	_, err := repo.Create(t.Context(), "not-issued-by-manager", &authndomain.LoginSession{
+	_, err := repo.Create(t.Context(), "not-issued-by-manager", &authnentity.LoginSession{
 		SystemUserID: 42,
 		UserName:     "alice",
 		DeviceType:   "desktop",
@@ -118,7 +120,7 @@ func TestConcurrentRegistrationKeepsFiveUsableSessionsAndReplacesOldest(t *testi
 	}
 
 	type created struct {
-		session *authndomain.LoginSession
+		session *authnentity.LoginSession
 		token   string
 		err     error
 	}
@@ -130,7 +132,7 @@ func TestConcurrentRegistrationKeepsFiveUsableSessionsAndReplacesOldest(t *testi
 		go func(i int, token string) {
 			ready.Done()
 			<-start
-			session, err := repo.Create(t.Context(), token, &authndomain.LoginSession{
+			session, err := repo.Create(t.Context(), token, &authnentity.LoginSession{
 				SystemUserID: 42,
 				UserName:     "alice",
 				DeviceType:   "desktop",
@@ -142,7 +144,7 @@ func TestConcurrentRegistrationKeepsFiveUsableSessionsAndReplacesOldest(t *testi
 	ready.Wait()
 	close(start)
 
-	byToken := make(map[string]*authndomain.LoginSession, registrations)
+	byToken := make(map[string]*authnentity.LoginSession, registrations)
 	for range registrations {
 		result := <-results
 		if result.err != nil {
@@ -241,7 +243,7 @@ func TestConcurrentRegistrationAgainstRealRedis(t *testing.T) {
 		go func(i int, token string) {
 			ready.Done()
 			<-start
-			_, err := repo.Create(t.Context(), token, &authndomain.LoginSession{
+			_, err := repo.Create(t.Context(), token, &authnentity.LoginSession{
 				SystemUserID: 42,
 				UserName:     "alice",
 				DeviceType:   "desktop",
@@ -511,10 +513,10 @@ func TestListLoginSessionsFiltersAndOrdersBeforePagination(t *testing.T) {
 		t.Fatalf("ParseFilterString: %v", err)
 	}
 	got, err := repo.List(t.Context(),
-		authndomain.ListFilter(filter),
-		authndomain.ListOrderBy(ordering.OrderBy{Fields: []ordering.Field{{Path: "login_time", Desc: true}}}),
-		authndomain.ListOffset(1),
-		authndomain.ListLimit(1),
+		authnrepo.ListFilter(filter),
+		authnrepo.ListOrderBy(ordering.OrderBy{Fields: []ordering.Field{{Path: "login_time", Desc: true}}}),
+		authnrepo.ListOffset(1),
+		authnrepo.ListLimit(1),
 	)
 	if err != nil {
 		t.Fatalf("List: %v", err)

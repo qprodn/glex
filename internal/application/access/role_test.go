@@ -2,6 +2,8 @@ package access
 
 import (
 	. "glex/internal/domain/access"
+	accessentity "glex/internal/domain/access/entity"
+	accessrepo "glex/internal/domain/access/repository"
 
 	"context"
 	"testing"
@@ -9,16 +11,16 @@ import (
 	"github.com/go-kratos/kratos/v3/errors"
 )
 
-// fakeRoleRepo is an in-memory RoleRepo for testing the usecase in isolation
-// from the infrastructure layer. Menu Grant state: links maps roleID → granted menu ids
+// fakeRoleRepo is an in-memory accessrepo.RoleRepo for testing the usecase in isolation
+// from the infrastructure layer. accessentity.Menu Grant state: links maps roleID → granted menu ids
 // (in insertion order); menuParents supplies the parent ids for
 // ListRoleMenuLinks.
 type fakeRoleRepo struct {
-	byID        map[int64]*Role
-	byName      map[string]*Role
-	byKey       map[string]*Role
+	byID        map[int64]*accessentity.Role
+	byName      map[string]*accessentity.Role
+	byKey       map[string]*accessentity.Role
 	nextID      int64
-	created     []*Role
+	created     []*accessentity.Role
 	deleted     []int64
 	links       map[int64][]int64
 	menuParents map[int64]int64
@@ -31,16 +33,16 @@ type fakeRoleRepo struct {
 
 func newFakeRoleRepo() *fakeRoleRepo {
 	return &fakeRoleRepo{
-		byID:        make(map[int64]*Role),
-		byName:      make(map[string]*Role),
-		byKey:       make(map[string]*Role),
+		byID:        make(map[int64]*accessentity.Role),
+		byName:      make(map[string]*accessentity.Role),
+		byKey:       make(map[string]*accessentity.Role),
 		links:       make(map[int64][]int64),
 		menuParents: make(map[int64]int64),
 		nextID:      1,
 	}
 }
 
-func (r *fakeRoleRepo) FindByID(_ context.Context, id int64) (*Role, error) {
+func (r *fakeRoleRepo) FindByID(_ context.Context, id int64) (*accessentity.Role, error) {
 	ro, ok := r.byID[id]
 	if !ok {
 		return nil, ErrRoleNotFound
@@ -48,7 +50,7 @@ func (r *fakeRoleRepo) FindByID(_ context.Context, id int64) (*Role, error) {
 	return ro, nil
 }
 
-func (r *fakeRoleRepo) FindByRoleName(_ context.Context, roleName string) (*Role, error) {
+func (r *fakeRoleRepo) FindByRoleName(_ context.Context, roleName string) (*accessentity.Role, error) {
 	ro, ok := r.byName[roleName]
 	if !ok {
 		return nil, ErrRoleNotFound
@@ -56,7 +58,7 @@ func (r *fakeRoleRepo) FindByRoleName(_ context.Context, roleName string) (*Role
 	return ro, nil
 }
 
-func (r *fakeRoleRepo) FindByRoleKey(_ context.Context, roleKey string) (*Role, error) {
+func (r *fakeRoleRepo) FindByRoleKey(_ context.Context, roleKey string) (*accessentity.Role, error) {
 	ro, ok := r.byKey[roleKey]
 	if !ok {
 		return nil, ErrRoleNotFound
@@ -64,11 +66,11 @@ func (r *fakeRoleRepo) FindByRoleKey(_ context.Context, roleKey string) (*Role, 
 	return ro, nil
 }
 
-func (r *fakeRoleRepo) ListRoles(context.Context, ...ListOption) ([]*Role, error) {
+func (r *fakeRoleRepo) ListRoles(context.Context, ...accessrepo.ListOption) ([]*accessentity.Role, error) {
 	return nil, nil
 }
 
-func (r *fakeRoleRepo) CreateRole(_ context.Context, ro *Role, menuIDs []int64) (*Role, error) {
+func (r *fakeRoleRepo) CreateRole(_ context.Context, ro *accessentity.Role, menuIDs []int64) (*accessentity.Role, error) {
 	ro.ID = r.nextID
 	r.nextID++
 	r.byID[ro.ID] = ro
@@ -79,10 +81,10 @@ func (r *fakeRoleRepo) CreateRole(_ context.Context, ro *Role, menuIDs []int64) 
 	return ro, nil
 }
 
-func (r *fakeRoleRepo) UpdateRole(_ context.Context, ro *Role) (*RoleUpdate, error) {
+func (r *fakeRoleRepo) UpdateRole(_ context.Context, ro *accessentity.Role) (*accessrepo.RoleUpdate, error) {
 	previous := r.byID[ro.ID]
 	r.byID[ro.ID] = ro
-	return &RoleUpdate{
+	return &accessrepo.RoleUpdate{
 		Role:            ro,
 		Previous:        previous,
 		AssignedUserIDs: r.assignedUsers,
@@ -100,11 +102,11 @@ func (r *fakeRoleRepo) DeleteRole(_ context.Context, id int64) ([]int64, error) 
 	return nil, nil
 }
 
-func (r *fakeRoleRepo) ListRoleMenuLinks(_ context.Context, roleID int64) ([]*RoleMenuLink, error) {
+func (r *fakeRoleRepo) ListRoleMenuLinks(_ context.Context, roleID int64) ([]*accessrepo.RoleMenuLink, error) {
 	ids := r.links[roleID]
-	out := make([]*RoleMenuLink, 0, len(ids))
+	out := make([]*accessrepo.RoleMenuLink, 0, len(ids))
 	for _, mid := range ids {
-		out = append(out, &RoleMenuLink{MenuID: mid, ParentID: r.menuParents[mid]})
+		out = append(out, &accessrepo.RoleMenuLink{MenuID: mid, ParentID: r.menuParents[mid]})
 	}
 	return out, nil
 }
@@ -122,7 +124,7 @@ func (r *fakeRoleRepo) ReplaceRoleMenus(_ context.Context, roleID int64, menuIDs
 
 // newFakeMenuRepoForRole returns a fakeMenuRepo preloaded with the given
 // menus (ids are the map keys).
-func newFakeMenuRepoForRole(menus map[int64]*Menu) *fakeMenuRepo {
+func newFakeMenuRepoForRole(menus map[int64]*accessentity.Menu) *fakeMenuRepo {
 	repo := newFakeMenuRepo()
 	for id, m := range menus {
 		m.ID = id
@@ -135,7 +137,7 @@ func TestCreateRole_Success(t *testing.T) {
 	repo := newFakeRoleRepo()
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	got, err := uc.CreateRole(context.Background(), &Role{RoleName: "超级管理员", RoleKey: "superadmin", RoleSort: 1, MenuCheckStrictly: true}, nil)
+	got, err := uc.CreateRole(context.Background(), &accessentity.Role{RoleName: "超级管理员", RoleKey: "superadmin", RoleSort: 1, MenuCheckStrictly: true}, nil)
 	if err != nil {
 		t.Fatalf("create role: %v", err)
 	}
@@ -156,7 +158,7 @@ func TestCreateRole_BlankNameRejected(t *testing.T) {
 	repo := newFakeRoleRepo()
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	_, err := uc.CreateRole(context.Background(), &Role{RoleName: "", RoleKey: "superadmin"}, nil)
+	_, err := uc.CreateRole(context.Background(), &accessentity.Role{RoleName: "", RoleKey: "superadmin"}, nil)
 	if !errors.Is(err, ErrRoleInvalid) {
 		t.Fatalf("expected ErrRoleInvalid, got %v", err)
 	}
@@ -166,7 +168,7 @@ func TestCreateRole_BlankKeyRejected(t *testing.T) {
 	repo := newFakeRoleRepo()
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	_, err := uc.CreateRole(context.Background(), &Role{RoleName: "超级管理员", RoleKey: ""}, nil)
+	_, err := uc.CreateRole(context.Background(), &accessentity.Role{RoleName: "超级管理员", RoleKey: ""}, nil)
 	if !errors.Is(err, ErrRoleInvalid) {
 		t.Fatalf("expected ErrRoleInvalid, got %v", err)
 	}
@@ -174,10 +176,10 @@ func TestCreateRole_BlankKeyRejected(t *testing.T) {
 
 func TestCreateRole_NameConflict(t *testing.T) {
 	repo := newFakeRoleRepo()
-	repo.byName["超级管理员"] = &Role{ID: 7, RoleName: "超级管理员", RoleKey: "other"}
+	repo.byName["超级管理员"] = &accessentity.Role{ID: 7, RoleName: "超级管理员", RoleKey: "other"}
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	_, err := uc.CreateRole(context.Background(), &Role{RoleName: "超级管理员", RoleKey: "superadmin"}, nil)
+	_, err := uc.CreateRole(context.Background(), &accessentity.Role{RoleName: "超级管理员", RoleKey: "superadmin"}, nil)
 	if !errors.Is(err, ErrRoleNameConflict) {
 		t.Fatalf("expected ErrRoleNameConflict, got %v", err)
 	}
@@ -185,10 +187,10 @@ func TestCreateRole_NameConflict(t *testing.T) {
 
 func TestCreateRole_KeyConflict(t *testing.T) {
 	repo := newFakeRoleRepo()
-	repo.byKey["superadmin"] = &Role{ID: 7, RoleName: "other", RoleKey: "superadmin"}
+	repo.byKey["superadmin"] = &accessentity.Role{ID: 7, RoleName: "other", RoleKey: "superadmin"}
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	_, err := uc.CreateRole(context.Background(), &Role{RoleName: "超级管理员", RoleKey: "superadmin"}, nil)
+	_, err := uc.CreateRole(context.Background(), &accessentity.Role{RoleName: "超级管理员", RoleKey: "superadmin"}, nil)
 	if !errors.Is(err, ErrRoleKeyConflict) {
 		t.Fatalf("expected ErrRoleKeyConflict, got %v", err)
 	}
@@ -196,19 +198,19 @@ func TestCreateRole_KeyConflict(t *testing.T) {
 
 func TestUpdateRole_ConflictExcludingSelf(t *testing.T) {
 	repo := newFakeRoleRepo()
-	repo.byID[5] = &Role{ID: 5, RoleName: "管理员", RoleKey: "admin"}
+	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin"}
 	repo.byName["管理员"] = repo.byID[5]
 	repo.byKey["admin"] = repo.byID[5]
-	repo.byName["超级管理员"] = &Role{ID: 7, RoleName: "超级管理员", RoleKey: "superadmin"}
+	repo.byName["超级管理员"] = &accessentity.Role{ID: 7, RoleName: "超级管理员", RoleKey: "superadmin"}
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	// Taking another role's name is rejected...
-	_, err := uc.UpdateRole(context.Background(), &Role{ID: 5, RoleName: "超级管理员", RoleKey: "admin"})
+	_, err := uc.UpdateRole(context.Background(), &accessentity.Role{ID: 5, RoleName: "超级管理员", RoleKey: "admin"})
 	if !errors.Is(err, ErrRoleNameConflict) {
 		t.Fatalf("expected ErrRoleNameConflict, got %v", err)
 	}
 	// ...but keeping its own values passes.
-	_, err = uc.UpdateRole(context.Background(), &Role{ID: 5, RoleName: "管理员", RoleKey: "admin"})
+	_, err = uc.UpdateRole(context.Background(), &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin"})
 	if err != nil {
 		t.Fatalf("update keeping own values: %v", err)
 	}
@@ -216,7 +218,7 @@ func TestUpdateRole_ConflictExcludingSelf(t *testing.T) {
 
 func TestDeleteRole_Success(t *testing.T) {
 	repo := newFakeRoleRepo()
-	repo.byID[3] = &Role{ID: 3, RoleName: "测试", RoleKey: "test"}
+	repo.byID[3] = &accessentity.Role{ID: 3, RoleName: "测试", RoleKey: "test"}
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	if err := uc.DeleteRole(context.Background(), 3); err != nil {
@@ -237,17 +239,17 @@ func TestDeleteRole_NotFound(t *testing.T) {
 	}
 }
 
-// --- Menu Grant (菜单授权) ---
+// --- accessentity.Menu Grant (菜单授权) ---
 
 func TestCreateRole_WithMenus_Success(t *testing.T) {
 	repo := newFakeRoleRepo()
-	menus := newFakeMenuRepoForRole(map[int64]*Menu{
+	menus := newFakeMenuRepoForRole(map[int64]*accessentity.Menu{
 		10: {MenuName: "系统管理"},
 		11: {MenuName: "用户管理", ParentID: 10},
 	})
 	uc := NewRoleUsecase(repo, menus, newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	got, err := uc.CreateRole(context.Background(), &Role{
+	got, err := uc.CreateRole(context.Background(), &accessentity.Role{
 		RoleName:          "运营",
 		RoleKey:           "operator",
 		MenuCheckStrictly: false,
@@ -266,10 +268,10 @@ func TestCreateRole_WithMenus_Success(t *testing.T) {
 
 func TestCreateRole_UnknownMenuRejected(t *testing.T) {
 	repo := newFakeRoleRepo()
-	menus := newFakeMenuRepoForRole(map[int64]*Menu{10: {MenuName: "系统管理"}})
+	menus := newFakeMenuRepoForRole(map[int64]*accessentity.Menu{10: {MenuName: "系统管理"}})
 	uc := NewRoleUsecase(repo, menus, newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	_, err := uc.CreateRole(context.Background(), &Role{RoleName: "运营", RoleKey: "operator"}, []int64{10, 99})
+	_, err := uc.CreateRole(context.Background(), &accessentity.Role{RoleName: "运营", RoleKey: "operator"}, []int64{10, 99})
 	if !errors.Is(err, ErrRoleMenuNotFound) {
 		t.Fatalf("expected ErrRoleMenuNotFound, got %v", err)
 	}
@@ -280,10 +282,10 @@ func TestCreateRole_UnknownMenuRejected(t *testing.T) {
 
 func TestCreateRole_MenuDuplicatesDeduped(t *testing.T) {
 	repo := newFakeRoleRepo()
-	menus := newFakeMenuRepoForRole(map[int64]*Menu{10: {MenuName: "系统管理"}})
+	menus := newFakeMenuRepoForRole(map[int64]*accessentity.Menu{10: {MenuName: "系统管理"}})
 	uc := NewRoleUsecase(repo, menus, newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	got, err := uc.CreateRole(context.Background(), &Role{RoleName: "运营", RoleKey: "operator"}, []int64{10, 10, 10})
+	got, err := uc.CreateRole(context.Background(), &accessentity.Role{RoleName: "运营", RoleKey: "operator"}, []int64{10, 10, 10})
 	if err != nil {
 		t.Fatalf("create role with duplicate menus: %v", err)
 	}
@@ -295,8 +297,8 @@ func TestCreateRole_MenuDuplicatesDeduped(t *testing.T) {
 
 func TestUpdateRoleMenus_ReplacesGrant(t *testing.T) {
 	repo := newFakeRoleRepo()
-	repo.byID[5] = &Role{ID: 5, RoleName: "运营", RoleKey: "operator"}
-	menus := newFakeMenuRepoForRole(map[int64]*Menu{
+	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "运营", RoleKey: "operator"}
+	menus := newFakeMenuRepoForRole(map[int64]*accessentity.Menu{
 		1: {MenuName: "系统管理"},
 		2: {MenuName: "用户管理", ParentID: 1},
 		3: {MenuName: "角色管理", ParentID: 1},
@@ -335,8 +337,8 @@ func TestUpdateRoleMenus_ReplacesGrant(t *testing.T) {
 
 func TestUpdateRoleMenus_UnknownMenuRejected(t *testing.T) {
 	repo := newFakeRoleRepo()
-	repo.byID[5] = &Role{ID: 5, RoleName: "运营", RoleKey: "operator"}
-	menus := newFakeMenuRepoForRole(map[int64]*Menu{1: {MenuName: "系统管理"}})
+	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "运营", RoleKey: "operator"}
+	menus := newFakeMenuRepoForRole(map[int64]*accessentity.Menu{1: {MenuName: "系统管理"}})
 	uc := NewRoleUsecase(repo, menus, newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	_, err := uc.UpdateRoleMenus(context.Background(), 5, []int64{1, 99}, true)
@@ -360,7 +362,7 @@ func TestUpdateRoleMenus_RoleNotFound(t *testing.T) {
 
 func TestListRoleMenus_StrictDropsHalfCheckedParent(t *testing.T) {
 	repo := newFakeRoleRepo()
-	repo.byID[5] = &Role{ID: 5, RoleName: "运营", RoleKey: "operator", MenuCheckStrictly: true}
+	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "运营", RoleKey: "operator", MenuCheckStrictly: true}
 	repo.menuParents = map[int64]int64{10: 0, 11: 10, 12: 10, 20: 0}
 	repo.links[5] = []int64{10, 11, 12, 20} // 10 is parent of granted 11/12
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
@@ -376,7 +378,7 @@ func TestListRoleMenus_StrictDropsHalfCheckedParent(t *testing.T) {
 
 func TestListRoleMenus_StrictDropsFullyCheckedParent(t *testing.T) {
 	repo := newFakeRoleRepo()
-	repo.byID[5] = &Role{ID: 5, RoleName: "运营", RoleKey: "operator", MenuCheckStrictly: true}
+	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "运营", RoleKey: "operator", MenuCheckStrictly: true}
 	repo.menuParents = map[int64]int64{10: 0, 11: 10}
 	repo.links[5] = []int64{10, 11} // parent 10 fully checked via child 11
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
@@ -392,7 +394,7 @@ func TestListRoleMenus_StrictDropsFullyCheckedParent(t *testing.T) {
 
 func TestListRoleMenus_NonStrictReturnsAll(t *testing.T) {
 	repo := newFakeRoleRepo()
-	repo.byID[5] = &Role{ID: 5, RoleName: "运营", RoleKey: "operator", MenuCheckStrictly: false}
+	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "运营", RoleKey: "operator", MenuCheckStrictly: false}
 	repo.menuParents = map[int64]int64{10: 0, 11: 10, 12: 10, 20: 0}
 	repo.links[5] = []int64{10, 11, 12, 20}
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())

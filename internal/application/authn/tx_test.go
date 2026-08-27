@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	authndomain "glex/internal/domain/authn"
+	authnrepo "glex/internal/domain/authn/repository"
 )
 
 // fakeTransaction runs fn inline and returns the recorded body error, or —
@@ -40,5 +40,5 @@ func assertSteps(t *testing.T, steps *[]string, want ...string) {
 // stubSessionRepo satisfies LoginSessionRepo for flows that never touch the
 // session store directly; the embedded interface stays nil.
 type stubSessionRepo struct {
-	authndomain.LoginSessionRepo
+	authnrepo.LoginSessionRepo
 }

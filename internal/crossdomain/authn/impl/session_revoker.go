@@ -9,18 +9,18 @@ import (
 
 	"glex/internal/crossdomain/authn"
 	"glex/internal/crossdomain/authn/model"
-	authndomain "glex/internal/domain/authn"
+	authnrepo "glex/internal/domain/authn/repository"
 )
 
 // sessionRevoker satisfies the revocation contract by wrapping the Login
 // Session repository.
 type sessionRevoker struct {
-	sessions authndomain.LoginSessionRepo
+	sessions authnrepo.LoginSessionRepo
 }
 
 // NewSessionRevoker adapts the Login Session repository to the crossdomain
 // revocation contract.
-func NewSessionRevoker(sessions authndomain.LoginSessionRepo) authn.SessionRevoker {
+func NewSessionRevoker(sessions authnrepo.LoginSessionRepo) authn.SessionRevoker {
 	return &sessionRevoker{sessions: sessions}
 }
 

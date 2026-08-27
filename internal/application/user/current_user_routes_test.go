@@ -8,33 +8,35 @@ import (
 	"time"
 
 	authndomain "glex/internal/domain/authn"
-	userdomain "glex/internal/domain/user"
+	authnentity "glex/internal/domain/authn/entity"
+	authnservice "glex/internal/domain/authn/service"
+	userentity "glex/internal/domain/user/entity"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type currentUserUsecase struct {
 	userUsecase
-	info      *userdomain.CurrentUserInfo
-	principal *authndomain.Principal
+	info      *userentity.CurrentUserInfo
+	principal *authnentity.Principal
 }
 
-func (u *currentUserUsecase) GetCurrentUserInfo(_ context.Context, principal *authndomain.Principal) (*userdomain.CurrentUserInfo, error) {
+func (u *currentUserUsecase) GetCurrentUserInfo(_ context.Context, principal *authnentity.Principal) (*userentity.CurrentUserInfo, error) {
 	u.principal = principal
 	return u.info, nil
 }
 
 func TestGetInfoUsesPrincipalSnapshotAndNeverExposesPassword(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
-	uc := &currentUserUsecase{info: &userdomain.CurrentUserInfo{
-		User: &userdomain.User{
+	uc := &currentUserUsecase{info: &userentity.CurrentUserInfo{
+		User: &userentity.User{
 			ID: 42, UserName: "alice", NickName: "Alice", Password: "bcrypt-secret-hash",
 			Email: "alice@example.com", LoginDate: &now, CreatedAt: now, UpdatedAt: now,
 		},
 		RoleKeys: []string{"operator"}, Permissions: []string{"system:user:list"},
 	}}
 	service := newUserApplication(uc, testLogger())
-	ctx := authndomain.WithPrincipal(t.Context(), authndomain.NewPrincipal(
+	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(
 		42, "alice", "safe-session-id", []string{"operator"}, []string{"system:user:list"},
 	))
 

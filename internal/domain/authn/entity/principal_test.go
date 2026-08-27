@@ -1,7 +1,6 @@
-package authn
+package entity
 
 import (
-	"context"
 	"strings"
 	"testing"
 )
@@ -28,7 +27,7 @@ func TestPrincipalIsImmutableAndContainsNoBearerCredential(t *testing.T) {
 	}
 }
 
-func TestPrincipalContextAndPermissionChecks(t *testing.T) {
+func TestPrincipalPermissionChecks(t *testing.T) {
 	tests := []struct {
 		name        string
 		permissions []string
@@ -46,14 +45,6 @@ func TestPrincipalContextAndPermissionChecks(t *testing.T) {
 			if got := principal.HasPermission(tt.required); got != tt.want {
 				t.Fatalf("HasPermission(%q) = %v, want %v", tt.required, got, tt.want)
 			}
-			ctx := WithPrincipal(context.Background(), principal)
-			got, ok := PrincipalFromContext(ctx)
-			if !ok || got != principal {
-				t.Fatalf("PrincipalFromContext = %#v/%v", got, ok)
-			}
 		})
-	}
-	if _, ok := PrincipalFromContext(context.Background()); ok {
-		t.Fatal("empty context unexpectedly contains a Principal")
 	}
 }

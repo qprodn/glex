@@ -4,17 +4,17 @@ import (
 	"context"
 	"testing"
 
-	. "glex/internal/domain/user"
+	userentity "glex/internal/domain/user/entity"
 )
 
 func TestRevokeSystemUsersAssemblesSortedDedupedRequest(t *testing.T) {
 	revoker := &fakeSessionRevoker{}
-	revocations := []SystemUserSessionRevocation{
-		{SystemUserID: 9, Policy: RevokeAllLoginSessions()},
-		{SystemUserID: 0, Policy: RevokeAllLoginSessions()}, // invalid id: dropped
-		{SystemUserID: 4, Policy: SessionRevocation{}},      // not required: dropped
-		{SystemUserID: 4, Policy: RevokeAllLoginSessions()}, // duplicate user: kept
-		{SystemUserID: 2, Policy: RevokeAllLoginSessions()},
+	revocations := []userentity.SystemUserSessionRevocation{
+		{SystemUserID: 9, Policy: userentity.RevokeAllLoginSessions()},
+		{SystemUserID: 0, Policy: userentity.RevokeAllLoginSessions()}, // invalid id: dropped
+		{SystemUserID: 4, Policy: userentity.SessionRevocation{}},      // not required: dropped
+		{SystemUserID: 4, Policy: userentity.RevokeAllLoginSessions()}, // duplicate user: kept
+		{SystemUserID: 2, Policy: userentity.RevokeAllLoginSessions()},
 	}
 
 	if err := revokeSystemUsers(context.Background(), revoker, revocations...); err != nil {
@@ -36,8 +36,8 @@ func TestRevokeSystemUsersAssemblesSortedDedupedRequest(t *testing.T) {
 func TestRevokeSystemUsersSkipsWhenNothingRequired(t *testing.T) {
 	revoker := &fakeSessionRevoker{}
 	if err := revokeSystemUsers(context.Background(), revoker,
-		SystemUserSessionRevocation{SystemUserID: 4, Policy: SessionRevocation{}},
-		SystemUserSessionRevocation{SystemUserID: 0, Policy: RevokeAllLoginSessions()},
+		userentity.SystemUserSessionRevocation{SystemUserID: 4, Policy: userentity.SessionRevocation{}},
+		userentity.SystemUserSessionRevocation{SystemUserID: 0, Policy: userentity.RevokeAllLoginSessions()},
 	); err != nil {
 		t.Fatalf("revokeSystemUsers: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestRevokeSystemUsersSkipsWhenNothingRequired(t *testing.T) {
 func TestRevokeSystemUsersPreservesTheClassifiedSession(t *testing.T) {
 	revoker := &fakeSessionRevoker{}
 	if err := revokeSystemUsers(context.Background(), revoker,
-		SystemUserSessionRevocation{SystemUserID: 42, Policy: PreserveLoginSession("current-session")},
+		userentity.SystemUserSessionRevocation{SystemUserID: 42, Policy: userentity.PreserveLoginSession("current-session")},
 	); err != nil {
 		t.Fatalf("revokeSystemUsers: %v", err)
 	}
@@ -68,8 +68,8 @@ func TestRevokeSystemUsersRejectsConflictingPreservedSessions(t *testing.T) {
 	// of nondeterministically revoking one user's current session.
 	revoker := &fakeSessionRevoker{}
 	err := revokeSystemUsers(context.Background(), revoker,
-		SystemUserSessionRevocation{SystemUserID: 1, Policy: PreserveLoginSession("session-a")},
-		SystemUserSessionRevocation{SystemUserID: 2, Policy: PreserveLoginSession("session-b")},
+		userentity.SystemUserSessionRevocation{SystemUserID: 1, Policy: userentity.PreserveLoginSession("session-a")},
+		userentity.SystemUserSessionRevocation{SystemUserID: 2, Policy: userentity.PreserveLoginSession("session-b")},
 	)
 	if err == nil {
 		t.Fatal("conflicting preserved sessions must be rejected")

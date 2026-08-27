@@ -8,6 +8,8 @@ import (
 	"time"
 
 	authndomain "glex/internal/domain/authn"
+	authnentity "glex/internal/domain/authn/entity"
+	authnrepo "glex/internal/domain/authn/repository"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sa-tokens/sa-token-go/core"
@@ -17,7 +19,7 @@ import (
 
 func TestAuthenticatorBuildsPrincipalAndRefreshesActivity(t *testing.T) {
 	sessions, tokenManager, rdb := newTestLoginSessionRepo(t)
-	token, err := loginAndReplaceAuthorizationSnapshot(tokenManager, &authndomain.AuthorizationSnapshot{
+	token, err := loginAndReplaceAuthorizationSnapshot(tokenManager, &authnentity.AuthorizationSnapshot{
 		SystemUserID: 42,
 		UserName:     "alice",
 		RoleKeys:     []string{"operator"},
@@ -26,7 +28,7 @@ func TestAuthenticatorBuildsPrincipalAndRefreshesActivity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("issue bearer: %v", err)
 	}
-	loginSession, err := sessions.Create(t.Context(), token, &authndomain.LoginSession{
+	loginSession, err := sessions.Create(t.Context(), token, &authnentity.LoginSession{
 		SystemUserID: 42,
 		UserName:     "alice",
 		DeviceType:   "desktop",
@@ -75,14 +77,14 @@ func TestAuthenticatorAcceptsRoleLessSystemUser(t *testing.T) {
 	// rather than null — a null decodes as a mismatched snapshot and locked
 	// these users out with spurious 503s.
 	sessions, tokenManager, _ := newTestLoginSessionRepo(t)
-	token, err := loginAndReplaceAuthorizationSnapshot(tokenManager, &authndomain.AuthorizationSnapshot{
+	token, err := loginAndReplaceAuthorizationSnapshot(tokenManager, &authnentity.AuthorizationSnapshot{
 		SystemUserID: 42,
 		UserName:     "alice",
 	}, "desktop", 7*24*time.Hour)
 	if err != nil {
 		t.Fatalf("issue bearer: %v", err)
 	}
-	if _, err := sessions.Create(t.Context(), token, &authndomain.LoginSession{
+	if _, err := sessions.Create(t.Context(), token, &authnentity.LoginSession{
 		SystemUserID: 42,
 		UserName:     "alice",
 		DeviceType:   "desktop",
@@ -106,15 +108,15 @@ func TestAuthenticatorAcceptsRoleLessSystemUser(t *testing.T) {
 func TestAuthenticatorPreservesSessionFailureDistinctions(t *testing.T) {
 	tests := []struct {
 		name   string
-		mutate func(authndomain.LoginSessionRepo, string, string) error
+		mutate func(authnrepo.LoginSessionRepo, string, string) error
 		want   error
 	}{
-		{name: "invalid", mutate: func(authndomain.LoginSessionRepo, string, string) error { return nil }, want: authndomain.ErrTokenInvalid},
+		{name: "invalid", mutate: func(authnrepo.LoginSessionRepo, string, string) error { return nil }, want: authndomain.ErrTokenInvalid},
 		{name: "idle", mutate: makeTokenIdle, want: authndomain.ErrTokenIdleTimeout},
-		{name: "kickout", mutate: func(repo authndomain.LoginSessionRepo, _ string, sessionID string) error {
+		{name: "kickout", mutate: func(repo authnrepo.LoginSessionRepo, _ string, sessionID string) error {
 			return repo.Kickout(t.Context(), sessionID)
 		}, want: authndomain.ErrLoginSessionKickedOut},
-		{name: "replaced", mutate: func(repo authndomain.LoginSessionRepo, _ string, sessionID string) error {
+		{name: "replaced", mutate: func(repo authnrepo.LoginSessionRepo, _ string, sessionID string) error {
 			return repo.Replace(t.Context(), sessionID)
 		}, want: authndomain.ErrLoginSessionReplaced},
 	}
@@ -171,7 +173,7 @@ func TestAuthenticatorDistinguishesFixedExpiryFromUnknownToken(t *testing.T) {
 	}
 }
 
-func makeTokenIdle(authndomain.LoginSessionRepo, string, string) error { return nil }
+func makeTokenIdle(authnrepo.LoginSessionRepo, string, string) error { return nil }
 
 func makeManagedTokenIdle(t *testing.T, rdb *redis.Client, tokenManager *core.Manager, token string) error {
 	t.Helper()

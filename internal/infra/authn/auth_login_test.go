@@ -10,6 +10,8 @@ import (
 	"time"
 
 	authndomain "glex/internal/domain/authn"
+	authnentity "glex/internal/domain/authn/entity"
+	authnrepo "glex/internal/domain/authn/repository"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/user"
 
@@ -23,7 +25,7 @@ import (
 
 func issueTestBearer(t *testing.T, manager *core.Manager, systemUserID int64, userName, deviceType string) string {
 	t.Helper()
-	token, err := loginAndReplaceAuthorizationSnapshot(manager, &authndomain.AuthorizationSnapshot{
+	token, err := loginAndReplaceAuthorizationSnapshot(manager, &authnentity.AuthorizationSnapshot{
 		SystemUserID: systemUserID,
 		UserName:     userName,
 	}, deviceType, 7*24*time.Hour)
@@ -35,7 +37,7 @@ func issueTestBearer(t *testing.T, manager *core.Manager, systemUserID int64, us
 
 func TestSecondLoginReplacesSharedAuthorizationSnapshotBeforeTokenReturns(t *testing.T) {
 	_, manager, _ := newTestLoginSessionRepo(t)
-	first, err := loginAndReplaceAuthorizationSnapshot(manager, &authndomain.AuthorizationSnapshot{
+	first, err := loginAndReplaceAuthorizationSnapshot(manager, &authnentity.AuthorizationSnapshot{
 		SystemUserID: 42,
 		UserName:     "alice",
 		RoleKeys:     []string{"viewer"},
@@ -44,7 +46,7 @@ func TestSecondLoginReplacesSharedAuthorizationSnapshotBeforeTokenReturns(t *tes
 	if err != nil {
 		t.Fatalf("first login: %v", err)
 	}
-	second, err := loginAndReplaceAuthorizationSnapshot(manager, &authndomain.AuthorizationSnapshot{
+	second, err := loginAndReplaceAuthorizationSnapshot(manager, &authnentity.AuthorizationSnapshot{
 		SystemUserID: 42,
 		UserName:     "alice",
 		RoleKeys:     []string{"operator"},
@@ -88,7 +90,7 @@ func TestAuthorizationSnapshotPreservesSnowflakeSystemUserIDExactly(t *testing.T
 
 // newAuthLoginSQLMock builds an authLoginRepo over sqlmock PostgreSQL and
 // miniredis-backed sa-token/session stores.
-func newAuthLoginSQLMock(t *testing.T) (*authLoginRepo, *core.Manager, authndomain.LoginSessionRepo, sqlmock.Sqlmock) {
+func newAuthLoginSQLMock(t *testing.T) (*authLoginRepo, *core.Manager, authnrepo.LoginSessionRepo, sqlmock.Sqlmock) {
 	t.Helper()
 	db, mock, err := sqlmock.New()
 	if err != nil {
@@ -160,15 +162,15 @@ func TestAuthLoginMapsDatabaseDriverErrors(t *testing.T) {
 // method lives on the embedded nil interface because IssueCredential's
 // failure path only calls Create and ListBySystemUser.
 type stubFailingSessions struct {
-	authndomain.LoginSessionRepo
+	authnrepo.LoginSessionRepo
 	createErr error
 }
 
-func (s *stubFailingSessions) Create(context.Context, string, *authndomain.LoginSession) (*authndomain.LoginSession, error) {
+func (s *stubFailingSessions) Create(context.Context, string, *authnentity.LoginSession) (*authnentity.LoginSession, error) {
 	return nil, s.createErr
 }
 
-func (s *stubFailingSessions) ListBySystemUser(context.Context, int64, ...authndomain.ListOption) ([]*authndomain.LoginSession, error) {
+func (s *stubFailingSessions) ListBySystemUser(context.Context, int64, ...authnrepo.ListOption) ([]*authnentity.LoginSession, error) {
 	return nil, nil
 }
 
@@ -176,7 +178,7 @@ func TestAuthLoginIssueCredentialCleansUpPartialRedisFailure(t *testing.T) {
 	repo, manager, _, _ := newAuthLoginSQLMock(t)
 	repo.sessions = &stubFailingSessions{createErr: errors.New("session store unavailable")}
 
-	result, err := repo.IssueCredential(t.Context(), &authndomain.AuthorizationSnapshot{SystemUserID: 42, UserName: "alice", RoleKeys: []string{"viewer"}}, &authndomain.LoginSession{
+	result, err := repo.IssueCredential(t.Context(), &authnentity.AuthorizationSnapshot{SystemUserID: 42, UserName: "alice", RoleKeys: []string{"viewer"}}, &authnentity.LoginSession{
 		SystemUserID: 42,
 		UserName:     "alice",
 		DeviceType:   "desktop",
@@ -197,8 +199,8 @@ func TestAuthLoginIssueCredentialCleansUpPartialRedisFailure(t *testing.T) {
 
 func TestAuthLoginDiscardCredentialTearsDownTokenAndLastSession(t *testing.T) {
 	repo, manager, sessions, _ := newAuthLoginSQLMock(t)
-	snapshot := &authndomain.AuthorizationSnapshot{SystemUserID: 42, UserName: "alice", RoleKeys: []string{"viewer"}}
-	result, err := repo.IssueCredential(t.Context(), snapshot, &authndomain.LoginSession{
+	snapshot := &authnentity.AuthorizationSnapshot{SystemUserID: 42, UserName: "alice", RoleKeys: []string{"viewer"}}
+	result, err := repo.IssueCredential(t.Context(), snapshot, &authnentity.LoginSession{
 		SystemUserID: 42, UserName: "alice", DeviceType: "desktop", LoginTime: time.Unix(1_700_000_000, 0),
 	})
 	if err != nil {

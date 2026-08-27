@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"glex/internal/conf"
-	authndomain "glex/internal/domain/authn"
+	authnrepo "glex/internal/domain/authn/repository"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -56,7 +56,7 @@ type loginCounterRepo struct {
 // NewLoginCounterRepo constructs the two Redis-backed login failure counters.
 // Counter subjects are SHA-256 fingerprints so usernames and source IPs do not
 // become visible Redis key material.
-func NewLoginCounterRepo(data *store.Data, c *conf.Auth) authndomain.LoginCounterRepo {
+func NewLoginCounterRepo(data *store.Data, c *conf.Auth) authnrepo.LoginCounterRepo {
 	return &loginCounterRepo{
 		rdb:            data.Redis,
 		logger:         data.Logger.With(slog.String("component", "infra.authn.login_counter")),

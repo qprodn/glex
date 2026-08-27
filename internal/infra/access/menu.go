@@ -9,16 +9,18 @@ import (
 
 	"github.com/go-kratos/aip-go/ents"
 	"glex/internal/domain/access"
+	accessentity "glex/internal/domain/access/entity"
+	accessrepo "glex/internal/domain/access/repository"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/user"
 )
 
-// toBizMenu maps an ent Menu PO to a access.Menu DO. Children is left nil — the
+// toBizMenu maps an ent Menu PO to a accessentity.Menu DO. Children is left nil — the
 // tree is assembled in domain (see access.buildTree).
-func toBizMenu(po *ent.Menu) *access.Menu {
-	return &access.Menu{
+func toBizMenu(po *ent.Menu) *accessentity.Menu {
+	return &accessentity.Menu{
 		ID:         po.ID,
 		MenuName:   po.MenuName,
 		ParentID:   po.ParentID,
@@ -48,14 +50,14 @@ type menuRepo struct {
 }
 
 // NewMenuRepo creates a new MenuRepo instance.
-func NewMenuRepo(data *store.Data) access.MenuRepo {
+func NewMenuRepo(data *store.Data) accessrepo.MenuRepo {
 	return &menuRepo{
 		data:   data,
 		logger: data.Logger.With(slog.String("component", "infra.access.menu")),
 	}
 }
 
-func (r *menuRepo) FindByID(ctx context.Context, id int64) (*access.Menu, error) {
+func (r *menuRepo) FindByID(ctx context.Context, id int64) (*accessentity.Menu, error) {
 	po, err := r.data.DB.Menu(ctx).Query().
 		Where(menu.IDEQ(id), menu.DeletedAtIsNil()).
 		Only(ctx)
@@ -68,7 +70,7 @@ func (r *menuRepo) FindByID(ctx context.Context, id int64) (*access.Menu, error)
 	return toBizMenu(po), nil
 }
 
-func (r *menuRepo) FindByParentAndName(ctx context.Context, parentID int64, name string) (*access.Menu, error) {
+func (r *menuRepo) FindByParentAndName(ctx context.Context, parentID int64, name string) (*accessentity.Menu, error) {
 	po, err := r.data.DB.Menu(ctx).Query().
 		Where(menu.ParentIDEQ(parentID), menu.MenuNameEQ(name), menu.DeletedAtIsNil()).
 		Only(ctx)
@@ -94,8 +96,8 @@ func (r *menuRepo) HasChildren(ctx context.Context, id int64) (bool, error) {
 // ListMenus returns the non-deleted menus as a flat list. It does not apply
 // offset/limit: menus are a small, tree-shaped set and ListMenus serves the
 // whole tree. Final sibling ordering is applied by access.buildTree.
-func (r *menuRepo) ListMenus(ctx context.Context, opts ...access.ListOption) ([]*access.Menu, error) {
-	o := access.ListOptions{}
+func (r *menuRepo) ListMenus(ctx context.Context, opts ...accessrepo.ListOption) ([]*accessentity.Menu, error) {
+	o := accessrepo.ListOptions{}
 	for _, opt := range opts {
 		opt(&o)
 	}
@@ -106,7 +108,7 @@ func (r *menuRepo) ListMenus(ctx context.Context, opts ...access.ListOption) ([]
 	if err != nil {
 		return nil, err
 	}
-	menus := make([]*access.Menu, 0, len(pos))
+	menus := make([]*accessentity.Menu, 0, len(pos))
 	for _, po := range pos {
 		menus = append(menus, toBizMenu(po))
 	}
@@ -117,7 +119,7 @@ func (r *menuRepo) ListMenus(ctx context.Context, opts ...access.ListOption) ([]
 // active Role Assignments, their Menu Grants, and all active routeable Menus.
 // It intentionally does not consult Functional Permission handles or an
 // Account Session snapshot.
-func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*access.MenuRouteAccess, error) {
+func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*accessrepo.MenuRouteAccess, error) {
 	assignedRoles, err := r.data.DB.Role(ctx).Query().
 		Where(
 			role.DeletedAtIsNil(),
@@ -156,25 +158,25 @@ func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*ac
 		Where(
 			menu.DeletedAtIsNil(),
 			menu.StatusEQ(0),
-			menu.MenuTypeIn(int8(access.MenuTypeDirectory), int8(access.MenuTypeMenu)),
+			menu.MenuTypeIn(int8(accessentity.MenuTypeDirectory), int8(accessentity.MenuTypeMenu)),
 		).
 		Order(menu.ByParentID(), menu.ByOrderNum(), menu.ByID()).
 		All(ctx)
 	if err != nil {
 		return nil, routeAccessError(ctx, r.logger, "load_active_route_menus", err)
 	}
-	menus := make([]*access.Menu, 0, len(pos))
+	menus := make([]*accessentity.Menu, 0, len(pos))
 	for _, po := range pos {
 		menus = append(menus, toBizMenu(po))
 	}
-	return &access.MenuRouteAccess{
+	return &accessrepo.MenuRouteAccess{
 		RoleKeys:       roleKeys,
 		GrantedMenuIDs: grantedMenuIDs,
 		ActiveMenus:    menus,
 	}, nil
 }
 
-func (r *menuRepo) CreateMenu(ctx context.Context, m *access.Menu) (*access.Menu, error) {
+func (r *menuRepo) CreateMenu(ctx context.Context, m *accessentity.Menu) (*accessentity.Menu, error) {
 	po, err := r.data.DB.Menu(ctx).Create().
 		SetID(newSnowflakeID()).
 		SetMenuName(m.MenuName).
@@ -202,8 +204,8 @@ func (r *menuRepo) CreateMenu(ctx context.Context, m *access.Menu) (*access.Menu
 // UpdateMenu re-reads the record and its affected users, applies the mutation,
 // and returns the persisted menu with its pre-image for MenuUsecase
 // revocation classification. The caller owns the transaction.
-func (r *menuRepo) UpdateMenu(ctx context.Context, m *access.Menu) (*access.MenuUpdate, error) {
-	result := &access.MenuUpdate{}
+func (r *menuRepo) UpdateMenu(ctx context.Context, m *accessentity.Menu) (*accessrepo.MenuUpdate, error) {
+	result := &accessrepo.MenuUpdate{}
 	current, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(m.ID), menu.DeletedAtIsNil()).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -248,7 +250,7 @@ func (r *menuRepo) UpdateMenu(ctx context.Context, m *access.Menu) (*access.Menu
 
 // ListByIDs returns the active menus among the given ids (soft-deleted rows
 // are excluded, so the caller can detect unknown ids by length mismatch).
-func (r *menuRepo) ListByIDs(ctx context.Context, ids []int64) ([]*access.Menu, error) {
+func (r *menuRepo) ListByIDs(ctx context.Context, ids []int64) ([]*accessentity.Menu, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -258,7 +260,7 @@ func (r *menuRepo) ListByIDs(ctx context.Context, ids []int64) ([]*access.Menu, 
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*access.Menu, 0, len(pos))
+	out := make([]*accessentity.Menu, 0, len(pos))
 	for _, po := range pos {
 		out = append(out, toBizMenu(po))
 	}

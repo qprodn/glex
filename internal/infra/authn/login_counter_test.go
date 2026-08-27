@@ -9,12 +9,13 @@ import (
 	"time"
 
 	authndomain "glex/internal/domain/authn"
+	authnrepo "glex/internal/domain/authn/repository"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 )
 
-func newTestLoginCounterRepo(t *testing.T) (authndomain.LoginCounterRepo, *miniredis.Miniredis) {
+func newTestLoginCounterRepo(t *testing.T) (authnrepo.LoginCounterRepo, *miniredis.Miniredis) {
 	t.Helper()
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})

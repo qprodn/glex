@@ -6,12 +6,13 @@ import (
 
 	"glex/internal/crossdomain/authn/model"
 	authndomain "glex/internal/domain/authn"
+	authnrepo "glex/internal/domain/authn/repository"
 )
 
 // recordingLoginSessionRepo records batch revocations; the embedded interface
 // stays nil because the adapter under test touches nothing else.
 type recordingLoginSessionRepo struct {
-	authndomain.LoginSessionRepo
+	authnrepo.LoginSessionRepo
 	batches [][]int64
 	excepts []string
 	err     error

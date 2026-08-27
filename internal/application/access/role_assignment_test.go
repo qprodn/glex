@@ -2,6 +2,8 @@ package access
 
 import (
 	. "glex/internal/domain/access"
+	accessentity "glex/internal/domain/access/entity"
+	accessrepo "glex/internal/domain/access/repository"
 
 	"context"
 	"testing"
@@ -9,12 +11,12 @@ import (
 	"github.com/go-kratos/kratos/v3/errors"
 )
 
-// fakeUserRoleRepo is an in-memory UserRoleRepo for testing the role-assignment usecase
+// fakeUserRoleRepo is an in-memory accessrepo.UserRoleRepo for testing the role-assignment usecase
 // and the role delete/disable guards in isolation from the infrastructure layer.
 // roles is the "all active roles" set; links maps userID → assigned role ids
 // (in replacement order); users is the existing-user set behind UserExists.
 type fakeUserRoleRepo struct {
-	roles    []*Role
+	roles    []*accessentity.Role
 	links    map[int64][]int64
 	users    map[int64]struct{}
 	replaced []int64
@@ -29,15 +31,15 @@ func (r *fakeUserRoleRepo) UserExists(_ context.Context, userID int64) (bool, er
 	return ok, nil
 }
 
-func (r *fakeUserRoleRepo) ListRoleAssignments(_ context.Context, userID int64) ([]*RoleAssignment, error) {
+func (r *fakeUserRoleRepo) ListRoleAssignments(_ context.Context, userID int64) ([]*accessrepo.RoleAssignment, error) {
 	assigned := make(map[int64]struct{}, len(r.links[userID]))
 	for _, id := range r.links[userID] {
 		assigned[id] = struct{}{}
 	}
-	out := make([]*RoleAssignment, 0, len(r.roles))
+	out := make([]*accessrepo.RoleAssignment, 0, len(r.roles))
 	for _, ro := range r.roles {
 		_, ok := assigned[ro.ID]
-		out = append(out, &RoleAssignment{Role: ro, Assigned: ok})
+		out = append(out, &accessrepo.RoleAssignment{Role: ro, Assigned: ok})
 	}
 	return out, nil
 }
@@ -51,11 +53,11 @@ func (r *fakeUserRoleRepo) ReplaceUserRoles(_ context.Context, userID int64, rol
 // newRoleAssignmentUsecase wires the role-assignment usecase with the test
 // transaction; flows under test reach the session world only through the
 // injected revocation fake.
-func newRoleAssignmentUsecase(link UserRoleRepo) *RoleAssignmentUsecase {
+func newRoleAssignmentUsecase(link accessrepo.UserRoleRepo) *RoleAssignmentUsecase {
 	return NewRoleAssignmentUsecase(newFakeRoleRepo(), link, new(fakeSessionRevoker), newFakeTransaction(), testLogger())
 }
 
-func (r *fakeUserRoleRepo) ListRoleUsers(context.Context, int64, ...ListOption) ([]*RoleUser, error) {
+func (r *fakeUserRoleRepo) ListRoleUsers(context.Context, int64, ...accessrepo.ListOption) ([]*accessrepo.RoleUser, error) {
 	return nil, nil
 }
 
@@ -79,7 +81,7 @@ func userExists(link *fakeUserRoleRepo, userIDs ...int64) *fakeUserRoleRepo {
 	return link
 }
 
-// --- Role Assignment (角色分配) — auth usecase ---
+// --- accessentity.Role Assignment (角色分配) — auth usecase ---
 
 func TestAuthListUserRoles_UserNotFound(t *testing.T) {
 	uc := newRoleAssignmentUsecase(newFakeUserRoleRepo())
@@ -92,7 +94,7 @@ func TestAuthListUserRoles_UserNotFound(t *testing.T) {
 
 func TestAuthListUserRoles_AllRolesWithFlags(t *testing.T) {
 	link := userExists(newFakeUserRoleRepo(), 10)
-	link.roles = []*Role{
+	link.roles = []*accessentity.Role{
 		{ID: 1, RoleName: "管理员", RoleKey: "admin", RoleSort: 1},
 		{ID: 2, RoleName: "运营", RoleKey: "operator", RoleSort: 2},
 	}
@@ -122,7 +124,7 @@ func TestAuthUpdateUserRoles_UserNotFound(t *testing.T) {
 
 func TestAuthUpdateUserRoles_UnknownRoleRejected(t *testing.T) {
 	link := userExists(newFakeUserRoleRepo(), 10)
-	link.roles = []*Role{{ID: 1, RoleName: "管理员", RoleKey: "admin"}}
+	link.roles = []*accessentity.Role{{ID: 1, RoleName: "管理员", RoleKey: "admin"}}
 	uc := newRoleAssignmentUsecase(link)
 
 	_, err := uc.UpdateUserRoles(context.Background(), 10, []int64{1, 99})
@@ -136,7 +138,7 @@ func TestAuthUpdateUserRoles_UnknownRoleRejected(t *testing.T) {
 
 func TestAuthUpdateUserRoles_FullReplacement(t *testing.T) {
 	link := userExists(newFakeUserRoleRepo(), 10)
-	link.roles = []*Role{
+	link.roles = []*accessentity.Role{
 		{ID: 1, RoleName: "管理员", RoleKey: "admin", RoleSort: 1},
 		{ID: 2, RoleName: "运营", RoleKey: "operator", RoleSort: 2},
 		{ID: 3, RoleName: "访客", RoleKey: "guest", RoleSort: 3},
@@ -171,7 +173,7 @@ func TestAuthUpdateUserRoles_FullReplacement(t *testing.T) {
 
 func TestAuthUpdateUserRoles_EmptyClears(t *testing.T) {
 	link := userExists(newFakeUserRoleRepo(), 10)
-	link.roles = []*Role{{ID: 1, RoleName: "管理员", RoleKey: "admin"}}
+	link.roles = []*accessentity.Role{{ID: 1, RoleName: "管理员", RoleKey: "admin"}}
 	link.links[10] = []int64{1}
 	uc := newRoleAssignmentUsecase(link)
 
@@ -200,7 +202,7 @@ func TestAuthListRoleUsers_RoleNotFound(t *testing.T) {
 
 func TestRoleDelete_AssignedRejected(t *testing.T) {
 	repo := newFakeRoleRepo()
-	repo.byID[3] = &Role{ID: 3, RoleName: "测试", RoleKey: "test"}
+	repo.byID[3] = &accessentity.Role{ID: 3, RoleName: "测试", RoleKey: "test"}
 	link := newFakeUserRoleRepo()
 	link.links[10] = []int64{3}
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), link, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
@@ -216,7 +218,7 @@ func TestRoleDelete_AssignedRejected(t *testing.T) {
 
 func TestRoleDelete_UnassignedAllowed(t *testing.T) {
 	repo := newFakeRoleRepo()
-	repo.byID[3] = &Role{ID: 3, RoleName: "测试", RoleKey: "test"}
+	repo.byID[3] = &accessentity.Role{ID: 3, RoleName: "测试", RoleKey: "test"}
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	if err := uc.DeleteRole(context.Background(), 3); err != nil {
@@ -229,12 +231,12 @@ func TestRoleDelete_UnassignedAllowed(t *testing.T) {
 
 func TestRoleUpdate_DisableAssignedRejected(t *testing.T) {
 	repo := newFakeRoleRepo()
-	repo.byID[5] = &Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 0}
+	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 0}
 	link := newFakeUserRoleRepo()
 	link.links[10] = []int64{5}
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), link, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	_, err := uc.UpdateRole(context.Background(), &Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 1})
+	_, err := uc.UpdateRole(context.Background(), &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 1})
 	if !errors.Is(err, ErrRoleAssigned) {
 		t.Fatalf("expected ErrRoleAssigned, got %v", err)
 	}
@@ -242,10 +244,10 @@ func TestRoleUpdate_DisableAssignedRejected(t *testing.T) {
 
 func TestRoleUpdate_DisableUnassignedAllowed(t *testing.T) {
 	repo := newFakeRoleRepo()
-	repo.byID[5] = &Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 0}
+	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 0}
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	got, err := uc.UpdateRole(context.Background(), &Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 1})
+	got, err := uc.UpdateRole(context.Background(), &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 1})
 	if err != nil {
 		t.Fatalf("disable unassigned role: %v", err)
 	}
@@ -257,12 +259,12 @@ func TestRoleUpdate_DisableUnassignedAllowed(t *testing.T) {
 func TestRoleUpdate_RedisableAlreadyDisabledPasses(t *testing.T) {
 	// Re-saving an already-disabled role must not trip the guard.
 	repo := newFakeRoleRepo()
-	repo.byID[5] = &Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 1}
+	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 1}
 	link := newFakeUserRoleRepo()
 	link.links[10] = []int64{5}
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), link, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	if _, err := uc.UpdateRole(context.Background(), &Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 1}); err != nil {
+	if _, err := uc.UpdateRole(context.Background(), &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 1}); err != nil {
 		t.Fatalf("re-disabling an already disabled role: %v", err)
 	}
 }
@@ -270,12 +272,12 @@ func TestRoleUpdate_RedisableAlreadyDisabledPasses(t *testing.T) {
 func TestRoleUpdate_NonStatusChangesPass(t *testing.T) {
 	// Updating other fields of an assigned role must pass.
 	repo := newFakeRoleRepo()
-	repo.byID[5] = &Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 0}
+	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 0}
 	link := newFakeUserRoleRepo()
 	link.links[10] = []int64{5}
 	uc := NewRoleUsecase(repo, newFakeMenuRepo(), link, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	if _, err := uc.UpdateRole(context.Background(), &Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 0, Remark: "x"}); err != nil {
+	if _, err := uc.UpdateRole(context.Background(), &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 0, Remark: "x"}); err != nil {
 		t.Fatalf("non-status update of assigned role: %v", err)
 	}
 }

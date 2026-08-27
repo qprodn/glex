@@ -6,7 +6,7 @@ import (
 
 	accessv1 "glex/api/access/v1"
 	userv1 "glex/api/user/v1"
-	accessdomain "glex/internal/domain/access"
+	accessrepo "glex/internal/domain/access/repository"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
@@ -14,18 +14,18 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// convertRoleAssignment maps a accessdomain.RoleAssignment DO to the proto DTO.
-func convertRoleAssignment(a *accessdomain.RoleAssignment) *accessv1.RoleAssignment {
+// convertRoleAssignment maps a accessrepo.RoleAssignment DO to the proto DTO.
+func convertRoleAssignment(a *accessrepo.RoleAssignment) *accessv1.RoleAssignment {
 	return &accessv1.RoleAssignment{
 		Role:     convertRole(a.Role),
 		Assigned: a.Assigned,
 	}
 }
 
-// convertRoleUser maps a accessdomain.RoleUser DO to the proto User DTO —
+// convertRoleUser maps a accessrepo.RoleUser DO to the proto User DTO —
 // access's own projection of the by-role listing; the user module's converter
 // is not shared across the module seam.
-func convertRoleUser(m *accessdomain.RoleUser) *userv1.User {
+func convertRoleUser(m *accessrepo.RoleUser) *userv1.User {
 	u := &userv1.User{
 		UserId:      m.ID,
 		UserName:    m.UserName,
@@ -49,7 +49,7 @@ func convertRoleUser(m *accessdomain.RoleUser) *userv1.User {
 }
 
 // toUserRoles maps a list of assignments to the UserRoles DTO.
-func toUserRoles(assignments []*accessdomain.RoleAssignment) *accessv1.UserRoles {
+func toUserRoles(assignments []*accessrepo.RoleAssignment) *accessv1.UserRoles {
 	items := make([]*accessv1.RoleAssignment, 0, len(assignments))
 	for _, a := range assignments {
 		items = append(items, convertRoleAssignment(a))
@@ -127,10 +127,10 @@ func (s *RoleAssignmentApplication) ListRoleUsers(ctx context.Context, req *acce
 		req.PageSize = 20
 	}
 	users, err := s.uc.ListRoleUsers(ctx, req.GetRoleId(),
-		accessdomain.ListFilter(filter),
-		accessdomain.ListOrderBy(orderBy),
-		accessdomain.ListLimit(int(req.GetPageSize())),
-		accessdomain.ListOffset(int(pageToken.Offset)),
+		accessrepo.ListFilter(filter),
+		accessrepo.ListOrderBy(orderBy),
+		accessrepo.ListLimit(int(req.GetPageSize())),
+		accessrepo.ListOffset(int(pageToken.Offset)),
 	)
 	if err != nil {
 		return nil, err

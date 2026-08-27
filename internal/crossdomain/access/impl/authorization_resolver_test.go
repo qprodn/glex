@@ -7,29 +7,30 @@ import (
 
 	"glex/internal/crossdomain/access/model"
 	accessdomain "glex/internal/domain/access"
+	accessrepo "glex/internal/domain/access/repository"
 )
 
 // fakeResolver is an in-memory access.AuthorizationResolver for testing the
 // contract adapter in isolation from the provider's infrastructure.
 type fakeResolver struct {
-	resolution *accessdomain.AuthorizationResolution
+	resolution *accessrepo.AuthorizationResolution
 	err        error
 	calledWith []int64
 }
 
-func (r *fakeResolver) ResolveAuthorization(_ context.Context, systemUserID int64) (*accessdomain.AuthorizationResolution, error) {
+func (r *fakeResolver) ResolveAuthorization(_ context.Context, systemUserID int64) (*accessrepo.AuthorizationResolution, error) {
 	r.calledWith = append(r.calledWith, systemUserID)
 	if r.err != nil {
 		return nil, r.err
 	}
 	if r.resolution == nil {
-		r.resolution = &accessdomain.AuthorizationResolution{}
+		r.resolution = &accessrepo.AuthorizationResolution{}
 	}
 	return r.resolution, nil
 }
 
 func TestAuthorizationResolverReturnsModelSnapshot(t *testing.T) {
-	provider := &fakeResolver{resolution: &accessdomain.AuthorizationResolution{
+	provider := &fakeResolver{resolution: &accessrepo.AuthorizationResolution{
 		RoleKeys:    []string{"superadmin", "viewer"},
 		Permissions: []string{"*:*:*", "system:user:list"},
 	}}

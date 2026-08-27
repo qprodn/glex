@@ -7,7 +7,7 @@ import (
 	"time"
 
 	authnv1 "glex/api/authn/v1"
-	authndomain "glex/internal/domain/authn"
+	authnservice "glex/internal/domain/authn/service"
 
 	"github.com/go-kratos/kratos/v3/transport"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -57,7 +57,7 @@ func (s *LoginApplication) Login(ctx context.Context, req *authnv1.LoginRequest)
 // Logout succeeds anonymously and otherwise revokes only the current Login
 // Session attached by OPTIONAL authentication.
 func (s *LoginApplication) Logout(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	principal, _ := authndomain.PrincipalFromContext(ctx)
+	principal, _ := authnservice.PrincipalFromContext(ctx)
 	if err := s.uc.Logout(ctx, principal); err != nil {
 		return nil, err
 	}

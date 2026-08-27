@@ -10,7 +10,7 @@ import (
 	authnapp "glex/internal/application/authn"
 	userapp "glex/internal/application/user"
 	"glex/internal/conf"
-	authndomain "glex/internal/domain/authn"
+	authnrepo "glex/internal/domain/authn/repository"
 	authmw "glex/pkg/middleware/auth"
 	"glex/pkg/middleware/requestid"
 	"glex/pkg/validate"
@@ -21,7 +21,7 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, authenticator authndomain.Authenticator, logger *slog.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, authenticator authnrepo.Authenticator, logger *slog.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Filter(
 			requestid.HTTP(requestid.WithLogger(logger)),

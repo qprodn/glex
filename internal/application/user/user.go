@@ -6,7 +6,10 @@ import (
 
 	userv1 "glex/api/user/v1"
 	authndomain "glex/internal/domain/authn"
-	userdomain "glex/internal/domain/user"
+	authnentity "glex/internal/domain/authn/entity"
+	authnservice "glex/internal/domain/authn/service"
+	userentity "glex/internal/domain/user/entity"
+	userrepo "glex/internal/domain/user/repository"
 
 	"go.einride.tech/aip/fieldmask"
 	"go.einride.tech/aip/filtering"
@@ -16,9 +19,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// convertUser maps a userdomain.User DO to the proto User DTO. Password is deliberately
+// convertUser maps a userentity.User DO to the proto User DTO. Password is deliberately
 // omitted — it is write-only (accepted on create/update, never returned).
-func convertUser(m *userdomain.User) *userv1.User {
+func convertUser(m *userentity.User) *userv1.User {
 	u := &userv1.User{
 		UserId:      m.ID,
 		UserName:    m.UserName,
@@ -54,11 +57,11 @@ type UserApplication struct {
 }
 
 type userUsecase interface {
-	CreateUser(context.Context, *userdomain.User) (*userdomain.User, error)
-	GetUser(context.Context, int64) (*userdomain.User, error)
-	GetCurrentUserInfo(context.Context, *authndomain.Principal) (*userdomain.CurrentUserInfo, error)
-	ListUsers(context.Context, ...userdomain.ListOption) ([]*userdomain.User, error)
-	UpdateUser(context.Context, *userdomain.User) (*userdomain.User, error)
+	CreateUser(context.Context, *userentity.User) (*userentity.User, error)
+	GetUser(context.Context, int64) (*userentity.User, error)
+	GetCurrentUserInfo(context.Context, *authnentity.Principal) (*userentity.CurrentUserInfo, error)
+	ListUsers(context.Context, ...userrepo.ListOption) ([]*userentity.User, error)
+	UpdateUser(context.Context, *userentity.User) (*userentity.User, error)
 	DeleteUser(context.Context, int64) error
 }
 
@@ -77,7 +80,7 @@ func newUserApplication(uc userUsecase, logger *slog.Logger) *UserApplication {
 // CreateUser creates a system user.
 func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUserRequest) (*userv1.User, error) {
 	in := req.GetUser()
-	created, err := s.uc.CreateUser(ctx, &userdomain.User{
+	created, err := s.uc.CreateUser(ctx, &userentity.User{
 		UserName:    in.GetUserName(),
 		NickName:    in.GetNickName(),
 		Email:       in.GetEmail(),
@@ -106,7 +109,7 @@ func (s *UserApplication) GetUser(ctx context.Context, req *userv1.GetUserReques
 // GetInfo returns the freshly loaded current System User plus the Role keys and
 // Functional Permissions authenticated from the shared Authorization Snapshot.
 func (s *UserApplication) GetInfo(ctx context.Context, _ *emptypb.Empty) (*userv1.CurrentUserInfo, error) {
-	principal, ok := authndomain.PrincipalFromContext(ctx)
+	principal, ok := authnservice.PrincipalFromContext(ctx)
 	if !ok {
 		return nil, authndomain.ErrCredentialMissing
 	}
@@ -171,10 +174,10 @@ func (s *UserApplication) ListUsers(ctx context.Context, req *userv1.ListUsersRe
 		req.PageSize = 20
 	}
 	users, err := s.uc.ListUsers(ctx,
-		userdomain.ListFilter(filter),
-		userdomain.ListOrderBy(orderBy),
-		userdomain.ListLimit(int(req.GetPageSize())),
-		userdomain.ListOffset(int(pageToken.Offset)),
+		userrepo.ListFilter(filter),
+		userrepo.ListOrderBy(orderBy),
+		userrepo.ListLimit(int(req.GetPageSize())),
+		userrepo.ListOffset(int(pageToken.Offset)),
 	)
 	if err != nil {
 		return nil, err
@@ -200,7 +203,7 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 		return nil, err
 	}
 	fieldmask.Update(req.GetUpdateMask(), current, req.GetUser())
-	updated, err := s.uc.UpdateUser(ctx, &userdomain.User{
+	updated, err := s.uc.UpdateUser(ctx, &userentity.User{
 		ID:          current.GetUserId(),
 		UserName:    current.GetUserName(),
 		NickName:    current.GetNickName(),

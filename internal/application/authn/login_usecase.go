@@ -9,6 +9,9 @@ import (
 
 	"glex/internal/crossdomain/access"
 	authndomain "glex/internal/domain/authn"
+	authnentity "glex/internal/domain/authn/entity"
+	authnrepo "glex/internal/domain/authn/repository"
+	authnservice "glex/internal/domain/authn/service"
 
 	"github.com/mileusna/useragent"
 )
@@ -24,9 +27,9 @@ type LoginRequest struct {
 
 // LoginUsecase holds the login/logout business rules (authn module).
 type LoginUsecase struct {
-	login       authndomain.AuthLoginBackend
-	counterRepo authndomain.LoginCounterRepo
-	sessionRepo authndomain.LoginSessionRepo
+	login       authnrepo.AuthLoginBackend
+	counterRepo authnrepo.LoginCounterRepo
+	sessionRepo authnrepo.LoginSessionRepo
 	authorizer  access.AuthorizationResolver
 	tx          Transaction
 	logger      *slog.Logger
@@ -39,7 +42,7 @@ type LoginUsecase struct {
 // Authorization Snapshot through the access crossdomain contract (login never
 // derives permissions itself, ADR 0016/0017); tx owns the login transaction
 // boundary.
-func NewLoginUsecase(login authndomain.AuthLoginBackend, counterRepo authndomain.LoginCounterRepo, sessionRepo authndomain.LoginSessionRepo, authorizer access.AuthorizationResolver, tx Transaction, logger *slog.Logger) *LoginUsecase {
+func NewLoginUsecase(login authnrepo.AuthLoginBackend, counterRepo authnrepo.LoginCounterRepo, sessionRepo authnrepo.LoginSessionRepo, authorizer access.AuthorizationResolver, tx Transaction, logger *slog.Logger) *LoginUsecase {
 	return &LoginUsecase{
 		login:       login,
 		counterRepo: counterRepo,
@@ -53,7 +56,7 @@ func NewLoginUsecase(login authndomain.AuthLoginBackend, counterRepo authndomain
 
 // Logout revokes only the authenticated Principal's current Login Session. An
 // anonymous call is the idempotent success path admitted by OPTIONAL auth.
-func (uc *LoginUsecase) Logout(ctx context.Context, principal *authndomain.Principal) error {
+func (uc *LoginUsecase) Logout(ctx context.Context, principal *authnentity.Principal) error {
 	if principal == nil {
 		return nil
 	}
@@ -65,7 +68,7 @@ func (uc *LoginUsecase) Logout(ctx context.Context, principal *authndomain.Princ
 // password matches, and delegates token/snapshot creation to the login
 // backend. Credential issuance is deliberately the last transaction step; a
 // commit failure after it is compensated by discarding the credential.
-func (uc *LoginUsecase) Login(ctx context.Context, req *LoginRequest) (*authndomain.LoginResult, error) {
+func (uc *LoginUsecase) Login(ctx context.Context, req *LoginRequest) (*authnentity.LoginResult, error) {
 	if req == nil || uc.login == nil || uc.counterRepo == nil {
 		return nil, authndomain.ErrInvalidCredentials
 	}
@@ -81,11 +84,11 @@ func (uc *LoginUsecase) Login(ctx context.Context, req *LoginRequest) (*authndom
 		if !errors.Is(err, authndomain.ErrLoginAccountNotFound) && !errors.Is(err, authndomain.ErrLoginAccountAmbiguous) {
 			return nil, err
 		}
-		_ = authndomain.VerifyPassword(authndomain.DecoyCredentialHash, req.Password)
-		return nil, uc.invalidLogin(ctx, userName, req.SourceIP)
+		_ = authnservice.VerifyPassword(authnservice.DecoyCredentialHash, req.Password)
+		return nil, authnservice.RecordInvalidLogin(ctx, uc.counterRepo, userName, req.SourceIP)
 	}
-	if !authndomain.VerifyPassword(account.PasswordHash, req.Password) {
-		return nil, uc.invalidLogin(ctx, userName, req.SourceIP)
+	if !authnservice.VerifyPassword(account.PasswordHash, req.Password) {
+		return nil, authnservice.RecordInvalidLogin(ctx, uc.counterRepo, userName, req.SourceIP)
 	}
 	if account.Status != 0 {
 		return nil, authndomain.ErrSystemUserDisabled
@@ -98,7 +101,7 @@ func (uc *LoginUsecase) Login(ctx context.Context, req *LoginRequest) (*authndom
 	}
 	deviceType, browser, os := loginClientMetadata(req.UserAgent)
 	loginTime := uc.now()
-	var result *authndomain.LoginResult
+	var result *authnentity.LoginResult
 	err = uc.tx.InTx(ctx, func(ctx context.Context) error {
 		locked, err := uc.login.Revalidate(ctx, account.ID, account.UserName, account.PasswordHash)
 		if err != nil {
@@ -113,7 +116,7 @@ func (uc *LoginUsecase) Login(ctx context.Context, req *LoginRequest) (*authndom
 		}
 		// Credential issuance is deliberately last. A commit failure after a
 		// successful issue is compensated by discarding the credential below.
-		result, err = uc.login.IssueCredential(ctx, snapshot, &authndomain.LoginSession{
+		result, err = uc.login.IssueCredential(ctx, snapshot, &authnentity.LoginSession{
 			SystemUserID: locked.ID,
 			UserName:     locked.UserName,
 			DeviceType:   deviceType,
@@ -126,7 +129,7 @@ func (uc *LoginUsecase) Login(ctx context.Context, req *LoginRequest) (*authndom
 	})
 	if err != nil {
 		if errors.Is(err, authndomain.ErrInvalidCredentials) {
-			return nil, uc.invalidLogin(ctx, userName, req.SourceIP)
+			return nil, authnservice.RecordInvalidLogin(ctx, uc.counterRepo, userName, req.SourceIP)
 		}
 		if result != nil {
 			// Every Redis write succeeded, so the failure is the commit:
@@ -139,27 +142,16 @@ func (uc *LoginUsecase) Login(ctx context.Context, req *LoginRequest) (*authndom
 	return result, nil
 }
 
-func (uc *LoginUsecase) invalidLogin(ctx context.Context, userName, sourceIP string) error {
-	remaining, err := uc.counterRepo.RecordFailure(ctx, userName, sourceIP)
-	if err != nil {
-		return err
-	}
-	if remaining > 0 {
-		return authndomain.NewLoginLocked(remaining)
-	}
-	return authndomain.ErrInvalidCredentials
-}
-
 // loadAuthorization fills the Authorization Snapshot's authorization content
 // through the access crossdomain contract — login never derives permissions
 // itself (ADR 0016). The carrier fields (identity) are authn's own; any
 // resolution failure is the authorization backend being unavailable.
-func (uc *LoginUsecase) loadAuthorization(ctx context.Context, locked *authndomain.LoginAccount) (*authndomain.AuthorizationSnapshot, error) {
+func (uc *LoginUsecase) loadAuthorization(ctx context.Context, locked *authnentity.LoginAccount) (*authnentity.AuthorizationSnapshot, error) {
 	resolution, err := uc.authorizer.ResolveAuthorization(ctx, locked.ID)
 	if err != nil {
 		return nil, authndomain.ErrAuthBackendUnavailable
 	}
-	snapshot := &authndomain.AuthorizationSnapshot{
+	snapshot := &authnentity.AuthorizationSnapshot{
 		SystemUserID: locked.ID,
 		UserName:     locked.UserName,
 	}

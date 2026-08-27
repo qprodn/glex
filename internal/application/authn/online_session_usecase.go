@@ -4,18 +4,19 @@ import (
 	"context"
 	"log/slog"
 
-	authndomain "glex/internal/domain/authn"
+	authnentity "glex/internal/domain/authn/entity"
+	authnrepo "glex/internal/domain/authn/repository"
 )
 
 // LoginSessionUsecase exposes the business operations permitted for active
 // Login Sessions. It deliberately has no bulk public revocation operation.
 type LoginSessionUsecase struct {
-	repo   authndomain.LoginSessionRepo
+	repo   authnrepo.LoginSessionRepo
 	logger *slog.Logger
 }
 
 // NewLoginSessionUsecase creates a LoginSessionUsecase.
-func NewLoginSessionUsecase(repo authndomain.LoginSessionRepo, logger *slog.Logger) *LoginSessionUsecase {
+func NewLoginSessionUsecase(repo authnrepo.LoginSessionRepo, logger *slog.Logger) *LoginSessionUsecase {
 	return &LoginSessionUsecase{
 		repo:   repo,
 		logger: logger.With(slog.String("component", "application.authn.login_session")),
@@ -23,7 +24,7 @@ func NewLoginSessionUsecase(repo authndomain.LoginSessionRepo, logger *slog.Logg
 }
 
 // ListOnlineSessions lists active Login Sessions across all System Users.
-func (uc *LoginSessionUsecase) ListOnlineSessions(ctx context.Context, opts ...authndomain.ListOption) ([]*authndomain.LoginSession, error) {
+func (uc *LoginSessionUsecase) ListOnlineSessions(ctx context.Context, opts ...authnrepo.ListOption) ([]*authnentity.LoginSession, error) {
 	return uc.repo.List(ctx, opts...)
 }
 
@@ -34,7 +35,7 @@ func (uc *LoginSessionUsecase) KickoutOnlineSession(ctx context.Context, session
 }
 
 // ListSystemUserSessions lists only Login Sessions owned by systemUserID.
-func (uc *LoginSessionUsecase) ListSystemUserSessions(ctx context.Context, systemUserID int64) ([]*authndomain.LoginSession, error) {
+func (uc *LoginSessionUsecase) ListSystemUserSessions(ctx context.Context, systemUserID int64) ([]*authnentity.LoginSession, error) {
 	return uc.repo.ListBySystemUser(ctx, systemUserID)
 }
 

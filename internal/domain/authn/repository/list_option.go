@@ -1,4 +1,4 @@
-package authn
+package repository
 
 import (
 	"go.einride.tech/aip/filtering"

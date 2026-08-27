@@ -8,15 +8,17 @@ import (
 
 	"github.com/go-kratos/aip-go/ents"
 	"glex/internal/domain/access"
+	accessentity "glex/internal/domain/access/entity"
+	accessrepo "glex/internal/domain/access/repository"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/user"
 )
 
-// toBizRole maps an ent Role PO to a access.Role DO.
-func toBizRole(po *ent.Role) *access.Role {
-	return &access.Role{
+// toBizRole maps an ent Role PO to a accessentity.Role DO.
+func toBizRole(po *ent.Role) *accessentity.Role {
+	return &accessentity.Role{
 		ID:                po.ID,
 		RoleName:          po.RoleName,
 		RoleKey:           po.RoleKey,
@@ -36,11 +38,11 @@ type roleRepo struct {
 }
 
 // NewRoleRepo creates a new RoleRepo instance.
-func NewRoleRepo(data *store.Data) access.RoleRepo {
+func NewRoleRepo(data *store.Data) accessrepo.RoleRepo {
 	return &roleRepo{data: data}
 }
 
-func (r *roleRepo) FindByID(ctx context.Context, id int64) (*access.Role, error) {
+func (r *roleRepo) FindByID(ctx context.Context, id int64) (*accessentity.Role, error) {
 	po, err := r.data.DB.Role(ctx).Query().
 		Where(role.IDEQ(id), role.DeletedAtIsNil()).
 		Only(ctx)
@@ -53,7 +55,7 @@ func (r *roleRepo) FindByID(ctx context.Context, id int64) (*access.Role, error)
 	return toBizRole(po), nil
 }
 
-func (r *roleRepo) FindByRoleName(ctx context.Context, roleName string) (*access.Role, error) {
+func (r *roleRepo) FindByRoleName(ctx context.Context, roleName string) (*accessentity.Role, error) {
 	po, err := r.data.DB.Role(ctx).Query().
 		Where(role.RoleNameEQ(roleName), role.DeletedAtIsNil()).
 		Only(ctx)
@@ -66,7 +68,7 @@ func (r *roleRepo) FindByRoleName(ctx context.Context, roleName string) (*access
 	return toBizRole(po), nil
 }
 
-func (r *roleRepo) FindByRoleKey(ctx context.Context, roleKey string) (*access.Role, error) {
+func (r *roleRepo) FindByRoleKey(ctx context.Context, roleKey string) (*accessentity.Role, error) {
 	po, err := r.data.DB.Role(ctx).Query().
 		Where(role.RoleKeyEQ(roleKey), role.DeletedAtIsNil()).
 		Only(ctx)
@@ -79,8 +81,8 @@ func (r *roleRepo) FindByRoleKey(ctx context.Context, roleKey string) (*access.R
 	return toBizRole(po), nil
 }
 
-func (r *roleRepo) ListRoles(ctx context.Context, opts ...access.ListOption) ([]*access.Role, error) {
-	o := access.ListOptions{Limit: 20}
+func (r *roleRepo) ListRoles(ctx context.Context, opts ...accessrepo.ListOption) ([]*accessentity.Role, error) {
+	o := accessrepo.ListOptions{Limit: 20}
 	for _, opt := range opts {
 		opt(&o)
 	}
@@ -96,7 +98,7 @@ func (r *roleRepo) ListRoles(ctx context.Context, opts ...access.ListOption) ([]
 	if err != nil {
 		return nil, err
 	}
-	roles := make([]*access.Role, 0, len(pos))
+	roles := make([]*accessentity.Role, 0, len(pos))
 	for _, po := range pos {
 		roles = append(roles, toBizRole(po))
 	}
@@ -105,7 +107,7 @@ func (r *roleRepo) ListRoles(ctx context.Context, opts ...access.ListOption) ([]
 
 // CreateRole inserts the role row and its initial Menu Grant. The caller owns
 // the transaction.
-func (r *roleRepo) CreateRole(ctx context.Context, ro *access.Role, menuIDs []int64) (*access.Role, error) {
+func (r *roleRepo) CreateRole(ctx context.Context, ro *accessentity.Role, menuIDs []int64) (*accessentity.Role, error) {
 	po, err := r.data.DB.Role(ctx).Create().
 		SetID(newSnowflakeID()).
 		SetRoleName(ro.RoleName).
@@ -125,8 +127,8 @@ func (r *roleRepo) CreateRole(ctx context.Context, ro *access.Role, menuIDs []in
 // UpdateRole reads the record and assigned users, applies the mutation, and
 // returns both snapshots for RoleUsecase revocation classification. The
 // caller owns the transaction.
-func (r *roleRepo) UpdateRole(ctx context.Context, ro *access.Role) (*access.RoleUpdate, error) {
-	result := &access.RoleUpdate{}
+func (r *roleRepo) UpdateRole(ctx context.Context, ro *accessentity.Role) (*accessrepo.RoleUpdate, error) {
+	result := &accessrepo.RoleUpdate{}
 	current, err := r.data.DB.Role(ctx).Query().Where(role.IDEQ(ro.ID), role.DeletedAtIsNil()).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -180,7 +182,7 @@ func (r *roleRepo) DeleteRole(ctx context.Context, id int64) ([]int64, error) {
 // ListRoleMenuLinks reads the role's granted menus (soft-deleted excluded)
 // with their parent ids, ordered by (parent_id, order_num) — the ordering the
 // role editor's tree expects.
-func (r *roleRepo) ListRoleMenuLinks(ctx context.Context, roleID int64) ([]*access.RoleMenuLink, error) {
+func (r *roleRepo) ListRoleMenuLinks(ctx context.Context, roleID int64) ([]*accessrepo.RoleMenuLink, error) {
 	pos, err := r.data.DB.Role(ctx).Query().
 		Where(role.IDEQ(roleID), role.DeletedAtIsNil()).
 		QueryMenus().
@@ -190,9 +192,9 @@ func (r *roleRepo) ListRoleMenuLinks(ctx context.Context, roleID int64) ([]*acce
 	if err != nil {
 		return nil, err
 	}
-	links := make([]*access.RoleMenuLink, 0, len(pos))
+	links := make([]*accessrepo.RoleMenuLink, 0, len(pos))
 	for _, po := range pos {
-		links = append(links, &access.RoleMenuLink{MenuID: po.ID, ParentID: po.ParentID})
+		links = append(links, &accessrepo.RoleMenuLink{MenuID: po.ID, ParentID: po.ParentID})
 	}
 	return links, nil
 }

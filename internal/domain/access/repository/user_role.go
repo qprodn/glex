@@ -1,18 +1,17 @@
-package access
+package repository
 
 import (
 	"context"
 	"time"
 
-	"github.com/go-kratos/kratos/v3/errors"
+	"glex/internal/domain/access/entity"
 )
 
 // RoleAssignment is one role with whether the user is assigned it — the
-// role-assignment usecase's read shape for a user's Role Assignment
-// (角色分配), mirroring
+// role-assignment read shape for a user's Role Assignment (角色分配), mirroring
 // RuoYi's authRole dialog data (all roles + checked flag).
 type RoleAssignment struct {
-	Role     *Role
+	Role     *entity.Role
 	Assigned bool
 }
 
@@ -51,7 +50,7 @@ type UserRoleRepo interface {
 	ListRoleAssignments(ctx context.Context, userID int64) ([]*RoleAssignment, error)
 	// ReplaceUserRoles is a security write: it atomically replaces the user's
 	// Role Assignment with roleIDs (full replacement; an empty list clears
-	// all). roleIDs are stored verbatim after RoleAssignmentUsecase validation and
+	// all). roleIDs are stored verbatim after caller validation and
 	// deduplication; affected System User identities ({userID}) are returned.
 	ReplaceUserRoles(ctx context.Context, userID int64, roleIDs []int64) ([]int64, error)
 	// ListRoleUsers lists the active users assigned the role, matching the
@@ -62,11 +61,3 @@ type UserRoleRepo interface {
 	// 已分配，不能删除/禁用).
 	CountUserRoles(ctx context.Context, roleID int64) (int, error)
 }
-
-var (
-	// ErrUserNotFound: the System User named by a Role Assignment operation
-	// does not exist (or is soft-deleted). Access owns this copy of the user
-	// module's reason because the assignment endpoints are access's; the
-	// client-visible contract is identical.
-	ErrUserNotFound = errors.NotFound("USER_NOT_FOUND", "user not found")
-)

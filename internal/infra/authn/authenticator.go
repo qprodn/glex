@@ -6,6 +6,8 @@ import (
 	"strconv"
 
 	authndomain "glex/internal/domain/authn"
+	authnentity "glex/internal/domain/authn/entity"
+	authnrepo "glex/internal/domain/authn/repository"
 
 	"github.com/sa-tokens/sa-token-go/core"
 	satokenmanager "github.com/sa-tokens/sa-token-go/core/manager"
@@ -13,15 +15,15 @@ import (
 
 type authenticator struct {
 	manager  *core.Manager
-	sessions authndomain.LoginSessionRepo
+	sessions authnrepo.LoginSessionRepo
 }
 
 // NewAuthenticator constructs the transport-neutral authentication capability.
-func NewAuthenticator(manager *core.Manager, sessions authndomain.LoginSessionRepo) authndomain.Authenticator {
+func NewAuthenticator(manager *core.Manager, sessions authnrepo.LoginSessionRepo) authnrepo.Authenticator {
 	return &authenticator{manager: manager, sessions: sessions}
 }
 
-func (a *authenticator) Authenticate(ctx context.Context, bearerToken string) (*authndomain.Principal, error) {
+func (a *authenticator) Authenticate(ctx context.Context, bearerToken string) (*authnentity.Principal, error) {
 	loginSession, err := a.sessions.FindByToken(ctx, bearerToken)
 	if err != nil {
 		if errors.Is(err, authndomain.ErrLoginSessionNotFound) {
@@ -46,7 +48,7 @@ func (a *authenticator) Authenticate(ctx context.Context, bearerToken string) (*
 	if err := a.manager.UpdateLastActiveToNow(bearerToken); err != nil {
 		return nil, mapLoginSessionAuthError(err)
 	}
-	return authndomain.NewPrincipal(loginSession.SystemUserID, loginSession.UserName, loginSession.ID, roles, permissions), nil
+	return authnentity.NewPrincipal(loginSession.SystemUserID, loginSession.UserName, loginSession.ID, roles, permissions), nil
 }
 
 type sessionValueReader interface {

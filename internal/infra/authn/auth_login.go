@@ -10,6 +10,8 @@ import (
 
 	"glex/internal/conf"
 	authndomain "glex/internal/domain/authn"
+	authnentity "glex/internal/domain/authn/entity"
+	authnrepo "glex/internal/domain/authn/repository"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/user"
 
@@ -26,11 +28,11 @@ type authLoginRepo struct {
 	data          *store.Data
 	logger        *slog.Logger
 	manager       *core.Manager
-	sessions      authndomain.LoginSessionRepo
+	sessions      authnrepo.LoginSessionRepo
 	fixedLifetime time.Duration
 }
 
-func newAuthLoginAdapter(data *store.Data, manager *core.Manager, sessions authndomain.LoginSessionRepo, c *conf.Auth) *authLoginRepo {
+func newAuthLoginAdapter(data *store.Data, manager *core.Manager, sessions authnrepo.LoginSessionRepo, c *conf.Auth) *authLoginRepo {
 	return &authLoginRepo{
 		data:          data,
 		logger:        data.Logger.With(slog.String("component", "infra.authn.auth_login")),
@@ -42,14 +44,14 @@ func newAuthLoginAdapter(data *store.Data, manager *core.Manager, sessions authn
 
 // NewAuthLoginBackend constructs the database and credential capabilities
 // consumed by the login Application Usecase.
-func NewAuthLoginBackend(data *store.Data, manager *core.Manager, sessions authndomain.LoginSessionRepo, c *conf.Auth) authndomain.AuthLoginBackend {
+func NewAuthLoginBackend(data *store.Data, manager *core.Manager, sessions authnrepo.LoginSessionRepo, c *conf.Auth) authnrepo.AuthLoginBackend {
 	return newAuthLoginAdapter(data, manager, sessions, c)
 }
 
 // FindLoginAccount loads the authentication view of the account answering a
 // login identifier. This adapter is the only reader of the credential column
 // (ADR 0016).
-func (r *authLoginRepo) FindLoginAccount(ctx context.Context, userName string) (*authndomain.LoginAccount, error) {
+func (r *authLoginRepo) FindLoginAccount(ctx context.Context, userName string) (*authnentity.LoginAccount, error) {
 	po, err := r.data.DB.User(ctx).Query().
 		Where(user.UserNameEQ(userName), user.DeletedAtIsNil()).
 		Only(ctx)
@@ -62,7 +64,7 @@ func (r *authLoginRepo) FindLoginAccount(ctx context.Context, userName string) (
 		}
 		return nil, err
 	}
-	return &authndomain.LoginAccount{
+	return &authnentity.LoginAccount{
 		ID:           po.ID,
 		UserName:     po.UserName,
 		PasswordHash: po.Password,
@@ -71,7 +73,7 @@ func (r *authLoginRepo) FindLoginAccount(ctx context.Context, userName string) (
 }
 
 // Revalidate re-reads the account inside the caller's Application transaction.
-func (r *authLoginRepo) Revalidate(ctx context.Context, systemUserID int64, userName, passwordHash string) (*authndomain.LoginAccount, error) {
+func (r *authLoginRepo) Revalidate(ctx context.Context, systemUserID int64, userName, passwordHash string) (*authnentity.LoginAccount, error) {
 	if systemUserID <= 0 || userName == "" || passwordHash == "" {
 		return nil, authndomain.ErrInvalidCredentials
 	}
@@ -90,7 +92,7 @@ func (r *authLoginRepo) Revalidate(ctx context.Context, systemUserID int64, user
 	if current.Status != 0 {
 		return nil, authndomain.ErrSystemUserDisabled
 	}
-	return &authndomain.LoginAccount{
+	return &authnentity.LoginAccount{
 		ID:           current.ID,
 		UserName:     current.UserName,
 		PasswordHash: current.Password,
@@ -115,7 +117,7 @@ func (r *authLoginRepo) RecordLogin(ctx context.Context, systemUserID int64, sou
 // authoritative Login Session. Pure Redis — deliberately the last step of the
 // login orchestration so its failure rolls the PostgreSQL writes back. On
 // partial failure it destroys what it wrote before returning the error.
-func (r *authLoginRepo) IssueCredential(ctx context.Context, snapshot *authndomain.AuthorizationSnapshot, session *authndomain.LoginSession) (*authndomain.LoginResult, error) {
+func (r *authLoginRepo) IssueCredential(ctx context.Context, snapshot *authnentity.AuthorizationSnapshot, session *authnentity.LoginSession) (*authnentity.LoginResult, error) {
 	if snapshot == nil || session == nil || session.SystemUserID <= 0 || session.UserName == "" {
 		return nil, authndomain.ErrInvalidCredentials
 	}
@@ -127,7 +129,7 @@ func (r *authLoginRepo) IssueCredential(ctx context.Context, snapshot *authndoma
 		r.cleanupUnregisteredToken(ctx, token, session.SystemUserID)
 		return nil, err
 	}
-	return &authndomain.LoginResult{AccessToken: token, ExpiresIn: r.fixedLifetime}, nil
+	return &authnentity.LoginResult{AccessToken: token, ExpiresIn: r.fixedLifetime}, nil
 }
 
 // DiscardCredential tears down a credential whose transaction failed to
@@ -152,7 +154,7 @@ func (r *authLoginRepo) DiscardCredential(ctx context.Context, systemUserID int6
 // site of Manager.Login. Manager.Login clears the Account Session; SetMulti
 // immediately restores identity, Roles, and Functional Permissions in one
 // storage write before the token can leave the data wrapper.
-func loginAndReplaceAuthorizationSnapshot(manager *core.Manager, snapshot *authndomain.AuthorizationSnapshot, deviceType string, lifetime time.Duration) (string, error) {
+func loginAndReplaceAuthorizationSnapshot(manager *core.Manager, snapshot *authnentity.AuthorizationSnapshot, deviceType string, lifetime time.Duration) (string, error) {
 	loginID := strconv.FormatInt(snapshot.SystemUserID, 10)
 	token, err := manager.Login(loginID, deviceType)
 	if err != nil {

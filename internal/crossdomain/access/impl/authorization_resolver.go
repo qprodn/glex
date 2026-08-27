@@ -9,18 +9,18 @@ import (
 
 	"glex/internal/crossdomain/access"
 	"glex/internal/crossdomain/access/model"
-	accessdomain "glex/internal/domain/access"
+	accessrepo "glex/internal/domain/access/repository"
 )
 
 // authorizationResolver satisfies the resolution contract by wrapping the
 // provider's Authorization Resolution capability.
 type authorizationResolver struct {
-	resolver accessdomain.AuthorizationResolver
+	resolver accessrepo.AuthorizationResolver
 }
 
 // NewAuthorizationResolver adapts the access domain's AuthorizationResolver
 // port to the crossdomain resolution contract.
-func NewAuthorizationResolver(resolver accessdomain.AuthorizationResolver) access.AuthorizationResolver {
+func NewAuthorizationResolver(resolver accessrepo.AuthorizationResolver) access.AuthorizationResolver {
 	return &authorizationResolver{resolver: resolver}
 }
 

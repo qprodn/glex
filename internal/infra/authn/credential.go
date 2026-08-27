@@ -6,7 +6,7 @@ import (
 
 	"glex/internal/infra/store"
 
-	authndomain "glex/internal/domain/authn"
+	authnrepo "glex/internal/domain/authn/repository"
 )
 
 type credentialRepo struct {
@@ -15,7 +15,7 @@ type credentialRepo struct {
 
 // NewCredentialRepo constructs the credential store — the only writer of the
 // credential column on the System User row (ADR 0016).
-func NewCredentialRepo(data *store.Data) authndomain.CredentialRepo {
+func NewCredentialRepo(data *store.Data) authnrepo.CredentialRepo {
 	return &credentialRepo{data: data}
 }
 

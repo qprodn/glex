@@ -2,6 +2,8 @@ package authn
 
 import (
 	authndomain "glex/internal/domain/authn"
+	authnentity "glex/internal/domain/authn/entity"
+	authnrepo "glex/internal/domain/authn/repository"
 
 	"context"
 	"errors"
@@ -9,8 +11,8 @@ import (
 )
 
 type fakeLoginSessionRepo struct {
-	authndomain.LoginSessionRepo
-	sessions       []*authndomain.LoginSession
+	authnrepo.LoginSessionRepo
+	sessions       []*authnentity.LoginSession
 	logoutIDs      []string
 	kickoutIDs     []string
 	ownedUserID    int64
@@ -18,11 +20,11 @@ type fakeLoginSessionRepo struct {
 	err            error
 }
 
-func (r *fakeLoginSessionRepo) List(context.Context, ...authndomain.ListOption) ([]*authndomain.LoginSession, error) {
+func (r *fakeLoginSessionRepo) List(context.Context, ...authnrepo.ListOption) ([]*authnentity.LoginSession, error) {
 	return r.sessions, r.err
 }
 
-func (r *fakeLoginSessionRepo) ListBySystemUser(context.Context, int64, ...authndomain.ListOption) ([]*authndomain.LoginSession, error) {
+func (r *fakeLoginSessionRepo) ListBySystemUser(context.Context, int64, ...authnrepo.ListOption) ([]*authnentity.LoginSession, error) {
 	return r.sessions, r.err
 }
 
@@ -51,7 +53,7 @@ func TestLoginSessionLogoutAnonymousAndCurrentSession(t *testing.T) {
 	if len(repo.logoutIDs) != 0 {
 		t.Fatal("anonymous Logout reached the repository")
 	}
-	principal := authndomain.NewPrincipal(42, "alice", "current-session", nil, nil)
+	principal := authnentity.NewPrincipal(42, "alice", "current-session", nil, nil)
 	if err := uc.Logout(t.Context(), principal); err != nil {
 		t.Fatalf("authenticated Logout: %v", err)
 	}
@@ -63,14 +65,14 @@ func TestLoginSessionLogoutAnonymousAndCurrentSession(t *testing.T) {
 func TestLoginSessionLogoutPropagatesBackendFailure(t *testing.T) {
 	repo := &fakeLoginSessionRepo{err: authndomain.ErrAuthBackendUnavailable}
 	uc := NewLoginUsecase(nil, nil, repo, nil, newFakeTransaction(), testLogger())
-	err := uc.Logout(t.Context(), authndomain.NewPrincipal(42, "alice", "session-id", nil, nil))
+	err := uc.Logout(t.Context(), authnentity.NewPrincipal(42, "alice", "session-id", nil, nil))
 	if !errors.Is(err, authndomain.ErrAuthBackendUnavailable) {
 		t.Fatalf("Logout error = %v, want ErrAuthBackendUnavailable", err)
 	}
 }
 
 func TestLoginSessionManagementUsesTargetedRepositoryOperations(t *testing.T) {
-	repo := &fakeLoginSessionRepo{sessions: []*authndomain.LoginSession{{ID: "session-id", SystemUserID: 42}}}
+	repo := &fakeLoginSessionRepo{sessions: []*authnentity.LoginSession{{ID: "session-id", SystemUserID: 42}}}
 	uc := NewLoginSessionUsecase(repo, testLogger())
 	if sessions, err := uc.ListOnlineSessions(t.Context()); err != nil || len(sessions) != 1 {
 		t.Fatalf("ListOnlineSessions = %v, %v", sessions, err)

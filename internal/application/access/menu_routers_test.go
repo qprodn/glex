@@ -4,19 +4,21 @@ import (
 	"context"
 	"testing"
 
-	accessdomain "glex/internal/domain/access"
+	accessentity "glex/internal/domain/access/entity"
 	authndomain "glex/internal/domain/authn"
+	authnentity "glex/internal/domain/authn/entity"
+	authnservice "glex/internal/domain/authn/service"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type currentRouteMenuUsecase struct {
 	menuUsecase
-	trees [][]*accessdomain.Menu
+	trees [][]*accessentity.Menu
 	ids   []int64
 }
 
-func (u *currentRouteMenuUsecase) ListUserRouteTree(_ context.Context, systemUserID int64) ([]*accessdomain.Menu, error) {
+func (u *currentRouteMenuUsecase) ListUserRouteTree(_ context.Context, systemUserID int64) ([]*accessentity.Menu, error) {
 	u.ids = append(u.ids, systemUserID)
 	index := len(u.ids) - 1
 	if index >= len(u.trees) {
@@ -26,16 +28,16 @@ func (u *currentRouteMenuUsecase) ListUserRouteTree(_ context.Context, systemUse
 }
 
 func TestGetRoutersCallsUsecaseEveryTimeAndProjectsRouteMetadata(t *testing.T) {
-	uc := &currentRouteMenuUsecase{trees: [][]*accessdomain.Menu{
+	uc := &currentRouteMenuUsecase{trees: [][]*accessentity.Menu{
 		{
-			{ID: 1, ParentID: 0, OrderNum: 1, MenuName: "System", Path: "system", MenuType: accessdomain.MenuTypeDirectory, IsCache: 1, Children: []*accessdomain.Menu{
-				{ID: 2, ParentID: 1, OrderNum: 1, MenuName: "Users", Path: "users", Component: "system/user/index", QueryParam: `{"tab":"active"}`, MenuType: accessdomain.MenuTypeMenu, Visible: 1, IsCache: 0, Icon: "user", ActiveMenu: "/system/users"},
+			{ID: 1, ParentID: 0, OrderNum: 1, MenuName: "System", Path: "system", MenuType: accessentity.MenuTypeDirectory, IsCache: 1, Children: []*accessentity.Menu{
+				{ID: 2, ParentID: 1, OrderNum: 1, MenuName: "Users", Path: "users", Component: "system/user/index", QueryParam: `{"tab":"active"}`, MenuType: accessentity.MenuTypeMenu, Visible: 1, IsCache: 0, Icon: "user", ActiveMenu: "/system/users"},
 			}},
 		},
 		{},
 	}}
 	service := newMenuApplication(uc, testLogger())
-	ctx := authndomain.WithPrincipal(t.Context(), authndomain.NewPrincipal(42, "alice", "session-id", nil, []string{"unrelated:permission"}))
+	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(42, "alice", "session-id", nil, []string{"unrelated:permission"}))
 
 	first, err := service.GetRouters(ctx, &emptypb.Empty{})
 	if err != nil {
@@ -66,15 +68,15 @@ func TestGetRoutersCallsUsecaseEveryTimeAndProjectsRouteMetadata(t *testing.T) {
 }
 
 func TestGetRoutersUsesRuoYiPathComponentAndFrameSemantics(t *testing.T) {
-	uc := &currentRouteMenuUsecase{trees: [][]*accessdomain.Menu{{
-		{ID: 1, ParentID: 0, MenuName: "Root directory", Path: "system", MenuType: accessdomain.MenuTypeDirectory, IsFrame: 0, Children: []*accessdomain.Menu{
-			{ID: 2, ParentID: 1, MenuName: "Nested directory", Path: "nested", MenuType: accessdomain.MenuTypeDirectory, IsFrame: 0},
-			{ID: 4, ParentID: 1, MenuName: "Docs", Path: "https://docs.example.com", MenuType: accessdomain.MenuTypeMenu, IsFrame: 0},
+	uc := &currentRouteMenuUsecase{trees: [][]*accessentity.Menu{{
+		{ID: 1, ParentID: 0, MenuName: "Root directory", Path: "system", MenuType: accessentity.MenuTypeDirectory, IsFrame: 0, Children: []*accessentity.Menu{
+			{ID: 2, ParentID: 1, MenuName: "Nested directory", Path: "nested", MenuType: accessentity.MenuTypeDirectory, IsFrame: 0},
+			{ID: 4, ParentID: 1, MenuName: "Docs", Path: "https://docs.example.com", MenuType: accessentity.MenuTypeMenu, IsFrame: 0},
 		}},
-		{ID: 3, ParentID: 0, MenuName: "Dashboard", Path: "dashboard", Component: "dashboard/index", MenuType: accessdomain.MenuTypeMenu, IsFrame: 0},
+		{ID: 3, ParentID: 0, MenuName: "Dashboard", Path: "dashboard", Component: "dashboard/index", MenuType: accessentity.MenuTypeMenu, IsFrame: 0},
 	}}}
 	service := newMenuApplication(uc, testLogger())
-	ctx := authndomain.WithPrincipal(t.Context(), authndomain.NewPrincipal(42, "alice", "session-id", nil, nil))
+	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(42, "alice", "session-id", nil, nil))
 
 	reply, err := service.GetRouters(ctx, &emptypb.Empty{})
 	if err != nil {

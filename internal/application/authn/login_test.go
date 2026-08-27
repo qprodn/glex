@@ -2,6 +2,8 @@ package authn
 
 import (
 	authndomain "glex/internal/domain/authn"
+	authnentity "glex/internal/domain/authn/entity"
+	authnservice "glex/internal/domain/authn/service"
 
 	"context"
 	"errors"
@@ -19,23 +21,23 @@ import (
 // shape (lock → snapshot → record → issue, Redis last). The pre-transaction
 // account lookup answers from accounts/accountErr.
 type fakeAuthLoginRepo struct {
-	accounts   map[string]*authndomain.LoginAccount
+	accounts   map[string]*authnentity.LoginAccount
 	accountErr error
 
 	steps          []string
-	locked         *authndomain.LoginAccount
+	locked         *authnentity.LoginAccount
 	lockErr        error
 	recordIP       string
 	recordAt       time.Time
 	recordErr      error
-	result         *authndomain.LoginResult
+	result         *authnentity.LoginResult
 	issueErr       error
-	issued         *authndomain.LoginSession
-	issuedSnapshot *authndomain.AuthorizationSnapshot
+	issued         *authnentity.LoginSession
+	issuedSnapshot *authnentity.AuthorizationSnapshot
 	discarded      []string
 }
 
-func (r *fakeAuthLoginRepo) FindLoginAccount(_ context.Context, userName string) (*authndomain.LoginAccount, error) {
+func (r *fakeAuthLoginRepo) FindLoginAccount(_ context.Context, userName string) (*authnentity.LoginAccount, error) {
 	if r.accountErr != nil {
 		return nil, r.accountErr
 	}
@@ -46,13 +48,13 @@ func (r *fakeAuthLoginRepo) FindLoginAccount(_ context.Context, userName string)
 	return account, nil
 }
 
-func (r *fakeAuthLoginRepo) Revalidate(_ context.Context, systemUserID int64, userName, _ string) (*authndomain.LoginAccount, error) {
+func (r *fakeAuthLoginRepo) Revalidate(_ context.Context, systemUserID int64, userName, _ string) (*authnentity.LoginAccount, error) {
 	r.steps = append(r.steps, "lock")
 	if r.lockErr != nil {
 		return nil, r.lockErr
 	}
 	if r.locked == nil {
-		r.locked = &authndomain.LoginAccount{ID: systemUserID, UserName: userName}
+		r.locked = &authnentity.LoginAccount{ID: systemUserID, UserName: userName}
 	}
 	return r.locked, nil
 }
@@ -64,7 +66,7 @@ func (r *fakeAuthLoginRepo) RecordLogin(_ context.Context, _ int64, sourceIP str
 	return r.recordErr
 }
 
-func (r *fakeAuthLoginRepo) IssueCredential(_ context.Context, snapshot *authndomain.AuthorizationSnapshot, session *authndomain.LoginSession) (*authndomain.LoginResult, error) {
+func (r *fakeAuthLoginRepo) IssueCredential(_ context.Context, snapshot *authnentity.AuthorizationSnapshot, session *authnentity.LoginSession) (*authnentity.LoginResult, error) {
 	r.steps = append(r.steps, "issue")
 	r.issuedSnapshot = snapshot
 	r.issued = session
@@ -72,7 +74,7 @@ func (r *fakeAuthLoginRepo) IssueCredential(_ context.Context, snapshot *authndo
 		return nil, r.issueErr
 	}
 	if r.result == nil {
-		r.result = &authndomain.LoginResult{AccessToken: "secret"}
+		r.result = &authnentity.LoginResult{AccessToken: "secret"}
 	}
 	return r.result, nil
 }
@@ -144,12 +146,12 @@ func newLoginUsecaseWithAuthorizer(issuer *fakeAuthLoginRepo, counters *fakeLogi
 	return uc
 }
 
-func accountWithPassword(userName, password string) *authndomain.LoginAccount {
-	hash, err := authndomain.HashPassword(password)
+func accountWithPassword(userName, password string) *authnentity.LoginAccount {
+	hash, err := authnservice.HashPassword(password)
 	if err != nil {
 		panic(err)
 	}
-	return &authndomain.LoginAccount{ID: 42, UserName: userName, PasswordHash: hash}
+	return &authnentity.LoginAccount{ID: 42, UserName: userName, PasswordHash: hash}
 }
 
 func TestLoginUnknownAccountAndBadPasswordAreIndistinguishable(t *testing.T) {
@@ -161,7 +163,7 @@ func TestLoginUnknownAccountAndBadPasswordAreIndistinguishable(t *testing.T) {
 		{name: "bad password", userName: "alice"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			issuer := &fakeAuthLoginRepo{accounts: map[string]*authndomain.LoginAccount{
+			issuer := &fakeAuthLoginRepo{accounts: map[string]*authnentity.LoginAccount{
 				"alice": accountWithPassword("alice", "correct"),
 			}}
 			counters := &fakeLoginCounterRepo{}
@@ -201,7 +203,7 @@ func TestLoginAmbiguousAccountIsIndistinguishableFromInvalidCredentials(t *testi
 func TestLoginDisabledAccountRejectedOnlyAfterPasswordMatches(t *testing.T) {
 	disabled := accountWithPassword("alice", "correct")
 	disabled.Status = 1
-	issuer := &fakeAuthLoginRepo{accounts: map[string]*authndomain.LoginAccount{"alice": disabled}}
+	issuer := &fakeAuthLoginRepo{accounts: map[string]*authnentity.LoginAccount{"alice": disabled}}
 	counters := &fakeLoginCounterRepo{}
 	uc := newLoginUsecase(issuer, counters)
 
@@ -229,8 +231,8 @@ func TestLoginLockedCarriesRemainingDuration(t *testing.T) {
 
 func TestLoginSuccessRunsDatabaseStepsThenRedisLast(t *testing.T) {
 	issuer := &fakeAuthLoginRepo{
-		accounts: map[string]*authndomain.LoginAccount{"alice": accountWithPassword("alice", "correct")},
-		result:   &authndomain.LoginResult{AccessToken: "secret", ExpiresIn: 7 * 24 * time.Hour},
+		accounts: map[string]*authnentity.LoginAccount{"alice": accountWithPassword("alice", "correct")},
+		result:   &authnentity.LoginResult{AccessToken: "secret", ExpiresIn: 7 * 24 * time.Hour},
 	}
 	counters := &fakeLoginCounterRepo{}
 	uc := newLoginUsecase(issuer, counters)
@@ -266,7 +268,7 @@ func TestLoginSuccessRunsDatabaseStepsThenRedisLast(t *testing.T) {
 
 func TestLoginRevalidationFailureFeedsTheCounter(t *testing.T) {
 	issuer := &fakeAuthLoginRepo{
-		accounts: map[string]*authndomain.LoginAccount{"alice": accountWithPassword("alice", "correct")},
+		accounts: map[string]*authnentity.LoginAccount{"alice": accountWithPassword("alice", "correct")},
 		lockErr:  authndomain.ErrInvalidCredentials,
 	}
 	counters := &fakeLoginCounterRepo{}
@@ -289,7 +291,7 @@ func TestLoginRevalidationFailureFeedsTheCounter(t *testing.T) {
 
 func TestLoginRedisFailureRollsBackWithoutCompensation(t *testing.T) {
 	issuer := &fakeAuthLoginRepo{
-		accounts: map[string]*authndomain.LoginAccount{"alice": accountWithPassword("alice", "correct")},
+		accounts: map[string]*authnentity.LoginAccount{"alice": accountWithPassword("alice", "correct")},
 		issueErr: authndomain.ErrAuthBackendUnavailable,
 	}
 	counters := &fakeLoginCounterRepo{}
@@ -312,8 +314,8 @@ func TestLoginRedisFailureRollsBackWithoutCompensation(t *testing.T) {
 
 func TestLoginCommitFailureDiscardsTheCredential(t *testing.T) {
 	issuer := &fakeAuthLoginRepo{
-		accounts: map[string]*authndomain.LoginAccount{"alice": accountWithPassword("alice", "correct")},
-		result:   &authndomain.LoginResult{AccessToken: "leaked"},
+		accounts: map[string]*authnentity.LoginAccount{"alice": accountWithPassword("alice", "correct")},
+		result:   &authnentity.LoginResult{AccessToken: "leaked"},
 	}
 	counters := &fakeLoginCounterRepo{}
 	tx := &fakeTransaction{err: authndomain.ErrAuthBackendUnavailable} // commit fails after the body
@@ -357,7 +359,7 @@ func TestLoginBackendFailurePropagatesWithoutTouchingTheCounter(t *testing.T) {
 
 func TestLoginResolutionFailureIsAuthBackendUnavailable(t *testing.T) {
 	issuer := &fakeAuthLoginRepo{
-		accounts: map[string]*authndomain.LoginAccount{"alice": accountWithPassword("alice", "correct")},
+		accounts: map[string]*authnentity.LoginAccount{"alice": accountWithPassword("alice", "correct")},
 	}
 	counters := &fakeLoginCounterRepo{}
 
@@ -377,8 +379,8 @@ func TestLoginResolutionFailureIsAuthBackendUnavailable(t *testing.T) {
 
 func TestLoginFillsSnapshotFromTheAccessContract(t *testing.T) {
 	issuer := &fakeAuthLoginRepo{
-		accounts: map[string]*authndomain.LoginAccount{"alice": accountWithPassword("alice", "correct")},
-		result:   &authndomain.LoginResult{AccessToken: "secret"},
+		accounts: map[string]*authnentity.LoginAccount{"alice": accountWithPassword("alice", "correct")},
+		result:   &authnentity.LoginResult{AccessToken: "secret"},
 	}
 	counters := &fakeLoginCounterRepo{}
 	authorizer := &fakeAuthorizer{resolution: &accessmodel.AuthorizationResolution{

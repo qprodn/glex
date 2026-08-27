@@ -6,19 +6,20 @@ import (
 
 	"glex/internal/crossdomain/authn"
 	"glex/internal/crossdomain/authn/model"
-	authndomain "glex/internal/domain/authn"
+	authnrepo "glex/internal/domain/authn/repository"
+	authnservice "glex/internal/domain/authn/service"
 )
 
 // credentialWriter satisfies the credential contract by wrapping the
 // credential repository: hashing happens here, beside the provider's domain
 // policy, so consumers never pick a hash format.
 type credentialWriter struct {
-	credentials authndomain.CredentialRepo
+	credentials authnrepo.CredentialRepo
 }
 
 // NewCredentialWriter adapts the credential repository to the crossdomain
 // credential contract.
-func NewCredentialWriter(credentials authndomain.CredentialRepo) authn.CredentialWriter {
+func NewCredentialWriter(credentials authnrepo.CredentialRepo) authn.CredentialWriter {
 	return &credentialWriter{credentials: credentials}
 }
 
@@ -28,7 +29,7 @@ func (w *credentialWriter) WriteSystemUserCredential(ctx context.Context, reques
 	if request == nil || request.SystemUserID <= 0 {
 		return fmt.Errorf("write system user credential: system_user_id is required")
 	}
-	hash, err := authndomain.HashPassword(request.Password)
+	hash, err := authnservice.HashPassword(request.Password)
 	if err != nil {
 		return fmt.Errorf("write system user credential: hash password: %w", err)
 	}

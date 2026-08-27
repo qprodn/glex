@@ -7,13 +7,14 @@ import (
 	"testing"
 
 	"glex/internal/crossdomain/authn/model"
-	authndomain "glex/internal/domain/authn"
+	authnrepo "glex/internal/domain/authn/repository"
+	authnservice "glex/internal/domain/authn/service"
 )
 
 // recordingCredentialRepo records stored hashes; the embedded interface stays
 // nil because the adapter under test touches nothing else.
 type recordingCredentialRepo struct {
-	authndomain.CredentialRepo
+	authnrepo.CredentialRepo
 	stored map[int64]string
 	err    error
 }
@@ -40,7 +41,7 @@ func TestCredentialWriterHashesAndStoresPlaintext(t *testing.T) {
 	if stored == "secret" || !strings.HasPrefix(stored, "$2") {
 		t.Fatalf("stored credential = %q, want a bcrypt hash, not the plaintext", stored)
 	}
-	if !authndomain.VerifyPassword(stored, "secret") {
+	if !authnservice.VerifyPassword(stored, "secret") {
 		t.Fatal("stored credential does not verify against the plaintext")
 	}
 }

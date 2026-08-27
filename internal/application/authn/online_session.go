@@ -6,6 +6,8 @@ import (
 
 	authnv1 "glex/api/authn/v1"
 	authndomain "glex/internal/domain/authn"
+	authnrepo "glex/internal/domain/authn/repository"
+	authnservice "glex/internal/domain/authn/service"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
@@ -60,10 +62,10 @@ func (s *OnlineSessionApplication) ListOnlineSessions(ctx context.Context, req *
 		req.PageSize = 20
 	}
 	sessions, err := s.uc.ListOnlineSessions(ctx,
-		authndomain.ListFilter(filter),
-		authndomain.ListOrderBy(orderBy),
-		authndomain.ListLimit(int(req.GetPageSize())),
-		authndomain.ListOffset(int(pageToken.Offset)),
+		authnrepo.ListFilter(filter),
+		authnrepo.ListOrderBy(orderBy),
+		authnrepo.ListLimit(int(req.GetPageSize())),
+		authnrepo.ListOffset(int(pageToken.Offset)),
 	)
 	if err != nil {
 		return nil, err
@@ -96,7 +98,7 @@ func (s *OnlineSessionApplication) KickoutOnlineSession(ctx context.Context, req
 
 // ListMyOnlineSessions lists only the current System User's Login Sessions.
 func (s *OnlineSessionApplication) ListMyOnlineSessions(ctx context.Context, _ *emptypb.Empty) (*authnv1.OnlineSessionSet, error) {
-	principal, ok := authndomain.PrincipalFromContext(ctx)
+	principal, ok := authnservice.PrincipalFromContext(ctx)
 	if !ok {
 		return nil, authndomain.ErrCredentialMissing
 	}
@@ -122,7 +124,7 @@ func (s *OnlineSessionApplication) ListMyOnlineSessions(ctx context.Context, _ *
 // DeleteMyOnlineSession revokes one Session only after an atomic ownership
 // check against the current System User.
 func (s *OnlineSessionApplication) DeleteMyOnlineSession(ctx context.Context, req *authnv1.OnlineSessionRequest) (*emptypb.Empty, error) {
-	principal, ok := authndomain.PrincipalFromContext(ctx)
+	principal, ok := authnservice.PrincipalFromContext(ctx)
 	if !ok {
 		return nil, authndomain.ErrCredentialMissing
 	}

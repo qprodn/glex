@@ -16,6 +16,8 @@ import (
 
 	"glex/internal/conf"
 	authndomain "glex/internal/domain/authn"
+	authnentity "glex/internal/domain/authn/entity"
+	authnrepo "glex/internal/domain/authn/repository"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -211,7 +213,7 @@ type loginSessionPO struct {
 	Fingerprint  string    `json:"fingerprint"`
 }
 
-func newLoginSession(in *authndomain.LoginSession, id, bearerToken string) *loginSessionPO {
+func newLoginSession(in *authnentity.LoginSession, id, bearerToken string) *loginSessionPO {
 	return &loginSessionPO{
 		ID:           id,
 		SystemUserID: strconv.FormatInt(in.SystemUserID, 10),
@@ -226,12 +228,12 @@ func newLoginSession(in *authndomain.LoginSession, id, bearerToken string) *logi
 	}
 }
 
-func toBizLoginSession(p *loginSessionPO) (*authndomain.LoginSession, error) {
+func toBizLoginSession(p *loginSessionPO) (*authnentity.LoginSession, error) {
 	systemUserID, err := strconv.ParseInt(p.SystemUserID, 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("decode System User ID: %w", err)
 	}
-	return &authndomain.LoginSession{
+	return &authnentity.LoginSession{
 		ID:           p.ID,
 		SystemUserID: systemUserID,
 		UserName:     p.UserName,
@@ -255,7 +257,7 @@ type loginSessionRepo struct {
 }
 
 // NewLoginSessionRepo constructs the authoritative Redis Login Session store.
-func NewLoginSessionRepo(data *store.Data, manager *core.Manager, c *conf.Auth) authndomain.LoginSessionRepo {
+func NewLoginSessionRepo(data *store.Data, manager *core.Manager, c *conf.Auth) authnrepo.LoginSessionRepo {
 	return &loginSessionRepo{
 		rdb:          data.Redis,
 		logger:       data.Logger.With(slog.String("component", "infra.authn.login_session")),
@@ -283,7 +285,7 @@ func authRedisBackendError(ctx context.Context, logger *slog.Logger, operation s
 	return authndomain.ErrAuthBackendUnavailable
 }
 
-func (r *loginSessionRepo) Create(ctx context.Context, bearerToken string, session *authndomain.LoginSession) (*authndomain.LoginSession, error) {
+func (r *loginSessionRepo) Create(ctx context.Context, bearerToken string, session *authnentity.LoginSession) (*authnentity.LoginSession, error) {
 	if bearerToken == "" || session == nil || session.SystemUserID <= 0 {
 		return nil, authndomain.ErrTokenInvalid
 	}
@@ -334,7 +336,7 @@ func (r *loginSessionRepo) Create(ctx context.Context, bearerToken string, sessi
 	return nil, fmt.Errorf("generate unique Session ID: collision limit reached")
 }
 
-func (r *loginSessionRepo) FindByID(ctx context.Context, sessionID string) (*authndomain.LoginSession, error) {
+func (r *loginSessionRepo) FindByID(ctx context.Context, sessionID string) (*authnentity.LoginSession, error) {
 	po, err := r.findPO(ctx, sessionID)
 	if err != nil {
 		return nil, err
@@ -346,7 +348,7 @@ func (r *loginSessionRepo) FindByID(ctx context.Context, sessionID string) (*aut
 	return session, nil
 }
 
-func (r *loginSessionRepo) FindByToken(ctx context.Context, bearerToken string) (*authndomain.LoginSession, error) {
+func (r *loginSessionRepo) FindByToken(ctx context.Context, bearerToken string) (*authnentity.LoginSession, error) {
 	loggedIn, err := r.manager.CheckLoginWithState(bearerToken)
 	if err != nil {
 		if errors.Is(err, ErrAuthKeyNotFound) {
@@ -423,16 +425,16 @@ func mapLoginSessionAuthError(err error) error {
 	}
 }
 
-func (r *loginSessionRepo) List(ctx context.Context, opts ...authndomain.ListOption) ([]*authndomain.LoginSession, error) {
+func (r *loginSessionRepo) List(ctx context.Context, opts ...authnrepo.ListOption) ([]*authnentity.LoginSession, error) {
 	return r.list(ctx, r.key(loginSessionAllKey), opts...)
 }
 
-func (r *loginSessionRepo) ListBySystemUser(ctx context.Context, systemUserID int64, opts ...authndomain.ListOption) ([]*authndomain.LoginSession, error) {
+func (r *loginSessionRepo) ListBySystemUser(ctx context.Context, systemUserID int64, opts ...authnrepo.ListOption) ([]*authnentity.LoginSession, error) {
 	return r.list(ctx, r.key(loginSessionUserKeyPrefix+strconv.FormatInt(systemUserID, 10)), opts...)
 }
 
-func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...authndomain.ListOption) ([]*authndomain.LoginSession, error) {
-	o := authndomain.ListOptions{}
+func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...authnrepo.ListOption) ([]*authnentity.LoginSession, error) {
+	o := authnrepo.ListOptions{}
 	for _, opt := range opts {
 		opt(&o)
 	}
@@ -443,7 +445,7 @@ func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...au
 		return nil, authRedisBackendError(ctx, r.logger, "list_login_session_index", err)
 	}
 	if len(ids) == 0 {
-		return []*authndomain.LoginSession{}, nil
+		return []*authnentity.LoginSession{}, nil
 	}
 	keys := make([]string, len(ids))
 	for i, id := range ids {
@@ -453,7 +455,7 @@ func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...au
 	if err != nil {
 		return nil, authRedisBackendError(ctx, r.logger, "list_login_session_metadata", err)
 	}
-	result := make([]*authndomain.LoginSession, 0, len(values))
+	result := make([]*authnentity.LoginSession, 0, len(values))
 	staleIDs := make([]any, 0)
 	for i, value := range values {
 		encoded, ok := value.(string)
@@ -495,7 +497,7 @@ func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...au
 		start = 0
 	}
 	if start >= len(result) {
-		return []*authndomain.LoginSession{}, nil
+		return []*authnentity.LoginSession{}, nil
 	}
 	end := len(result)
 	if o.Limit > 0 && start+o.Limit < end {
@@ -504,7 +506,7 @@ func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...au
 	return result[start:end], nil
 }
 
-func matchesLoginSessionFilter(expression *expr.Expr, session *authndomain.LoginSession) (bool, error) {
+func matchesLoginSessionFilter(expression *expr.Expr, session *authnentity.LoginSession) (bool, error) {
 	if expression == nil {
 		return true, nil
 	}
@@ -555,7 +557,7 @@ func matchesLoginSessionFilter(expression *expr.Expr, session *authndomain.Login
 	}
 }
 
-func loginSessionFilterString(expression *expr.Expr, session *authndomain.LoginSession) (string, bool) {
+func loginSessionFilterString(expression *expr.Expr, session *authnentity.LoginSession) (string, bool) {
 	if identifier := expression.GetIdentExpr(); identifier != nil {
 		switch identifier.GetName() {
 		case "user_name":
@@ -576,7 +578,7 @@ func loginSessionFilterString(expression *expr.Expr, session *authndomain.LoginS
 	return constant.GetStringValue(), true
 }
 
-func lessLoginSession(left, right *authndomain.LoginSession, fields []ordering.Field) bool {
+func lessLoginSession(left, right *authnentity.LoginSession, fields []ordering.Field) bool {
 	for _, field := range fields {
 		comparison := compareLoginSessionField(left, right, field.Path)
 		if comparison == 0 {
@@ -590,7 +592,7 @@ func lessLoginSession(left, right *authndomain.LoginSession, fields []ordering.F
 	return left.ID < right.ID
 }
 
-func compareLoginSessionField(left, right *authndomain.LoginSession, field string) int {
+func compareLoginSessionField(left, right *authnentity.LoginSession, field string) int {
 	switch field {
 	case "login_time":
 		return left.LoginTime.Compare(right.LoginTime)
