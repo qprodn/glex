@@ -50,7 +50,7 @@ rename (zero behavior change):
   since the ent `user` predicate package already occupies the bare `user`
   name), the snowflake node helper, provider set.
 - **Composition & pins** — provider aggregates, `server` HTTP/gRPC
-  constructors, `cmd/kratos-admin/wire.go`, and the regenerated
+  constructors, `../../../cmd/glex/wire.go`, and the regenerated
   `wire_gen.go` follow the rename; the authn integration-test harness
   (env-gated real-store family) re-imports the user module's constructors.
   `TestModuleSplitBoundaries` now pins user as the third named module
