@@ -1,8 +1,6 @@
 package schema
 
 import (
-	"time"
-
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/entsql"
@@ -12,9 +10,14 @@ import (
 )
 
 // Role holds the schema for the role entity (ported from RuoYi sys_role).
-// CRUD + the role↔menu link (Menu Grant) via the sys_role_menu join table.
+// CRUD + the role↔menu link (Menu Grant) via the sys_role_menu link rows.
 type Role struct {
 	ent.Schema
+}
+
+// Mixin contributes the audit columns (ADR 0002).
+func (Role) Mixin() []ent.Mixin {
+	return []ent.Mixin{AuditMixin{}}
 }
 
 // Fields of the Role.
@@ -40,13 +43,6 @@ func (Role) Fields() []ent.Field {
 		// stored in sys_role_menu (grants are always stored verbatim).
 		field.Bool("menu_check_strictly").Default(true),
 		field.String("remark").Default(""),
-		// Audit; written by the access module (0 until then).
-		field.Int64("create_by").Optional().Default(0),
-		field.Int64("update_by").Optional().Default(0),
-		field.Time("created_at").Default(time.Now).Immutable(),
-		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
-		// Soft delete (replaces RuoYi del_flag). NULL = not deleted.
-		field.Time("deleted_at").Optional().Nillable(),
 	}
 }
 
@@ -58,16 +54,12 @@ func (Role) Annotations() []entschema.Annotation {
 	}
 }
 
-// Edges of the Role. M2M to Menu via the join table sys_role_menu — exactly
-// RuoYi's shape: columns role_id + menu_id, composite PK (role_id, menu_id),
-// no timestamps/soft delete (hard-deleted rows, full-replacement semantics).
-// The users edge is the inverse side of User.roles (Role Assignment); the
-// join table sys_user_role is owned/named by the User schema's annotation.
+// Edges of the Role. The Menu Grant (role↔menu) and the Role Assignment's
+// by-role side (user↔role) live as explicit link entities — sys_role_menu and
+// sys_user_role rows with audit columns and soft delete (ADR 0002).
 func (Role) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("menus", Menu.Type).Annotations(
-			entsql.Annotation{Table: "sys_role_menu"},
-		),
-		edge.From("users", User.Type).Ref("roles"),
+		edge.To("menu_grants", RoleMenu.Type),
+		edge.To("user_links", UserRole.Type),
 	}
 }

@@ -55,6 +55,31 @@ func IDLTE(id int64) predicate.Role {
 	return predicate.Role(sql.FieldLTE(FieldID, id))
 }
 
+// CreateBy applies equality check predicate on the "create_by" field. It's identical to CreateByEQ.
+func CreateBy(v int64) predicate.Role {
+	return predicate.Role(sql.FieldEQ(FieldCreateBy, v))
+}
+
+// UpdateBy applies equality check predicate on the "update_by" field. It's identical to UpdateByEQ.
+func UpdateBy(v int64) predicate.Role {
+	return predicate.Role(sql.FieldEQ(FieldUpdateBy, v))
+}
+
+// CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
+func CreatedAt(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldEQ(FieldCreatedAt, v))
+}
+
+// UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
+func UpdatedAt(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldEQ(FieldUpdatedAt, v))
+}
+
+// DeletedAt applies equality check predicate on the "deleted_at" field. It's identical to DeletedAtEQ.
+func DeletedAt(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldEQ(FieldDeletedAt, v))
+}
+
 // RoleName applies equality check predicate on the "role_name" field. It's identical to RoleNameEQ.
 func RoleName(v string) predicate.Role {
 	return predicate.Role(sql.FieldEQ(FieldRoleName, v))
@@ -85,29 +110,234 @@ func Remark(v string) predicate.Role {
 	return predicate.Role(sql.FieldEQ(FieldRemark, v))
 }
 
-// CreateBy applies equality check predicate on the "create_by" field. It's identical to CreateByEQ.
-func CreateBy(v int64) predicate.Role {
+// CreateByEQ applies the EQ predicate on the "create_by" field.
+func CreateByEQ(v int64) predicate.Role {
 	return predicate.Role(sql.FieldEQ(FieldCreateBy, v))
 }
 
-// UpdateBy applies equality check predicate on the "update_by" field. It's identical to UpdateByEQ.
-func UpdateBy(v int64) predicate.Role {
+// CreateByNEQ applies the NEQ predicate on the "create_by" field.
+func CreateByNEQ(v int64) predicate.Role {
+	return predicate.Role(sql.FieldNEQ(FieldCreateBy, v))
+}
+
+// CreateByIn applies the In predicate on the "create_by" field.
+func CreateByIn(vs ...int64) predicate.Role {
+	return predicate.Role(sql.FieldIn(FieldCreateBy, vs...))
+}
+
+// CreateByNotIn applies the NotIn predicate on the "create_by" field.
+func CreateByNotIn(vs ...int64) predicate.Role {
+	return predicate.Role(sql.FieldNotIn(FieldCreateBy, vs...))
+}
+
+// CreateByGT applies the GT predicate on the "create_by" field.
+func CreateByGT(v int64) predicate.Role {
+	return predicate.Role(sql.FieldGT(FieldCreateBy, v))
+}
+
+// CreateByGTE applies the GTE predicate on the "create_by" field.
+func CreateByGTE(v int64) predicate.Role {
+	return predicate.Role(sql.FieldGTE(FieldCreateBy, v))
+}
+
+// CreateByLT applies the LT predicate on the "create_by" field.
+func CreateByLT(v int64) predicate.Role {
+	return predicate.Role(sql.FieldLT(FieldCreateBy, v))
+}
+
+// CreateByLTE applies the LTE predicate on the "create_by" field.
+func CreateByLTE(v int64) predicate.Role {
+	return predicate.Role(sql.FieldLTE(FieldCreateBy, v))
+}
+
+// CreateByIsNil applies the IsNil predicate on the "create_by" field.
+func CreateByIsNil() predicate.Role {
+	return predicate.Role(sql.FieldIsNull(FieldCreateBy))
+}
+
+// CreateByNotNil applies the NotNil predicate on the "create_by" field.
+func CreateByNotNil() predicate.Role {
+	return predicate.Role(sql.FieldNotNull(FieldCreateBy))
+}
+
+// UpdateByEQ applies the EQ predicate on the "update_by" field.
+func UpdateByEQ(v int64) predicate.Role {
 	return predicate.Role(sql.FieldEQ(FieldUpdateBy, v))
 }
 
-// CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
-func CreatedAt(v time.Time) predicate.Role {
+// UpdateByNEQ applies the NEQ predicate on the "update_by" field.
+func UpdateByNEQ(v int64) predicate.Role {
+	return predicate.Role(sql.FieldNEQ(FieldUpdateBy, v))
+}
+
+// UpdateByIn applies the In predicate on the "update_by" field.
+func UpdateByIn(vs ...int64) predicate.Role {
+	return predicate.Role(sql.FieldIn(FieldUpdateBy, vs...))
+}
+
+// UpdateByNotIn applies the NotIn predicate on the "update_by" field.
+func UpdateByNotIn(vs ...int64) predicate.Role {
+	return predicate.Role(sql.FieldNotIn(FieldUpdateBy, vs...))
+}
+
+// UpdateByGT applies the GT predicate on the "update_by" field.
+func UpdateByGT(v int64) predicate.Role {
+	return predicate.Role(sql.FieldGT(FieldUpdateBy, v))
+}
+
+// UpdateByGTE applies the GTE predicate on the "update_by" field.
+func UpdateByGTE(v int64) predicate.Role {
+	return predicate.Role(sql.FieldGTE(FieldUpdateBy, v))
+}
+
+// UpdateByLT applies the LT predicate on the "update_by" field.
+func UpdateByLT(v int64) predicate.Role {
+	return predicate.Role(sql.FieldLT(FieldUpdateBy, v))
+}
+
+// UpdateByLTE applies the LTE predicate on the "update_by" field.
+func UpdateByLTE(v int64) predicate.Role {
+	return predicate.Role(sql.FieldLTE(FieldUpdateBy, v))
+}
+
+// UpdateByIsNil applies the IsNil predicate on the "update_by" field.
+func UpdateByIsNil() predicate.Role {
+	return predicate.Role(sql.FieldIsNull(FieldUpdateBy))
+}
+
+// UpdateByNotNil applies the NotNil predicate on the "update_by" field.
+func UpdateByNotNil() predicate.Role {
+	return predicate.Role(sql.FieldNotNull(FieldUpdateBy))
+}
+
+// CreatedAtEQ applies the EQ predicate on the "created_at" field.
+func CreatedAtEQ(v time.Time) predicate.Role {
 	return predicate.Role(sql.FieldEQ(FieldCreatedAt, v))
 }
 
-// UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
-func UpdatedAt(v time.Time) predicate.Role {
+// CreatedAtNEQ applies the NEQ predicate on the "created_at" field.
+func CreatedAtNEQ(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldNEQ(FieldCreatedAt, v))
+}
+
+// CreatedAtIn applies the In predicate on the "created_at" field.
+func CreatedAtIn(vs ...time.Time) predicate.Role {
+	return predicate.Role(sql.FieldIn(FieldCreatedAt, vs...))
+}
+
+// CreatedAtNotIn applies the NotIn predicate on the "created_at" field.
+func CreatedAtNotIn(vs ...time.Time) predicate.Role {
+	return predicate.Role(sql.FieldNotIn(FieldCreatedAt, vs...))
+}
+
+// CreatedAtGT applies the GT predicate on the "created_at" field.
+func CreatedAtGT(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldGT(FieldCreatedAt, v))
+}
+
+// CreatedAtGTE applies the GTE predicate on the "created_at" field.
+func CreatedAtGTE(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldGTE(FieldCreatedAt, v))
+}
+
+// CreatedAtLT applies the LT predicate on the "created_at" field.
+func CreatedAtLT(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldLT(FieldCreatedAt, v))
+}
+
+// CreatedAtLTE applies the LTE predicate on the "created_at" field.
+func CreatedAtLTE(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldLTE(FieldCreatedAt, v))
+}
+
+// UpdatedAtEQ applies the EQ predicate on the "updated_at" field.
+func UpdatedAtEQ(v time.Time) predicate.Role {
 	return predicate.Role(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
-// DeletedAt applies equality check predicate on the "deleted_at" field. It's identical to DeletedAtEQ.
-func DeletedAt(v time.Time) predicate.Role {
+// UpdatedAtNEQ applies the NEQ predicate on the "updated_at" field.
+func UpdatedAtNEQ(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldNEQ(FieldUpdatedAt, v))
+}
+
+// UpdatedAtIn applies the In predicate on the "updated_at" field.
+func UpdatedAtIn(vs ...time.Time) predicate.Role {
+	return predicate.Role(sql.FieldIn(FieldUpdatedAt, vs...))
+}
+
+// UpdatedAtNotIn applies the NotIn predicate on the "updated_at" field.
+func UpdatedAtNotIn(vs ...time.Time) predicate.Role {
+	return predicate.Role(sql.FieldNotIn(FieldUpdatedAt, vs...))
+}
+
+// UpdatedAtGT applies the GT predicate on the "updated_at" field.
+func UpdatedAtGT(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldGT(FieldUpdatedAt, v))
+}
+
+// UpdatedAtGTE applies the GTE predicate on the "updated_at" field.
+func UpdatedAtGTE(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldGTE(FieldUpdatedAt, v))
+}
+
+// UpdatedAtLT applies the LT predicate on the "updated_at" field.
+func UpdatedAtLT(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldLT(FieldUpdatedAt, v))
+}
+
+// UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
+func UpdatedAtLTE(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// DeletedAtEQ applies the EQ predicate on the "deleted_at" field.
+func DeletedAtEQ(v time.Time) predicate.Role {
 	return predicate.Role(sql.FieldEQ(FieldDeletedAt, v))
+}
+
+// DeletedAtNEQ applies the NEQ predicate on the "deleted_at" field.
+func DeletedAtNEQ(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldNEQ(FieldDeletedAt, v))
+}
+
+// DeletedAtIn applies the In predicate on the "deleted_at" field.
+func DeletedAtIn(vs ...time.Time) predicate.Role {
+	return predicate.Role(sql.FieldIn(FieldDeletedAt, vs...))
+}
+
+// DeletedAtNotIn applies the NotIn predicate on the "deleted_at" field.
+func DeletedAtNotIn(vs ...time.Time) predicate.Role {
+	return predicate.Role(sql.FieldNotIn(FieldDeletedAt, vs...))
+}
+
+// DeletedAtGT applies the GT predicate on the "deleted_at" field.
+func DeletedAtGT(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldGT(FieldDeletedAt, v))
+}
+
+// DeletedAtGTE applies the GTE predicate on the "deleted_at" field.
+func DeletedAtGTE(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldGTE(FieldDeletedAt, v))
+}
+
+// DeletedAtLT applies the LT predicate on the "deleted_at" field.
+func DeletedAtLT(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldLT(FieldDeletedAt, v))
+}
+
+// DeletedAtLTE applies the LTE predicate on the "deleted_at" field.
+func DeletedAtLTE(v time.Time) predicate.Role {
+	return predicate.Role(sql.FieldLTE(FieldDeletedAt, v))
+}
+
+// DeletedAtIsNil applies the IsNil predicate on the "deleted_at" field.
+func DeletedAtIsNil() predicate.Role {
+	return predicate.Role(sql.FieldIsNull(FieldDeletedAt))
+}
+
+// DeletedAtNotNil applies the NotNil predicate on the "deleted_at" field.
+func DeletedAtNotNil() predicate.Role {
+	return predicate.Role(sql.FieldNotNull(FieldDeletedAt))
 }
 
 // RoleNameEQ applies the EQ predicate on the "role_name" field.
@@ -395,251 +625,21 @@ func RemarkContainsFold(v string) predicate.Role {
 	return predicate.Role(sql.FieldContainsFold(FieldRemark, v))
 }
 
-// CreateByEQ applies the EQ predicate on the "create_by" field.
-func CreateByEQ(v int64) predicate.Role {
-	return predicate.Role(sql.FieldEQ(FieldCreateBy, v))
-}
-
-// CreateByNEQ applies the NEQ predicate on the "create_by" field.
-func CreateByNEQ(v int64) predicate.Role {
-	return predicate.Role(sql.FieldNEQ(FieldCreateBy, v))
-}
-
-// CreateByIn applies the In predicate on the "create_by" field.
-func CreateByIn(vs ...int64) predicate.Role {
-	return predicate.Role(sql.FieldIn(FieldCreateBy, vs...))
-}
-
-// CreateByNotIn applies the NotIn predicate on the "create_by" field.
-func CreateByNotIn(vs ...int64) predicate.Role {
-	return predicate.Role(sql.FieldNotIn(FieldCreateBy, vs...))
-}
-
-// CreateByGT applies the GT predicate on the "create_by" field.
-func CreateByGT(v int64) predicate.Role {
-	return predicate.Role(sql.FieldGT(FieldCreateBy, v))
-}
-
-// CreateByGTE applies the GTE predicate on the "create_by" field.
-func CreateByGTE(v int64) predicate.Role {
-	return predicate.Role(sql.FieldGTE(FieldCreateBy, v))
-}
-
-// CreateByLT applies the LT predicate on the "create_by" field.
-func CreateByLT(v int64) predicate.Role {
-	return predicate.Role(sql.FieldLT(FieldCreateBy, v))
-}
-
-// CreateByLTE applies the LTE predicate on the "create_by" field.
-func CreateByLTE(v int64) predicate.Role {
-	return predicate.Role(sql.FieldLTE(FieldCreateBy, v))
-}
-
-// CreateByIsNil applies the IsNil predicate on the "create_by" field.
-func CreateByIsNil() predicate.Role {
-	return predicate.Role(sql.FieldIsNull(FieldCreateBy))
-}
-
-// CreateByNotNil applies the NotNil predicate on the "create_by" field.
-func CreateByNotNil() predicate.Role {
-	return predicate.Role(sql.FieldNotNull(FieldCreateBy))
-}
-
-// UpdateByEQ applies the EQ predicate on the "update_by" field.
-func UpdateByEQ(v int64) predicate.Role {
-	return predicate.Role(sql.FieldEQ(FieldUpdateBy, v))
-}
-
-// UpdateByNEQ applies the NEQ predicate on the "update_by" field.
-func UpdateByNEQ(v int64) predicate.Role {
-	return predicate.Role(sql.FieldNEQ(FieldUpdateBy, v))
-}
-
-// UpdateByIn applies the In predicate on the "update_by" field.
-func UpdateByIn(vs ...int64) predicate.Role {
-	return predicate.Role(sql.FieldIn(FieldUpdateBy, vs...))
-}
-
-// UpdateByNotIn applies the NotIn predicate on the "update_by" field.
-func UpdateByNotIn(vs ...int64) predicate.Role {
-	return predicate.Role(sql.FieldNotIn(FieldUpdateBy, vs...))
-}
-
-// UpdateByGT applies the GT predicate on the "update_by" field.
-func UpdateByGT(v int64) predicate.Role {
-	return predicate.Role(sql.FieldGT(FieldUpdateBy, v))
-}
-
-// UpdateByGTE applies the GTE predicate on the "update_by" field.
-func UpdateByGTE(v int64) predicate.Role {
-	return predicate.Role(sql.FieldGTE(FieldUpdateBy, v))
-}
-
-// UpdateByLT applies the LT predicate on the "update_by" field.
-func UpdateByLT(v int64) predicate.Role {
-	return predicate.Role(sql.FieldLT(FieldUpdateBy, v))
-}
-
-// UpdateByLTE applies the LTE predicate on the "update_by" field.
-func UpdateByLTE(v int64) predicate.Role {
-	return predicate.Role(sql.FieldLTE(FieldUpdateBy, v))
-}
-
-// UpdateByIsNil applies the IsNil predicate on the "update_by" field.
-func UpdateByIsNil() predicate.Role {
-	return predicate.Role(sql.FieldIsNull(FieldUpdateBy))
-}
-
-// UpdateByNotNil applies the NotNil predicate on the "update_by" field.
-func UpdateByNotNil() predicate.Role {
-	return predicate.Role(sql.FieldNotNull(FieldUpdateBy))
-}
-
-// CreatedAtEQ applies the EQ predicate on the "created_at" field.
-func CreatedAtEQ(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldEQ(FieldCreatedAt, v))
-}
-
-// CreatedAtNEQ applies the NEQ predicate on the "created_at" field.
-func CreatedAtNEQ(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldNEQ(FieldCreatedAt, v))
-}
-
-// CreatedAtIn applies the In predicate on the "created_at" field.
-func CreatedAtIn(vs ...time.Time) predicate.Role {
-	return predicate.Role(sql.FieldIn(FieldCreatedAt, vs...))
-}
-
-// CreatedAtNotIn applies the NotIn predicate on the "created_at" field.
-func CreatedAtNotIn(vs ...time.Time) predicate.Role {
-	return predicate.Role(sql.FieldNotIn(FieldCreatedAt, vs...))
-}
-
-// CreatedAtGT applies the GT predicate on the "created_at" field.
-func CreatedAtGT(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldGT(FieldCreatedAt, v))
-}
-
-// CreatedAtGTE applies the GTE predicate on the "created_at" field.
-func CreatedAtGTE(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldGTE(FieldCreatedAt, v))
-}
-
-// CreatedAtLT applies the LT predicate on the "created_at" field.
-func CreatedAtLT(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldLT(FieldCreatedAt, v))
-}
-
-// CreatedAtLTE applies the LTE predicate on the "created_at" field.
-func CreatedAtLTE(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldLTE(FieldCreatedAt, v))
-}
-
-// UpdatedAtEQ applies the EQ predicate on the "updated_at" field.
-func UpdatedAtEQ(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldEQ(FieldUpdatedAt, v))
-}
-
-// UpdatedAtNEQ applies the NEQ predicate on the "updated_at" field.
-func UpdatedAtNEQ(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldNEQ(FieldUpdatedAt, v))
-}
-
-// UpdatedAtIn applies the In predicate on the "updated_at" field.
-func UpdatedAtIn(vs ...time.Time) predicate.Role {
-	return predicate.Role(sql.FieldIn(FieldUpdatedAt, vs...))
-}
-
-// UpdatedAtNotIn applies the NotIn predicate on the "updated_at" field.
-func UpdatedAtNotIn(vs ...time.Time) predicate.Role {
-	return predicate.Role(sql.FieldNotIn(FieldUpdatedAt, vs...))
-}
-
-// UpdatedAtGT applies the GT predicate on the "updated_at" field.
-func UpdatedAtGT(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldGT(FieldUpdatedAt, v))
-}
-
-// UpdatedAtGTE applies the GTE predicate on the "updated_at" field.
-func UpdatedAtGTE(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldGTE(FieldUpdatedAt, v))
-}
-
-// UpdatedAtLT applies the LT predicate on the "updated_at" field.
-func UpdatedAtLT(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldLT(FieldUpdatedAt, v))
-}
-
-// UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
-func UpdatedAtLTE(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldLTE(FieldUpdatedAt, v))
-}
-
-// DeletedAtEQ applies the EQ predicate on the "deleted_at" field.
-func DeletedAtEQ(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldEQ(FieldDeletedAt, v))
-}
-
-// DeletedAtNEQ applies the NEQ predicate on the "deleted_at" field.
-func DeletedAtNEQ(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldNEQ(FieldDeletedAt, v))
-}
-
-// DeletedAtIn applies the In predicate on the "deleted_at" field.
-func DeletedAtIn(vs ...time.Time) predicate.Role {
-	return predicate.Role(sql.FieldIn(FieldDeletedAt, vs...))
-}
-
-// DeletedAtNotIn applies the NotIn predicate on the "deleted_at" field.
-func DeletedAtNotIn(vs ...time.Time) predicate.Role {
-	return predicate.Role(sql.FieldNotIn(FieldDeletedAt, vs...))
-}
-
-// DeletedAtGT applies the GT predicate on the "deleted_at" field.
-func DeletedAtGT(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldGT(FieldDeletedAt, v))
-}
-
-// DeletedAtGTE applies the GTE predicate on the "deleted_at" field.
-func DeletedAtGTE(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldGTE(FieldDeletedAt, v))
-}
-
-// DeletedAtLT applies the LT predicate on the "deleted_at" field.
-func DeletedAtLT(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldLT(FieldDeletedAt, v))
-}
-
-// DeletedAtLTE applies the LTE predicate on the "deleted_at" field.
-func DeletedAtLTE(v time.Time) predicate.Role {
-	return predicate.Role(sql.FieldLTE(FieldDeletedAt, v))
-}
-
-// DeletedAtIsNil applies the IsNil predicate on the "deleted_at" field.
-func DeletedAtIsNil() predicate.Role {
-	return predicate.Role(sql.FieldIsNull(FieldDeletedAt))
-}
-
-// DeletedAtNotNil applies the NotNil predicate on the "deleted_at" field.
-func DeletedAtNotNil() predicate.Role {
-	return predicate.Role(sql.FieldNotNull(FieldDeletedAt))
-}
-
-// HasMenus applies the HasEdge predicate on the "menus" edge.
-func HasMenus() predicate.Role {
+// HasMenuGrants applies the HasEdge predicate on the "menu_grants" edge.
+func HasMenuGrants() predicate.Role {
 	return predicate.Role(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, MenusTable, MenusPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, MenuGrantsTable, MenuGrantsColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasMenusWith applies the HasEdge predicate on the "menus" edge with a given conditions (other predicates).
-func HasMenusWith(preds ...predicate.Menu) predicate.Role {
+// HasMenuGrantsWith applies the HasEdge predicate on the "menu_grants" edge with a given conditions (other predicates).
+func HasMenuGrantsWith(preds ...predicate.RoleMenu) predicate.Role {
 	return predicate.Role(func(s *sql.Selector) {
-		step := newMenusStep()
+		step := newMenuGrantsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -648,21 +648,21 @@ func HasMenusWith(preds ...predicate.Menu) predicate.Role {
 	})
 }
 
-// HasUsers applies the HasEdge predicate on the "users" edge.
-func HasUsers() predicate.Role {
+// HasUserLinks applies the HasEdge predicate on the "user_links" edge.
+func HasUserLinks() predicate.Role {
 	return predicate.Role(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, UsersTable, UsersPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, UserLinksTable, UserLinksColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasUsersWith applies the HasEdge predicate on the "users" edge with a given conditions (other predicates).
-func HasUsersWith(preds ...predicate.User) predicate.Role {
+// HasUserLinksWith applies the HasEdge predicate on the "user_links" edge with a given conditions (other predicates).
+func HasUserLinksWith(preds ...predicate.UserRole) predicate.Role {
 	return predicate.Role(func(s *sql.Selector) {
-		step := newUsersStep()
+		step := newUserLinksStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

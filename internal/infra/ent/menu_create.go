@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"glex/internal/infra/ent/menu"
-	"glex/internal/infra/ent/role"
+	"glex/internal/infra/ent/rolemenu"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -21,6 +21,76 @@ type MenuCreate struct {
 	mutation *MenuMutation
 	hooks    []Hook
 	conflict []sql.ConflictOption
+}
+
+// SetCreateBy sets the "create_by" field.
+func (_c *MenuCreate) SetCreateBy(v int64) *MenuCreate {
+	_c.mutation.SetCreateBy(v)
+	return _c
+}
+
+// SetNillableCreateBy sets the "create_by" field if the given value is not nil.
+func (_c *MenuCreate) SetNillableCreateBy(v *int64) *MenuCreate {
+	if v != nil {
+		_c.SetCreateBy(*v)
+	}
+	return _c
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (_c *MenuCreate) SetUpdateBy(v int64) *MenuCreate {
+	_c.mutation.SetUpdateBy(v)
+	return _c
+}
+
+// SetNillableUpdateBy sets the "update_by" field if the given value is not nil.
+func (_c *MenuCreate) SetNillableUpdateBy(v *int64) *MenuCreate {
+	if v != nil {
+		_c.SetUpdateBy(*v)
+	}
+	return _c
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (_c *MenuCreate) SetCreatedAt(v time.Time) *MenuCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (_c *MenuCreate) SetNillableCreatedAt(v *time.Time) *MenuCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
+	}
+	return _c
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_c *MenuCreate) SetUpdatedAt(v time.Time) *MenuCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_c *MenuCreate) SetNillableUpdatedAt(v *time.Time) *MenuCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
+	}
+	return _c
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (_c *MenuCreate) SetDeletedAt(v time.Time) *MenuCreate {
+	_c.mutation.SetDeletedAt(v)
+	return _c
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (_c *MenuCreate) SetNillableDeletedAt(v *time.Time) *MenuCreate {
+	if v != nil {
+		_c.SetDeletedAt(*v)
+	}
+	return _c
 }
 
 // SetMenuName sets the "menu_name" field.
@@ -217,95 +287,25 @@ func (_c *MenuCreate) SetNillableExt(v *string) *MenuCreate {
 	return _c
 }
 
-// SetCreateBy sets the "create_by" field.
-func (_c *MenuCreate) SetCreateBy(v int64) *MenuCreate {
-	_c.mutation.SetCreateBy(v)
-	return _c
-}
-
-// SetNillableCreateBy sets the "create_by" field if the given value is not nil.
-func (_c *MenuCreate) SetNillableCreateBy(v *int64) *MenuCreate {
-	if v != nil {
-		_c.SetCreateBy(*v)
-	}
-	return _c
-}
-
-// SetUpdateBy sets the "update_by" field.
-func (_c *MenuCreate) SetUpdateBy(v int64) *MenuCreate {
-	_c.mutation.SetUpdateBy(v)
-	return _c
-}
-
-// SetNillableUpdateBy sets the "update_by" field if the given value is not nil.
-func (_c *MenuCreate) SetNillableUpdateBy(v *int64) *MenuCreate {
-	if v != nil {
-		_c.SetUpdateBy(*v)
-	}
-	return _c
-}
-
-// SetCreatedAt sets the "created_at" field.
-func (_c *MenuCreate) SetCreatedAt(v time.Time) *MenuCreate {
-	_c.mutation.SetCreatedAt(v)
-	return _c
-}
-
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (_c *MenuCreate) SetNillableCreatedAt(v *time.Time) *MenuCreate {
-	if v != nil {
-		_c.SetCreatedAt(*v)
-	}
-	return _c
-}
-
-// SetUpdatedAt sets the "updated_at" field.
-func (_c *MenuCreate) SetUpdatedAt(v time.Time) *MenuCreate {
-	_c.mutation.SetUpdatedAt(v)
-	return _c
-}
-
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (_c *MenuCreate) SetNillableUpdatedAt(v *time.Time) *MenuCreate {
-	if v != nil {
-		_c.SetUpdatedAt(*v)
-	}
-	return _c
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (_c *MenuCreate) SetDeletedAt(v time.Time) *MenuCreate {
-	_c.mutation.SetDeletedAt(v)
-	return _c
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_c *MenuCreate) SetNillableDeletedAt(v *time.Time) *MenuCreate {
-	if v != nil {
-		_c.SetDeletedAt(*v)
-	}
-	return _c
-}
-
 // SetID sets the "id" field.
 func (_c *MenuCreate) SetID(v int64) *MenuCreate {
 	_c.mutation.SetID(v)
 	return _c
 }
 
-// AddRoleIDs adds the "roles" edge to the Role entity by IDs.
-func (_c *MenuCreate) AddRoleIDs(ids ...int64) *MenuCreate {
-	_c.mutation.AddRoleIDs(ids...)
+// AddRoleLinkIDs adds the "role_links" edge to the RoleMenu entity by IDs.
+func (_c *MenuCreate) AddRoleLinkIDs(ids ...int64) *MenuCreate {
+	_c.mutation.AddRoleLinkIDs(ids...)
 	return _c
 }
 
-// AddRoles adds the "roles" edges to the Role entity.
-func (_c *MenuCreate) AddRoles(v ...*Role) *MenuCreate {
+// AddRoleLinks adds the "role_links" edges to the RoleMenu entity.
+func (_c *MenuCreate) AddRoleLinks(v ...*RoleMenu) *MenuCreate {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _c.AddRoleIDs(ids...)
+	return _c.AddRoleLinkIDs(ids...)
 }
 
 // Mutation returns the MenuMutation object of the builder.
@@ -343,6 +343,22 @@ func (_c *MenuCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *MenuCreate) defaults() {
+	if _, ok := _c.mutation.CreateBy(); !ok {
+		v := menu.DefaultCreateBy
+		_c.mutation.SetCreateBy(v)
+	}
+	if _, ok := _c.mutation.UpdateBy(); !ok {
+		v := menu.DefaultUpdateBy
+		_c.mutation.SetUpdateBy(v)
+	}
+	if _, ok := _c.mutation.CreatedAt(); !ok {
+		v := menu.DefaultCreatedAt()
+		_c.mutation.SetCreatedAt(v)
+	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		v := menu.DefaultUpdatedAt()
+		_c.mutation.SetUpdatedAt(v)
+	}
 	if _, ok := _c.mutation.ParentID(); !ok {
 		v := menu.DefaultParentID
 		_c.mutation.SetParentID(v)
@@ -395,26 +411,16 @@ func (_c *MenuCreate) defaults() {
 		v := menu.DefaultExt
 		_c.mutation.SetExt(v)
 	}
-	if _, ok := _c.mutation.CreateBy(); !ok {
-		v := menu.DefaultCreateBy
-		_c.mutation.SetCreateBy(v)
-	}
-	if _, ok := _c.mutation.UpdateBy(); !ok {
-		v := menu.DefaultUpdateBy
-		_c.mutation.SetUpdateBy(v)
-	}
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		v := menu.DefaultCreatedAt()
-		_c.mutation.SetCreatedAt(v)
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		v := menu.DefaultUpdatedAt()
-		_c.mutation.SetUpdatedAt(v)
-	}
 }
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *MenuCreate) check() error {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Menu.created_at"`)}
+	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Menu.updated_at"`)}
+	}
 	if _, ok := _c.mutation.MenuName(); !ok {
 		return &ValidationError{Name: "menu_name", err: errors.New(`ent: missing required field "Menu.menu_name"`)}
 	}
@@ -460,12 +466,6 @@ func (_c *MenuCreate) check() error {
 	if _, ok := _c.mutation.Ext(); !ok {
 		return &ValidationError{Name: "ext", err: errors.New(`ent: missing required field "Menu.ext"`)}
 	}
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Menu.created_at"`)}
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Menu.updated_at"`)}
-	}
 	return nil
 }
 
@@ -498,6 +498,26 @@ func (_c *MenuCreate) createSpec() (*Menu, *sqlgraph.CreateSpec) {
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
+	}
+	if value, ok := _c.mutation.CreateBy(); ok {
+		_spec.SetField(menu.FieldCreateBy, field.TypeInt64, value)
+		_node.CreateBy = value
+	}
+	if value, ok := _c.mutation.UpdateBy(); ok {
+		_spec.SetField(menu.FieldUpdateBy, field.TypeInt64, value)
+		_node.UpdateBy = value
+	}
+	if value, ok := _c.mutation.CreatedAt(); ok {
+		_spec.SetField(menu.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if value, ok := _c.mutation.UpdatedAt(); ok {
+		_spec.SetField(menu.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
+	}
+	if value, ok := _c.mutation.DeletedAt(); ok {
+		_spec.SetField(menu.FieldDeletedAt, field.TypeTime, value)
+		_node.DeletedAt = &value
 	}
 	if value, ok := _c.mutation.MenuName(); ok {
 		_spec.SetField(menu.FieldMenuName, field.TypeString, value)
@@ -559,35 +579,15 @@ func (_c *MenuCreate) createSpec() (*Menu, *sqlgraph.CreateSpec) {
 		_spec.SetField(menu.FieldExt, field.TypeString, value)
 		_node.Ext = value
 	}
-	if value, ok := _c.mutation.CreateBy(); ok {
-		_spec.SetField(menu.FieldCreateBy, field.TypeInt64, value)
-		_node.CreateBy = value
-	}
-	if value, ok := _c.mutation.UpdateBy(); ok {
-		_spec.SetField(menu.FieldUpdateBy, field.TypeInt64, value)
-		_node.UpdateBy = value
-	}
-	if value, ok := _c.mutation.CreatedAt(); ok {
-		_spec.SetField(menu.FieldCreatedAt, field.TypeTime, value)
-		_node.CreatedAt = value
-	}
-	if value, ok := _c.mutation.UpdatedAt(); ok {
-		_spec.SetField(menu.FieldUpdatedAt, field.TypeTime, value)
-		_node.UpdatedAt = value
-	}
-	if value, ok := _c.mutation.DeletedAt(); ok {
-		_spec.SetField(menu.FieldDeletedAt, field.TypeTime, value)
-		_node.DeletedAt = &value
-	}
-	if nodes := _c.mutation.RolesIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.RoleLinksIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   menu.RolesTable,
-			Columns: menu.RolesPrimaryKey,
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   menu.RoleLinksTable,
+			Columns: []string{menu.RoleLinksColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(rolemenu.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -602,7 +602,7 @@ func (_c *MenuCreate) createSpec() (*Menu, *sqlgraph.CreateSpec) {
 // of the `INSERT` statement. For example:
 //
 //	client.Menu.Create().
-//		SetMenuName(v).
+//		SetCreateBy(v).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -611,7 +611,7 @@ func (_c *MenuCreate) createSpec() (*Menu, *sqlgraph.CreateSpec) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.MenuUpsert) {
-//			SetMenuName(v+v).
+//			SetCreateBy(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *MenuCreate) OnConflict(opts ...sql.ConflictOption) *MenuUpsertOne {
@@ -646,6 +646,84 @@ type (
 		*sql.UpdateSet
 	}
 )
+
+// SetCreateBy sets the "create_by" field.
+func (u *MenuUpsert) SetCreateBy(v int64) *MenuUpsert {
+	u.Set(menu.FieldCreateBy, v)
+	return u
+}
+
+// UpdateCreateBy sets the "create_by" field to the value that was provided on create.
+func (u *MenuUpsert) UpdateCreateBy() *MenuUpsert {
+	u.SetExcluded(menu.FieldCreateBy)
+	return u
+}
+
+// AddCreateBy adds v to the "create_by" field.
+func (u *MenuUpsert) AddCreateBy(v int64) *MenuUpsert {
+	u.Add(menu.FieldCreateBy, v)
+	return u
+}
+
+// ClearCreateBy clears the value of the "create_by" field.
+func (u *MenuUpsert) ClearCreateBy() *MenuUpsert {
+	u.SetNull(menu.FieldCreateBy)
+	return u
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (u *MenuUpsert) SetUpdateBy(v int64) *MenuUpsert {
+	u.Set(menu.FieldUpdateBy, v)
+	return u
+}
+
+// UpdateUpdateBy sets the "update_by" field to the value that was provided on create.
+func (u *MenuUpsert) UpdateUpdateBy() *MenuUpsert {
+	u.SetExcluded(menu.FieldUpdateBy)
+	return u
+}
+
+// AddUpdateBy adds v to the "update_by" field.
+func (u *MenuUpsert) AddUpdateBy(v int64) *MenuUpsert {
+	u.Add(menu.FieldUpdateBy, v)
+	return u
+}
+
+// ClearUpdateBy clears the value of the "update_by" field.
+func (u *MenuUpsert) ClearUpdateBy() *MenuUpsert {
+	u.SetNull(menu.FieldUpdateBy)
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *MenuUpsert) SetUpdatedAt(v time.Time) *MenuUpsert {
+	u.Set(menu.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *MenuUpsert) UpdateUpdatedAt() *MenuUpsert {
+	u.SetExcluded(menu.FieldUpdatedAt)
+	return u
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *MenuUpsert) SetDeletedAt(v time.Time) *MenuUpsert {
+	u.Set(menu.FieldDeletedAt, v)
+	return u
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *MenuUpsert) UpdateDeletedAt() *MenuUpsert {
+	u.SetExcluded(menu.FieldDeletedAt)
+	return u
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (u *MenuUpsert) ClearDeletedAt() *MenuUpsert {
+	u.SetNull(menu.FieldDeletedAt)
+	return u
+}
 
 // SetMenuName sets the "menu_name" field.
 func (u *MenuUpsert) SetMenuName(v string) *MenuUpsert {
@@ -869,84 +947,6 @@ func (u *MenuUpsert) UpdateExt() *MenuUpsert {
 	return u
 }
 
-// SetCreateBy sets the "create_by" field.
-func (u *MenuUpsert) SetCreateBy(v int64) *MenuUpsert {
-	u.Set(menu.FieldCreateBy, v)
-	return u
-}
-
-// UpdateCreateBy sets the "create_by" field to the value that was provided on create.
-func (u *MenuUpsert) UpdateCreateBy() *MenuUpsert {
-	u.SetExcluded(menu.FieldCreateBy)
-	return u
-}
-
-// AddCreateBy adds v to the "create_by" field.
-func (u *MenuUpsert) AddCreateBy(v int64) *MenuUpsert {
-	u.Add(menu.FieldCreateBy, v)
-	return u
-}
-
-// ClearCreateBy clears the value of the "create_by" field.
-func (u *MenuUpsert) ClearCreateBy() *MenuUpsert {
-	u.SetNull(menu.FieldCreateBy)
-	return u
-}
-
-// SetUpdateBy sets the "update_by" field.
-func (u *MenuUpsert) SetUpdateBy(v int64) *MenuUpsert {
-	u.Set(menu.FieldUpdateBy, v)
-	return u
-}
-
-// UpdateUpdateBy sets the "update_by" field to the value that was provided on create.
-func (u *MenuUpsert) UpdateUpdateBy() *MenuUpsert {
-	u.SetExcluded(menu.FieldUpdateBy)
-	return u
-}
-
-// AddUpdateBy adds v to the "update_by" field.
-func (u *MenuUpsert) AddUpdateBy(v int64) *MenuUpsert {
-	u.Add(menu.FieldUpdateBy, v)
-	return u
-}
-
-// ClearUpdateBy clears the value of the "update_by" field.
-func (u *MenuUpsert) ClearUpdateBy() *MenuUpsert {
-	u.SetNull(menu.FieldUpdateBy)
-	return u
-}
-
-// SetUpdatedAt sets the "updated_at" field.
-func (u *MenuUpsert) SetUpdatedAt(v time.Time) *MenuUpsert {
-	u.Set(menu.FieldUpdatedAt, v)
-	return u
-}
-
-// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
-func (u *MenuUpsert) UpdateUpdatedAt() *MenuUpsert {
-	u.SetExcluded(menu.FieldUpdatedAt)
-	return u
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *MenuUpsert) SetDeletedAt(v time.Time) *MenuUpsert {
-	u.Set(menu.FieldDeletedAt, v)
-	return u
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *MenuUpsert) UpdateDeletedAt() *MenuUpsert {
-	u.SetExcluded(menu.FieldDeletedAt)
-	return u
-}
-
-// ClearDeletedAt clears the value of the "deleted_at" field.
-func (u *MenuUpsert) ClearDeletedAt() *MenuUpsert {
-	u.SetNull(menu.FieldDeletedAt)
-	return u
-}
-
 // UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
 // Using this option is equivalent to using:
 //
@@ -996,6 +996,97 @@ func (u *MenuUpsertOne) Update(set func(*MenuUpsert)) *MenuUpsertOne {
 		set(&MenuUpsert{UpdateSet: update})
 	}))
 	return u
+}
+
+// SetCreateBy sets the "create_by" field.
+func (u *MenuUpsertOne) SetCreateBy(v int64) *MenuUpsertOne {
+	return u.Update(func(s *MenuUpsert) {
+		s.SetCreateBy(v)
+	})
+}
+
+// AddCreateBy adds v to the "create_by" field.
+func (u *MenuUpsertOne) AddCreateBy(v int64) *MenuUpsertOne {
+	return u.Update(func(s *MenuUpsert) {
+		s.AddCreateBy(v)
+	})
+}
+
+// UpdateCreateBy sets the "create_by" field to the value that was provided on create.
+func (u *MenuUpsertOne) UpdateCreateBy() *MenuUpsertOne {
+	return u.Update(func(s *MenuUpsert) {
+		s.UpdateCreateBy()
+	})
+}
+
+// ClearCreateBy clears the value of the "create_by" field.
+func (u *MenuUpsertOne) ClearCreateBy() *MenuUpsertOne {
+	return u.Update(func(s *MenuUpsert) {
+		s.ClearCreateBy()
+	})
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (u *MenuUpsertOne) SetUpdateBy(v int64) *MenuUpsertOne {
+	return u.Update(func(s *MenuUpsert) {
+		s.SetUpdateBy(v)
+	})
+}
+
+// AddUpdateBy adds v to the "update_by" field.
+func (u *MenuUpsertOne) AddUpdateBy(v int64) *MenuUpsertOne {
+	return u.Update(func(s *MenuUpsert) {
+		s.AddUpdateBy(v)
+	})
+}
+
+// UpdateUpdateBy sets the "update_by" field to the value that was provided on create.
+func (u *MenuUpsertOne) UpdateUpdateBy() *MenuUpsertOne {
+	return u.Update(func(s *MenuUpsert) {
+		s.UpdateUpdateBy()
+	})
+}
+
+// ClearUpdateBy clears the value of the "update_by" field.
+func (u *MenuUpsertOne) ClearUpdateBy() *MenuUpsertOne {
+	return u.Update(func(s *MenuUpsert) {
+		s.ClearUpdateBy()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *MenuUpsertOne) SetUpdatedAt(v time.Time) *MenuUpsertOne {
+	return u.Update(func(s *MenuUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *MenuUpsertOne) UpdateUpdatedAt() *MenuUpsertOne {
+	return u.Update(func(s *MenuUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *MenuUpsertOne) SetDeletedAt(v time.Time) *MenuUpsertOne {
+	return u.Update(func(s *MenuUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *MenuUpsertOne) UpdateDeletedAt() *MenuUpsertOne {
+	return u.Update(func(s *MenuUpsert) {
+		s.UpdateDeletedAt()
+	})
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (u *MenuUpsertOne) ClearDeletedAt() *MenuUpsertOne {
+	return u.Update(func(s *MenuUpsert) {
+		s.ClearDeletedAt()
+	})
 }
 
 // SetMenuName sets the "menu_name" field.
@@ -1257,97 +1348,6 @@ func (u *MenuUpsertOne) UpdateExt() *MenuUpsertOne {
 	})
 }
 
-// SetCreateBy sets the "create_by" field.
-func (u *MenuUpsertOne) SetCreateBy(v int64) *MenuUpsertOne {
-	return u.Update(func(s *MenuUpsert) {
-		s.SetCreateBy(v)
-	})
-}
-
-// AddCreateBy adds v to the "create_by" field.
-func (u *MenuUpsertOne) AddCreateBy(v int64) *MenuUpsertOne {
-	return u.Update(func(s *MenuUpsert) {
-		s.AddCreateBy(v)
-	})
-}
-
-// UpdateCreateBy sets the "create_by" field to the value that was provided on create.
-func (u *MenuUpsertOne) UpdateCreateBy() *MenuUpsertOne {
-	return u.Update(func(s *MenuUpsert) {
-		s.UpdateCreateBy()
-	})
-}
-
-// ClearCreateBy clears the value of the "create_by" field.
-func (u *MenuUpsertOne) ClearCreateBy() *MenuUpsertOne {
-	return u.Update(func(s *MenuUpsert) {
-		s.ClearCreateBy()
-	})
-}
-
-// SetUpdateBy sets the "update_by" field.
-func (u *MenuUpsertOne) SetUpdateBy(v int64) *MenuUpsertOne {
-	return u.Update(func(s *MenuUpsert) {
-		s.SetUpdateBy(v)
-	})
-}
-
-// AddUpdateBy adds v to the "update_by" field.
-func (u *MenuUpsertOne) AddUpdateBy(v int64) *MenuUpsertOne {
-	return u.Update(func(s *MenuUpsert) {
-		s.AddUpdateBy(v)
-	})
-}
-
-// UpdateUpdateBy sets the "update_by" field to the value that was provided on create.
-func (u *MenuUpsertOne) UpdateUpdateBy() *MenuUpsertOne {
-	return u.Update(func(s *MenuUpsert) {
-		s.UpdateUpdateBy()
-	})
-}
-
-// ClearUpdateBy clears the value of the "update_by" field.
-func (u *MenuUpsertOne) ClearUpdateBy() *MenuUpsertOne {
-	return u.Update(func(s *MenuUpsert) {
-		s.ClearUpdateBy()
-	})
-}
-
-// SetUpdatedAt sets the "updated_at" field.
-func (u *MenuUpsertOne) SetUpdatedAt(v time.Time) *MenuUpsertOne {
-	return u.Update(func(s *MenuUpsert) {
-		s.SetUpdatedAt(v)
-	})
-}
-
-// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
-func (u *MenuUpsertOne) UpdateUpdatedAt() *MenuUpsertOne {
-	return u.Update(func(s *MenuUpsert) {
-		s.UpdateUpdatedAt()
-	})
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *MenuUpsertOne) SetDeletedAt(v time.Time) *MenuUpsertOne {
-	return u.Update(func(s *MenuUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *MenuUpsertOne) UpdateDeletedAt() *MenuUpsertOne {
-	return u.Update(func(s *MenuUpsert) {
-		s.UpdateDeletedAt()
-	})
-}
-
-// ClearDeletedAt clears the value of the "deleted_at" field.
-func (u *MenuUpsertOne) ClearDeletedAt() *MenuUpsertOne {
-	return u.Update(func(s *MenuUpsert) {
-		s.ClearDeletedAt()
-	})
-}
-
 // Exec executes the query.
 func (u *MenuUpsertOne) Exec(ctx context.Context) error {
 	if len(u.create.conflict) == 0 {
@@ -1483,7 +1483,7 @@ func (_c *MenuCreateBulk) ExecX(ctx context.Context) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.MenuUpsert) {
-//			SetMenuName(v+v).
+//			SetCreateBy(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *MenuCreateBulk) OnConflict(opts ...sql.ConflictOption) *MenuUpsertBulk {
@@ -1563,6 +1563,97 @@ func (u *MenuUpsertBulk) Update(set func(*MenuUpsert)) *MenuUpsertBulk {
 		set(&MenuUpsert{UpdateSet: update})
 	}))
 	return u
+}
+
+// SetCreateBy sets the "create_by" field.
+func (u *MenuUpsertBulk) SetCreateBy(v int64) *MenuUpsertBulk {
+	return u.Update(func(s *MenuUpsert) {
+		s.SetCreateBy(v)
+	})
+}
+
+// AddCreateBy adds v to the "create_by" field.
+func (u *MenuUpsertBulk) AddCreateBy(v int64) *MenuUpsertBulk {
+	return u.Update(func(s *MenuUpsert) {
+		s.AddCreateBy(v)
+	})
+}
+
+// UpdateCreateBy sets the "create_by" field to the value that was provided on create.
+func (u *MenuUpsertBulk) UpdateCreateBy() *MenuUpsertBulk {
+	return u.Update(func(s *MenuUpsert) {
+		s.UpdateCreateBy()
+	})
+}
+
+// ClearCreateBy clears the value of the "create_by" field.
+func (u *MenuUpsertBulk) ClearCreateBy() *MenuUpsertBulk {
+	return u.Update(func(s *MenuUpsert) {
+		s.ClearCreateBy()
+	})
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (u *MenuUpsertBulk) SetUpdateBy(v int64) *MenuUpsertBulk {
+	return u.Update(func(s *MenuUpsert) {
+		s.SetUpdateBy(v)
+	})
+}
+
+// AddUpdateBy adds v to the "update_by" field.
+func (u *MenuUpsertBulk) AddUpdateBy(v int64) *MenuUpsertBulk {
+	return u.Update(func(s *MenuUpsert) {
+		s.AddUpdateBy(v)
+	})
+}
+
+// UpdateUpdateBy sets the "update_by" field to the value that was provided on create.
+func (u *MenuUpsertBulk) UpdateUpdateBy() *MenuUpsertBulk {
+	return u.Update(func(s *MenuUpsert) {
+		s.UpdateUpdateBy()
+	})
+}
+
+// ClearUpdateBy clears the value of the "update_by" field.
+func (u *MenuUpsertBulk) ClearUpdateBy() *MenuUpsertBulk {
+	return u.Update(func(s *MenuUpsert) {
+		s.ClearUpdateBy()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *MenuUpsertBulk) SetUpdatedAt(v time.Time) *MenuUpsertBulk {
+	return u.Update(func(s *MenuUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *MenuUpsertBulk) UpdateUpdatedAt() *MenuUpsertBulk {
+	return u.Update(func(s *MenuUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *MenuUpsertBulk) SetDeletedAt(v time.Time) *MenuUpsertBulk {
+	return u.Update(func(s *MenuUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *MenuUpsertBulk) UpdateDeletedAt() *MenuUpsertBulk {
+	return u.Update(func(s *MenuUpsert) {
+		s.UpdateDeletedAt()
+	})
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (u *MenuUpsertBulk) ClearDeletedAt() *MenuUpsertBulk {
+	return u.Update(func(s *MenuUpsert) {
+		s.ClearDeletedAt()
+	})
 }
 
 // SetMenuName sets the "menu_name" field.
@@ -1821,97 +1912,6 @@ func (u *MenuUpsertBulk) SetExt(v string) *MenuUpsertBulk {
 func (u *MenuUpsertBulk) UpdateExt() *MenuUpsertBulk {
 	return u.Update(func(s *MenuUpsert) {
 		s.UpdateExt()
-	})
-}
-
-// SetCreateBy sets the "create_by" field.
-func (u *MenuUpsertBulk) SetCreateBy(v int64) *MenuUpsertBulk {
-	return u.Update(func(s *MenuUpsert) {
-		s.SetCreateBy(v)
-	})
-}
-
-// AddCreateBy adds v to the "create_by" field.
-func (u *MenuUpsertBulk) AddCreateBy(v int64) *MenuUpsertBulk {
-	return u.Update(func(s *MenuUpsert) {
-		s.AddCreateBy(v)
-	})
-}
-
-// UpdateCreateBy sets the "create_by" field to the value that was provided on create.
-func (u *MenuUpsertBulk) UpdateCreateBy() *MenuUpsertBulk {
-	return u.Update(func(s *MenuUpsert) {
-		s.UpdateCreateBy()
-	})
-}
-
-// ClearCreateBy clears the value of the "create_by" field.
-func (u *MenuUpsertBulk) ClearCreateBy() *MenuUpsertBulk {
-	return u.Update(func(s *MenuUpsert) {
-		s.ClearCreateBy()
-	})
-}
-
-// SetUpdateBy sets the "update_by" field.
-func (u *MenuUpsertBulk) SetUpdateBy(v int64) *MenuUpsertBulk {
-	return u.Update(func(s *MenuUpsert) {
-		s.SetUpdateBy(v)
-	})
-}
-
-// AddUpdateBy adds v to the "update_by" field.
-func (u *MenuUpsertBulk) AddUpdateBy(v int64) *MenuUpsertBulk {
-	return u.Update(func(s *MenuUpsert) {
-		s.AddUpdateBy(v)
-	})
-}
-
-// UpdateUpdateBy sets the "update_by" field to the value that was provided on create.
-func (u *MenuUpsertBulk) UpdateUpdateBy() *MenuUpsertBulk {
-	return u.Update(func(s *MenuUpsert) {
-		s.UpdateUpdateBy()
-	})
-}
-
-// ClearUpdateBy clears the value of the "update_by" field.
-func (u *MenuUpsertBulk) ClearUpdateBy() *MenuUpsertBulk {
-	return u.Update(func(s *MenuUpsert) {
-		s.ClearUpdateBy()
-	})
-}
-
-// SetUpdatedAt sets the "updated_at" field.
-func (u *MenuUpsertBulk) SetUpdatedAt(v time.Time) *MenuUpsertBulk {
-	return u.Update(func(s *MenuUpsert) {
-		s.SetUpdatedAt(v)
-	})
-}
-
-// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
-func (u *MenuUpsertBulk) UpdateUpdatedAt() *MenuUpsertBulk {
-	return u.Update(func(s *MenuUpsert) {
-		s.UpdateUpdatedAt()
-	})
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *MenuUpsertBulk) SetDeletedAt(v time.Time) *MenuUpsertBulk {
-	return u.Update(func(s *MenuUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *MenuUpsertBulk) UpdateDeletedAt() *MenuUpsertBulk {
-	return u.Update(func(s *MenuUpsert) {
-		s.UpdateDeletedAt()
-	})
-}
-
-// ClearDeletedAt clears the value of the "deleted_at" field.
-func (u *MenuUpsertBulk) ClearDeletedAt() *MenuUpsertBulk {
-	return u.Update(func(s *MenuUpsert) {
-		s.ClearDeletedAt()
 	})
 }
 

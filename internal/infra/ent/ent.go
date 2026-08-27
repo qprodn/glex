@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
+	"glex/internal/infra/ent/rolemenu"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userrole"
 	"reflect"
 	"sync"
 
@@ -75,9 +77,11 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			menu.Table: menu.ValidColumn,
-			role.Table: role.ValidColumn,
-			user.Table: user.ValidColumn,
+			menu.Table:     menu.ValidColumn,
+			role.Table:     role.ValidColumn,
+			rolemenu.Table: rolemenu.ValidColumn,
+			user.Table:     user.ValidColumn,
+			userrole.Table: userrole.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

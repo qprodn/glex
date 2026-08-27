@@ -13,7 +13,9 @@ import (
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
+	"glex/internal/infra/ent/rolemenu"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userrole"
 )
 
 // toBizRole maps an ent Role PO to a accessentity.Role DO.
@@ -105,8 +107,9 @@ func (r *roleRepo) ListRoles(ctx context.Context, opts ...accessrepo.ListOption)
 	return roles, nil
 }
 
-// CreateRole inserts the role row and its initial Menu Grant. The caller owns
-// the transaction.
+// CreateRole inserts the role row and its initial Menu Grant (link rows
+// stamped with the actor from the DO's audit fields). The caller owns the
+// transaction.
 func (r *roleRepo) CreateRole(ctx context.Context, ro *accessentity.Role, menuIDs []int64) (*accessentity.Role, error) {
 	po, err := r.data.DB.Role(ctx).Create().
 		SetID(newSnowflakeID()).
@@ -116,9 +119,13 @@ func (r *roleRepo) CreateRole(ctx context.Context, ro *accessentity.Role, menuID
 		SetStatus(int8(ro.Status)).
 		SetMenuCheckStrictly(ro.MenuCheckStrictly).
 		SetRemark(ro.Remark).
-		AddMenuIDs(menuIDs...).
+		SetCreateBy(ro.CreateBy).
+		SetUpdateBy(ro.UpdateBy).
 		Save(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if err := insertMenuGrants(ctx, r.data, ro.ID, menuIDs, ro.CreateBy); err != nil {
 		return nil, err
 	}
 	return toBizRole(po), nil
@@ -136,8 +143,9 @@ func (r *roleRepo) UpdateRole(ctx context.Context, ro *accessentity.Role) (*acce
 		}
 		return nil, err
 	}
-	userIDs, err := r.data.DB.Role(ctx).Query().Where(role.IDEQ(ro.ID)).QueryUsers().
-		Where(user.DeletedAtIsNil()).IDs(ctx)
+	userIDs, err := r.data.DB.Role(ctx).Query().Where(role.IDEQ(ro.ID)).
+		QueryUserLinks().Where(userrole.DeletedAtIsNil()).
+		QueryUser().Where(user.DeletedAtIsNil()).IDs(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +155,7 @@ func (r *roleRepo) UpdateRole(ctx context.Context, ro *accessentity.Role) (*acce
 		SetRoleSort(ro.RoleSort).
 		SetStatus(int8(ro.Status)).
 		SetRemark(ro.Remark).
+		SetUpdateBy(ro.UpdateBy).
 		Save(ctx)
 	if err != nil {
 		return nil, err
@@ -157,18 +166,27 @@ func (r *roleRepo) UpdateRole(ctx context.Context, ro *accessentity.Role) (*acce
 	return result, nil
 }
 
-// DeleteRole soft-deletes the role and hard-deletes its Menu Grant, returning
-// the System User identities observed before deletion. The caller owns the
-// transaction and revocation ordering.
-func (r *roleRepo) DeleteRole(ctx context.Context, id int64) ([]int64, error) {
-	userIDs, err := r.data.DB.Role(ctx).Query().Where(role.IDEQ(id), role.DeletedAtIsNil()).QueryUsers().
-		Where(user.DeletedAtIsNil()).IDs(ctx)
+// DeleteRole soft-deletes the role and its Menu Grant (link rows stamped with
+// actorID — ADR 0002, nothing is hard-deleted), returning the System User
+// identities observed before deletion. The caller owns the transaction and
+// revocation ordering.
+func (r *roleRepo) DeleteRole(ctx context.Context, id int64, actorID int64) ([]int64, error) {
+	userIDs, err := r.data.DB.Role(ctx).Query().Where(role.IDEQ(id), role.DeletedAtIsNil()).
+		QueryUserLinks().Where(userrole.DeletedAtIsNil()).
+		QueryUser().Where(user.DeletedAtIsNil()).IDs(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if _, err := r.data.DB.RoleMenu(ctx).Update().
+		Where(rolemenu.RoleIDEQ(id), rolemenu.DeletedAtIsNil()).
+		SetDeletedAt(time.Now()).
+		SetUpdateBy(actorID).
+		Save(ctx); err != nil {
 		return nil, err
 	}
 	err = r.data.DB.Role(ctx).UpdateOneID(id).
 		SetDeletedAt(time.Now()).
-		ClearMenus().
+		SetUpdateBy(actorID).
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -179,14 +197,14 @@ func (r *roleRepo) DeleteRole(ctx context.Context, id int64) ([]int64, error) {
 	return userIDs, nil
 }
 
-// ListRoleMenuLinks reads the role's granted menus (soft-deleted excluded)
-// with their parent ids, ordered by (parent_id, order_num) — the ordering the
-// role editor's tree expects.
+// ListRoleMenuLinks reads the role's granted menus (soft-deleted links and
+// menus excluded) with their parent ids, ordered by (parent_id, order_num) —
+// the ordering the role editor's tree expects.
 func (r *roleRepo) ListRoleMenuLinks(ctx context.Context, roleID int64) ([]*accessrepo.RoleMenuLink, error) {
 	pos, err := r.data.DB.Role(ctx).Query().
 		Where(role.IDEQ(roleID), role.DeletedAtIsNil()).
-		QueryMenus().
-		Where(menu.DeletedAtIsNil()).
+		QueryMenuGrants().Where(rolemenu.DeletedAtIsNil()).
+		QueryMenu().Where(menu.DeletedAtIsNil()).
 		Order(menu.ByParentID(), menu.ByOrderNum()).
 		All(ctx)
 	if err != nil {
@@ -199,11 +217,13 @@ func (r *roleRepo) ListRoleMenuLinks(ctx context.Context, roleID int64) ([]*acce
 	return links, nil
 }
 
-// ReplaceRoleMenus replaces the role's Menu Grant and writes
+// ReplaceRoleMenus replaces the role's active Menu Grant and writes
 // menu_check_strictly, returning the currently assigned System User
 // identities. RoleUsecase validates and dedupes menuIDs; the caller owns the
-// transaction and Redis rollback contract.
-func (r *roleRepo) ReplaceRoleMenus(ctx context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool) ([]int64, error) {
+// transaction and Redis rollback contract. Full replacement works on the
+// active set only (ADR 0002): the current link rows are soft-deleted
+// (stamping actorID), then the new generation is inserted.
+func (r *roleRepo) ReplaceRoleMenus(ctx context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool, actorID int64) ([]int64, error) {
 	if len(menuIDs) > 0 {
 		count, err := r.data.DB.Menu(ctx).Query().Where(menu.IDIn(menuIDs...), menu.DeletedAtIsNil()).Count(ctx)
 		if err != nil {
@@ -213,21 +233,48 @@ func (r *roleRepo) ReplaceRoleMenus(ctx context.Context, roleID int64, menuIDs [
 			return nil, access.ErrRoleMenuNotFound
 		}
 	}
-	userIDs, err := r.data.DB.Role(ctx).Query().Where(role.IDEQ(roleID), role.DeletedAtIsNil()).QueryUsers().
-		Where(user.DeletedAtIsNil()).IDs(ctx)
+	userIDs, err := r.data.DB.Role(ctx).Query().Where(role.IDEQ(roleID), role.DeletedAtIsNil()).
+		QueryUserLinks().Where(userrole.DeletedAtIsNil()).
+		QueryUser().Where(user.DeletedAtIsNil()).IDs(ctx)
 	if err != nil {
 		return nil, err
 	}
-	_, err = r.data.DB.Role(ctx).UpdateOneID(roleID).
+	if _, err := r.data.DB.RoleMenu(ctx).Update().
+		Where(rolemenu.RoleIDEQ(roleID), rolemenu.DeletedAtIsNil()).
+		SetDeletedAt(time.Now()).
+		SetUpdateBy(actorID).
+		Save(ctx); err != nil {
+		return nil, err
+	}
+	if _, err := r.data.DB.Role(ctx).UpdateOneID(roleID).
 		SetMenuCheckStrictly(menuCheckStrictly).
-		ClearMenus().
-		AddMenuIDs(menuIDs...).
-		Save(ctx)
-	if err != nil {
+		SetUpdateBy(actorID).
+		Save(ctx); err != nil {
 		if ent.IsNotFound(err) {
 			return nil, access.ErrRoleNotFound
 		}
 		return nil, err
 	}
+	if err := insertMenuGrants(ctx, r.data, roleID, menuIDs, actorID); err != nil {
+		return nil, err
+	}
 	return userIDs, nil
+}
+
+// insertMenuGrants bulk-inserts one active sys_role_menu row per menu id,
+// stamped with the actor (ADR 0002). No-op for an empty set.
+func insertMenuGrants(ctx context.Context, data *store.Data, roleID int64, menuIDs []int64, actorID int64) error {
+	if len(menuIDs) == 0 {
+		return nil
+	}
+	builders := make([]*ent.RoleMenuCreate, 0, len(menuIDs))
+	for _, menuID := range menuIDs {
+		builders = append(builders, data.DB.RoleMenu(ctx).Create().
+			SetID(newSnowflakeID()).
+			SetRoleID(roleID).
+			SetMenuID(menuID).
+			SetCreateBy(actorID).
+			SetUpdateBy(actorID))
+	}
+	return data.DB.RoleMenu(ctx).CreateBulk(builders...).Exec(ctx)
 }

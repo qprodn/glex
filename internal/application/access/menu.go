@@ -150,6 +150,7 @@ func NewMenuApplication(repo accessrepo.MenuRepo, tx Transaction, revoker authn.
 // layer; there is no DB unique constraint on (parent_id, menu_name).
 func (s *MenuApplication) CreateMenu(ctx context.Context, req *accessv1.CreateMenuRequest) (*accessv1.Menu, error) {
 	in := req.GetMenu()
+	actor := auditActor(ctx)
 	m := &accessentity.Menu{
 		MenuName:   in.GetMenuName(),
 		ParentID:   in.GetParentId(),
@@ -166,6 +167,8 @@ func (s *MenuApplication) CreateMenu(ctx context.Context, req *accessv1.CreateMe
 		Icon:       in.GetIcon(),
 		ActiveMenu: in.GetActiveMenu(),
 		Ext:        in.GetExt(),
+		CreateBy:   actor,
+		UpdateBy:   actor,
 	}
 	if err := accessservice.ValidateMenuType(m.MenuType); err != nil {
 		return nil, err
@@ -332,6 +335,7 @@ func (s *MenuApplication) UpdateMenu(ctx context.Context, req *accessv1.UpdateMe
 		Icon:       current.GetIcon(),
 		ActiveMenu: current.GetActiveMenu(),
 		Ext:        current.GetExt(),
+		UpdateBy:   auditActor(ctx),
 	}
 	if m.ParentID == m.ID {
 		return nil, accessdomain.ErrMenuParentInvalid
@@ -371,7 +375,7 @@ func (s *MenuApplication) DeleteMenu(ctx context.Context, req *accessv1.DeleteMe
 		return nil, accessdomain.ErrMenuHasChildren
 	}
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.repo.DeleteMenu(ctx, req.GetMenuId())
+		affected, err := s.repo.DeleteMenu(ctx, req.GetMenuId(), auditActor(ctx))
 		if err != nil {
 			return err
 		}

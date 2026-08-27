@@ -17,6 +17,16 @@ type User struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int64 `json:"id,omitempty"`
+	// CreateBy holds the value of the "create_by" field.
+	CreateBy int64 `json:"create_by,omitempty"`
+	// UpdateBy holds the value of the "update_by" field.
+	UpdateBy int64 `json:"update_by,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// DeletedAt holds the value of the "deleted_at" field.
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 	// UserName holds the value of the "user_name" field.
 	UserName string `json:"user_name,omitempty"`
 	// NickName holds the value of the "nick_name" field.
@@ -35,20 +45,10 @@ type User struct {
 	Avatar string `json:"avatar,omitempty"`
 	// Remark holds the value of the "remark" field.
 	Remark string `json:"remark,omitempty"`
-	// CreateBy holds the value of the "create_by" field.
-	CreateBy int64 `json:"create_by,omitempty"`
-	// UpdateBy holds the value of the "update_by" field.
-	UpdateBy int64 `json:"update_by,omitempty"`
 	// LoginIP holds the value of the "login_ip" field.
 	LoginIP string `json:"login_ip,omitempty"`
 	// LoginDate holds the value of the "login_date" field.
 	LoginDate *time.Time `json:"login_date,omitempty"`
-	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt time.Time `json:"created_at,omitempty"`
-	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
-	// DeletedAt holds the value of the "deleted_at" field.
-	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UserQuery when eager-loading is set.
 	Edges        UserEdges `json:"edges"`
@@ -57,20 +57,20 @@ type User struct {
 
 // UserEdges holds the relations/edges for other nodes in the graph.
 type UserEdges struct {
-	// Roles holds the value of the roles edge.
-	Roles []*Role `json:"roles,omitempty"`
+	// RoleAssignments holds the value of the role_assignments edge.
+	RoleAssignments []*UserRole `json:"role_assignments,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
 }
 
-// RolesOrErr returns the Roles value or an error if the edge
+// RoleAssignmentsOrErr returns the RoleAssignments value or an error if the edge
 // was not loaded in eager-loading.
-func (e UserEdges) RolesOrErr() ([]*Role, error) {
+func (e UserEdges) RoleAssignmentsOrErr() ([]*UserRole, error) {
 	if e.loadedTypes[0] {
-		return e.Roles, nil
+		return e.RoleAssignments, nil
 	}
-	return nil, &NotLoadedError{edge: "roles"}
+	return nil, &NotLoadedError{edge: "role_assignments"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -78,11 +78,11 @@ func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case user.FieldID, user.FieldGender, user.FieldStatus, user.FieldCreateBy, user.FieldUpdateBy:
+		case user.FieldID, user.FieldCreateBy, user.FieldUpdateBy, user.FieldGender, user.FieldStatus:
 			values[i] = new(sql.NullInt64)
 		case user.FieldUserName, user.FieldNickName, user.FieldEmail, user.FieldPhoneNumber, user.FieldPassword, user.FieldAvatar, user.FieldRemark, user.FieldLoginIP:
 			values[i] = new(sql.NullString)
-		case user.FieldLoginDate, user.FieldCreatedAt, user.FieldUpdatedAt, user.FieldDeletedAt:
+		case user.FieldCreatedAt, user.FieldUpdatedAt, user.FieldDeletedAt, user.FieldLoginDate:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -105,6 +105,37 @@ func (_m *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			_m.ID = int64(value.Int64)
+		case user.FieldCreateBy:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field create_by", values[i])
+			} else if value.Valid {
+				_m.CreateBy = value.Int64
+			}
+		case user.FieldUpdateBy:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field update_by", values[i])
+			} else if value.Valid {
+				_m.UpdateBy = value.Int64
+			}
+		case user.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				_m.CreatedAt = value.Time
+			}
+		case user.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				_m.UpdatedAt = value.Time
+			}
+		case user.FieldDeletedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
+			} else if value.Valid {
+				_m.DeletedAt = new(time.Time)
+				*_m.DeletedAt = value.Time
+			}
 		case user.FieldUserName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field user_name", values[i])
@@ -161,18 +192,6 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Remark = value.String
 			}
-		case user.FieldCreateBy:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field create_by", values[i])
-			} else if value.Valid {
-				_m.CreateBy = value.Int64
-			}
-		case user.FieldUpdateBy:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field update_by", values[i])
-			} else if value.Valid {
-				_m.UpdateBy = value.Int64
-			}
 		case user.FieldLoginIP:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field login_ip", values[i])
@@ -185,25 +204,6 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.LoginDate = new(time.Time)
 				*_m.LoginDate = value.Time
-			}
-		case user.FieldCreatedAt:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field created_at", values[i])
-			} else if value.Valid {
-				_m.CreatedAt = value.Time
-			}
-		case user.FieldUpdatedAt:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
-			} else if value.Valid {
-				_m.UpdatedAt = value.Time
-			}
-		case user.FieldDeletedAt:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
-			} else if value.Valid {
-				_m.DeletedAt = new(time.Time)
-				*_m.DeletedAt = value.Time
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -218,9 +218,9 @@ func (_m *User) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryRoles queries the "roles" edge of the User entity.
-func (_m *User) QueryRoles() *RoleQuery {
-	return NewUserClient(_m.config).QueryRoles(_m)
+// QueryRoleAssignments queries the "role_assignments" edge of the User entity.
+func (_m *User) QueryRoleAssignments() *UserRoleQuery {
+	return NewUserClient(_m.config).QueryRoleAssignments(_m)
 }
 
 // Update returns a builder for updating this User.
@@ -246,6 +246,23 @@ func (_m *User) String() string {
 	var builder strings.Builder
 	builder.WriteString("User(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString("create_by=")
+	builder.WriteString(fmt.Sprintf("%v", _m.CreateBy))
+	builder.WriteString(", ")
+	builder.WriteString("update_by=")
+	builder.WriteString(fmt.Sprintf("%v", _m.UpdateBy))
+	builder.WriteString(", ")
+	builder.WriteString("created_at=")
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	if v := _m.DeletedAt; v != nil {
+		builder.WriteString("deleted_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
 	builder.WriteString("user_name=")
 	builder.WriteString(_m.UserName)
 	builder.WriteString(", ")
@@ -277,28 +294,11 @@ func (_m *User) String() string {
 	builder.WriteString("remark=")
 	builder.WriteString(_m.Remark)
 	builder.WriteString(", ")
-	builder.WriteString("create_by=")
-	builder.WriteString(fmt.Sprintf("%v", _m.CreateBy))
-	builder.WriteString(", ")
-	builder.WriteString("update_by=")
-	builder.WriteString(fmt.Sprintf("%v", _m.UpdateBy))
-	builder.WriteString(", ")
 	builder.WriteString("login_ip=")
 	builder.WriteString(_m.LoginIP)
 	builder.WriteString(", ")
 	if v := _m.LoginDate; v != nil {
 		builder.WriteString("login_date=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
-	builder.WriteString(", ")
-	builder.WriteString("created_at=")
-	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
-	builder.WriteString(", ")
-	builder.WriteString("updated_at=")
-	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
-	builder.WriteString(", ")
-	if v := _m.DeletedAt; v != nil {
-		builder.WriteString("deleted_at=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteByte(')')

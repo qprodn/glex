@@ -17,6 +17,16 @@ type Menu struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int64 `json:"id,omitempty"`
+	// CreateBy holds the value of the "create_by" field.
+	CreateBy int64 `json:"create_by,omitempty"`
+	// UpdateBy holds the value of the "update_by" field.
+	UpdateBy int64 `json:"update_by,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// DeletedAt holds the value of the "deleted_at" field.
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 	// MenuName holds the value of the "menu_name" field.
 	MenuName string `json:"menu_name,omitempty"`
 	// ParentID holds the value of the "parent_id" field.
@@ -47,16 +57,6 @@ type Menu struct {
 	ActiveMenu string `json:"active_menu,omitempty"`
 	// Ext holds the value of the "ext" field.
 	Ext string `json:"ext,omitempty"`
-	// CreateBy holds the value of the "create_by" field.
-	CreateBy int64 `json:"create_by,omitempty"`
-	// UpdateBy holds the value of the "update_by" field.
-	UpdateBy int64 `json:"update_by,omitempty"`
-	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt time.Time `json:"created_at,omitempty"`
-	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
-	// DeletedAt holds the value of the "deleted_at" field.
-	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the MenuQuery when eager-loading is set.
 	Edges        MenuEdges `json:"edges"`
@@ -65,20 +65,20 @@ type Menu struct {
 
 // MenuEdges holds the relations/edges for other nodes in the graph.
 type MenuEdges struct {
-	// Roles holds the value of the roles edge.
-	Roles []*Role `json:"roles,omitempty"`
+	// RoleLinks holds the value of the role_links edge.
+	RoleLinks []*RoleMenu `json:"role_links,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
 }
 
-// RolesOrErr returns the Roles value or an error if the edge
+// RoleLinksOrErr returns the RoleLinks value or an error if the edge
 // was not loaded in eager-loading.
-func (e MenuEdges) RolesOrErr() ([]*Role, error) {
+func (e MenuEdges) RoleLinksOrErr() ([]*RoleMenu, error) {
 	if e.loadedTypes[0] {
-		return e.Roles, nil
+		return e.RoleLinks, nil
 	}
-	return nil, &NotLoadedError{edge: "roles"}
+	return nil, &NotLoadedError{edge: "role_links"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -86,7 +86,7 @@ func (*Menu) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case menu.FieldID, menu.FieldParentID, menu.FieldOrderNum, menu.FieldIsFrame, menu.FieldIsCache, menu.FieldMenuType, menu.FieldVisible, menu.FieldStatus, menu.FieldCreateBy, menu.FieldUpdateBy:
+		case menu.FieldID, menu.FieldCreateBy, menu.FieldUpdateBy, menu.FieldParentID, menu.FieldOrderNum, menu.FieldIsFrame, menu.FieldIsCache, menu.FieldMenuType, menu.FieldVisible, menu.FieldStatus:
 			values[i] = new(sql.NullInt64)
 		case menu.FieldMenuName, menu.FieldPath, menu.FieldComponent, menu.FieldQueryParam, menu.FieldPerms, menu.FieldIcon, menu.FieldActiveMenu, menu.FieldExt:
 			values[i] = new(sql.NullString)
@@ -113,6 +113,37 @@ func (_m *Menu) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			_m.ID = int64(value.Int64)
+		case menu.FieldCreateBy:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field create_by", values[i])
+			} else if value.Valid {
+				_m.CreateBy = value.Int64
+			}
+		case menu.FieldUpdateBy:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field update_by", values[i])
+			} else if value.Valid {
+				_m.UpdateBy = value.Int64
+			}
+		case menu.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				_m.CreatedAt = value.Time
+			}
+		case menu.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				_m.UpdatedAt = value.Time
+			}
+		case menu.FieldDeletedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
+			} else if value.Valid {
+				_m.DeletedAt = new(time.Time)
+				*_m.DeletedAt = value.Time
+			}
 		case menu.FieldMenuName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field menu_name", values[i])
@@ -203,37 +234,6 @@ func (_m *Menu) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Ext = value.String
 			}
-		case menu.FieldCreateBy:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field create_by", values[i])
-			} else if value.Valid {
-				_m.CreateBy = value.Int64
-			}
-		case menu.FieldUpdateBy:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field update_by", values[i])
-			} else if value.Valid {
-				_m.UpdateBy = value.Int64
-			}
-		case menu.FieldCreatedAt:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field created_at", values[i])
-			} else if value.Valid {
-				_m.CreatedAt = value.Time
-			}
-		case menu.FieldUpdatedAt:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
-			} else if value.Valid {
-				_m.UpdatedAt = value.Time
-			}
-		case menu.FieldDeletedAt:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
-			} else if value.Valid {
-				_m.DeletedAt = new(time.Time)
-				*_m.DeletedAt = value.Time
-			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -247,9 +247,9 @@ func (_m *Menu) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryRoles queries the "roles" edge of the Menu entity.
-func (_m *Menu) QueryRoles() *RoleQuery {
-	return NewMenuClient(_m.config).QueryRoles(_m)
+// QueryRoleLinks queries the "role_links" edge of the Menu entity.
+func (_m *Menu) QueryRoleLinks() *RoleMenuQuery {
+	return NewMenuClient(_m.config).QueryRoleLinks(_m)
 }
 
 // Update returns a builder for updating this Menu.
@@ -275,6 +275,23 @@ func (_m *Menu) String() string {
 	var builder strings.Builder
 	builder.WriteString("Menu(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString("create_by=")
+	builder.WriteString(fmt.Sprintf("%v", _m.CreateBy))
+	builder.WriteString(", ")
+	builder.WriteString("update_by=")
+	builder.WriteString(fmt.Sprintf("%v", _m.UpdateBy))
+	builder.WriteString(", ")
+	builder.WriteString("created_at=")
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	if v := _m.DeletedAt; v != nil {
+		builder.WriteString("deleted_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
 	builder.WriteString("menu_name=")
 	builder.WriteString(_m.MenuName)
 	builder.WriteString(", ")
@@ -319,23 +336,6 @@ func (_m *Menu) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("ext=")
 	builder.WriteString(_m.Ext)
-	builder.WriteString(", ")
-	builder.WriteString("create_by=")
-	builder.WriteString(fmt.Sprintf("%v", _m.CreateBy))
-	builder.WriteString(", ")
-	builder.WriteString("update_by=")
-	builder.WriteString(fmt.Sprintf("%v", _m.UpdateBy))
-	builder.WriteString(", ")
-	builder.WriteString("created_at=")
-	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
-	builder.WriteString(", ")
-	builder.WriteString("updated_at=")
-	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
-	builder.WriteString(", ")
-	if v := _m.DeletedAt; v != nil {
-		builder.WriteString("deleted_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
 	builder.WriteByte(')')
 	return builder.String()
 }

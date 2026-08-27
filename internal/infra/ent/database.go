@@ -89,7 +89,17 @@ func (db *Database) Role(ctx context.Context) *RoleClient {
 	return db.loadClient(ctx).Role
 }
 
+// RoleMenu is the client for interacting with the RoleMenu builders.
+func (db *Database) RoleMenu(ctx context.Context) *RoleMenuClient {
+	return db.loadClient(ctx).RoleMenu
+}
+
 // User is the client for interacting with the User builders.
 func (db *Database) User(ctx context.Context) *UserClient {
 	return db.loadClient(ctx).User
+}
+
+// UserRole is the client for interacting with the UserRole builders.
+func (db *Database) UserRole(ctx context.Context) *UserRoleClient {
+	return db.loadClient(ctx).UserRole
 }

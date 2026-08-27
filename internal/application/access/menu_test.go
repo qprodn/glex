@@ -92,7 +92,7 @@ func (r *fakeMenuRepo) UpdateMenu(_ context.Context, m *accessentity.Menu) (*acc
 	return &accessrepo.MenuUpdate{Menu: m, Previous: previous, AffectedUserIDs: r.affectedUsers}, nil
 }
 
-func (r *fakeMenuRepo) DeleteMenu(_ context.Context, id int64) ([]int64, error) {
+func (r *fakeMenuRepo) DeleteMenu(_ context.Context, id int64, _ int64) ([]int64, error) {
 	r.deleted = append(r.deleted, id)
 	delete(r.byID, id)
 	return append([]int64(nil), r.affectedUsers...), nil

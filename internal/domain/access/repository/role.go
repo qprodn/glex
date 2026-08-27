@@ -36,15 +36,17 @@ type RoleRepo interface {
 	// UpdateRole returns the persisted role with its pre-image and currently
 	// assigned users. The Application service owns the transaction.
 	UpdateRole(ctx context.Context, r *entity.Role) (*RoleUpdate, error)
-	// DeleteRole is a security write: it soft-deletes the role and
-	// hard-deletes its Menu Grant, and returns
-	// the System User identities assigned the role at delete time.
-	DeleteRole(ctx context.Context, id int64) ([]int64, error)
+	// DeleteRole is a security write: it soft-deletes the role and its Menu
+	// Grant (ADR 0002 — no row is hard-deleted), stamping actorID into the
+	// audit fields, and returns the System User identities assigned the role
+	// at delete time.
+	DeleteRole(ctx context.Context, id int64, actorID int64) ([]int64, error)
 	// ListRoleMenuLinks returns the role's granted menus with their parent
 	// ids, ordered by (parent_id, order_num); soft-deleted menus excluded.
 	ListRoleMenuLinks(ctx context.Context, roleID int64) ([]*RoleMenuLink, error)
 	// ReplaceRoleMenus is a security write: it atomically replaces the role's
-	// Menu Grant with menuIDs and writes menuCheckStrictly (full replacement),
+	// active Menu Grant with menuIDs and writes menuCheckStrictly (full
+	// replacement of the active set), stamping actorID into the audit fields,
 	// and returns the System User identities currently assigned the role.
-	ReplaceRoleMenus(ctx context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool) ([]int64, error)
+	ReplaceRoleMenus(ctx context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool, actorID int64) ([]int64, error)
 }

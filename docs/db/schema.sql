@@ -1,7 +1,15 @@
+-- Repo-wide rule (ADR 0002): every table carries the audit fields —
+--   create_by bigint not null default 0, update_by bigint not null default 0,
+--   created_at timestamptz not null default now(), updated_at timestamptz
+--   not null default now(), deleted_at timestamptz — and no table hard-deletes
+--   rows: withdrawal sets deleted_at. create_by/update_by are stamped
+--   server-side from the authenticated Principal; 0 = the system itself.
+-- Redis (login sessions) is outside the rule: revoked keys must vanish.
+
 -- sys_user — system users (系统用户), ported from RuoYi sys_user.
 -- Hand-written record of the production schema; keep aligned with
--- internal/data/ent/schema/user.go (no auto drift guard — discipline, per ADR).
--- PostgreSQL (ADR-0003). Single-tenant (ADR-0001). Snowflake PK (R3-Q1).
+-- internal/infra/ent/schema/user.go (no auto drift guard — discipline, per
+-- ADR). PostgreSQL (ADR-0003). Single-tenant (ADR-0001). Snowflake PK (R3-Q1).
 -- Soft delete via deleted_at (R2-Q3). Dev also runs ent auto-migrate.
 
 create table if not exists sys_user (
@@ -15,7 +23,7 @@ create table if not exists sys_user (
     password     varchar(256) not null,              -- bcrypt hash
     avatar       varchar(256),
     remark       varchar(256),
-    create_by    bigint       not null default 0,    -- audit; auth module fills
+    create_by    bigint       not null default 0,    -- audit; Application stamps from Principal (ADR 0002)
     update_by    bigint       not null default 0,
     login_ip     varchar(256),                       -- auth module writes
     login_date   timestamptz,
@@ -32,10 +40,11 @@ comment on table sys_user is '系统用户';
 
 -- sys_menu — menu/permission tree (菜单权限表), ported from RuoYi sys_menu.
 -- Hand-written record of the production schema; keep aligned with
--- internal/data/ent/schema/menu.go (no auto drift guard — discipline, per ADR).
--- PostgreSQL (ADR-0003). Single-tenant (ADR-0001). Snowflake PK. Soft delete
--- via deleted_at (RuoYi hard-deletes menus; glex soft-deletes for consistency).
--- char(1) enums → smallint; strings varchar(256) (uniform with sys_user).
+-- internal/infra/ent/schema/menu.go (no auto drift guard — discipline, per
+-- ADR). PostgreSQL (ADR-0003). Single-tenant (ADR-0001). Snowflake PK. Soft
+-- delete via deleted_at (RuoYi hard-deletes menus; glex soft-deletes for
+-- consistency). char(1) enums → smallint; strings varchar(256) (uniform with
+-- sys_user).
 
 create table if not exists sys_menu (
     menu_id     bigint       not null,
@@ -54,7 +63,7 @@ create table if not exists sys_menu (
     icon        varchar(256) not null default '',
     active_menu varchar(256) not null default '',
     ext         varchar(256) not null default '',   -- extension (RuoYi 2000; glex 256)
-    create_by   bigint       not null default 0,    -- audit; auth module fills
+    create_by   bigint       not null default 0,    -- audit; Application stamps from Principal (ADR 0002)
     update_by   bigint       not null default 0,
     created_at  timestamptz  not null default now(),
     updated_at  timestamptz  not null default now(),
@@ -67,11 +76,11 @@ comment on table sys_menu is '菜单权限表';
 
 -- sys_role — roles (角色信息表), ported from RuoYi sys_role.
 -- Hand-written record of the production schema; keep aligned with
--- internal/data/ent/schema/role.go (no auto drift guard — discipline, per ADR).
--- PostgreSQL (ADR-0003). Single-tenant (ADR-0001). Snowflake PK. Soft delete
--- via deleted_at (replaces RuoYi del_flag). No unique constraints — enforced
--- by code checks against active rows; soft-deleted values are reusable
--- (repo-wide convention, see .scratch/role/plan.md).
+-- internal/infra/ent/schema/role.go (no auto drift guard — discipline, per
+-- ADR). PostgreSQL (ADR-0003). Single-tenant (ADR-0001). Snowflake PK. Soft
+-- delete via deleted_at (replaces RuoYi del_flag). No unique constraints —
+-- enforced by code checks against active rows; soft-deleted values are
+-- reusable (repo-wide convention, see .scratch/role/plan.md).
 
 create table if not exists sys_role (
     role_id            bigint       not null,
@@ -81,7 +90,7 @@ create table if not exists sys_role (
     status             smallint     not null default 0,     -- 0正常 1停用
     menu_check_strictly boolean      not null default true, -- 菜单树选择项是否关联显示 (RuoYi default 1)
     remark             varchar(256) not null default '',
-    create_by          bigint       not null default 0,     -- audit; auth module fills
+    create_by          bigint       not null default 0,     -- audit; Application stamps from Principal (ADR 0002)
     update_by          bigint       not null default 0,
     created_at         timestamptz  not null default now(),
     updated_at         timestamptz  not null default now(),
@@ -92,35 +101,56 @@ create table if not exists sys_role (
 comment on table sys_role is '角色信息表';
 
 -- sys_role_menu — role↔menu Menu Grant (角色和菜单关联表), ported from RuoYi.
--- Generated by ent as the M2M join table of Role.menus / Menu.roles (see
--- internal/data/ent/schema/{role,menu}.go); keep aligned by hand.
--- Exactly two columns + composite PK, like RuoYi. No soft delete: rows are
--- hard-deleted on full replacement (UpdateRoleMenus), role delete, and menu
--- delete.
+-- Explicit entity (internal/infra/ent/schema/role_menu.go), not an ent M2M
+-- edge table: every table carries the audit fields and soft-deletes its rows
+-- (ADR 0002). Full replacement works on the active set only — the repo
+-- soft-deletes the role's active rows, then inserts the new set. A re-granted
+-- pair is a NEW row; withdrawn generations accumulate as history, so the pair
+-- cannot be the PK (snowflake surrogate instead).
 
 create table if not exists sys_role_menu (
-    role_id bigint not null,
-    menu_id bigint not null,
-    constraint sys_role_menu_pkey primary key (role_id, menu_id)
+    role_menu_id bigint       not null,
+    role_id      bigint       not null,
+    menu_id      bigint       not null,
+    create_by    bigint       not null default 0,    -- audit; Application stamps from Principal (ADR 0002)
+    update_by    bigint       not null default 0,
+    created_at   timestamptz  not null default now(),
+    updated_at   timestamptz  not null default now(),
+    deleted_at   timestamptz,                        -- soft delete; NULL = active
+    constraint sys_role_menu_pkey primary key (role_menu_id),
+    constraint sys_role_menu_sys_role_menu_grants_fkey foreign key (role_id) references sys_role (role_id),
+    constraint sys_role_menu_sys_menu_role_links_fkey foreign key (menu_id) references sys_menu (menu_id)
 );
+
+create unique index if not exists rolemenu_role_id_menu_id
+    on sys_role_menu (role_id, menu_id) where deleted_at is null;
 
 comment on table sys_role_menu is '角色和菜单关联表';
 
--- sys_user_role — user↔role Role Assignment (用户和角色关联表), ported from RuoYi.
--- Generated by ent as the M2M join table of User.roles / Role.users (see
--- internal/data/ent/schema/{user,role}.go); keep aligned by hand.
--- Exactly two columns + composite PK, like RuoYi. No soft delete: rows are
--- hard-deleted on full replacement (UpdateUserRoles) and user delete; role
--- delete is blocked while users are assigned, so no cleanup is needed there.
--- Owned by the auth module (Role Assignment); user/role modules never read it.
--- Deviation from RuoYi: no separate index on role_id — ent auto-migrate would
--- drop a hand-added index (migrate.WithDropIndex), and role-side lookups are
--- EXISTS scans over a small back-office join table.
+-- sys_user_role — user↔role Role Assignment (用户和角色关联表), ported from
+-- RuoYi. Explicit entity (internal/infra/ent/schema/user_role.go), same
+-- ADR 0002 shape as sys_role_menu: audit fields, soft delete, snowflake
+-- surrogate PK, one active row per (user_id, role_id).
+-- Full replacement soft-deletes the user's active rows, then inserts the new
+-- set; user delete soft-deletes its rows; role delete is blocked while users
+-- are assigned. Owned by the access module (Role Assignment); user/role
+-- modules never read it.
 
 create table if not exists sys_user_role (
-    user_id bigint not null,
-    role_id bigint not null,
-    constraint sys_user_role_pkey primary key (user_id, role_id)
+    user_role_id bigint       not null,
+    user_id      bigint       not null,
+    role_id      bigint       not null,
+    create_by    bigint       not null default 0,    -- audit; Application stamps from Principal (ADR 0002)
+    update_by    bigint       not null default 0,
+    created_at   timestamptz  not null default now(),
+    updated_at   timestamptz  not null default now(),
+    deleted_at   timestamptz,                        -- soft delete; NULL = active
+    constraint sys_user_role_pkey primary key (user_role_id),
+    constraint sys_user_role_sys_user_role_assignments_fkey foreign key (user_id) references sys_user (user_id),
+    constraint sys_user_role_sys_role_user_links_fkey foreign key (role_id) references sys_role (role_id)
 );
+
+create unique index if not exists userrole_user_id_role_id
+    on sys_user_role (user_id, role_id) where deleted_at is null;
 
 comment on table sys_user_role is '用户和角色关联表';

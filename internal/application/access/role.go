@@ -89,6 +89,8 @@ func (s *RoleApplication) CreateRole(ctx context.Context, req *accessv1.CreateRo
 		MenuCheckStrictly: strict,
 		Remark:            in.GetRemark(),
 	}
+	actor := auditActor(ctx)
+	r.CreateBy, r.UpdateBy = actor, actor
 	if err := accessservice.ValidateRole(r); err != nil {
 		return nil, err
 	}
@@ -191,6 +193,7 @@ func (s *RoleApplication) UpdateRole(ctx context.Context, req *accessv1.UpdateRo
 		RoleSort: int(current.GetRoleSort()),
 		Status:   current.GetStatus(),
 		Remark:   current.GetRemark(),
+		UpdateBy: auditActor(ctx),
 	}
 	if err := accessservice.ValidateRole(r); err != nil {
 		return nil, err
@@ -233,7 +236,7 @@ func (s *RoleApplication) DeleteRole(ctx context.Context, req *accessv1.DeleteRo
 		return nil, accessdomain.ErrRoleAssigned
 	}
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.repo.DeleteRole(ctx, req.GetRoleId())
+		affected, err := s.repo.DeleteRole(ctx, req.GetRoleId(), auditActor(ctx))
 		if err != nil {
 			return err
 		}
@@ -282,7 +285,7 @@ func (s *RoleApplication) UpdateRoleMenus(ctx context.Context, req *accessv1.Upd
 		return nil, err
 	}
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.repo.ReplaceRoleMenus(ctx, req.GetRoleId(), unique, strict)
+		affected, err := s.repo.ReplaceRoleMenus(ctx, req.GetRoleId(), unique, strict, auditActor(ctx))
 		if err != nil {
 			return err
 		}

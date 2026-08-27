@@ -18,8 +18,12 @@ type Tx struct {
 	Menu *MenuClient
 	// Role is the client for interacting with the Role builders.
 	Role *RoleClient
+	// RoleMenu is the client for interacting with the RoleMenu builders.
+	RoleMenu *RoleMenuClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
+	// UserRole is the client for interacting with the UserRole builders.
+	UserRole *UserRoleClient
 
 	// lazily loaded.
 	client     *Client
@@ -153,7 +157,9 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Menu = NewMenuClient(tx.config)
 	tx.Role = NewRoleClient(tx.config)
+	tx.RoleMenu = NewRoleMenuClient(tx.config)
 	tx.User = NewUserClient(tx.config)
+	tx.UserRole = NewUserRoleClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

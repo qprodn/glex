@@ -1,8 +1,6 @@
 package schema
 
 import (
-	"time"
-
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/entsql"
@@ -14,6 +12,11 @@ import (
 // Menu holds the schema for the menu entity (ported from RuoYi sys_menu).
 type Menu struct {
 	ent.Schema
+}
+
+// Mixin contributes the audit columns (ADR 0002).
+func (Menu) Mixin() []ent.Mixin {
+	return []ent.Mixin{AuditMixin{}}
 }
 
 // Fields of the Menu.
@@ -58,14 +61,6 @@ func (Menu) Fields() []ent.Field {
 		// RuoYi uses varchar(2000) here; glex keeps varchar(256) for uniform
 		// ent↔schema.sql alignment (ADR convention).
 		field.String("ext").Default(""),
-		// Audit; written by the access module (0 until then).
-		field.Int64("create_by").Optional().Default(0),
-		field.Int64("update_by").Optional().Default(0),
-		field.Time("created_at").Default(time.Now).Immutable(),
-		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
-		// Soft delete (RuoYi hard-deletes menus; glex soft-deletes for repo-wide
-		// consistency). NULL = not deleted.
-		field.Time("deleted_at").Optional().Nillable(),
 	}
 }
 
@@ -76,10 +71,11 @@ func (Menu) Annotations() []entschema.Annotation {
 	}
 }
 
-// Edges of the Menu. Inverse side of Role.menus (M2M); the join table is
-// sys_role_menu, owned/named by the Role schema's edge annotation.
+// Edges of the Menu. The by-menu side of the Menu Grant lives as explicit
+// RoleMenu link rows in sys_role_menu, with audit columns and soft delete
+// (ADR 0002).
 func (Menu) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("roles", Role.Type).Ref("menus"),
+		edge.To("role_links", RoleMenu.Type),
 	}
 }

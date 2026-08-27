@@ -85,6 +85,7 @@ func NewUserApplication(repo userrepo.UserRepo, credentials authn.CredentialWrit
 // concurrent creates, accepted.
 func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUserRequest) (*userv1.User, error) {
 	in := req.GetUser()
+	actor := auditActor(ctx)
 	u := &userentity.User{
 		UserName:    in.GetUserName(),
 		NickName:    in.GetNickName(),
@@ -95,6 +96,8 @@ func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUser
 		Status:      in.GetStatus(),
 		Avatar:      in.GetAvatar(),
 		Remark:      in.GetRemark(),
+		CreateBy:    actor,
+		UpdateBy:    actor,
 	}
 	if u.Password == "" {
 		return nil, userdomain.ErrPasswordRequired
@@ -235,6 +238,7 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 		Status:      current.GetStatus(),
 		Avatar:      current.GetAvatar(),
 		Remark:      current.GetRemark(),
+		UpdateBy:    auditActor(ctx),
 	}
 	if err := userservice.AssertUnique(ctx, s.repo, u, u.ID); err != nil {
 		return nil, err
@@ -272,7 +276,7 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 // Sessions in the same transaction.
 func (s *UserApplication) DeleteUser(ctx context.Context, req *userv1.DeleteUserRequest) (*emptypb.Empty, error) {
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.repo.DeleteUser(ctx, req.GetUserId())
+		affected, err := s.repo.DeleteUser(ctx, req.GetUserId(), auditActor(ctx))
 		if err != nil {
 			return err
 		}

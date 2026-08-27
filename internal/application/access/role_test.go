@@ -93,7 +93,7 @@ func (r *fakeRoleRepo) UpdateRole(_ context.Context, ro *accessentity.Role) (*ac
 	}, nil
 }
 
-func (r *fakeRoleRepo) DeleteRole(_ context.Context, id int64) ([]int64, error) {
+func (r *fakeRoleRepo) DeleteRole(_ context.Context, id int64, _ int64) ([]int64, error) {
 	if _, ok := r.byID[id]; !ok {
 		return nil, ErrRoleNotFound
 	}
@@ -113,7 +113,7 @@ func (r *fakeRoleRepo) ListRoleMenuLinks(_ context.Context, roleID int64) ([]*ac
 	return out, nil
 }
 
-func (r *fakeRoleRepo) ReplaceRoleMenus(_ context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool) ([]int64, error) {
+func (r *fakeRoleRepo) ReplaceRoleMenus(_ context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool, _ int64) ([]int64, error) {
 	ro, ok := r.byID[roleID]
 	if !ok {
 		return nil, ErrRoleNotFound

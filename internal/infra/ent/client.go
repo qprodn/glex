@@ -13,7 +13,9 @@ import (
 
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
+	"glex/internal/infra/ent/rolemenu"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userrole"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
@@ -32,8 +34,12 @@ type Client struct {
 	Menu *MenuClient
 	// Role is the client for interacting with the Role builders.
 	Role *RoleClient
+	// RoleMenu is the client for interacting with the RoleMenu builders.
+	RoleMenu *RoleMenuClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
+	// UserRole is the client for interacting with the UserRole builders.
+	UserRole *UserRoleClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -47,7 +53,9 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Menu = NewMenuClient(c.config)
 	c.Role = NewRoleClient(c.config)
+	c.RoleMenu = NewRoleMenuClient(c.config)
 	c.User = NewUserClient(c.config)
+	c.UserRole = NewUserRoleClient(c.config)
 }
 
 type (
@@ -138,11 +146,13 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		Menu:   NewMenuClient(cfg),
-		Role:   NewRoleClient(cfg),
-		User:   NewUserClient(cfg),
+		ctx:      ctx,
+		config:   cfg,
+		Menu:     NewMenuClient(cfg),
+		Role:     NewRoleClient(cfg),
+		RoleMenu: NewRoleMenuClient(cfg),
+		User:     NewUserClient(cfg),
+		UserRole: NewUserRoleClient(cfg),
 	}, nil
 }
 
@@ -160,11 +170,13 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		Menu:   NewMenuClient(cfg),
-		Role:   NewRoleClient(cfg),
-		User:   NewUserClient(cfg),
+		ctx:      ctx,
+		config:   cfg,
+		Menu:     NewMenuClient(cfg),
+		Role:     NewRoleClient(cfg),
+		RoleMenu: NewRoleMenuClient(cfg),
+		User:     NewUserClient(cfg),
+		UserRole: NewUserRoleClient(cfg),
 	}, nil
 }
 
@@ -195,7 +207,9 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	c.Menu.Use(hooks...)
 	c.Role.Use(hooks...)
+	c.RoleMenu.Use(hooks...)
 	c.User.Use(hooks...)
+	c.UserRole.Use(hooks...)
 }
 
 // Intercept adds the query interceptors to all the entity clients.
@@ -203,7 +217,9 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.Menu.Intercept(interceptors...)
 	c.Role.Intercept(interceptors...)
+	c.RoleMenu.Intercept(interceptors...)
 	c.User.Intercept(interceptors...)
+	c.UserRole.Intercept(interceptors...)
 }
 
 // Mutate implements the ent.Mutator interface.
@@ -213,8 +229,12 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Menu.mutate(ctx, m)
 	case *RoleMutation:
 		return c.Role.mutate(ctx, m)
+	case *RoleMenuMutation:
+		return c.RoleMenu.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
+	case *UserRoleMutation:
+		return c.UserRole.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -328,15 +348,15 @@ func (c *MenuClient) GetX(ctx context.Context, id int64) *Menu {
 	return obj
 }
 
-// QueryRoles queries the roles edge of a Menu.
-func (c *MenuClient) QueryRoles(_m *Menu) *RoleQuery {
-	query := (&RoleClient{config: c.config}).Query()
+// QueryRoleLinks queries the role_links edge of a Menu.
+func (c *MenuClient) QueryRoleLinks(_m *Menu) *RoleMenuQuery {
+	query := (&RoleMenuClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(menu.Table, menu.FieldID, id),
-			sqlgraph.To(role.Table, role.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, menu.RolesTable, menu.RolesPrimaryKey...),
+			sqlgraph.To(rolemenu.Table, rolemenu.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, menu.RoleLinksTable, menu.RoleLinksColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -477,15 +497,15 @@ func (c *RoleClient) GetX(ctx context.Context, id int64) *Role {
 	return obj
 }
 
-// QueryMenus queries the menus edge of a Role.
-func (c *RoleClient) QueryMenus(_m *Role) *MenuQuery {
-	query := (&MenuClient{config: c.config}).Query()
+// QueryMenuGrants queries the menu_grants edge of a Role.
+func (c *RoleClient) QueryMenuGrants(_m *Role) *RoleMenuQuery {
+	query := (&RoleMenuClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(role.Table, role.FieldID, id),
-			sqlgraph.To(menu.Table, menu.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, role.MenusTable, role.MenusPrimaryKey...),
+			sqlgraph.To(rolemenu.Table, rolemenu.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, role.MenuGrantsTable, role.MenuGrantsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -493,15 +513,15 @@ func (c *RoleClient) QueryMenus(_m *Role) *MenuQuery {
 	return query
 }
 
-// QueryUsers queries the users edge of a Role.
-func (c *RoleClient) QueryUsers(_m *Role) *UserQuery {
-	query := (&UserClient{config: c.config}).Query()
+// QueryUserLinks queries the user_links edge of a Role.
+func (c *RoleClient) QueryUserLinks(_m *Role) *UserRoleQuery {
+	query := (&UserRoleClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(role.Table, role.FieldID, id),
-			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, role.UsersTable, role.UsersPrimaryKey...),
+			sqlgraph.To(userrole.Table, userrole.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, role.UserLinksTable, role.UserLinksColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -531,6 +551,171 @@ func (c *RoleClient) mutate(ctx context.Context, m *RoleMutation) (Value, error)
 		return (&RoleDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Role mutation op: %q", m.Op())
+	}
+}
+
+// RoleMenuClient is a client for the RoleMenu schema.
+type RoleMenuClient struct {
+	config
+}
+
+// NewRoleMenuClient returns a client for the RoleMenu from the given config.
+func NewRoleMenuClient(c config) *RoleMenuClient {
+	return &RoleMenuClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `rolemenu.Hooks(f(g(h())))`.
+func (c *RoleMenuClient) Use(hooks ...Hook) {
+	c.hooks.RoleMenu = append(c.hooks.RoleMenu, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `rolemenu.Intercept(f(g(h())))`.
+func (c *RoleMenuClient) Intercept(interceptors ...Interceptor) {
+	c.inters.RoleMenu = append(c.inters.RoleMenu, interceptors...)
+}
+
+// Create returns a builder for creating a RoleMenu entity.
+func (c *RoleMenuClient) Create() *RoleMenuCreate {
+	mutation := newRoleMenuMutation(c.config, OpCreate)
+	return &RoleMenuCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of RoleMenu entities.
+func (c *RoleMenuClient) CreateBulk(builders ...*RoleMenuCreate) *RoleMenuCreateBulk {
+	return &RoleMenuCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *RoleMenuClient) MapCreateBulk(slice any, setFunc func(*RoleMenuCreate, int)) *RoleMenuCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &RoleMenuCreateBulk{err: fmt.Errorf("calling to RoleMenuClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*RoleMenuCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &RoleMenuCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for RoleMenu.
+func (c *RoleMenuClient) Update() *RoleMenuUpdate {
+	mutation := newRoleMenuMutation(c.config, OpUpdate)
+	return &RoleMenuUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *RoleMenuClient) UpdateOne(_m *RoleMenu) *RoleMenuUpdateOne {
+	mutation := newRoleMenuMutation(c.config, OpUpdateOne, withRoleMenu(_m))
+	return &RoleMenuUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *RoleMenuClient) UpdateOneID(id int64) *RoleMenuUpdateOne {
+	mutation := newRoleMenuMutation(c.config, OpUpdateOne, withRoleMenuID(id))
+	return &RoleMenuUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for RoleMenu.
+func (c *RoleMenuClient) Delete() *RoleMenuDelete {
+	mutation := newRoleMenuMutation(c.config, OpDelete)
+	return &RoleMenuDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *RoleMenuClient) DeleteOne(_m *RoleMenu) *RoleMenuDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *RoleMenuClient) DeleteOneID(id int64) *RoleMenuDeleteOne {
+	builder := c.Delete().Where(rolemenu.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &RoleMenuDeleteOne{builder}
+}
+
+// Query returns a query builder for RoleMenu.
+func (c *RoleMenuClient) Query() *RoleMenuQuery {
+	return &RoleMenuQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeRoleMenu},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a RoleMenu entity by its id.
+func (c *RoleMenuClient) Get(ctx context.Context, id int64) (*RoleMenu, error) {
+	return c.Query().Where(rolemenu.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *RoleMenuClient) GetX(ctx context.Context, id int64) *RoleMenu {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryRole queries the role edge of a RoleMenu.
+func (c *RoleMenuClient) QueryRole(_m *RoleMenu) *RoleQuery {
+	query := (&RoleClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(rolemenu.Table, rolemenu.FieldID, id),
+			sqlgraph.To(role.Table, role.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, rolemenu.RoleTable, rolemenu.RoleColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryMenu queries the menu edge of a RoleMenu.
+func (c *RoleMenuClient) QueryMenu(_m *RoleMenu) *MenuQuery {
+	query := (&MenuClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(rolemenu.Table, rolemenu.FieldID, id),
+			sqlgraph.To(menu.Table, menu.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, rolemenu.MenuTable, rolemenu.MenuColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *RoleMenuClient) Hooks() []Hook {
+	return c.hooks.RoleMenu
+}
+
+// Interceptors returns the client interceptors.
+func (c *RoleMenuClient) Interceptors() []Interceptor {
+	return c.inters.RoleMenu
+}
+
+func (c *RoleMenuClient) mutate(ctx context.Context, m *RoleMenuMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&RoleMenuCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&RoleMenuUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&RoleMenuUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&RoleMenuDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown RoleMenu mutation op: %q", m.Op())
 	}
 }
 
@@ -642,15 +827,15 @@ func (c *UserClient) GetX(ctx context.Context, id int64) *User {
 	return obj
 }
 
-// QueryRoles queries the roles edge of a User.
-func (c *UserClient) QueryRoles(_m *User) *RoleQuery {
-	query := (&RoleClient{config: c.config}).Query()
+// QueryRoleAssignments queries the role_assignments edge of a User.
+func (c *UserClient) QueryRoleAssignments(_m *User) *UserRoleQuery {
+	query := (&UserRoleClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, id),
-			sqlgraph.To(role.Table, role.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, user.RolesTable, user.RolesPrimaryKey...),
+			sqlgraph.To(userrole.Table, userrole.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.RoleAssignmentsTable, user.RoleAssignmentsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -683,13 +868,178 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 	}
 }
 
+// UserRoleClient is a client for the UserRole schema.
+type UserRoleClient struct {
+	config
+}
+
+// NewUserRoleClient returns a client for the UserRole from the given config.
+func NewUserRoleClient(c config) *UserRoleClient {
+	return &UserRoleClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `userrole.Hooks(f(g(h())))`.
+func (c *UserRoleClient) Use(hooks ...Hook) {
+	c.hooks.UserRole = append(c.hooks.UserRole, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `userrole.Intercept(f(g(h())))`.
+func (c *UserRoleClient) Intercept(interceptors ...Interceptor) {
+	c.inters.UserRole = append(c.inters.UserRole, interceptors...)
+}
+
+// Create returns a builder for creating a UserRole entity.
+func (c *UserRoleClient) Create() *UserRoleCreate {
+	mutation := newUserRoleMutation(c.config, OpCreate)
+	return &UserRoleCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of UserRole entities.
+func (c *UserRoleClient) CreateBulk(builders ...*UserRoleCreate) *UserRoleCreateBulk {
+	return &UserRoleCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *UserRoleClient) MapCreateBulk(slice any, setFunc func(*UserRoleCreate, int)) *UserRoleCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &UserRoleCreateBulk{err: fmt.Errorf("calling to UserRoleClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*UserRoleCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &UserRoleCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for UserRole.
+func (c *UserRoleClient) Update() *UserRoleUpdate {
+	mutation := newUserRoleMutation(c.config, OpUpdate)
+	return &UserRoleUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *UserRoleClient) UpdateOne(_m *UserRole) *UserRoleUpdateOne {
+	mutation := newUserRoleMutation(c.config, OpUpdateOne, withUserRole(_m))
+	return &UserRoleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *UserRoleClient) UpdateOneID(id int64) *UserRoleUpdateOne {
+	mutation := newUserRoleMutation(c.config, OpUpdateOne, withUserRoleID(id))
+	return &UserRoleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for UserRole.
+func (c *UserRoleClient) Delete() *UserRoleDelete {
+	mutation := newUserRoleMutation(c.config, OpDelete)
+	return &UserRoleDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *UserRoleClient) DeleteOne(_m *UserRole) *UserRoleDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *UserRoleClient) DeleteOneID(id int64) *UserRoleDeleteOne {
+	builder := c.Delete().Where(userrole.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &UserRoleDeleteOne{builder}
+}
+
+// Query returns a query builder for UserRole.
+func (c *UserRoleClient) Query() *UserRoleQuery {
+	return &UserRoleQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeUserRole},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a UserRole entity by its id.
+func (c *UserRoleClient) Get(ctx context.Context, id int64) (*UserRole, error) {
+	return c.Query().Where(userrole.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *UserRoleClient) GetX(ctx context.Context, id int64) *UserRole {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a UserRole.
+func (c *UserRoleClient) QueryUser(_m *UserRole) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(userrole.Table, userrole.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, userrole.UserTable, userrole.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRole queries the role edge of a UserRole.
+func (c *UserRoleClient) QueryRole(_m *UserRole) *RoleQuery {
+	query := (&RoleClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(userrole.Table, userrole.FieldID, id),
+			sqlgraph.To(role.Table, role.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, userrole.RoleTable, userrole.RoleColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *UserRoleClient) Hooks() []Hook {
+	return c.hooks.UserRole
+}
+
+// Interceptors returns the client interceptors.
+func (c *UserRoleClient) Interceptors() []Interceptor {
+	return c.inters.UserRole
+}
+
+func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&UserRoleCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&UserRoleUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&UserRoleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&UserRoleDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown UserRole mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Menu, Role, User []ent.Hook
+		Menu, Role, RoleMenu, User, UserRole []ent.Hook
 	}
 	inters struct {
-		Menu, Role, User []ent.Interceptor
+		Menu, Role, RoleMenu, User, UserRole []ent.Interceptor
 	}
 )
 

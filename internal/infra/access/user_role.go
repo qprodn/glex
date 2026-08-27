@@ -4,6 +4,7 @@ import (
 	"glex/internal/infra/store"
 
 	"context"
+	"time"
 
 	"github.com/go-kratos/aip-go/ents"
 	"glex/internal/domain/access"
@@ -11,13 +12,16 @@ import (
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userrole"
 )
 
-// userRoleRepo implements accessrepo.UserRoleRepo over the sys_user_role join
-// table (Role Assignment, 角色分配). Pattern: the role↔menu repo (sys_role_menu) —
-// ent M2M edge traversal for reads, delete-then-insert in one tx for writes.
-// The user rows it reaches through the edge are access's storage reality until
-// the tables split (ADR 0016); they surface only as RoleUser snapshots.
+// userRoleRepo implements accessrepo.UserRoleRepo over the sys_user_role link
+// rows (Role Assignment, 角色分配). Pattern: the role↔menu repo (sys_role_menu)
+// — link-entity traversal for reads, soft-delete-then-insert in one tx for
+// writes (ADR 0002: every table carries the audit fields; no row is
+// hard-deleted). The user rows it reaches through the links are access's
+// storage reality until the tables split (ADR 0016); they surface only as
+// RoleUser snapshots.
 type userRoleRepo struct {
 	data *store.Data
 }
@@ -63,25 +67,35 @@ func (r *userRoleRepo) UserExists(ctx context.Context, userID int64) (bool, erro
 }
 
 // ListRoleAssignments reads every active role (the dialog's "all roles") with
-// whether the user is assigned it, ordered by (role_sort, role_id). The user
-// edge is filtered to the target user, so a non-empty Edges.Users means
-// assigned; user existence itself is checked by RoleAssignmentUsecase.
+// whether the user is assigned it, ordered by (role_sort, role_id). The
+// assigned flag comes from the user's active link rows; user existence itself
+// is checked by RoleAssignmentUsecase.
 func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([]*accessrepo.RoleAssignment, error) {
+	assignedIDs, err := r.data.DB.UserRole(ctx).Query().
+		Where(userrole.UserIDEQ(userID), userrole.DeletedAtIsNil()).
+		QueryRole().
+		Where(role.DeletedAtIsNil()).
+		IDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	assigned := make(map[int64]struct{}, len(assignedIDs))
+	for _, id := range assignedIDs {
+		assigned[id] = struct{}{}
+	}
 	pos, err := r.data.DB.Role(ctx).Query().
 		Where(role.DeletedAtIsNil()).
 		Order(role.ByRoleSort(), role.ByID()).
-		WithUsers(func(q *ent.UserQuery) {
-			q.Where(user.IDEQ(userID))
-		}).
 		All(ctx)
 	if err != nil {
 		return nil, err
 	}
 	assignments := make([]*accessrepo.RoleAssignment, 0, len(pos))
 	for _, po := range pos {
+		_, ok := assigned[po.ID]
 		assignments = append(assignments, &accessrepo.RoleAssignment{
 			Role:     toBizRole(po),
-			Assigned: len(po.Edges.Users) > 0,
+			Assigned: ok,
 		})
 	}
 	return assignments, nil
@@ -90,8 +104,10 @@ func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([
 // ReplaceUserRoles replaces the user's Role Assignment, returning the System
 // User identities whose sessions must be revoked ({userID}). RoleAssignmentUsecase
 // validates and dedupes roleIDs and owns the transaction and Redis rollback
-// contract.
-func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleIDs []int64) ([]int64, error) {
+// contract. Full replacement works on the active set only (ADR 0002): the
+// current rows are soft-deleted (stamping actorID), then the new generation
+// is inserted with fresh snowflake ids.
+func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleIDs []int64, actorID int64) ([]int64, error) {
 	if len(roleIDs) > 0 {
 		count, err := r.data.DB.Role(ctx).Query().Where(role.IDIn(roleIDs...), role.DeletedAtIsNil()).Count(ctx)
 		if err != nil {
@@ -101,15 +117,35 @@ func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleI
 			return nil, access.ErrRoleNotFound
 		}
 	}
-	_, err := r.data.DB.User(ctx).UpdateOneID(userID).
-		ClearRoles().
-		AddRoleIDs(roleIDs...).
-		Save(ctx)
+	exists, err := r.data.DB.User(ctx).Query().
+		Where(user.IDEQ(userID), user.DeletedAtIsNil()).
+		Exist(ctx)
 	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, access.ErrUserNotFound
-		}
 		return nil, err
+	}
+	if !exists {
+		return nil, access.ErrUserNotFound
+	}
+	if _, err := r.data.DB.UserRole(ctx).Update().
+		Where(userrole.UserIDEQ(userID), userrole.DeletedAtIsNil()).
+		SetDeletedAt(time.Now()).
+		SetUpdateBy(actorID).
+		Save(ctx); err != nil {
+		return nil, err
+	}
+	if len(roleIDs) > 0 {
+		builders := make([]*ent.UserRoleCreate, 0, len(roleIDs))
+		for _, roleID := range roleIDs {
+			builders = append(builders, r.data.DB.UserRole(ctx).Create().
+				SetID(newSnowflakeID()).
+				SetUserID(userID).
+				SetRoleID(roleID).
+				SetCreateBy(actorID).
+				SetUpdateBy(actorID))
+		}
+		if err := r.data.DB.UserRole(ctx).CreateBulk(builders...).Exec(ctx); err != nil {
+			return nil, err
+		}
 	}
 	return []int64{userID}, nil
 }
@@ -125,7 +161,7 @@ func (r *userRoleRepo) ListRoleUsers(ctx context.Context, roleID int64, opts ...
 	pos, err := r.data.DB.User(ctx).Query().
 		Where(
 			user.DeletedAtIsNil(),
-			user.HasRolesWith(role.IDEQ(roleID)),
+			user.HasRoleAssignmentsWith(userrole.RoleIDEQ(roleID), userrole.DeletedAtIsNil()),
 			ents.ApplyFilter(o.Filter),
 		).
 		Order(ents.ApplyOrderBy(o.OrderBy)).
@@ -143,11 +179,12 @@ func (r *userRoleRepo) ListRoleUsers(ctx context.Context, roleID int64, opts ...
 }
 
 // CountUserRoles counts the users assigned the role — the guard behind "a
-// role with users cannot be deleted or disabled".
+// role with users cannot be deleted or disabled". Only active links count
+// (ADR 0002).
 func (r *userRoleRepo) CountUserRoles(ctx context.Context, roleID int64) (int, error) {
-	return r.data.DB.Role(ctx).Query().
-		Where(role.IDEQ(roleID), role.DeletedAtIsNil()).
-		QueryUsers().
+	return r.data.DB.UserRole(ctx).Query().
+		Where(userrole.RoleIDEQ(roleID), userrole.DeletedAtIsNil()).
+		QueryUser().
 		Where(user.DeletedAtIsNil()).
 		Count(ctx)
 }

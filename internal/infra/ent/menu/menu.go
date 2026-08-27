@@ -14,6 +14,16 @@ const (
 	Label = "menu"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "menu_id"
+	// FieldCreateBy holds the string denoting the create_by field in the database.
+	FieldCreateBy = "create_by"
+	// FieldUpdateBy holds the string denoting the update_by field in the database.
+	FieldUpdateBy = "update_by"
+	// FieldCreatedAt holds the string denoting the created_at field in the database.
+	FieldCreatedAt = "created_at"
+	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
+	FieldUpdatedAt = "updated_at"
+	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
+	FieldDeletedAt = "deleted_at"
 	// FieldMenuName holds the string denoting the menu_name field in the database.
 	FieldMenuName = "menu_name"
 	// FieldParentID holds the string denoting the parent_id field in the database.
@@ -44,32 +54,29 @@ const (
 	FieldActiveMenu = "active_menu"
 	// FieldExt holds the string denoting the ext field in the database.
 	FieldExt = "ext"
-	// FieldCreateBy holds the string denoting the create_by field in the database.
-	FieldCreateBy = "create_by"
-	// FieldUpdateBy holds the string denoting the update_by field in the database.
-	FieldUpdateBy = "update_by"
-	// FieldCreatedAt holds the string denoting the created_at field in the database.
-	FieldCreatedAt = "created_at"
-	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
-	FieldUpdatedAt = "updated_at"
-	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
-	FieldDeletedAt = "deleted_at"
-	// EdgeRoles holds the string denoting the roles edge name in mutations.
-	EdgeRoles = "roles"
-	// RoleFieldID holds the string denoting the ID field of the Role.
-	RoleFieldID = "role_id"
+	// EdgeRoleLinks holds the string denoting the role_links edge name in mutations.
+	EdgeRoleLinks = "role_links"
+	// RoleMenuFieldID holds the string denoting the ID field of the RoleMenu.
+	RoleMenuFieldID = "role_menu_id"
 	// Table holds the table name of the menu in the database.
 	Table = "sys_menu"
-	// RolesTable is the table that holds the roles relation/edge. The primary key declared below.
-	RolesTable = "role_menus"
-	// RolesInverseTable is the table name for the Role entity.
-	// It exists in this package in order to avoid circular dependency with the "role" package.
-	RolesInverseTable = "sys_role"
+	// RoleLinksTable is the table that holds the role_links relation/edge.
+	RoleLinksTable = "sys_role_menu"
+	// RoleLinksInverseTable is the table name for the RoleMenu entity.
+	// It exists in this package in order to avoid circular dependency with the "rolemenu" package.
+	RoleLinksInverseTable = "sys_role_menu"
+	// RoleLinksColumn is the table column denoting the role_links relation/edge.
+	RoleLinksColumn = "menu_id"
 )
 
 // Columns holds all SQL columns for menu fields.
 var Columns = []string{
 	FieldID,
+	FieldCreateBy,
+	FieldUpdateBy,
+	FieldCreatedAt,
+	FieldUpdatedAt,
+	FieldDeletedAt,
 	FieldMenuName,
 	FieldParentID,
 	FieldOrderNum,
@@ -85,18 +92,7 @@ var Columns = []string{
 	FieldIcon,
 	FieldActiveMenu,
 	FieldExt,
-	FieldCreateBy,
-	FieldUpdateBy,
-	FieldCreatedAt,
-	FieldUpdatedAt,
-	FieldDeletedAt,
 }
-
-var (
-	// RolesPrimaryKey and RolesColumn2 are the table columns denoting the
-	// primary key for the roles relation (M2M).
-	RolesPrimaryKey = []string{"role_id", "menu_id"}
-)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -109,6 +105,16 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultCreateBy holds the default value on creation for the "create_by" field.
+	DefaultCreateBy int64
+	// DefaultUpdateBy holds the default value on creation for the "update_by" field.
+	DefaultUpdateBy int64
+	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
+	DefaultCreatedAt func() time.Time
+	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
+	DefaultUpdatedAt func() time.Time
+	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
+	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultParentID holds the default value on creation for the "parent_id" field.
 	DefaultParentID int64
 	// DefaultOrderNum holds the default value on creation for the "order_num" field.
@@ -135,16 +141,6 @@ var (
 	DefaultActiveMenu string
 	// DefaultExt holds the default value on creation for the "ext" field.
 	DefaultExt string
-	// DefaultCreateBy holds the default value on creation for the "create_by" field.
-	DefaultCreateBy int64
-	// DefaultUpdateBy holds the default value on creation for the "update_by" field.
-	DefaultUpdateBy int64
-	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
-	DefaultCreatedAt func() time.Time
-	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
-	DefaultUpdatedAt func() time.Time
-	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
-	UpdateDefaultUpdatedAt func() time.Time
 )
 
 // OrderOption defines the ordering options for the Menu queries.
@@ -153,6 +149,31 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByCreateBy orders the results by the create_by field.
+func ByCreateBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreateBy, opts...).ToFunc()
+}
+
+// ByUpdateBy orders the results by the update_by field.
+func ByUpdateBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdateBy, opts...).ToFunc()
+}
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByDeletedAt orders the results by the deleted_at field.
+func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
 }
 
 // ByMenuName orders the results by the menu_name field.
@@ -230,48 +251,23 @@ func ByExt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldExt, opts...).ToFunc()
 }
 
-// ByCreateBy orders the results by the create_by field.
-func ByCreateBy(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCreateBy, opts...).ToFunc()
-}
-
-// ByUpdateBy orders the results by the update_by field.
-func ByUpdateBy(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldUpdateBy, opts...).ToFunc()
-}
-
-// ByCreatedAt orders the results by the created_at field.
-func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
-}
-
-// ByUpdatedAt orders the results by the updated_at field.
-func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
-}
-
-// ByDeletedAt orders the results by the deleted_at field.
-func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
-}
-
-// ByRolesCount orders the results by roles count.
-func ByRolesCount(opts ...sql.OrderTermOption) OrderOption {
+// ByRoleLinksCount orders the results by role_links count.
+func ByRoleLinksCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newRolesStep(), opts...)
+		sqlgraph.OrderByNeighborsCount(s, newRoleLinksStep(), opts...)
 	}
 }
 
-// ByRoles orders the results by roles terms.
-func ByRoles(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+// ByRoleLinks orders the results by role_links terms.
+func ByRoleLinks(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newRolesStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newRoleLinksStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
-func newRolesStep() *sqlgraph.Step {
+func newRoleLinksStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(RolesInverseTable, RoleFieldID),
-		sqlgraph.Edge(sqlgraph.M2M, true, RolesTable, RolesPrimaryKey...),
+		sqlgraph.To(RoleLinksInverseTable, RoleMenuFieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, RoleLinksTable, RoleLinksColumn),
 	)
 }

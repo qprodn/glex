@@ -116,7 +116,7 @@ func (r *fakeUserRepo) UpdateUser(_ context.Context, u *userentity.User) (*userr
 	return &userrepo.UserUpdate{User: u, Previous: previous}, nil
 }
 
-func (r *fakeUserRepo) DeleteUser(_ context.Context, id int64) ([]int64, error) {
+func (r *fakeUserRepo) DeleteUser(_ context.Context, id int64, _ int64) ([]int64, error) {
 	r.deleted = append(r.deleted, id)
 	return []int64{id}, nil
 }

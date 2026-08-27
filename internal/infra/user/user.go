@@ -12,6 +12,7 @@ import (
 	userrepo "glex/internal/domain/user/repository"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userrole"
 )
 
 // toBiz maps an ent User PO to a userentity.User DO. The credential column is
@@ -137,7 +138,9 @@ func (r *userRepo) CreateUser(ctx context.Context, u *userentity.User) (*userent
 		SetGender(int8(u.Gender)).
 		SetStatus(int8(u.Status)).
 		SetAvatar(u.Avatar).
-		SetRemark(u.Remark)
+		SetRemark(u.Remark).
+		SetCreateBy(u.CreateBy).
+		SetUpdateBy(u.UpdateBy)
 	if u.Email != "" {
 		b.SetEmail(u.Email)
 	}
@@ -169,7 +172,8 @@ func (r *userRepo) UpdateUser(ctx context.Context, u *userentity.User) (*userrep
 		SetGender(int8(u.Gender)).
 		SetStatus(int8(u.Status)).
 		SetAvatar(u.Avatar).
-		SetRemark(u.Remark)
+		SetRemark(u.Remark).
+		SetUpdateBy(u.UpdateBy)
 	if u.Email != "" {
 		upd.SetEmail(u.Email)
 	}
@@ -185,13 +189,20 @@ func (r *userRepo) UpdateUser(ctx context.Context, u *userentity.User) (*userrep
 	return result, nil
 }
 
-// DeleteUser soft-deletes the user and hard-deletes its Role Assignment
-// (sys_user_role rows). A deleted user loses its role links for good. The
-// caller owns the transaction and session-revocation ordering.
-func (r *userRepo) DeleteUser(ctx context.Context, id int64) ([]int64, error) {
+// DeleteUser soft-deletes the user and its Role Assignment (sys_user_role
+// rows stamped with actorID — ADR 0002, nothing is hard-deleted). The caller
+// owns the transaction and session-revocation ordering.
+func (r *userRepo) DeleteUser(ctx context.Context, id int64, actorID int64) ([]int64, error) {
+	if _, err := r.data.DB.UserRole(ctx).Update().
+		Where(userrole.UserIDEQ(id), userrole.DeletedAtIsNil()).
+		SetDeletedAt(time.Now()).
+		SetUpdateBy(actorID).
+		Save(ctx); err != nil {
+		return nil, err
+	}
 	err := r.data.DB.User(ctx).UpdateOneID(id).
 		SetDeletedAt(time.Now()).
-		ClearRoles().
+		SetUpdateBy(actorID).
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {

@@ -47,8 +47,8 @@ type MenuRepo interface {
 	// UpdateMenu returns the persisted menu with its pre-image and the users
 	// currently affected. The Application service owns the transaction.
 	UpdateMenu(ctx context.Context, m *entity.Menu) (*MenuUpdate, error)
-	// DeleteMenu is a security write: it soft-deletes the menu and
-	// hard-deletes its role links, and returns
-	// the System User identities reaching the menu.
-	DeleteMenu(ctx context.Context, id int64) ([]int64, error)
+	// DeleteMenu is a security write: it soft-deletes the menu and its role
+	// links (ADR 0002 — no row is hard-deleted), stamping actorID into the
+	// audit fields, and returns the System User identities reaching the menu.
+	DeleteMenu(ctx context.Context, id int64, actorID int64) ([]int64, error)
 }

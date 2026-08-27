@@ -123,7 +123,7 @@ func (s *RoleAssignmentApplication) UpdateUserRoles(ctx context.Context, req *ac
 		return nil, err
 	}
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.linkRepo.ReplaceUserRoles(ctx, req.GetUserId(), unique)
+		affected, err := s.linkRepo.ReplaceUserRoles(ctx, req.GetUserId(), unique, auditActor(ctx))
 		if err != nil {
 			return err
 		}

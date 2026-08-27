@@ -17,6 +17,16 @@ type Role struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int64 `json:"id,omitempty"`
+	// CreateBy holds the value of the "create_by" field.
+	CreateBy int64 `json:"create_by,omitempty"`
+	// UpdateBy holds the value of the "update_by" field.
+	UpdateBy int64 `json:"update_by,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// DeletedAt holds the value of the "deleted_at" field.
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 	// RoleName holds the value of the "role_name" field.
 	RoleName string `json:"role_name,omitempty"`
 	// RoleKey holds the value of the "role_key" field.
@@ -29,16 +39,6 @@ type Role struct {
 	MenuCheckStrictly bool `json:"menu_check_strictly,omitempty"`
 	// Remark holds the value of the "remark" field.
 	Remark string `json:"remark,omitempty"`
-	// CreateBy holds the value of the "create_by" field.
-	CreateBy int64 `json:"create_by,omitempty"`
-	// UpdateBy holds the value of the "update_by" field.
-	UpdateBy int64 `json:"update_by,omitempty"`
-	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt time.Time `json:"created_at,omitempty"`
-	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
-	// DeletedAt holds the value of the "deleted_at" field.
-	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RoleQuery when eager-loading is set.
 	Edges        RoleEdges `json:"edges"`
@@ -47,31 +47,31 @@ type Role struct {
 
 // RoleEdges holds the relations/edges for other nodes in the graph.
 type RoleEdges struct {
-	// Menus holds the value of the menus edge.
-	Menus []*Menu `json:"menus,omitempty"`
-	// Users holds the value of the users edge.
-	Users []*User `json:"users,omitempty"`
+	// MenuGrants holds the value of the menu_grants edge.
+	MenuGrants []*RoleMenu `json:"menu_grants,omitempty"`
+	// UserLinks holds the value of the user_links edge.
+	UserLinks []*UserRole `json:"user_links,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [2]bool
 }
 
-// MenusOrErr returns the Menus value or an error if the edge
+// MenuGrantsOrErr returns the MenuGrants value or an error if the edge
 // was not loaded in eager-loading.
-func (e RoleEdges) MenusOrErr() ([]*Menu, error) {
+func (e RoleEdges) MenuGrantsOrErr() ([]*RoleMenu, error) {
 	if e.loadedTypes[0] {
-		return e.Menus, nil
+		return e.MenuGrants, nil
 	}
-	return nil, &NotLoadedError{edge: "menus"}
+	return nil, &NotLoadedError{edge: "menu_grants"}
 }
 
-// UsersOrErr returns the Users value or an error if the edge
+// UserLinksOrErr returns the UserLinks value or an error if the edge
 // was not loaded in eager-loading.
-func (e RoleEdges) UsersOrErr() ([]*User, error) {
+func (e RoleEdges) UserLinksOrErr() ([]*UserRole, error) {
 	if e.loadedTypes[1] {
-		return e.Users, nil
+		return e.UserLinks, nil
 	}
-	return nil, &NotLoadedError{edge: "users"}
+	return nil, &NotLoadedError{edge: "user_links"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -81,7 +81,7 @@ func (*Role) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case role.FieldMenuCheckStrictly:
 			values[i] = new(sql.NullBool)
-		case role.FieldID, role.FieldRoleSort, role.FieldStatus, role.FieldCreateBy, role.FieldUpdateBy:
+		case role.FieldID, role.FieldCreateBy, role.FieldUpdateBy, role.FieldRoleSort, role.FieldStatus:
 			values[i] = new(sql.NullInt64)
 		case role.FieldRoleName, role.FieldRoleKey, role.FieldRemark:
 			values[i] = new(sql.NullString)
@@ -108,6 +108,37 @@ func (_m *Role) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			_m.ID = int64(value.Int64)
+		case role.FieldCreateBy:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field create_by", values[i])
+			} else if value.Valid {
+				_m.CreateBy = value.Int64
+			}
+		case role.FieldUpdateBy:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field update_by", values[i])
+			} else if value.Valid {
+				_m.UpdateBy = value.Int64
+			}
+		case role.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				_m.CreatedAt = value.Time
+			}
+		case role.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				_m.UpdatedAt = value.Time
+			}
+		case role.FieldDeletedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
+			} else if value.Valid {
+				_m.DeletedAt = new(time.Time)
+				*_m.DeletedAt = value.Time
+			}
 		case role.FieldRoleName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field role_name", values[i])
@@ -144,37 +175,6 @@ func (_m *Role) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Remark = value.String
 			}
-		case role.FieldCreateBy:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field create_by", values[i])
-			} else if value.Valid {
-				_m.CreateBy = value.Int64
-			}
-		case role.FieldUpdateBy:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field update_by", values[i])
-			} else if value.Valid {
-				_m.UpdateBy = value.Int64
-			}
-		case role.FieldCreatedAt:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field created_at", values[i])
-			} else if value.Valid {
-				_m.CreatedAt = value.Time
-			}
-		case role.FieldUpdatedAt:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
-			} else if value.Valid {
-				_m.UpdatedAt = value.Time
-			}
-		case role.FieldDeletedAt:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
-			} else if value.Valid {
-				_m.DeletedAt = new(time.Time)
-				*_m.DeletedAt = value.Time
-			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -188,14 +188,14 @@ func (_m *Role) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryMenus queries the "menus" edge of the Role entity.
-func (_m *Role) QueryMenus() *MenuQuery {
-	return NewRoleClient(_m.config).QueryMenus(_m)
+// QueryMenuGrants queries the "menu_grants" edge of the Role entity.
+func (_m *Role) QueryMenuGrants() *RoleMenuQuery {
+	return NewRoleClient(_m.config).QueryMenuGrants(_m)
 }
 
-// QueryUsers queries the "users" edge of the Role entity.
-func (_m *Role) QueryUsers() *UserQuery {
-	return NewRoleClient(_m.config).QueryUsers(_m)
+// QueryUserLinks queries the "user_links" edge of the Role entity.
+func (_m *Role) QueryUserLinks() *UserRoleQuery {
+	return NewRoleClient(_m.config).QueryUserLinks(_m)
 }
 
 // Update returns a builder for updating this Role.
@@ -221,6 +221,23 @@ func (_m *Role) String() string {
 	var builder strings.Builder
 	builder.WriteString("Role(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString("create_by=")
+	builder.WriteString(fmt.Sprintf("%v", _m.CreateBy))
+	builder.WriteString(", ")
+	builder.WriteString("update_by=")
+	builder.WriteString(fmt.Sprintf("%v", _m.UpdateBy))
+	builder.WriteString(", ")
+	builder.WriteString("created_at=")
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	if v := _m.DeletedAt; v != nil {
+		builder.WriteString("deleted_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
 	builder.WriteString("role_name=")
 	builder.WriteString(_m.RoleName)
 	builder.WriteString(", ")
@@ -238,23 +255,6 @@ func (_m *Role) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("remark=")
 	builder.WriteString(_m.Remark)
-	builder.WriteString(", ")
-	builder.WriteString("create_by=")
-	builder.WriteString(fmt.Sprintf("%v", _m.CreateBy))
-	builder.WriteString(", ")
-	builder.WriteString("update_by=")
-	builder.WriteString(fmt.Sprintf("%v", _m.UpdateBy))
-	builder.WriteString(", ")
-	builder.WriteString("created_at=")
-	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
-	builder.WriteString(", ")
-	builder.WriteString("updated_at=")
-	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
-	builder.WriteString(", ")
-	if v := _m.DeletedAt; v != nil {
-		builder.WriteString("deleted_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
 	builder.WriteByte(')')
 	return builder.String()
 }

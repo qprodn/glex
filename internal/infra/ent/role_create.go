@@ -6,9 +6,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
-	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/rolemenu"
+	"glex/internal/infra/ent/userrole"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -22,74 +22,6 @@ type RoleCreate struct {
 	mutation *RoleMutation
 	hooks    []Hook
 	conflict []sql.ConflictOption
-}
-
-// SetRoleName sets the "role_name" field.
-func (_c *RoleCreate) SetRoleName(v string) *RoleCreate {
-	_c.mutation.SetRoleName(v)
-	return _c
-}
-
-// SetRoleKey sets the "role_key" field.
-func (_c *RoleCreate) SetRoleKey(v string) *RoleCreate {
-	_c.mutation.SetRoleKey(v)
-	return _c
-}
-
-// SetRoleSort sets the "role_sort" field.
-func (_c *RoleCreate) SetRoleSort(v int) *RoleCreate {
-	_c.mutation.SetRoleSort(v)
-	return _c
-}
-
-// SetNillableRoleSort sets the "role_sort" field if the given value is not nil.
-func (_c *RoleCreate) SetNillableRoleSort(v *int) *RoleCreate {
-	if v != nil {
-		_c.SetRoleSort(*v)
-	}
-	return _c
-}
-
-// SetStatus sets the "status" field.
-func (_c *RoleCreate) SetStatus(v int8) *RoleCreate {
-	_c.mutation.SetStatus(v)
-	return _c
-}
-
-// SetNillableStatus sets the "status" field if the given value is not nil.
-func (_c *RoleCreate) SetNillableStatus(v *int8) *RoleCreate {
-	if v != nil {
-		_c.SetStatus(*v)
-	}
-	return _c
-}
-
-// SetMenuCheckStrictly sets the "menu_check_strictly" field.
-func (_c *RoleCreate) SetMenuCheckStrictly(v bool) *RoleCreate {
-	_c.mutation.SetMenuCheckStrictly(v)
-	return _c
-}
-
-// SetNillableMenuCheckStrictly sets the "menu_check_strictly" field if the given value is not nil.
-func (_c *RoleCreate) SetNillableMenuCheckStrictly(v *bool) *RoleCreate {
-	if v != nil {
-		_c.SetMenuCheckStrictly(*v)
-	}
-	return _c
-}
-
-// SetRemark sets the "remark" field.
-func (_c *RoleCreate) SetRemark(v string) *RoleCreate {
-	_c.mutation.SetRemark(v)
-	return _c
-}
-
-// SetNillableRemark sets the "remark" field if the given value is not nil.
-func (_c *RoleCreate) SetNillableRemark(v *string) *RoleCreate {
-	if v != nil {
-		_c.SetRemark(*v)
-	}
-	return _c
 }
 
 // SetCreateBy sets the "create_by" field.
@@ -162,40 +94,108 @@ func (_c *RoleCreate) SetNillableDeletedAt(v *time.Time) *RoleCreate {
 	return _c
 }
 
+// SetRoleName sets the "role_name" field.
+func (_c *RoleCreate) SetRoleName(v string) *RoleCreate {
+	_c.mutation.SetRoleName(v)
+	return _c
+}
+
+// SetRoleKey sets the "role_key" field.
+func (_c *RoleCreate) SetRoleKey(v string) *RoleCreate {
+	_c.mutation.SetRoleKey(v)
+	return _c
+}
+
+// SetRoleSort sets the "role_sort" field.
+func (_c *RoleCreate) SetRoleSort(v int) *RoleCreate {
+	_c.mutation.SetRoleSort(v)
+	return _c
+}
+
+// SetNillableRoleSort sets the "role_sort" field if the given value is not nil.
+func (_c *RoleCreate) SetNillableRoleSort(v *int) *RoleCreate {
+	if v != nil {
+		_c.SetRoleSort(*v)
+	}
+	return _c
+}
+
+// SetStatus sets the "status" field.
+func (_c *RoleCreate) SetStatus(v int8) *RoleCreate {
+	_c.mutation.SetStatus(v)
+	return _c
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_c *RoleCreate) SetNillableStatus(v *int8) *RoleCreate {
+	if v != nil {
+		_c.SetStatus(*v)
+	}
+	return _c
+}
+
+// SetMenuCheckStrictly sets the "menu_check_strictly" field.
+func (_c *RoleCreate) SetMenuCheckStrictly(v bool) *RoleCreate {
+	_c.mutation.SetMenuCheckStrictly(v)
+	return _c
+}
+
+// SetNillableMenuCheckStrictly sets the "menu_check_strictly" field if the given value is not nil.
+func (_c *RoleCreate) SetNillableMenuCheckStrictly(v *bool) *RoleCreate {
+	if v != nil {
+		_c.SetMenuCheckStrictly(*v)
+	}
+	return _c
+}
+
+// SetRemark sets the "remark" field.
+func (_c *RoleCreate) SetRemark(v string) *RoleCreate {
+	_c.mutation.SetRemark(v)
+	return _c
+}
+
+// SetNillableRemark sets the "remark" field if the given value is not nil.
+func (_c *RoleCreate) SetNillableRemark(v *string) *RoleCreate {
+	if v != nil {
+		_c.SetRemark(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *RoleCreate) SetID(v int64) *RoleCreate {
 	_c.mutation.SetID(v)
 	return _c
 }
 
-// AddMenuIDs adds the "menus" edge to the Menu entity by IDs.
-func (_c *RoleCreate) AddMenuIDs(ids ...int64) *RoleCreate {
-	_c.mutation.AddMenuIDs(ids...)
+// AddMenuGrantIDs adds the "menu_grants" edge to the RoleMenu entity by IDs.
+func (_c *RoleCreate) AddMenuGrantIDs(ids ...int64) *RoleCreate {
+	_c.mutation.AddMenuGrantIDs(ids...)
 	return _c
 }
 
-// AddMenus adds the "menus" edges to the Menu entity.
-func (_c *RoleCreate) AddMenus(v ...*Menu) *RoleCreate {
+// AddMenuGrants adds the "menu_grants" edges to the RoleMenu entity.
+func (_c *RoleCreate) AddMenuGrants(v ...*RoleMenu) *RoleCreate {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _c.AddMenuIDs(ids...)
+	return _c.AddMenuGrantIDs(ids...)
 }
 
-// AddUserIDs adds the "users" edge to the User entity by IDs.
-func (_c *RoleCreate) AddUserIDs(ids ...int64) *RoleCreate {
-	_c.mutation.AddUserIDs(ids...)
+// AddUserLinkIDs adds the "user_links" edge to the UserRole entity by IDs.
+func (_c *RoleCreate) AddUserLinkIDs(ids ...int64) *RoleCreate {
+	_c.mutation.AddUserLinkIDs(ids...)
 	return _c
 }
 
-// AddUsers adds the "users" edges to the User entity.
-func (_c *RoleCreate) AddUsers(v ...*User) *RoleCreate {
+// AddUserLinks adds the "user_links" edges to the UserRole entity.
+func (_c *RoleCreate) AddUserLinks(v ...*UserRole) *RoleCreate {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _c.AddUserIDs(ids...)
+	return _c.AddUserLinkIDs(ids...)
 }
 
 // Mutation returns the RoleMutation object of the builder.
@@ -233,22 +233,6 @@ func (_c *RoleCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *RoleCreate) defaults() {
-	if _, ok := _c.mutation.RoleSort(); !ok {
-		v := role.DefaultRoleSort
-		_c.mutation.SetRoleSort(v)
-	}
-	if _, ok := _c.mutation.Status(); !ok {
-		v := role.DefaultStatus
-		_c.mutation.SetStatus(v)
-	}
-	if _, ok := _c.mutation.MenuCheckStrictly(); !ok {
-		v := role.DefaultMenuCheckStrictly
-		_c.mutation.SetMenuCheckStrictly(v)
-	}
-	if _, ok := _c.mutation.Remark(); !ok {
-		v := role.DefaultRemark
-		_c.mutation.SetRemark(v)
-	}
 	if _, ok := _c.mutation.CreateBy(); !ok {
 		v := role.DefaultCreateBy
 		_c.mutation.SetCreateBy(v)
@@ -265,10 +249,32 @@ func (_c *RoleCreate) defaults() {
 		v := role.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := _c.mutation.RoleSort(); !ok {
+		v := role.DefaultRoleSort
+		_c.mutation.SetRoleSort(v)
+	}
+	if _, ok := _c.mutation.Status(); !ok {
+		v := role.DefaultStatus
+		_c.mutation.SetStatus(v)
+	}
+	if _, ok := _c.mutation.MenuCheckStrictly(); !ok {
+		v := role.DefaultMenuCheckStrictly
+		_c.mutation.SetMenuCheckStrictly(v)
+	}
+	if _, ok := _c.mutation.Remark(); !ok {
+		v := role.DefaultRemark
+		_c.mutation.SetRemark(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *RoleCreate) check() error {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Role.created_at"`)}
+	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Role.updated_at"`)}
+	}
 	if _, ok := _c.mutation.RoleName(); !ok {
 		return &ValidationError{Name: "role_name", err: errors.New(`ent: missing required field "Role.role_name"`)}
 	}
@@ -286,12 +292,6 @@ func (_c *RoleCreate) check() error {
 	}
 	if _, ok := _c.mutation.Remark(); !ok {
 		return &ValidationError{Name: "remark", err: errors.New(`ent: missing required field "Role.remark"`)}
-	}
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Role.created_at"`)}
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Role.updated_at"`)}
 	}
 	return nil
 }
@@ -326,6 +326,26 @@ func (_c *RoleCreate) createSpec() (*Role, *sqlgraph.CreateSpec) {
 		_node.ID = id
 		_spec.ID.Value = id
 	}
+	if value, ok := _c.mutation.CreateBy(); ok {
+		_spec.SetField(role.FieldCreateBy, field.TypeInt64, value)
+		_node.CreateBy = value
+	}
+	if value, ok := _c.mutation.UpdateBy(); ok {
+		_spec.SetField(role.FieldUpdateBy, field.TypeInt64, value)
+		_node.UpdateBy = value
+	}
+	if value, ok := _c.mutation.CreatedAt(); ok {
+		_spec.SetField(role.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if value, ok := _c.mutation.UpdatedAt(); ok {
+		_spec.SetField(role.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
+	}
+	if value, ok := _c.mutation.DeletedAt(); ok {
+		_spec.SetField(role.FieldDeletedAt, field.TypeTime, value)
+		_node.DeletedAt = &value
+	}
 	if value, ok := _c.mutation.RoleName(); ok {
 		_spec.SetField(role.FieldRoleName, field.TypeString, value)
 		_node.RoleName = value
@@ -350,35 +370,15 @@ func (_c *RoleCreate) createSpec() (*Role, *sqlgraph.CreateSpec) {
 		_spec.SetField(role.FieldRemark, field.TypeString, value)
 		_node.Remark = value
 	}
-	if value, ok := _c.mutation.CreateBy(); ok {
-		_spec.SetField(role.FieldCreateBy, field.TypeInt64, value)
-		_node.CreateBy = value
-	}
-	if value, ok := _c.mutation.UpdateBy(); ok {
-		_spec.SetField(role.FieldUpdateBy, field.TypeInt64, value)
-		_node.UpdateBy = value
-	}
-	if value, ok := _c.mutation.CreatedAt(); ok {
-		_spec.SetField(role.FieldCreatedAt, field.TypeTime, value)
-		_node.CreatedAt = value
-	}
-	if value, ok := _c.mutation.UpdatedAt(); ok {
-		_spec.SetField(role.FieldUpdatedAt, field.TypeTime, value)
-		_node.UpdatedAt = value
-	}
-	if value, ok := _c.mutation.DeletedAt(); ok {
-		_spec.SetField(role.FieldDeletedAt, field.TypeTime, value)
-		_node.DeletedAt = &value
-	}
-	if nodes := _c.mutation.MenusIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.MenuGrantsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   role.MenusTable,
-			Columns: role.MenusPrimaryKey,
+			Table:   role.MenuGrantsTable,
+			Columns: []string{role.MenuGrantsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(menu.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(rolemenu.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -386,15 +386,15 @@ func (_c *RoleCreate) createSpec() (*Role, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := _c.mutation.UsersIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.UserLinksIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   role.UsersTable,
-			Columns: role.UsersPrimaryKey,
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   role.UserLinksTable,
+			Columns: []string{role.UserLinksColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -409,7 +409,7 @@ func (_c *RoleCreate) createSpec() (*Role, *sqlgraph.CreateSpec) {
 // of the `INSERT` statement. For example:
 //
 //	client.Role.Create().
-//		SetRoleName(v).
+//		SetCreateBy(v).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -418,7 +418,7 @@ func (_c *RoleCreate) createSpec() (*Role, *sqlgraph.CreateSpec) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.RoleUpsert) {
-//			SetRoleName(v+v).
+//			SetCreateBy(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *RoleCreate) OnConflict(opts ...sql.ConflictOption) *RoleUpsertOne {
@@ -453,6 +453,84 @@ type (
 		*sql.UpdateSet
 	}
 )
+
+// SetCreateBy sets the "create_by" field.
+func (u *RoleUpsert) SetCreateBy(v int64) *RoleUpsert {
+	u.Set(role.FieldCreateBy, v)
+	return u
+}
+
+// UpdateCreateBy sets the "create_by" field to the value that was provided on create.
+func (u *RoleUpsert) UpdateCreateBy() *RoleUpsert {
+	u.SetExcluded(role.FieldCreateBy)
+	return u
+}
+
+// AddCreateBy adds v to the "create_by" field.
+func (u *RoleUpsert) AddCreateBy(v int64) *RoleUpsert {
+	u.Add(role.FieldCreateBy, v)
+	return u
+}
+
+// ClearCreateBy clears the value of the "create_by" field.
+func (u *RoleUpsert) ClearCreateBy() *RoleUpsert {
+	u.SetNull(role.FieldCreateBy)
+	return u
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (u *RoleUpsert) SetUpdateBy(v int64) *RoleUpsert {
+	u.Set(role.FieldUpdateBy, v)
+	return u
+}
+
+// UpdateUpdateBy sets the "update_by" field to the value that was provided on create.
+func (u *RoleUpsert) UpdateUpdateBy() *RoleUpsert {
+	u.SetExcluded(role.FieldUpdateBy)
+	return u
+}
+
+// AddUpdateBy adds v to the "update_by" field.
+func (u *RoleUpsert) AddUpdateBy(v int64) *RoleUpsert {
+	u.Add(role.FieldUpdateBy, v)
+	return u
+}
+
+// ClearUpdateBy clears the value of the "update_by" field.
+func (u *RoleUpsert) ClearUpdateBy() *RoleUpsert {
+	u.SetNull(role.FieldUpdateBy)
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *RoleUpsert) SetUpdatedAt(v time.Time) *RoleUpsert {
+	u.Set(role.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *RoleUpsert) UpdateUpdatedAt() *RoleUpsert {
+	u.SetExcluded(role.FieldUpdatedAt)
+	return u
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *RoleUpsert) SetDeletedAt(v time.Time) *RoleUpsert {
+	u.Set(role.FieldDeletedAt, v)
+	return u
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *RoleUpsert) UpdateDeletedAt() *RoleUpsert {
+	u.SetExcluded(role.FieldDeletedAt)
+	return u
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (u *RoleUpsert) ClearDeletedAt() *RoleUpsert {
+	u.SetNull(role.FieldDeletedAt)
+	return u
+}
 
 // SetRoleName sets the "role_name" field.
 func (u *RoleUpsert) SetRoleName(v string) *RoleUpsert {
@@ -538,84 +616,6 @@ func (u *RoleUpsert) UpdateRemark() *RoleUpsert {
 	return u
 }
 
-// SetCreateBy sets the "create_by" field.
-func (u *RoleUpsert) SetCreateBy(v int64) *RoleUpsert {
-	u.Set(role.FieldCreateBy, v)
-	return u
-}
-
-// UpdateCreateBy sets the "create_by" field to the value that was provided on create.
-func (u *RoleUpsert) UpdateCreateBy() *RoleUpsert {
-	u.SetExcluded(role.FieldCreateBy)
-	return u
-}
-
-// AddCreateBy adds v to the "create_by" field.
-func (u *RoleUpsert) AddCreateBy(v int64) *RoleUpsert {
-	u.Add(role.FieldCreateBy, v)
-	return u
-}
-
-// ClearCreateBy clears the value of the "create_by" field.
-func (u *RoleUpsert) ClearCreateBy() *RoleUpsert {
-	u.SetNull(role.FieldCreateBy)
-	return u
-}
-
-// SetUpdateBy sets the "update_by" field.
-func (u *RoleUpsert) SetUpdateBy(v int64) *RoleUpsert {
-	u.Set(role.FieldUpdateBy, v)
-	return u
-}
-
-// UpdateUpdateBy sets the "update_by" field to the value that was provided on create.
-func (u *RoleUpsert) UpdateUpdateBy() *RoleUpsert {
-	u.SetExcluded(role.FieldUpdateBy)
-	return u
-}
-
-// AddUpdateBy adds v to the "update_by" field.
-func (u *RoleUpsert) AddUpdateBy(v int64) *RoleUpsert {
-	u.Add(role.FieldUpdateBy, v)
-	return u
-}
-
-// ClearUpdateBy clears the value of the "update_by" field.
-func (u *RoleUpsert) ClearUpdateBy() *RoleUpsert {
-	u.SetNull(role.FieldUpdateBy)
-	return u
-}
-
-// SetUpdatedAt sets the "updated_at" field.
-func (u *RoleUpsert) SetUpdatedAt(v time.Time) *RoleUpsert {
-	u.Set(role.FieldUpdatedAt, v)
-	return u
-}
-
-// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
-func (u *RoleUpsert) UpdateUpdatedAt() *RoleUpsert {
-	u.SetExcluded(role.FieldUpdatedAt)
-	return u
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *RoleUpsert) SetDeletedAt(v time.Time) *RoleUpsert {
-	u.Set(role.FieldDeletedAt, v)
-	return u
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *RoleUpsert) UpdateDeletedAt() *RoleUpsert {
-	u.SetExcluded(role.FieldDeletedAt)
-	return u
-}
-
-// ClearDeletedAt clears the value of the "deleted_at" field.
-func (u *RoleUpsert) ClearDeletedAt() *RoleUpsert {
-	u.SetNull(role.FieldDeletedAt)
-	return u
-}
-
 // UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
 // Using this option is equivalent to using:
 //
@@ -665,6 +665,97 @@ func (u *RoleUpsertOne) Update(set func(*RoleUpsert)) *RoleUpsertOne {
 		set(&RoleUpsert{UpdateSet: update})
 	}))
 	return u
+}
+
+// SetCreateBy sets the "create_by" field.
+func (u *RoleUpsertOne) SetCreateBy(v int64) *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.SetCreateBy(v)
+	})
+}
+
+// AddCreateBy adds v to the "create_by" field.
+func (u *RoleUpsertOne) AddCreateBy(v int64) *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.AddCreateBy(v)
+	})
+}
+
+// UpdateCreateBy sets the "create_by" field to the value that was provided on create.
+func (u *RoleUpsertOne) UpdateCreateBy() *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.UpdateCreateBy()
+	})
+}
+
+// ClearCreateBy clears the value of the "create_by" field.
+func (u *RoleUpsertOne) ClearCreateBy() *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.ClearCreateBy()
+	})
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (u *RoleUpsertOne) SetUpdateBy(v int64) *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.SetUpdateBy(v)
+	})
+}
+
+// AddUpdateBy adds v to the "update_by" field.
+func (u *RoleUpsertOne) AddUpdateBy(v int64) *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.AddUpdateBy(v)
+	})
+}
+
+// UpdateUpdateBy sets the "update_by" field to the value that was provided on create.
+func (u *RoleUpsertOne) UpdateUpdateBy() *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.UpdateUpdateBy()
+	})
+}
+
+// ClearUpdateBy clears the value of the "update_by" field.
+func (u *RoleUpsertOne) ClearUpdateBy() *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.ClearUpdateBy()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *RoleUpsertOne) SetUpdatedAt(v time.Time) *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *RoleUpsertOne) UpdateUpdatedAt() *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *RoleUpsertOne) SetDeletedAt(v time.Time) *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *RoleUpsertOne) UpdateDeletedAt() *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.UpdateDeletedAt()
+	})
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (u *RoleUpsertOne) ClearDeletedAt() *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.ClearDeletedAt()
+	})
 }
 
 // SetRoleName sets the "role_name" field.
@@ -762,97 +853,6 @@ func (u *RoleUpsertOne) SetRemark(v string) *RoleUpsertOne {
 func (u *RoleUpsertOne) UpdateRemark() *RoleUpsertOne {
 	return u.Update(func(s *RoleUpsert) {
 		s.UpdateRemark()
-	})
-}
-
-// SetCreateBy sets the "create_by" field.
-func (u *RoleUpsertOne) SetCreateBy(v int64) *RoleUpsertOne {
-	return u.Update(func(s *RoleUpsert) {
-		s.SetCreateBy(v)
-	})
-}
-
-// AddCreateBy adds v to the "create_by" field.
-func (u *RoleUpsertOne) AddCreateBy(v int64) *RoleUpsertOne {
-	return u.Update(func(s *RoleUpsert) {
-		s.AddCreateBy(v)
-	})
-}
-
-// UpdateCreateBy sets the "create_by" field to the value that was provided on create.
-func (u *RoleUpsertOne) UpdateCreateBy() *RoleUpsertOne {
-	return u.Update(func(s *RoleUpsert) {
-		s.UpdateCreateBy()
-	})
-}
-
-// ClearCreateBy clears the value of the "create_by" field.
-func (u *RoleUpsertOne) ClearCreateBy() *RoleUpsertOne {
-	return u.Update(func(s *RoleUpsert) {
-		s.ClearCreateBy()
-	})
-}
-
-// SetUpdateBy sets the "update_by" field.
-func (u *RoleUpsertOne) SetUpdateBy(v int64) *RoleUpsertOne {
-	return u.Update(func(s *RoleUpsert) {
-		s.SetUpdateBy(v)
-	})
-}
-
-// AddUpdateBy adds v to the "update_by" field.
-func (u *RoleUpsertOne) AddUpdateBy(v int64) *RoleUpsertOne {
-	return u.Update(func(s *RoleUpsert) {
-		s.AddUpdateBy(v)
-	})
-}
-
-// UpdateUpdateBy sets the "update_by" field to the value that was provided on create.
-func (u *RoleUpsertOne) UpdateUpdateBy() *RoleUpsertOne {
-	return u.Update(func(s *RoleUpsert) {
-		s.UpdateUpdateBy()
-	})
-}
-
-// ClearUpdateBy clears the value of the "update_by" field.
-func (u *RoleUpsertOne) ClearUpdateBy() *RoleUpsertOne {
-	return u.Update(func(s *RoleUpsert) {
-		s.ClearUpdateBy()
-	})
-}
-
-// SetUpdatedAt sets the "updated_at" field.
-func (u *RoleUpsertOne) SetUpdatedAt(v time.Time) *RoleUpsertOne {
-	return u.Update(func(s *RoleUpsert) {
-		s.SetUpdatedAt(v)
-	})
-}
-
-// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
-func (u *RoleUpsertOne) UpdateUpdatedAt() *RoleUpsertOne {
-	return u.Update(func(s *RoleUpsert) {
-		s.UpdateUpdatedAt()
-	})
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *RoleUpsertOne) SetDeletedAt(v time.Time) *RoleUpsertOne {
-	return u.Update(func(s *RoleUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *RoleUpsertOne) UpdateDeletedAt() *RoleUpsertOne {
-	return u.Update(func(s *RoleUpsert) {
-		s.UpdateDeletedAt()
-	})
-}
-
-// ClearDeletedAt clears the value of the "deleted_at" field.
-func (u *RoleUpsertOne) ClearDeletedAt() *RoleUpsertOne {
-	return u.Update(func(s *RoleUpsert) {
-		s.ClearDeletedAt()
 	})
 }
 
@@ -991,7 +991,7 @@ func (_c *RoleCreateBulk) ExecX(ctx context.Context) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.RoleUpsert) {
-//			SetRoleName(v+v).
+//			SetCreateBy(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *RoleCreateBulk) OnConflict(opts ...sql.ConflictOption) *RoleUpsertBulk {
@@ -1071,6 +1071,97 @@ func (u *RoleUpsertBulk) Update(set func(*RoleUpsert)) *RoleUpsertBulk {
 		set(&RoleUpsert{UpdateSet: update})
 	}))
 	return u
+}
+
+// SetCreateBy sets the "create_by" field.
+func (u *RoleUpsertBulk) SetCreateBy(v int64) *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.SetCreateBy(v)
+	})
+}
+
+// AddCreateBy adds v to the "create_by" field.
+func (u *RoleUpsertBulk) AddCreateBy(v int64) *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.AddCreateBy(v)
+	})
+}
+
+// UpdateCreateBy sets the "create_by" field to the value that was provided on create.
+func (u *RoleUpsertBulk) UpdateCreateBy() *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.UpdateCreateBy()
+	})
+}
+
+// ClearCreateBy clears the value of the "create_by" field.
+func (u *RoleUpsertBulk) ClearCreateBy() *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.ClearCreateBy()
+	})
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (u *RoleUpsertBulk) SetUpdateBy(v int64) *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.SetUpdateBy(v)
+	})
+}
+
+// AddUpdateBy adds v to the "update_by" field.
+func (u *RoleUpsertBulk) AddUpdateBy(v int64) *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.AddUpdateBy(v)
+	})
+}
+
+// UpdateUpdateBy sets the "update_by" field to the value that was provided on create.
+func (u *RoleUpsertBulk) UpdateUpdateBy() *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.UpdateUpdateBy()
+	})
+}
+
+// ClearUpdateBy clears the value of the "update_by" field.
+func (u *RoleUpsertBulk) ClearUpdateBy() *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.ClearUpdateBy()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *RoleUpsertBulk) SetUpdatedAt(v time.Time) *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *RoleUpsertBulk) UpdateUpdatedAt() *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *RoleUpsertBulk) SetDeletedAt(v time.Time) *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *RoleUpsertBulk) UpdateDeletedAt() *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.UpdateDeletedAt()
+	})
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (u *RoleUpsertBulk) ClearDeletedAt() *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.ClearDeletedAt()
+	})
 }
 
 // SetRoleName sets the "role_name" field.
@@ -1168,97 +1259,6 @@ func (u *RoleUpsertBulk) SetRemark(v string) *RoleUpsertBulk {
 func (u *RoleUpsertBulk) UpdateRemark() *RoleUpsertBulk {
 	return u.Update(func(s *RoleUpsert) {
 		s.UpdateRemark()
-	})
-}
-
-// SetCreateBy sets the "create_by" field.
-func (u *RoleUpsertBulk) SetCreateBy(v int64) *RoleUpsertBulk {
-	return u.Update(func(s *RoleUpsert) {
-		s.SetCreateBy(v)
-	})
-}
-
-// AddCreateBy adds v to the "create_by" field.
-func (u *RoleUpsertBulk) AddCreateBy(v int64) *RoleUpsertBulk {
-	return u.Update(func(s *RoleUpsert) {
-		s.AddCreateBy(v)
-	})
-}
-
-// UpdateCreateBy sets the "create_by" field to the value that was provided on create.
-func (u *RoleUpsertBulk) UpdateCreateBy() *RoleUpsertBulk {
-	return u.Update(func(s *RoleUpsert) {
-		s.UpdateCreateBy()
-	})
-}
-
-// ClearCreateBy clears the value of the "create_by" field.
-func (u *RoleUpsertBulk) ClearCreateBy() *RoleUpsertBulk {
-	return u.Update(func(s *RoleUpsert) {
-		s.ClearCreateBy()
-	})
-}
-
-// SetUpdateBy sets the "update_by" field.
-func (u *RoleUpsertBulk) SetUpdateBy(v int64) *RoleUpsertBulk {
-	return u.Update(func(s *RoleUpsert) {
-		s.SetUpdateBy(v)
-	})
-}
-
-// AddUpdateBy adds v to the "update_by" field.
-func (u *RoleUpsertBulk) AddUpdateBy(v int64) *RoleUpsertBulk {
-	return u.Update(func(s *RoleUpsert) {
-		s.AddUpdateBy(v)
-	})
-}
-
-// UpdateUpdateBy sets the "update_by" field to the value that was provided on create.
-func (u *RoleUpsertBulk) UpdateUpdateBy() *RoleUpsertBulk {
-	return u.Update(func(s *RoleUpsert) {
-		s.UpdateUpdateBy()
-	})
-}
-
-// ClearUpdateBy clears the value of the "update_by" field.
-func (u *RoleUpsertBulk) ClearUpdateBy() *RoleUpsertBulk {
-	return u.Update(func(s *RoleUpsert) {
-		s.ClearUpdateBy()
-	})
-}
-
-// SetUpdatedAt sets the "updated_at" field.
-func (u *RoleUpsertBulk) SetUpdatedAt(v time.Time) *RoleUpsertBulk {
-	return u.Update(func(s *RoleUpsert) {
-		s.SetUpdatedAt(v)
-	})
-}
-
-// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
-func (u *RoleUpsertBulk) UpdateUpdatedAt() *RoleUpsertBulk {
-	return u.Update(func(s *RoleUpsert) {
-		s.UpdateUpdatedAt()
-	})
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *RoleUpsertBulk) SetDeletedAt(v time.Time) *RoleUpsertBulk {
-	return u.Update(func(s *RoleUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *RoleUpsertBulk) UpdateDeletedAt() *RoleUpsertBulk {
-	return u.Update(func(s *RoleUpsert) {
-		s.UpdateDeletedAt()
-	})
-}
-
-// ClearDeletedAt clears the value of the "deleted_at" field.
-func (u *RoleUpsertBulk) ClearDeletedAt() *RoleUpsertBulk {
-	return u.Update(func(s *RoleUpsert) {
-		s.ClearDeletedAt()
 	})
 }
 

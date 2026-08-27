@@ -1,8 +1,6 @@
 package schema
 
 import (
-	"time"
-
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/entsql"
@@ -14,6 +12,11 @@ import (
 // User holds the schema for the system-user entity (ported from RuoYi sys_user).
 type User struct {
 	ent.Schema
+}
+
+// Mixin contributes the audit columns (ADR 0002).
+func (User) Mixin() []ent.Mixin {
+	return []ent.Mixin{AuditMixin{}}
 }
 
 // Fields of the User.
@@ -43,16 +46,9 @@ func (User) Fields() []ent.Field {
 		field.String("password").Default(""),
 		field.String("avatar").Optional().Default("").MaxLen(256),
 		field.String("remark").Optional().Default(""),
-		// Audit; written by the admin flows (0 until then).
-		field.Int64("create_by").Optional().Default(0),
-		field.Int64("update_by").Optional().Default(0),
 		// Last-login fields; written by the authn module, read-only here.
 		field.String("login_ip").Optional().Default(""),
 		field.Time("login_date").Optional().Nillable(),
-		field.Time("created_at").Default(time.Now).Immutable(),
-		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
-		// Soft delete (replaces RuoYi del_flag). NULL = not deleted.
-		field.Time("deleted_at").Optional().Nillable(),
 	}
 }
 
@@ -64,15 +60,12 @@ func (User) Annotations() []entschema.Annotation {
 	}
 }
 
-// Edges of the User. M2M to Role via the join table sys_user_role — exactly
-// RuoYi's shape: columns user_id + role_id, composite PK (user_id, role_id),
-// no timestamps/soft delete (hard-deleted rows, full-replacement semantics).
-// The link is the access module's Role Assignment (角色分配), not the user
+// Edges of the User. The Role Assignment (角色分配) lives in sys_user_role as
+// explicit UserRole link rows — one per assignment, audit columns and soft
+// delete included (ADR 0002) — owned by the access module, not the user
 // module's concern.
 func (User) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("roles", Role.Type).Annotations(
-			entsql.Annotation{Table: "sys_user_role"},
-		),
+		edge.To("role_assignments", UserRole.Type),
 	}
 }

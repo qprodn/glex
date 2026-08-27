@@ -12,6 +12,11 @@ var (
 	// SysMenuColumns holds the columns for the "sys_menu" table.
 	SysMenuColumns = []*schema.Column{
 		{Name: "menu_id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
 		{Name: "menu_name", Type: field.TypeString},
 		{Name: "parent_id", Type: field.TypeInt64, Default: 0},
 		{Name: "order_num", Type: field.TypeInt, Default: 0, SchemaType: map[string]string{"postgres": "integer"}},
@@ -27,11 +32,6 @@ var (
 		{Name: "icon", Type: field.TypeString, Default: ""},
 		{Name: "active_menu", Type: field.TypeString, Default: ""},
 		{Name: "ext", Type: field.TypeString, Default: ""},
-		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
-		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
 	}
 	// SysMenuTable holds the schema information for the "sys_menu" table.
 	SysMenuTable = &schema.Table{
@@ -42,17 +42,17 @@ var (
 	// SysRoleColumns holds the columns for the "sys_role" table.
 	SysRoleColumns = []*schema.Column{
 		{Name: "role_id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
 		{Name: "role_name", Type: field.TypeString},
 		{Name: "role_key", Type: field.TypeString},
 		{Name: "role_sort", Type: field.TypeInt, Default: 0, SchemaType: map[string]string{"postgres": "integer"}},
 		{Name: "status", Type: field.TypeInt8, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
 		{Name: "menu_check_strictly", Type: field.TypeBool, Default: true},
 		{Name: "remark", Type: field.TypeString, Default: ""},
-		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
-		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
 	}
 	// SysRoleTable holds the schema information for the "sys_role" table.
 	SysRoleTable = &schema.Table{
@@ -60,9 +60,55 @@ var (
 		Columns:    SysRoleColumns,
 		PrimaryKey: []*schema.Column{SysRoleColumns[0]},
 	}
+	// SysRoleMenuColumns holds the columns for the "sys_role_menu" table.
+	SysRoleMenuColumns = []*schema.Column{
+		{Name: "role_menu_id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "menu_id", Type: field.TypeInt64},
+		{Name: "role_id", Type: field.TypeInt64},
+	}
+	// SysRoleMenuTable holds the schema information for the "sys_role_menu" table.
+	SysRoleMenuTable = &schema.Table{
+		Name:       "sys_role_menu",
+		Columns:    SysRoleMenuColumns,
+		PrimaryKey: []*schema.Column{SysRoleMenuColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "sys_role_menu_sys_menu_role_links",
+				Columns:    []*schema.Column{SysRoleMenuColumns[6]},
+				RefColumns: []*schema.Column{SysMenuColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "sys_role_menu_sys_role_menu_grants",
+				Columns:    []*schema.Column{SysRoleMenuColumns[7]},
+				RefColumns: []*schema.Column{SysRoleColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "rolemenu_role_id_menu_id",
+				Unique:  true,
+				Columns: []*schema.Column{SysRoleMenuColumns[7], SysRoleMenuColumns[6]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+		},
+	}
 	// SysUserColumns holds the columns for the "sys_user" table.
 	SysUserColumns = []*schema.Column{
 		{Name: "user_id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
 		{Name: "user_name", Type: field.TypeString},
 		{Name: "nick_name", Type: field.TypeString, Default: ""},
 		{Name: "email", Type: field.TypeString, Nullable: true},
@@ -72,13 +118,8 @@ var (
 		{Name: "password", Type: field.TypeString, Default: ""},
 		{Name: "avatar", Type: field.TypeString, Nullable: true, Size: 256, Default: ""},
 		{Name: "remark", Type: field.TypeString, Nullable: true, Default: ""},
-		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
-		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
 		{Name: "login_ip", Type: field.TypeString, Nullable: true, Default: ""},
 		{Name: "login_date", Type: field.TypeTime, Nullable: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
 	}
 	// SysUserTable holds the schema information for the "sys_user" table.
 	SysUserTable = &schema.Table{
@@ -86,53 +127,44 @@ var (
 		Columns:    SysUserColumns,
 		PrimaryKey: []*schema.Column{SysUserColumns[0]},
 	}
-	// RoleMenusColumns holds the columns for the "role_menus" table.
-	RoleMenusColumns = []*schema.Column{
+	// SysUserRoleColumns holds the columns for the "sys_user_role" table.
+	SysUserRoleColumns = []*schema.Column{
+		{Name: "user_role_id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
 		{Name: "role_id", Type: field.TypeInt64},
-		{Name: "menu_id", Type: field.TypeInt64},
+		{Name: "user_id", Type: field.TypeInt64},
 	}
-	// RoleMenusTable holds the schema information for the "role_menus" table.
-	RoleMenusTable = &schema.Table{
-		Name:       "role_menus",
-		Columns:    RoleMenusColumns,
-		PrimaryKey: []*schema.Column{RoleMenusColumns[0], RoleMenusColumns[1]},
+	// SysUserRoleTable holds the schema information for the "sys_user_role" table.
+	SysUserRoleTable = &schema.Table{
+		Name:       "sys_user_role",
+		Columns:    SysUserRoleColumns,
+		PrimaryKey: []*schema.Column{SysUserRoleColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "role_menus_role_id",
-				Columns:    []*schema.Column{RoleMenusColumns[0]},
+				Symbol:     "sys_user_role_sys_role_user_links",
+				Columns:    []*schema.Column{SysUserRoleColumns[6]},
 				RefColumns: []*schema.Column{SysRoleColumns[0]},
-				OnDelete:   schema.Cascade,
+				OnDelete:   schema.NoAction,
 			},
 			{
-				Symbol:     "role_menus_menu_id",
-				Columns:    []*schema.Column{RoleMenusColumns[1]},
-				RefColumns: []*schema.Column{SysMenuColumns[0]},
-				OnDelete:   schema.Cascade,
+				Symbol:     "sys_user_role_sys_user_role_assignments",
+				Columns:    []*schema.Column{SysUserRoleColumns[7]},
+				RefColumns: []*schema.Column{SysUserColumns[0]},
+				OnDelete:   schema.NoAction,
 			},
 		},
-	}
-	// UserRolesColumns holds the columns for the "user_roles" table.
-	UserRolesColumns = []*schema.Column{
-		{Name: "user_id", Type: field.TypeInt64},
-		{Name: "role_id", Type: field.TypeInt64},
-	}
-	// UserRolesTable holds the schema information for the "user_roles" table.
-	UserRolesTable = &schema.Table{
-		Name:       "user_roles",
-		Columns:    UserRolesColumns,
-		PrimaryKey: []*schema.Column{UserRolesColumns[0], UserRolesColumns[1]},
-		ForeignKeys: []*schema.ForeignKey{
+		Indexes: []*schema.Index{
 			{
-				Symbol:     "user_roles_user_id",
-				Columns:    []*schema.Column{UserRolesColumns[0]},
-				RefColumns: []*schema.Column{SysUserColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-			{
-				Symbol:     "user_roles_role_id",
-				Columns:    []*schema.Column{UserRolesColumns[1]},
-				RefColumns: []*schema.Column{SysRoleColumns[0]},
-				OnDelete:   schema.Cascade,
+				Name:    "userrole_user_id_role_id",
+				Unique:  true,
+				Columns: []*schema.Column{SysUserRoleColumns[7], SysUserRoleColumns[6]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
 			},
 		},
 	}
@@ -140,9 +172,9 @@ var (
 	Tables = []*schema.Table{
 		SysMenuTable,
 		SysRoleTable,
+		SysRoleMenuTable,
 		SysUserTable,
-		RoleMenusTable,
-		UserRolesTable,
+		SysUserRoleTable,
 	}
 )
 
@@ -153,17 +185,17 @@ func init() {
 	SysRoleTable.Annotation = &entsql.Annotation{
 		Table: "sys_role",
 	}
+	SysRoleMenuTable.ForeignKeys[0].RefTable = SysMenuTable
+	SysRoleMenuTable.ForeignKeys[1].RefTable = SysRoleTable
+	SysRoleMenuTable.Annotation = &entsql.Annotation{
+		Table: "sys_role_menu",
+	}
 	SysUserTable.Annotation = &entsql.Annotation{
 		Table: "sys_user",
 	}
-	RoleMenusTable.ForeignKeys[0].RefTable = SysRoleTable
-	RoleMenusTable.ForeignKeys[1].RefTable = SysMenuTable
-	RoleMenusTable.Annotation = &entsql.Annotation{
-		Table: "sys_role_menu",
-	}
-	UserRolesTable.ForeignKeys[0].RefTable = SysUserTable
-	UserRolesTable.ForeignKeys[1].RefTable = SysRoleTable
-	UserRolesTable.Annotation = &entsql.Annotation{
+	SysUserRoleTable.ForeignKeys[0].RefTable = SysRoleTable
+	SysUserRoleTable.ForeignKeys[1].RefTable = SysUserTable
+	SysUserRoleTable.Annotation = &entsql.Annotation{
 		Table: "sys_user_role",
 	}
 }

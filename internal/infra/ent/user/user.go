@@ -14,6 +14,16 @@ const (
 	Label = "user"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "user_id"
+	// FieldCreateBy holds the string denoting the create_by field in the database.
+	FieldCreateBy = "create_by"
+	// FieldUpdateBy holds the string denoting the update_by field in the database.
+	FieldUpdateBy = "update_by"
+	// FieldCreatedAt holds the string denoting the created_at field in the database.
+	FieldCreatedAt = "created_at"
+	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
+	FieldUpdatedAt = "updated_at"
+	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
+	FieldDeletedAt = "deleted_at"
 	// FieldUserName holds the string denoting the user_name field in the database.
 	FieldUserName = "user_name"
 	// FieldNickName holds the string denoting the nick_name field in the database.
@@ -32,36 +42,33 @@ const (
 	FieldAvatar = "avatar"
 	// FieldRemark holds the string denoting the remark field in the database.
 	FieldRemark = "remark"
-	// FieldCreateBy holds the string denoting the create_by field in the database.
-	FieldCreateBy = "create_by"
-	// FieldUpdateBy holds the string denoting the update_by field in the database.
-	FieldUpdateBy = "update_by"
 	// FieldLoginIP holds the string denoting the login_ip field in the database.
 	FieldLoginIP = "login_ip"
 	// FieldLoginDate holds the string denoting the login_date field in the database.
 	FieldLoginDate = "login_date"
-	// FieldCreatedAt holds the string denoting the created_at field in the database.
-	FieldCreatedAt = "created_at"
-	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
-	FieldUpdatedAt = "updated_at"
-	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
-	FieldDeletedAt = "deleted_at"
-	// EdgeRoles holds the string denoting the roles edge name in mutations.
-	EdgeRoles = "roles"
-	// RoleFieldID holds the string denoting the ID field of the Role.
-	RoleFieldID = "role_id"
+	// EdgeRoleAssignments holds the string denoting the role_assignments edge name in mutations.
+	EdgeRoleAssignments = "role_assignments"
+	// UserRoleFieldID holds the string denoting the ID field of the UserRole.
+	UserRoleFieldID = "user_role_id"
 	// Table holds the table name of the user in the database.
 	Table = "sys_user"
-	// RolesTable is the table that holds the roles relation/edge. The primary key declared below.
-	RolesTable = "user_roles"
-	// RolesInverseTable is the table name for the Role entity.
-	// It exists in this package in order to avoid circular dependency with the "role" package.
-	RolesInverseTable = "sys_role"
+	// RoleAssignmentsTable is the table that holds the role_assignments relation/edge.
+	RoleAssignmentsTable = "sys_user_role"
+	// RoleAssignmentsInverseTable is the table name for the UserRole entity.
+	// It exists in this package in order to avoid circular dependency with the "userrole" package.
+	RoleAssignmentsInverseTable = "sys_user_role"
+	// RoleAssignmentsColumn is the table column denoting the role_assignments relation/edge.
+	RoleAssignmentsColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
 var Columns = []string{
 	FieldID,
+	FieldCreateBy,
+	FieldUpdateBy,
+	FieldCreatedAt,
+	FieldUpdatedAt,
+	FieldDeletedAt,
 	FieldUserName,
 	FieldNickName,
 	FieldEmail,
@@ -71,20 +78,9 @@ var Columns = []string{
 	FieldPassword,
 	FieldAvatar,
 	FieldRemark,
-	FieldCreateBy,
-	FieldUpdateBy,
 	FieldLoginIP,
 	FieldLoginDate,
-	FieldCreatedAt,
-	FieldUpdatedAt,
-	FieldDeletedAt,
 }
-
-var (
-	// RolesPrimaryKey and RolesColumn2 are the table columns denoting the
-	// primary key for the roles relation (M2M).
-	RolesPrimaryKey = []string{"user_id", "role_id"}
-)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -97,6 +93,16 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultCreateBy holds the default value on creation for the "create_by" field.
+	DefaultCreateBy int64
+	// DefaultUpdateBy holds the default value on creation for the "update_by" field.
+	DefaultUpdateBy int64
+	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
+	DefaultCreatedAt func() time.Time
+	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
+	DefaultUpdatedAt func() time.Time
+	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
+	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultNickName holds the default value on creation for the "nick_name" field.
 	DefaultNickName string
 	// DefaultGender holds the default value on creation for the "gender" field.
@@ -111,18 +117,8 @@ var (
 	AvatarValidator func(string) error
 	// DefaultRemark holds the default value on creation for the "remark" field.
 	DefaultRemark string
-	// DefaultCreateBy holds the default value on creation for the "create_by" field.
-	DefaultCreateBy int64
-	// DefaultUpdateBy holds the default value on creation for the "update_by" field.
-	DefaultUpdateBy int64
 	// DefaultLoginIP holds the default value on creation for the "login_ip" field.
 	DefaultLoginIP string
-	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
-	DefaultCreatedAt func() time.Time
-	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
-	DefaultUpdatedAt func() time.Time
-	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
-	UpdateDefaultUpdatedAt func() time.Time
 )
 
 // OrderOption defines the ordering options for the User queries.
@@ -131,6 +127,31 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByCreateBy orders the results by the create_by field.
+func ByCreateBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreateBy, opts...).ToFunc()
+}
+
+// ByUpdateBy orders the results by the update_by field.
+func ByUpdateBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdateBy, opts...).ToFunc()
+}
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByDeletedAt orders the results by the deleted_at field.
+func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
 }
 
 // ByUserName orders the results by the user_name field.
@@ -178,16 +199,6 @@ func ByRemark(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRemark, opts...).ToFunc()
 }
 
-// ByCreateBy orders the results by the create_by field.
-func ByCreateBy(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCreateBy, opts...).ToFunc()
-}
-
-// ByUpdateBy orders the results by the update_by field.
-func ByUpdateBy(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldUpdateBy, opts...).ToFunc()
-}
-
 // ByLoginIP orders the results by the login_ip field.
 func ByLoginIP(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLoginIP, opts...).ToFunc()
@@ -198,38 +209,23 @@ func ByLoginDate(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLoginDate, opts...).ToFunc()
 }
 
-// ByCreatedAt orders the results by the created_at field.
-func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
-}
-
-// ByUpdatedAt orders the results by the updated_at field.
-func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
-}
-
-// ByDeletedAt orders the results by the deleted_at field.
-func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
-}
-
-// ByRolesCount orders the results by roles count.
-func ByRolesCount(opts ...sql.OrderTermOption) OrderOption {
+// ByRoleAssignmentsCount orders the results by role_assignments count.
+func ByRoleAssignmentsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newRolesStep(), opts...)
+		sqlgraph.OrderByNeighborsCount(s, newRoleAssignmentsStep(), opts...)
 	}
 }
 
-// ByRoles orders the results by roles terms.
-func ByRoles(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+// ByRoleAssignments orders the results by role_assignments terms.
+func ByRoleAssignments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newRolesStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newRoleAssignmentsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
-func newRolesStep() *sqlgraph.Step {
+func newRoleAssignmentsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(RolesInverseTable, RoleFieldID),
-		sqlgraph.Edge(sqlgraph.M2M, false, RolesTable, RolesPrimaryKey...),
+		sqlgraph.To(RoleAssignmentsInverseTable, UserRoleFieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, RoleAssignmentsTable, RoleAssignmentsColumn),
 	)
 }

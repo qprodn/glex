@@ -27,8 +27,9 @@ type UserRepo interface {
 	// UpdateUser returns the persisted record with its pre-image. The
 	// Application service owns its transaction and session revocation.
 	UpdateUser(ctx context.Context, u *entity.User) (*UserUpdate, error)
-	// DeleteUser is a security write: it soft-deletes the user and
-	// hard-deletes its Role Assignment, and returns the System User identities
-	// whose sessions must be revoked (always {id}).
-	DeleteUser(ctx context.Context, id int64) ([]int64, error)
+	// DeleteUser is a security write: it soft-deletes the user and its Role
+	// Assignment (ADR 0002 — no row is hard-deleted), stamping actorID into
+	// the audit fields, and returns the System User identities whose sessions
+	// must be revoked (always {id}).
+	DeleteUser(ctx context.Context, id int64, actorID int64) ([]int64, error)
 }

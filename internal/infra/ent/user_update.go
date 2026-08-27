@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"glex/internal/infra/ent/predicate"
-	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userrole"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -26,6 +26,86 @@ type UserUpdate struct {
 // Where appends a list predicates to the UserUpdate builder.
 func (_u *UserUpdate) Where(ps ...predicate.User) *UserUpdate {
 	_u.mutation.Where(ps...)
+	return _u
+}
+
+// SetCreateBy sets the "create_by" field.
+func (_u *UserUpdate) SetCreateBy(v int64) *UserUpdate {
+	_u.mutation.ResetCreateBy()
+	_u.mutation.SetCreateBy(v)
+	return _u
+}
+
+// SetNillableCreateBy sets the "create_by" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableCreateBy(v *int64) *UserUpdate {
+	if v != nil {
+		_u.SetCreateBy(*v)
+	}
+	return _u
+}
+
+// AddCreateBy adds value to the "create_by" field.
+func (_u *UserUpdate) AddCreateBy(v int64) *UserUpdate {
+	_u.mutation.AddCreateBy(v)
+	return _u
+}
+
+// ClearCreateBy clears the value of the "create_by" field.
+func (_u *UserUpdate) ClearCreateBy() *UserUpdate {
+	_u.mutation.ClearCreateBy()
+	return _u
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (_u *UserUpdate) SetUpdateBy(v int64) *UserUpdate {
+	_u.mutation.ResetUpdateBy()
+	_u.mutation.SetUpdateBy(v)
+	return _u
+}
+
+// SetNillableUpdateBy sets the "update_by" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableUpdateBy(v *int64) *UserUpdate {
+	if v != nil {
+		_u.SetUpdateBy(*v)
+	}
+	return _u
+}
+
+// AddUpdateBy adds value to the "update_by" field.
+func (_u *UserUpdate) AddUpdateBy(v int64) *UserUpdate {
+	_u.mutation.AddUpdateBy(v)
+	return _u
+}
+
+// ClearUpdateBy clears the value of the "update_by" field.
+func (_u *UserUpdate) ClearUpdateBy() *UserUpdate {
+	_u.mutation.ClearUpdateBy()
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *UserUpdate) SetUpdatedAt(v time.Time) *UserUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (_u *UserUpdate) SetDeletedAt(v time.Time) *UserUpdate {
+	_u.mutation.SetDeletedAt(v)
+	return _u
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableDeletedAt(v *time.Time) *UserUpdate {
+	if v != nil {
+		_u.SetDeletedAt(*v)
+	}
+	return _u
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (_u *UserUpdate) ClearDeletedAt() *UserUpdate {
+	_u.mutation.ClearDeletedAt()
 	return _u
 }
 
@@ -193,60 +273,6 @@ func (_u *UserUpdate) ClearRemark() *UserUpdate {
 	return _u
 }
 
-// SetCreateBy sets the "create_by" field.
-func (_u *UserUpdate) SetCreateBy(v int64) *UserUpdate {
-	_u.mutation.ResetCreateBy()
-	_u.mutation.SetCreateBy(v)
-	return _u
-}
-
-// SetNillableCreateBy sets the "create_by" field if the given value is not nil.
-func (_u *UserUpdate) SetNillableCreateBy(v *int64) *UserUpdate {
-	if v != nil {
-		_u.SetCreateBy(*v)
-	}
-	return _u
-}
-
-// AddCreateBy adds value to the "create_by" field.
-func (_u *UserUpdate) AddCreateBy(v int64) *UserUpdate {
-	_u.mutation.AddCreateBy(v)
-	return _u
-}
-
-// ClearCreateBy clears the value of the "create_by" field.
-func (_u *UserUpdate) ClearCreateBy() *UserUpdate {
-	_u.mutation.ClearCreateBy()
-	return _u
-}
-
-// SetUpdateBy sets the "update_by" field.
-func (_u *UserUpdate) SetUpdateBy(v int64) *UserUpdate {
-	_u.mutation.ResetUpdateBy()
-	_u.mutation.SetUpdateBy(v)
-	return _u
-}
-
-// SetNillableUpdateBy sets the "update_by" field if the given value is not nil.
-func (_u *UserUpdate) SetNillableUpdateBy(v *int64) *UserUpdate {
-	if v != nil {
-		_u.SetUpdateBy(*v)
-	}
-	return _u
-}
-
-// AddUpdateBy adds value to the "update_by" field.
-func (_u *UserUpdate) AddUpdateBy(v int64) *UserUpdate {
-	_u.mutation.AddUpdateBy(v)
-	return _u
-}
-
-// ClearUpdateBy clears the value of the "update_by" field.
-func (_u *UserUpdate) ClearUpdateBy() *UserUpdate {
-	_u.mutation.ClearUpdateBy()
-	return _u
-}
-
 // SetLoginIP sets the "login_ip" field.
 func (_u *UserUpdate) SetLoginIP(v string) *UserUpdate {
 	_u.mutation.SetLoginIP(v)
@@ -287,45 +313,19 @@ func (_u *UserUpdate) ClearLoginDate() *UserUpdate {
 	return _u
 }
 
-// SetUpdatedAt sets the "updated_at" field.
-func (_u *UserUpdate) SetUpdatedAt(v time.Time) *UserUpdate {
-	_u.mutation.SetUpdatedAt(v)
+// AddRoleAssignmentIDs adds the "role_assignments" edge to the UserRole entity by IDs.
+func (_u *UserUpdate) AddRoleAssignmentIDs(ids ...int64) *UserUpdate {
+	_u.mutation.AddRoleAssignmentIDs(ids...)
 	return _u
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *UserUpdate) SetDeletedAt(v time.Time) *UserUpdate {
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *UserUpdate) SetNillableDeletedAt(v *time.Time) *UserUpdate {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// ClearDeletedAt clears the value of the "deleted_at" field.
-func (_u *UserUpdate) ClearDeletedAt() *UserUpdate {
-	_u.mutation.ClearDeletedAt()
-	return _u
-}
-
-// AddRoleIDs adds the "roles" edge to the Role entity by IDs.
-func (_u *UserUpdate) AddRoleIDs(ids ...int64) *UserUpdate {
-	_u.mutation.AddRoleIDs(ids...)
-	return _u
-}
-
-// AddRoles adds the "roles" edges to the Role entity.
-func (_u *UserUpdate) AddRoles(v ...*Role) *UserUpdate {
+// AddRoleAssignments adds the "role_assignments" edges to the UserRole entity.
+func (_u *UserUpdate) AddRoleAssignments(v ...*UserRole) *UserUpdate {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.AddRoleIDs(ids...)
+	return _u.AddRoleAssignmentIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -333,25 +333,25 @@ func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
 }
 
-// ClearRoles clears all "roles" edges to the Role entity.
-func (_u *UserUpdate) ClearRoles() *UserUpdate {
-	_u.mutation.ClearRoles()
+// ClearRoleAssignments clears all "role_assignments" edges to the UserRole entity.
+func (_u *UserUpdate) ClearRoleAssignments() *UserUpdate {
+	_u.mutation.ClearRoleAssignments()
 	return _u
 }
 
-// RemoveRoleIDs removes the "roles" edge to Role entities by IDs.
-func (_u *UserUpdate) RemoveRoleIDs(ids ...int64) *UserUpdate {
-	_u.mutation.RemoveRoleIDs(ids...)
+// RemoveRoleAssignmentIDs removes the "role_assignments" edge to UserRole entities by IDs.
+func (_u *UserUpdate) RemoveRoleAssignmentIDs(ids ...int64) *UserUpdate {
+	_u.mutation.RemoveRoleAssignmentIDs(ids...)
 	return _u
 }
 
-// RemoveRoles removes "roles" edges to Role entities.
-func (_u *UserUpdate) RemoveRoles(v ...*Role) *UserUpdate {
+// RemoveRoleAssignments removes "role_assignments" edges to UserRole entities.
+func (_u *UserUpdate) RemoveRoleAssignments(v ...*UserRole) *UserUpdate {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.RemoveRoleIDs(ids...)
+	return _u.RemoveRoleAssignmentIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -412,6 +412,33 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
+	if value, ok := _u.mutation.CreateBy(); ok {
+		_spec.SetField(user.FieldCreateBy, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedCreateBy(); ok {
+		_spec.AddField(user.FieldCreateBy, field.TypeInt64, value)
+	}
+	if _u.mutation.CreateByCleared() {
+		_spec.ClearField(user.FieldCreateBy, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.UpdateBy(); ok {
+		_spec.SetField(user.FieldUpdateBy, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedUpdateBy(); ok {
+		_spec.AddField(user.FieldUpdateBy, field.TypeInt64, value)
+	}
+	if _u.mutation.UpdateByCleared() {
+		_spec.ClearField(user.FieldUpdateBy, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(user.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.DeletedAt(); ok {
+		_spec.SetField(user.FieldDeletedAt, field.TypeTime, value)
+	}
+	if _u.mutation.DeletedAtCleared() {
+		_spec.ClearField(user.FieldDeletedAt, field.TypeTime)
+	}
 	if value, ok := _u.mutation.UserName(); ok {
 		_spec.SetField(user.FieldUserName, field.TypeString, value)
 	}
@@ -457,24 +484,6 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.RemarkCleared() {
 		_spec.ClearField(user.FieldRemark, field.TypeString)
 	}
-	if value, ok := _u.mutation.CreateBy(); ok {
-		_spec.SetField(user.FieldCreateBy, field.TypeInt64, value)
-	}
-	if value, ok := _u.mutation.AddedCreateBy(); ok {
-		_spec.AddField(user.FieldCreateBy, field.TypeInt64, value)
-	}
-	if _u.mutation.CreateByCleared() {
-		_spec.ClearField(user.FieldCreateBy, field.TypeInt64)
-	}
-	if value, ok := _u.mutation.UpdateBy(); ok {
-		_spec.SetField(user.FieldUpdateBy, field.TypeInt64, value)
-	}
-	if value, ok := _u.mutation.AddedUpdateBy(); ok {
-		_spec.AddField(user.FieldUpdateBy, field.TypeInt64, value)
-	}
-	if _u.mutation.UpdateByCleared() {
-		_spec.ClearField(user.FieldUpdateBy, field.TypeInt64)
-	}
 	if value, ok := _u.mutation.LoginIP(); ok {
 		_spec.SetField(user.FieldLoginIP, field.TypeString, value)
 	}
@@ -487,37 +496,28 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.LoginDateCleared() {
 		_spec.ClearField(user.FieldLoginDate, field.TypeTime)
 	}
-	if value, ok := _u.mutation.UpdatedAt(); ok {
-		_spec.SetField(user.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(user.FieldDeletedAt, field.TypeTime, value)
-	}
-	if _u.mutation.DeletedAtCleared() {
-		_spec.ClearField(user.FieldDeletedAt, field.TypeTime)
-	}
-	if _u.mutation.RolesCleared() {
+	if _u.mutation.RoleAssignmentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   user.RolesTable,
-			Columns: user.RolesPrimaryKey,
+			Table:   user.RoleAssignmentsTable,
+			Columns: []string{user.RoleAssignmentsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt64),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RemovedRolesIDs(); len(nodes) > 0 && !_u.mutation.RolesCleared() {
+	if nodes := _u.mutation.RemovedRoleAssignmentsIDs(); len(nodes) > 0 && !_u.mutation.RoleAssignmentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   user.RolesTable,
-			Columns: user.RolesPrimaryKey,
+			Table:   user.RoleAssignmentsTable,
+			Columns: []string{user.RoleAssignmentsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -525,15 +525,15 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RolesIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.RoleAssignmentsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   user.RolesTable,
-			Columns: user.RolesPrimaryKey,
+			Table:   user.RoleAssignmentsTable,
+			Columns: []string{user.RoleAssignmentsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -559,6 +559,86 @@ type UserUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *UserMutation
+}
+
+// SetCreateBy sets the "create_by" field.
+func (_u *UserUpdateOne) SetCreateBy(v int64) *UserUpdateOne {
+	_u.mutation.ResetCreateBy()
+	_u.mutation.SetCreateBy(v)
+	return _u
+}
+
+// SetNillableCreateBy sets the "create_by" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableCreateBy(v *int64) *UserUpdateOne {
+	if v != nil {
+		_u.SetCreateBy(*v)
+	}
+	return _u
+}
+
+// AddCreateBy adds value to the "create_by" field.
+func (_u *UserUpdateOne) AddCreateBy(v int64) *UserUpdateOne {
+	_u.mutation.AddCreateBy(v)
+	return _u
+}
+
+// ClearCreateBy clears the value of the "create_by" field.
+func (_u *UserUpdateOne) ClearCreateBy() *UserUpdateOne {
+	_u.mutation.ClearCreateBy()
+	return _u
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (_u *UserUpdateOne) SetUpdateBy(v int64) *UserUpdateOne {
+	_u.mutation.ResetUpdateBy()
+	_u.mutation.SetUpdateBy(v)
+	return _u
+}
+
+// SetNillableUpdateBy sets the "update_by" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableUpdateBy(v *int64) *UserUpdateOne {
+	if v != nil {
+		_u.SetUpdateBy(*v)
+	}
+	return _u
+}
+
+// AddUpdateBy adds value to the "update_by" field.
+func (_u *UserUpdateOne) AddUpdateBy(v int64) *UserUpdateOne {
+	_u.mutation.AddUpdateBy(v)
+	return _u
+}
+
+// ClearUpdateBy clears the value of the "update_by" field.
+func (_u *UserUpdateOne) ClearUpdateBy() *UserUpdateOne {
+	_u.mutation.ClearUpdateBy()
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *UserUpdateOne) SetUpdatedAt(v time.Time) *UserUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (_u *UserUpdateOne) SetDeletedAt(v time.Time) *UserUpdateOne {
+	_u.mutation.SetDeletedAt(v)
+	return _u
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableDeletedAt(v *time.Time) *UserUpdateOne {
+	if v != nil {
+		_u.SetDeletedAt(*v)
+	}
+	return _u
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (_u *UserUpdateOne) ClearDeletedAt() *UserUpdateOne {
+	_u.mutation.ClearDeletedAt()
+	return _u
 }
 
 // SetUserName sets the "user_name" field.
@@ -725,60 +805,6 @@ func (_u *UserUpdateOne) ClearRemark() *UserUpdateOne {
 	return _u
 }
 
-// SetCreateBy sets the "create_by" field.
-func (_u *UserUpdateOne) SetCreateBy(v int64) *UserUpdateOne {
-	_u.mutation.ResetCreateBy()
-	_u.mutation.SetCreateBy(v)
-	return _u
-}
-
-// SetNillableCreateBy sets the "create_by" field if the given value is not nil.
-func (_u *UserUpdateOne) SetNillableCreateBy(v *int64) *UserUpdateOne {
-	if v != nil {
-		_u.SetCreateBy(*v)
-	}
-	return _u
-}
-
-// AddCreateBy adds value to the "create_by" field.
-func (_u *UserUpdateOne) AddCreateBy(v int64) *UserUpdateOne {
-	_u.mutation.AddCreateBy(v)
-	return _u
-}
-
-// ClearCreateBy clears the value of the "create_by" field.
-func (_u *UserUpdateOne) ClearCreateBy() *UserUpdateOne {
-	_u.mutation.ClearCreateBy()
-	return _u
-}
-
-// SetUpdateBy sets the "update_by" field.
-func (_u *UserUpdateOne) SetUpdateBy(v int64) *UserUpdateOne {
-	_u.mutation.ResetUpdateBy()
-	_u.mutation.SetUpdateBy(v)
-	return _u
-}
-
-// SetNillableUpdateBy sets the "update_by" field if the given value is not nil.
-func (_u *UserUpdateOne) SetNillableUpdateBy(v *int64) *UserUpdateOne {
-	if v != nil {
-		_u.SetUpdateBy(*v)
-	}
-	return _u
-}
-
-// AddUpdateBy adds value to the "update_by" field.
-func (_u *UserUpdateOne) AddUpdateBy(v int64) *UserUpdateOne {
-	_u.mutation.AddUpdateBy(v)
-	return _u
-}
-
-// ClearUpdateBy clears the value of the "update_by" field.
-func (_u *UserUpdateOne) ClearUpdateBy() *UserUpdateOne {
-	_u.mutation.ClearUpdateBy()
-	return _u
-}
-
 // SetLoginIP sets the "login_ip" field.
 func (_u *UserUpdateOne) SetLoginIP(v string) *UserUpdateOne {
 	_u.mutation.SetLoginIP(v)
@@ -819,45 +845,19 @@ func (_u *UserUpdateOne) ClearLoginDate() *UserUpdateOne {
 	return _u
 }
 
-// SetUpdatedAt sets the "updated_at" field.
-func (_u *UserUpdateOne) SetUpdatedAt(v time.Time) *UserUpdateOne {
-	_u.mutation.SetUpdatedAt(v)
+// AddRoleAssignmentIDs adds the "role_assignments" edge to the UserRole entity by IDs.
+func (_u *UserUpdateOne) AddRoleAssignmentIDs(ids ...int64) *UserUpdateOne {
+	_u.mutation.AddRoleAssignmentIDs(ids...)
 	return _u
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *UserUpdateOne) SetDeletedAt(v time.Time) *UserUpdateOne {
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *UserUpdateOne) SetNillableDeletedAt(v *time.Time) *UserUpdateOne {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// ClearDeletedAt clears the value of the "deleted_at" field.
-func (_u *UserUpdateOne) ClearDeletedAt() *UserUpdateOne {
-	_u.mutation.ClearDeletedAt()
-	return _u
-}
-
-// AddRoleIDs adds the "roles" edge to the Role entity by IDs.
-func (_u *UserUpdateOne) AddRoleIDs(ids ...int64) *UserUpdateOne {
-	_u.mutation.AddRoleIDs(ids...)
-	return _u
-}
-
-// AddRoles adds the "roles" edges to the Role entity.
-func (_u *UserUpdateOne) AddRoles(v ...*Role) *UserUpdateOne {
+// AddRoleAssignments adds the "role_assignments" edges to the UserRole entity.
+func (_u *UserUpdateOne) AddRoleAssignments(v ...*UserRole) *UserUpdateOne {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.AddRoleIDs(ids...)
+	return _u.AddRoleAssignmentIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -865,25 +865,25 @@ func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
 }
 
-// ClearRoles clears all "roles" edges to the Role entity.
-func (_u *UserUpdateOne) ClearRoles() *UserUpdateOne {
-	_u.mutation.ClearRoles()
+// ClearRoleAssignments clears all "role_assignments" edges to the UserRole entity.
+func (_u *UserUpdateOne) ClearRoleAssignments() *UserUpdateOne {
+	_u.mutation.ClearRoleAssignments()
 	return _u
 }
 
-// RemoveRoleIDs removes the "roles" edge to Role entities by IDs.
-func (_u *UserUpdateOne) RemoveRoleIDs(ids ...int64) *UserUpdateOne {
-	_u.mutation.RemoveRoleIDs(ids...)
+// RemoveRoleAssignmentIDs removes the "role_assignments" edge to UserRole entities by IDs.
+func (_u *UserUpdateOne) RemoveRoleAssignmentIDs(ids ...int64) *UserUpdateOne {
+	_u.mutation.RemoveRoleAssignmentIDs(ids...)
 	return _u
 }
 
-// RemoveRoles removes "roles" edges to Role entities.
-func (_u *UserUpdateOne) RemoveRoles(v ...*Role) *UserUpdateOne {
+// RemoveRoleAssignments removes "role_assignments" edges to UserRole entities.
+func (_u *UserUpdateOne) RemoveRoleAssignments(v ...*UserRole) *UserUpdateOne {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.RemoveRoleIDs(ids...)
+	return _u.RemoveRoleAssignmentIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -974,6 +974,33 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			}
 		}
 	}
+	if value, ok := _u.mutation.CreateBy(); ok {
+		_spec.SetField(user.FieldCreateBy, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedCreateBy(); ok {
+		_spec.AddField(user.FieldCreateBy, field.TypeInt64, value)
+	}
+	if _u.mutation.CreateByCleared() {
+		_spec.ClearField(user.FieldCreateBy, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.UpdateBy(); ok {
+		_spec.SetField(user.FieldUpdateBy, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedUpdateBy(); ok {
+		_spec.AddField(user.FieldUpdateBy, field.TypeInt64, value)
+	}
+	if _u.mutation.UpdateByCleared() {
+		_spec.ClearField(user.FieldUpdateBy, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(user.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.DeletedAt(); ok {
+		_spec.SetField(user.FieldDeletedAt, field.TypeTime, value)
+	}
+	if _u.mutation.DeletedAtCleared() {
+		_spec.ClearField(user.FieldDeletedAt, field.TypeTime)
+	}
 	if value, ok := _u.mutation.UserName(); ok {
 		_spec.SetField(user.FieldUserName, field.TypeString, value)
 	}
@@ -1019,24 +1046,6 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	if _u.mutation.RemarkCleared() {
 		_spec.ClearField(user.FieldRemark, field.TypeString)
 	}
-	if value, ok := _u.mutation.CreateBy(); ok {
-		_spec.SetField(user.FieldCreateBy, field.TypeInt64, value)
-	}
-	if value, ok := _u.mutation.AddedCreateBy(); ok {
-		_spec.AddField(user.FieldCreateBy, field.TypeInt64, value)
-	}
-	if _u.mutation.CreateByCleared() {
-		_spec.ClearField(user.FieldCreateBy, field.TypeInt64)
-	}
-	if value, ok := _u.mutation.UpdateBy(); ok {
-		_spec.SetField(user.FieldUpdateBy, field.TypeInt64, value)
-	}
-	if value, ok := _u.mutation.AddedUpdateBy(); ok {
-		_spec.AddField(user.FieldUpdateBy, field.TypeInt64, value)
-	}
-	if _u.mutation.UpdateByCleared() {
-		_spec.ClearField(user.FieldUpdateBy, field.TypeInt64)
-	}
 	if value, ok := _u.mutation.LoginIP(); ok {
 		_spec.SetField(user.FieldLoginIP, field.TypeString, value)
 	}
@@ -1049,37 +1058,28 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	if _u.mutation.LoginDateCleared() {
 		_spec.ClearField(user.FieldLoginDate, field.TypeTime)
 	}
-	if value, ok := _u.mutation.UpdatedAt(); ok {
-		_spec.SetField(user.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(user.FieldDeletedAt, field.TypeTime, value)
-	}
-	if _u.mutation.DeletedAtCleared() {
-		_spec.ClearField(user.FieldDeletedAt, field.TypeTime)
-	}
-	if _u.mutation.RolesCleared() {
+	if _u.mutation.RoleAssignmentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   user.RolesTable,
-			Columns: user.RolesPrimaryKey,
+			Table:   user.RoleAssignmentsTable,
+			Columns: []string{user.RoleAssignmentsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt64),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RemovedRolesIDs(); len(nodes) > 0 && !_u.mutation.RolesCleared() {
+	if nodes := _u.mutation.RemovedRoleAssignmentsIDs(); len(nodes) > 0 && !_u.mutation.RoleAssignmentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   user.RolesTable,
-			Columns: user.RolesPrimaryKey,
+			Table:   user.RoleAssignmentsTable,
+			Columns: []string{user.RoleAssignmentsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -1087,15 +1087,15 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RolesIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.RoleAssignmentsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   user.RolesTable,
-			Columns: user.RolesPrimaryKey,
+			Table:   user.RoleAssignmentsTable,
+			Columns: []string{user.RoleAssignmentsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

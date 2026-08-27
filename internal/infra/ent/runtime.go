@@ -5,8 +5,10 @@ package ent
 import (
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
+	"glex/internal/infra/ent/rolemenu"
 	"glex/internal/infra/ent/schema"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userrole"
 	"time"
 )
 
@@ -14,8 +16,29 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	menuMixin := schema.Menu{}.Mixin()
+	menuMixinFields0 := menuMixin[0].Fields()
+	_ = menuMixinFields0
 	menuFields := schema.Menu{}.Fields()
 	_ = menuFields
+	// menuDescCreateBy is the schema descriptor for create_by field.
+	menuDescCreateBy := menuMixinFields0[0].Descriptor()
+	// menu.DefaultCreateBy holds the default value on creation for the create_by field.
+	menu.DefaultCreateBy = menuDescCreateBy.Default.(int64)
+	// menuDescUpdateBy is the schema descriptor for update_by field.
+	menuDescUpdateBy := menuMixinFields0[1].Descriptor()
+	// menu.DefaultUpdateBy holds the default value on creation for the update_by field.
+	menu.DefaultUpdateBy = menuDescUpdateBy.Default.(int64)
+	// menuDescCreatedAt is the schema descriptor for created_at field.
+	menuDescCreatedAt := menuMixinFields0[2].Descriptor()
+	// menu.DefaultCreatedAt holds the default value on creation for the created_at field.
+	menu.DefaultCreatedAt = menuDescCreatedAt.Default.(func() time.Time)
+	// menuDescUpdatedAt is the schema descriptor for updated_at field.
+	menuDescUpdatedAt := menuMixinFields0[3].Descriptor()
+	// menu.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	menu.DefaultUpdatedAt = menuDescUpdatedAt.Default.(func() time.Time)
+	// menu.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	menu.UpdateDefaultUpdatedAt = menuDescUpdatedAt.UpdateDefault.(func() time.Time)
 	// menuDescParentID is the schema descriptor for parent_id field.
 	menuDescParentID := menuFields[2].Descriptor()
 	// menu.DefaultParentID holds the default value on creation for the parent_id field.
@@ -68,26 +91,29 @@ func init() {
 	menuDescExt := menuFields[15].Descriptor()
 	// menu.DefaultExt holds the default value on creation for the ext field.
 	menu.DefaultExt = menuDescExt.Default.(string)
-	// menuDescCreateBy is the schema descriptor for create_by field.
-	menuDescCreateBy := menuFields[16].Descriptor()
-	// menu.DefaultCreateBy holds the default value on creation for the create_by field.
-	menu.DefaultCreateBy = menuDescCreateBy.Default.(int64)
-	// menuDescUpdateBy is the schema descriptor for update_by field.
-	menuDescUpdateBy := menuFields[17].Descriptor()
-	// menu.DefaultUpdateBy holds the default value on creation for the update_by field.
-	menu.DefaultUpdateBy = menuDescUpdateBy.Default.(int64)
-	// menuDescCreatedAt is the schema descriptor for created_at field.
-	menuDescCreatedAt := menuFields[18].Descriptor()
-	// menu.DefaultCreatedAt holds the default value on creation for the created_at field.
-	menu.DefaultCreatedAt = menuDescCreatedAt.Default.(func() time.Time)
-	// menuDescUpdatedAt is the schema descriptor for updated_at field.
-	menuDescUpdatedAt := menuFields[19].Descriptor()
-	// menu.DefaultUpdatedAt holds the default value on creation for the updated_at field.
-	menu.DefaultUpdatedAt = menuDescUpdatedAt.Default.(func() time.Time)
-	// menu.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
-	menu.UpdateDefaultUpdatedAt = menuDescUpdatedAt.UpdateDefault.(func() time.Time)
+	roleMixin := schema.Role{}.Mixin()
+	roleMixinFields0 := roleMixin[0].Fields()
+	_ = roleMixinFields0
 	roleFields := schema.Role{}.Fields()
 	_ = roleFields
+	// roleDescCreateBy is the schema descriptor for create_by field.
+	roleDescCreateBy := roleMixinFields0[0].Descriptor()
+	// role.DefaultCreateBy holds the default value on creation for the create_by field.
+	role.DefaultCreateBy = roleDescCreateBy.Default.(int64)
+	// roleDescUpdateBy is the schema descriptor for update_by field.
+	roleDescUpdateBy := roleMixinFields0[1].Descriptor()
+	// role.DefaultUpdateBy holds the default value on creation for the update_by field.
+	role.DefaultUpdateBy = roleDescUpdateBy.Default.(int64)
+	// roleDescCreatedAt is the schema descriptor for created_at field.
+	roleDescCreatedAt := roleMixinFields0[2].Descriptor()
+	// role.DefaultCreatedAt holds the default value on creation for the created_at field.
+	role.DefaultCreatedAt = roleDescCreatedAt.Default.(func() time.Time)
+	// roleDescUpdatedAt is the schema descriptor for updated_at field.
+	roleDescUpdatedAt := roleMixinFields0[3].Descriptor()
+	// role.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	role.DefaultUpdatedAt = roleDescUpdatedAt.Default.(func() time.Time)
+	// role.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	role.UpdateDefaultUpdatedAt = roleDescUpdatedAt.UpdateDefault.(func() time.Time)
 	// roleDescRoleSort is the schema descriptor for role_sort field.
 	roleDescRoleSort := roleFields[3].Descriptor()
 	// role.DefaultRoleSort holds the default value on creation for the role_sort field.
@@ -104,26 +130,52 @@ func init() {
 	roleDescRemark := roleFields[6].Descriptor()
 	// role.DefaultRemark holds the default value on creation for the remark field.
 	role.DefaultRemark = roleDescRemark.Default.(string)
-	// roleDescCreateBy is the schema descriptor for create_by field.
-	roleDescCreateBy := roleFields[7].Descriptor()
-	// role.DefaultCreateBy holds the default value on creation for the create_by field.
-	role.DefaultCreateBy = roleDescCreateBy.Default.(int64)
-	// roleDescUpdateBy is the schema descriptor for update_by field.
-	roleDescUpdateBy := roleFields[8].Descriptor()
-	// role.DefaultUpdateBy holds the default value on creation for the update_by field.
-	role.DefaultUpdateBy = roleDescUpdateBy.Default.(int64)
-	// roleDescCreatedAt is the schema descriptor for created_at field.
-	roleDescCreatedAt := roleFields[9].Descriptor()
-	// role.DefaultCreatedAt holds the default value on creation for the created_at field.
-	role.DefaultCreatedAt = roleDescCreatedAt.Default.(func() time.Time)
-	// roleDescUpdatedAt is the schema descriptor for updated_at field.
-	roleDescUpdatedAt := roleFields[10].Descriptor()
-	// role.DefaultUpdatedAt holds the default value on creation for the updated_at field.
-	role.DefaultUpdatedAt = roleDescUpdatedAt.Default.(func() time.Time)
-	// role.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
-	role.UpdateDefaultUpdatedAt = roleDescUpdatedAt.UpdateDefault.(func() time.Time)
+	rolemenuMixin := schema.RoleMenu{}.Mixin()
+	rolemenuMixinFields0 := rolemenuMixin[0].Fields()
+	_ = rolemenuMixinFields0
+	rolemenuFields := schema.RoleMenu{}.Fields()
+	_ = rolemenuFields
+	// rolemenuDescCreateBy is the schema descriptor for create_by field.
+	rolemenuDescCreateBy := rolemenuMixinFields0[0].Descriptor()
+	// rolemenu.DefaultCreateBy holds the default value on creation for the create_by field.
+	rolemenu.DefaultCreateBy = rolemenuDescCreateBy.Default.(int64)
+	// rolemenuDescUpdateBy is the schema descriptor for update_by field.
+	rolemenuDescUpdateBy := rolemenuMixinFields0[1].Descriptor()
+	// rolemenu.DefaultUpdateBy holds the default value on creation for the update_by field.
+	rolemenu.DefaultUpdateBy = rolemenuDescUpdateBy.Default.(int64)
+	// rolemenuDescCreatedAt is the schema descriptor for created_at field.
+	rolemenuDescCreatedAt := rolemenuMixinFields0[2].Descriptor()
+	// rolemenu.DefaultCreatedAt holds the default value on creation for the created_at field.
+	rolemenu.DefaultCreatedAt = rolemenuDescCreatedAt.Default.(func() time.Time)
+	// rolemenuDescUpdatedAt is the schema descriptor for updated_at field.
+	rolemenuDescUpdatedAt := rolemenuMixinFields0[3].Descriptor()
+	// rolemenu.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	rolemenu.DefaultUpdatedAt = rolemenuDescUpdatedAt.Default.(func() time.Time)
+	// rolemenu.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	rolemenu.UpdateDefaultUpdatedAt = rolemenuDescUpdatedAt.UpdateDefault.(func() time.Time)
+	userMixin := schema.User{}.Mixin()
+	userMixinFields0 := userMixin[0].Fields()
+	_ = userMixinFields0
 	userFields := schema.User{}.Fields()
 	_ = userFields
+	// userDescCreateBy is the schema descriptor for create_by field.
+	userDescCreateBy := userMixinFields0[0].Descriptor()
+	// user.DefaultCreateBy holds the default value on creation for the create_by field.
+	user.DefaultCreateBy = userDescCreateBy.Default.(int64)
+	// userDescUpdateBy is the schema descriptor for update_by field.
+	userDescUpdateBy := userMixinFields0[1].Descriptor()
+	// user.DefaultUpdateBy holds the default value on creation for the update_by field.
+	user.DefaultUpdateBy = userDescUpdateBy.Default.(int64)
+	// userDescCreatedAt is the schema descriptor for created_at field.
+	userDescCreatedAt := userMixinFields0[2].Descriptor()
+	// user.DefaultCreatedAt holds the default value on creation for the created_at field.
+	user.DefaultCreatedAt = userDescCreatedAt.Default.(func() time.Time)
+	// userDescUpdatedAt is the schema descriptor for updated_at field.
+	userDescUpdatedAt := userMixinFields0[3].Descriptor()
+	// user.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
+	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	user.UpdateDefaultUpdatedAt = userDescUpdatedAt.UpdateDefault.(func() time.Time)
 	// userDescNickName is the schema descriptor for nick_name field.
 	userDescNickName := userFields[2].Descriptor()
 	// user.DefaultNickName holds the default value on creation for the nick_name field.
@@ -150,26 +202,31 @@ func init() {
 	userDescRemark := userFields[9].Descriptor()
 	// user.DefaultRemark holds the default value on creation for the remark field.
 	user.DefaultRemark = userDescRemark.Default.(string)
-	// userDescCreateBy is the schema descriptor for create_by field.
-	userDescCreateBy := userFields[10].Descriptor()
-	// user.DefaultCreateBy holds the default value on creation for the create_by field.
-	user.DefaultCreateBy = userDescCreateBy.Default.(int64)
-	// userDescUpdateBy is the schema descriptor for update_by field.
-	userDescUpdateBy := userFields[11].Descriptor()
-	// user.DefaultUpdateBy holds the default value on creation for the update_by field.
-	user.DefaultUpdateBy = userDescUpdateBy.Default.(int64)
 	// userDescLoginIP is the schema descriptor for login_ip field.
-	userDescLoginIP := userFields[12].Descriptor()
+	userDescLoginIP := userFields[10].Descriptor()
 	// user.DefaultLoginIP holds the default value on creation for the login_ip field.
 	user.DefaultLoginIP = userDescLoginIP.Default.(string)
-	// userDescCreatedAt is the schema descriptor for created_at field.
-	userDescCreatedAt := userFields[14].Descriptor()
-	// user.DefaultCreatedAt holds the default value on creation for the created_at field.
-	user.DefaultCreatedAt = userDescCreatedAt.Default.(func() time.Time)
-	// userDescUpdatedAt is the schema descriptor for updated_at field.
-	userDescUpdatedAt := userFields[15].Descriptor()
-	// user.DefaultUpdatedAt holds the default value on creation for the updated_at field.
-	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
-	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
-	user.UpdateDefaultUpdatedAt = userDescUpdatedAt.UpdateDefault.(func() time.Time)
+	userroleMixin := schema.UserRole{}.Mixin()
+	userroleMixinFields0 := userroleMixin[0].Fields()
+	_ = userroleMixinFields0
+	userroleFields := schema.UserRole{}.Fields()
+	_ = userroleFields
+	// userroleDescCreateBy is the schema descriptor for create_by field.
+	userroleDescCreateBy := userroleMixinFields0[0].Descriptor()
+	// userrole.DefaultCreateBy holds the default value on creation for the create_by field.
+	userrole.DefaultCreateBy = userroleDescCreateBy.Default.(int64)
+	// userroleDescUpdateBy is the schema descriptor for update_by field.
+	userroleDescUpdateBy := userroleMixinFields0[1].Descriptor()
+	// userrole.DefaultUpdateBy holds the default value on creation for the update_by field.
+	userrole.DefaultUpdateBy = userroleDescUpdateBy.Default.(int64)
+	// userroleDescCreatedAt is the schema descriptor for created_at field.
+	userroleDescCreatedAt := userroleMixinFields0[2].Descriptor()
+	// userrole.DefaultCreatedAt holds the default value on creation for the created_at field.
+	userrole.DefaultCreatedAt = userroleDescCreatedAt.Default.(func() time.Time)
+	// userroleDescUpdatedAt is the schema descriptor for updated_at field.
+	userroleDescUpdatedAt := userroleMixinFields0[3].Descriptor()
+	// userrole.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	userrole.DefaultUpdatedAt = userroleDescUpdatedAt.Default.(func() time.Time)
+	// userrole.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	userrole.UpdateDefaultUpdatedAt = userroleDescUpdatedAt.UpdateDefault.(func() time.Time)
 }

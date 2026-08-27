@@ -14,7 +14,9 @@ import (
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
+	"glex/internal/infra/ent/rolemenu"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userrole"
 )
 
 // superadminPermission is the wildcard Functional Permission only the
@@ -52,12 +54,11 @@ func (r *authorizationResolver) ResolveAuthorization(ctx context.Context, system
 }
 
 func resolveAuthorization(ctx context.Context, db *ent.Database, systemUserID int64) (*accessrepo.AuthorizationResolution, error) {
-	roles, err := db.Role(ctx).Query().
-		Where(
-			role.DeletedAtIsNil(),
-			role.StatusEQ(0),
-			role.HasUsersWith(user.IDEQ(systemUserID), user.DeletedAtIsNil()),
-		).
+	roles, err := db.User(ctx).Query().
+		Where(user.IDEQ(systemUserID), user.DeletedAtIsNil()).
+		QueryRoleAssignments().Where(userrole.DeletedAtIsNil()).
+		QueryRole().
+		Where(role.DeletedAtIsNil(), role.StatusEQ(0)).
 		Order(role.ByRoleKey(), role.ByID()).
 		All(ctx)
 	if err != nil {
@@ -73,7 +74,7 @@ func resolveAuthorization(ctx context.Context, db *ent.Database, systemUserID in
 			Where(
 				menu.DeletedAtIsNil(),
 				menu.StatusEQ(0),
-				menu.HasRolesWith(role.IDIn(roleIDs...)),
+				menu.HasRoleLinksWith(rolemenu.RoleIDIn(roleIDs...), rolemenu.DeletedAtIsNil()),
 			).
 			Order(menu.ByPerms(), menu.ByID()).
 			All(ctx)

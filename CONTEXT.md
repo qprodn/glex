@@ -47,7 +47,7 @@ The set of Roles a System User carries, stored as user↔role links
 (`sys_user_role`). Assigning is **full-replacement**: saving a user's roles
 replaces the whole set (empty set = no roles), never a diff. The assignment is
 per user, never per role; the link table and both of its endpoints — queried
-by user and by role — belong to the access module. Deleting a user hard-deletes
+by user and by role — belong to the access module. Deleting a user soft-deletes
 its links with it; a role that still has users assigned cannot be deleted or
 disabled.
 _Avoid_: User-Role Link, User Role, Role Grant (a grant is menu→role; an
@@ -119,3 +119,22 @@ Resolution. A new login refreshes the shared snapshot; a Role Assignment or
 Menu Grant change makes it stale and requires all affected Login Sessions to
 end.
 _Avoid_: Permission Cache, Live Permissions.
+
+### cross-module
+
+**Audit Fields** (审计字段):
+The operator and lifecycle record every persisted table carries without
+exception: who created the record (`create_by`), who last changed it
+(`update_by`), when each happened (`created_at` / `updated_at`), and whether
+it has been withdrawn (`deleted_at`). They are filled server-side from the
+authenticated System User (the Principal), never accepted from a client; 0
+means the system itself acted (bootstrap, migration).
+_Avoid_: metadata, base columns, common fields.
+
+**Soft Delete** (软删除):
+Withdrawing a record by marking it (`deleted_at` set) instead of removing the
+row; every query treats marked records as absent. No table in the system
+hard-deletes rows. Withdrawal is permanent for that record: a link granted
+again after withdrawal is a new record with its own creation audit, while the
+withdrawn generation stays as history.
+_Avoid_: logical delete, del_flag, is_deleted.

@@ -47,7 +47,7 @@ func (r *fakeUserRoleRepo) ListRoleAssignments(_ context.Context, userID int64) 
 	return out, nil
 }
 
-func (r *fakeUserRoleRepo) ReplaceUserRoles(_ context.Context, userID int64, roleIDs []int64) ([]int64, error) {
+func (r *fakeUserRoleRepo) ReplaceUserRoles(_ context.Context, userID int64, roleIDs []int64, _ int64) ([]int64, error) {
 	r.links[userID] = append([]int64(nil), roleIDs...)
 	r.replaced = append(r.replaced, userID)
 	return []int64{userID}, nil

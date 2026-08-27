@@ -14,7 +14,9 @@ import (
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
+	"glex/internal/infra/ent/rolemenu"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userrole"
 )
 
 // toBizMenu maps an ent Menu PO to a accessentity.Menu DO. Children is left nil — the
@@ -120,15 +122,17 @@ func (r *menuRepo) ListMenus(ctx context.Context, opts ...accessrepo.ListOption)
 // It intentionally does not consult Functional Permission handles or an
 // Account Session snapshot.
 func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*accessrepo.MenuRouteAccess, error) {
-	assignedRoles, err := r.data.DB.Role(ctx).Query().
+	assignedRoles, err := r.data.DB.User(ctx).Query().
+		Where(
+			user.IDEQ(systemUserID),
+			user.DeletedAtIsNil(),
+			user.StatusEQ(0),
+		).
+		QueryRoleAssignments().Where(userrole.DeletedAtIsNil()).
+		QueryRole().
 		Where(
 			role.DeletedAtIsNil(),
 			role.StatusEQ(0),
-			role.HasUsersWith(
-				user.IDEQ(systemUserID),
-				user.DeletedAtIsNil(),
-				user.StatusEQ(0),
-			),
 		).
 		Order(role.ByRoleKey(), role.ByID()).
 		All(ctx)
@@ -145,9 +149,9 @@ func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*ac
 
 	grantedMenuIDs := make([]int64, 0)
 	if len(roleIDs) > 0 {
-		grantedMenuIDs, err = r.data.DB.Role(ctx).Query().
-			Where(role.IDIn(roleIDs...)).
-			QueryMenus().
+		grantedMenuIDs, err = r.data.DB.RoleMenu(ctx).Query().
+			Where(rolemenu.RoleIDIn(roleIDs...), rolemenu.DeletedAtIsNil()).
+			QueryMenu().
 			IDs(ctx)
 		if err != nil {
 			return nil, routeAccessError(ctx, r.logger, "load_route_menu_grants", err)
@@ -194,6 +198,8 @@ func (r *menuRepo) CreateMenu(ctx context.Context, m *accessentity.Menu) (*acces
 		SetIcon(m.Icon).
 		SetActiveMenu(m.ActiveMenu).
 		SetExt(m.Ext).
+		SetCreateBy(m.CreateBy).
+		SetUpdateBy(m.UpdateBy).
 		Save(ctx)
 	if err != nil {
 		return nil, err
@@ -213,8 +219,9 @@ func (r *menuRepo) UpdateMenu(ctx context.Context, m *accessentity.Menu) (*acces
 		}
 		return nil, err
 	}
-	roleIDs, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(m.ID)).QueryRoles().
-		Where(role.DeletedAtIsNil()).IDs(ctx)
+	roleIDs, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(m.ID)).
+		QueryRoleLinks().Where(rolemenu.DeletedAtIsNil()).
+		QueryRole().Where(role.DeletedAtIsNil()).IDs(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -238,6 +245,7 @@ func (r *menuRepo) UpdateMenu(ctx context.Context, m *accessentity.Menu) (*acces
 		SetIcon(m.Icon).
 		SetActiveMenu(m.ActiveMenu).
 		SetExt(m.Ext).
+		SetUpdateBy(m.UpdateBy).
 		Save(ctx)
 	if err != nil {
 		return nil, err
@@ -267,12 +275,14 @@ func (r *menuRepo) ListByIDs(ctx context.Context, ids []int64) ([]*accessentity.
 	return out, nil
 }
 
-// DeleteMenu soft-deletes the menu and hard-deletes its role links. It returns
-// the System User identities observed before deletion; the caller owns the
-// transaction and revocation ordering.
-func (r *menuRepo) DeleteMenu(ctx context.Context, id int64) ([]int64, error) {
-	roleIDs, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(id), menu.DeletedAtIsNil()).QueryRoles().
-		Where(role.DeletedAtIsNil()).IDs(ctx)
+// DeleteMenu soft-deletes the menu and its role links (link rows stamped with
+// actorID — ADR 0002, nothing is hard-deleted). It returns the System User
+// identities observed before deletion; the caller owns the transaction and
+// revocation ordering.
+func (r *menuRepo) DeleteMenu(ctx context.Context, id int64, actorID int64) ([]int64, error) {
+	roleIDs, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(id), menu.DeletedAtIsNil()).
+		QueryRoleLinks().Where(rolemenu.DeletedAtIsNil()).
+		QueryRole().Where(role.DeletedAtIsNil()).IDs(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -280,9 +290,16 @@ func (r *menuRepo) DeleteMenu(ctx context.Context, id int64) ([]int64, error) {
 	if err != nil {
 		return nil, err
 	}
+	if _, err := r.data.DB.RoleMenu(ctx).Update().
+		Where(rolemenu.MenuIDEQ(id), rolemenu.DeletedAtIsNil()).
+		SetDeletedAt(time.Now()).
+		SetUpdateBy(actorID).
+		Save(ctx); err != nil {
+		return nil, err
+	}
 	err = r.data.DB.Menu(ctx).UpdateOneID(id).
 		SetDeletedAt(time.Now()).
-		ClearRoles().
+		SetUpdateBy(actorID).
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -299,7 +316,7 @@ func systemUserIDsForRoles(ctx context.Context, db *ent.Database, roleIDs []int6
 	}
 	return db.User(ctx).Query().Where(
 		user.DeletedAtIsNil(),
-		user.HasRolesWith(role.IDIn(roleIDs...)),
+		user.HasRoleAssignmentsWith(userrole.RoleIDIn(roleIDs...), userrole.DeletedAtIsNil()),
 	).IDs(ctx)
 }
 
