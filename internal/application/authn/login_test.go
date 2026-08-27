@@ -128,22 +128,22 @@ func (r *fakeLoginCounterRepo) ClearUserName(_ context.Context, userName string)
 	return r.err
 }
 
-func newLoginUsecase(issuer *fakeAuthLoginRepo, counters *fakeLoginCounterRepo) *LoginUsecase {
-	return newLoginUsecaseWithTx(issuer, counters, newFakeTransaction())
+func newLoginApp(issuer *fakeAuthLoginRepo, counters *fakeLoginCounterRepo) *LoginApplication {
+	return newLoginAppWithTx(issuer, counters, newFakeTransaction())
 }
 
-func newLoginUsecaseWithTx(issuer *fakeAuthLoginRepo, counters *fakeLoginCounterRepo, tx *fakeTransaction) *LoginUsecase {
-	uc := NewLoginUsecase(issuer, counters, &stubSessionRepo{}, &fakeAuthorizer{steps: &issuer.steps}, tx, testLogger())
-	uc.now = func() time.Time { return time.Unix(1_700_000_000, 0) }
-	return uc
+func newLoginAppWithTx(issuer *fakeAuthLoginRepo, counters *fakeLoginCounterRepo, tx *fakeTransaction) *LoginApplication {
+	app := NewLoginApplication(issuer, counters, &stubSessionRepo{}, &fakeAuthorizer{steps: &issuer.steps}, tx, testLogger())
+	app.now = func() time.Time { return time.Unix(1_700_000_000, 0) }
+	return app
 }
 
-// newLoginUsecaseWithAuthorizer lets a test inject its own access contract
+// newLoginAppWithAuthorizer lets a test inject its own access contract
 // fake (step sharing, resolution content, or failure).
-func newLoginUsecaseWithAuthorizer(issuer *fakeAuthLoginRepo, counters *fakeLoginCounterRepo, authorizer access.AuthorizationResolver) *LoginUsecase {
-	uc := NewLoginUsecase(issuer, counters, &stubSessionRepo{}, authorizer, newFakeTransaction(), testLogger())
-	uc.now = func() time.Time { return time.Unix(1_700_000_000, 0) }
-	return uc
+func newLoginAppWithAuthorizer(issuer *fakeAuthLoginRepo, counters *fakeLoginCounterRepo, authorizer access.AuthorizationResolver) *LoginApplication {
+	app := NewLoginApplication(issuer, counters, &stubSessionRepo{}, authorizer, newFakeTransaction(), testLogger())
+	app.now = func() time.Time { return time.Unix(1_700_000_000, 0) }
+	return app
 }
 
 func accountWithPassword(userName, password string) *authnentity.LoginAccount {
@@ -167,7 +167,7 @@ func TestLoginUnknownAccountAndBadPasswordAreIndistinguishable(t *testing.T) {
 				"alice": accountWithPassword("alice", "correct"),
 			}}
 			counters := &fakeLoginCounterRepo{}
-			_, err := newLoginUsecase(issuer, counters).Login(t.Context(), &LoginRequest{
+			_, err := newLoginApp(issuer, counters).authenticate(t.Context(), &LoginRequest{
 				UserName: tc.userName,
 				Password: "wrong",
 				SourceIP: "192.0.2.10",
@@ -189,7 +189,7 @@ func TestLoginAmbiguousAccountIsIndistinguishableFromInvalidCredentials(t *testi
 	issuer := &fakeAuthLoginRepo{accountErr: authndomain.ErrLoginAccountAmbiguous}
 	counters := &fakeLoginCounterRepo{}
 
-	_, err := newLoginUsecase(issuer, counters).Login(t.Context(), &LoginRequest{
+	_, err := newLoginApp(issuer, counters).authenticate(t.Context(), &LoginRequest{
 		UserName: "alice", Password: "wrong", SourceIP: "192.0.2.10",
 	})
 	if !errors.Is(err, authndomain.ErrInvalidCredentials) {
@@ -205,12 +205,12 @@ func TestLoginDisabledAccountRejectedOnlyAfterPasswordMatches(t *testing.T) {
 	disabled.Status = 1
 	issuer := &fakeAuthLoginRepo{accounts: map[string]*authnentity.LoginAccount{"alice": disabled}}
 	counters := &fakeLoginCounterRepo{}
-	uc := newLoginUsecase(issuer, counters)
+	app := newLoginApp(issuer, counters)
 
-	if _, err := uc.Login(t.Context(), &LoginRequest{UserName: "alice", Password: "wrong"}); !errors.Is(err, authndomain.ErrInvalidCredentials) {
+	if _, err := app.authenticate(t.Context(), &LoginRequest{UserName: "alice", Password: "wrong"}); !errors.Is(err, authndomain.ErrInvalidCredentials) {
 		t.Fatalf("wrong password = %v, want ErrInvalidCredentials", err)
 	}
-	if _, err := uc.Login(t.Context(), &LoginRequest{UserName: "alice", Password: "correct"}); !errors.Is(err, authndomain.ErrSystemUserDisabled) {
+	if _, err := app.authenticate(t.Context(), &LoginRequest{UserName: "alice", Password: "correct"}); !errors.Is(err, authndomain.ErrSystemUserDisabled) {
 		t.Fatalf("correct password = %v, want ErrSystemUserDisabled", err)
 	}
 	if len(issuer.steps) != 0 {
@@ -220,7 +220,7 @@ func TestLoginDisabledAccountRejectedOnlyAfterPasswordMatches(t *testing.T) {
 
 func TestLoginLockedCarriesRemainingDuration(t *testing.T) {
 	counters := &fakeLoginCounterRepo{remaining: 90*time.Second + time.Millisecond}
-	_, err := newLoginUsecase(&fakeAuthLoginRepo{}, counters).Login(t.Context(), &LoginRequest{UserName: "alice"})
+	_, err := newLoginApp(&fakeAuthLoginRepo{}, counters).authenticate(t.Context(), &LoginRequest{UserName: "alice"})
 	if kratoserrors.Reason(err) != "LOGIN_LOCKED" {
 		t.Fatalf("reason = %q, want LOGIN_LOCKED", kratoserrors.Reason(err))
 	}
@@ -235,9 +235,9 @@ func TestLoginSuccessRunsDatabaseStepsThenRedisLast(t *testing.T) {
 		result:   &authnentity.LoginResult{AccessToken: "secret", ExpiresIn: 7 * 24 * time.Hour},
 	}
 	counters := &fakeLoginCounterRepo{}
-	uc := newLoginUsecase(issuer, counters)
+	app := newLoginApp(issuer, counters)
 
-	got, err := uc.Login(t.Context(), &LoginRequest{
+	got, err := app.authenticate(t.Context(), &LoginRequest{
 		UserName:  " alice ",
 		Password:  "correct",
 		SourceIP:  "192.0.2.10",
@@ -273,7 +273,7 @@ func TestLoginRevalidationFailureFeedsTheCounter(t *testing.T) {
 	}
 	counters := &fakeLoginCounterRepo{}
 
-	_, err := newLoginUsecase(issuer, counters).Login(t.Context(), &LoginRequest{
+	_, err := newLoginApp(issuer, counters).authenticate(t.Context(), &LoginRequest{
 		UserName: "alice",
 		Password: "correct",
 		SourceIP: "192.0.2.10",
@@ -296,7 +296,7 @@ func TestLoginRedisFailureRollsBackWithoutCompensation(t *testing.T) {
 	}
 	counters := &fakeLoginCounterRepo{}
 
-	_, err := newLoginUsecase(issuer, counters).Login(t.Context(), &LoginRequest{
+	_, err := newLoginApp(issuer, counters).authenticate(t.Context(), &LoginRequest{
 		UserName: "alice",
 		Password: "correct",
 		SourceIP: "192.0.2.10",
@@ -320,7 +320,7 @@ func TestLoginCommitFailureDiscardsTheCredential(t *testing.T) {
 	counters := &fakeLoginCounterRepo{}
 	tx := &fakeTransaction{err: authndomain.ErrAuthBackendUnavailable} // commit fails after the body
 
-	_, err := newLoginUsecaseWithTx(issuer, counters, tx).Login(t.Context(), &LoginRequest{
+	_, err := newLoginAppWithTx(issuer, counters, tx).authenticate(t.Context(), &LoginRequest{
 		UserName: "alice",
 		Password: "correct",
 		SourceIP: "192.0.2.10",
@@ -336,7 +336,7 @@ func TestLoginCommitFailureDiscardsTheCredential(t *testing.T) {
 
 func TestLoginFailureThatReachesThresholdReturnsLocked(t *testing.T) {
 	counters := &fakeLoginCounterRepo{failRemaining: 10 * time.Minute}
-	_, err := newLoginUsecase(&fakeAuthLoginRepo{}, counters).Login(t.Context(), &LoginRequest{UserName: "missing", Password: "wrong"})
+	_, err := newLoginApp(&fakeAuthLoginRepo{}, counters).authenticate(t.Context(), &LoginRequest{UserName: "missing", Password: "wrong"})
 	if kratoserrors.Reason(err) != "LOGIN_LOCKED" {
 		t.Fatalf("reason = %q, want LOGIN_LOCKED", kratoserrors.Reason(err))
 	}
@@ -346,7 +346,7 @@ func TestLoginBackendFailurePropagatesWithoutTouchingTheCounter(t *testing.T) {
 	issuer := &fakeAuthLoginRepo{accountErr: errors.New("database unavailable")}
 	counters := &fakeLoginCounterRepo{}
 
-	_, err := newLoginUsecase(issuer, counters).Login(t.Context(), &LoginRequest{
+	_, err := newLoginApp(issuer, counters).authenticate(t.Context(), &LoginRequest{
 		UserName: "alice", Password: "wrong", SourceIP: "192.0.2.10",
 	})
 	if err == nil || !errors.Is(err, issuer.accountErr) {
@@ -363,7 +363,7 @@ func TestLoginResolutionFailureIsAuthBackendUnavailable(t *testing.T) {
 	}
 	counters := &fakeLoginCounterRepo{}
 
-	_, err := newLoginUsecaseWithAuthorizer(issuer, counters, &fakeAuthorizer{steps: &issuer.steps, err: errors.New("access unavailable")}).Login(t.Context(), &LoginRequest{
+	_, err := newLoginAppWithAuthorizer(issuer, counters, &fakeAuthorizer{steps: &issuer.steps, err: errors.New("access unavailable")}).authenticate(t.Context(), &LoginRequest{
 		UserName: "alice", Password: "correct", SourceIP: "192.0.2.10",
 	})
 	if !errors.Is(err, authndomain.ErrAuthBackendUnavailable) {
@@ -387,9 +387,9 @@ func TestLoginFillsSnapshotFromTheAccessContract(t *testing.T) {
 		RoleKeys:    []string{"viewer"},
 		Permissions: []string{"system:user:list"},
 	}}
-	uc := newLoginUsecaseWithAuthorizer(issuer, counters, authorizer)
+	app := newLoginAppWithAuthorizer(issuer, counters, authorizer)
 
-	if _, err := uc.Login(t.Context(), &LoginRequest{UserName: "alice", Password: "correct"}); err != nil {
+	if _, err := app.authenticate(t.Context(), &LoginRequest{UserName: "alice", Password: "correct"}); err != nil {
 		t.Fatalf("Login: %v", err)
 	}
 	snapshot := issuer.issuedSnapshot

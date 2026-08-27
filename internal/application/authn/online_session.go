@@ -17,18 +17,20 @@ import (
 )
 
 // OnlineSessionApplication implements the four RuoYi-compatible Login Session
-// operations. Bulk revocation is intentionally absent from the service.
+// operations. It holds the Login Session repository port directly; bulk
+// revocation is intentionally absent from the service, and authentication
+// policy is enforced by the registered HTTP middleware.
 type OnlineSessionApplication struct {
 	authnv1.UnimplementedOnlineSessionServiceServer
 
-	uc     *LoginSessionUsecase
+	repo   authnrepo.LoginSessionRepo
 	logger *slog.Logger
 }
 
 // NewOnlineSessionApplication creates an OnlineSessionApplication.
-func NewOnlineSessionApplication(uc *LoginSessionUsecase, logger *slog.Logger) *OnlineSessionApplication {
+func NewOnlineSessionApplication(repo authnrepo.LoginSessionRepo, logger *slog.Logger) *OnlineSessionApplication {
 	return &OnlineSessionApplication{
-		uc:     uc,
+		repo:   repo,
 		logger: logger.With(slog.String("component", "application.online_session")),
 	}
 }
@@ -61,7 +63,7 @@ func (s *OnlineSessionApplication) ListOnlineSessions(ctx context.Context, req *
 	if req.GetPageSize() <= 0 {
 		req.PageSize = 20
 	}
-	sessions, err := s.uc.ListOnlineSessions(ctx,
+	sessions, err := s.repo.List(ctx,
 		authnrepo.ListFilter(filter),
 		authnrepo.ListOrderBy(orderBy),
 		authnrepo.ListLimit(int(req.GetPageSize())),
@@ -90,7 +92,7 @@ func (s *OnlineSessionApplication) ListOnlineSessions(ctx context.Context, req *
 
 // KickoutOnlineSession revokes one Session ID for an administrator.
 func (s *OnlineSessionApplication) KickoutOnlineSession(ctx context.Context, req *authnv1.OnlineSessionRequest) (*emptypb.Empty, error) {
-	if err := s.uc.KickoutOnlineSession(ctx, req.GetTokenId()); err != nil {
+	if err := s.repo.Kickout(ctx, req.GetTokenId()); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -102,7 +104,7 @@ func (s *OnlineSessionApplication) ListMyOnlineSessions(ctx context.Context, _ *
 	if !ok {
 		return nil, authndomain.ErrCredentialMissing
 	}
-	sessions, err := s.uc.ListSystemUserSessions(ctx, principal.SystemUserID())
+	sessions, err := s.repo.ListBySystemUser(ctx, principal.SystemUserID())
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +130,7 @@ func (s *OnlineSessionApplication) DeleteMyOnlineSession(ctx context.Context, re
 	if !ok {
 		return nil, authndomain.ErrCredentialMissing
 	}
-	if err := s.uc.DeleteSystemUserSession(ctx, principal.SystemUserID(), req.GetTokenId()); err != nil {
+	if err := s.repo.LogoutOwned(ctx, principal.SystemUserID(), req.GetTokenId()); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
