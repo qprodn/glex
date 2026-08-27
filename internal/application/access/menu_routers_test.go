@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	accessentity "glex/internal/domain/access/entity"
+	accessrepo "glex/internal/domain/access/repository"
 	authndomain "glex/internal/domain/authn"
 	authnentity "glex/internal/domain/authn/entity"
 	authnservice "glex/internal/domain/authn/service"
@@ -12,34 +13,22 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type currentRouteMenuUsecase struct {
-	menuUsecase
-	trees [][]*accessentity.Menu
-	ids   []int64
+// routerFixture builds a superadmin routeAccess over the given flat menus so
+// GetRouters renders every node.
+func routerFixture(menus ...*accessentity.Menu) *accessrepo.MenuRouteAccess {
+	return &accessrepo.MenuRouteAccess{RoleKeys: []string{"superadmin"}, ActiveMenus: menus}
 }
 
-func (u *currentRouteMenuUsecase) ListUserRouteTree(_ context.Context, systemUserID int64) ([]*accessentity.Menu, error) {
-	u.ids = append(u.ids, systemUserID)
-	index := len(u.ids) - 1
-	if index >= len(u.trees) {
-		index = len(u.trees) - 1
-	}
-	return u.trees[index], nil
-}
-
-func TestGetRoutersCallsUsecaseEveryTimeAndProjectsRouteMetadata(t *testing.T) {
-	uc := &currentRouteMenuUsecase{trees: [][]*accessentity.Menu{
-		{
-			{ID: 1, ParentID: 0, OrderNum: 1, MenuName: "System", Path: "system", MenuType: accessentity.MenuTypeDirectory, IsCache: 1, Children: []*accessentity.Menu{
-				{ID: 2, ParentID: 1, OrderNum: 1, MenuName: "Users", Path: "users", Component: "system/user/index", QueryParam: `{"tab":"active"}`, MenuType: accessentity.MenuTypeMenu, Visible: 1, IsCache: 0, Icon: "user", ActiveMenu: "/system/users"},
-			}},
-		},
-		{},
-	}}
-	service := newMenuApplication(uc, testLogger())
+func TestGetRoutersProjectsRouteMetadataPerRequest(t *testing.T) {
+	repo := newFakeMenuRepo()
+	repo.routeAccess = routerFixture(
+		&accessentity.Menu{ID: 1, ParentID: 0, OrderNum: 1, MenuName: "System", Path: "system", MenuType: accessentity.MenuTypeDirectory, IsCache: 1},
+		&accessentity.Menu{ID: 2, ParentID: 1, OrderNum: 1, MenuName: "Users", Path: "users", Component: "system/user/index", QueryParam: `{"tab":"active"}`, MenuType: accessentity.MenuTypeMenu, Visible: 1, IsCache: 0, Icon: "user", ActiveMenu: "/system/users"},
+	)
+	app := newMenuApp(repo, new(fakeSessionRevoker))
 	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(42, "alice", "session-id", nil, []string{"unrelated:permission"}))
 
-	first, err := service.GetRouters(ctx, &emptypb.Empty{})
+	first, err := app.GetRouters(ctx, &emptypb.Empty{})
 	if err != nil {
 		t.Fatalf("first GetRouters: %v", err)
 	}
@@ -58,27 +47,29 @@ func TestGetRoutersCallsUsecaseEveryTimeAndProjectsRouteMetadata(t *testing.T) {
 		t.Fatalf("Router meta = %#v", child.GetMeta())
 	}
 
-	second, err := service.GetRouters(ctx, &emptypb.Empty{})
+	// The route tree is resolved fresh from the store on every request.
+	repo.routeAccess = nil
+	second, err := app.GetRouters(ctx, &emptypb.Empty{})
 	if err != nil {
 		t.Fatalf("second GetRouters: %v", err)
 	}
-	if len(second.GetRouters()) != 0 || len(uc.ids) != 2 || uc.ids[0] != 42 || uc.ids[1] != 42 {
-		t.Fatalf("GetRouters did not call usecase per request: routes=%v ids=%v", second.GetRouters(), uc.ids)
+	if len(second.GetRouters()) != 0 {
+		t.Fatalf("second GetRouters must reflect the fresh (empty) store: %v", second.GetRouters())
 	}
 }
 
 func TestGetRoutersUsesRuoYiPathComponentAndFrameSemantics(t *testing.T) {
-	uc := &currentRouteMenuUsecase{trees: [][]*accessentity.Menu{{
-		{ID: 1, ParentID: 0, MenuName: "Root directory", Path: "system", MenuType: accessentity.MenuTypeDirectory, IsFrame: 0, Children: []*accessentity.Menu{
-			{ID: 2, ParentID: 1, MenuName: "Nested directory", Path: "nested", MenuType: accessentity.MenuTypeDirectory, IsFrame: 0},
-			{ID: 4, ParentID: 1, MenuName: "Docs", Path: "https://docs.example.com", MenuType: accessentity.MenuTypeMenu, IsFrame: 0},
-		}},
-		{ID: 3, ParentID: 0, MenuName: "Dashboard", Path: "dashboard", Component: "dashboard/index", MenuType: accessentity.MenuTypeMenu, IsFrame: 0},
-	}}}
-	service := newMenuApplication(uc, testLogger())
+	repo := newFakeMenuRepo()
+	repo.routeAccess = routerFixture(
+		&accessentity.Menu{ID: 1, ParentID: 0, OrderNum: 1, MenuName: "Root directory", Path: "system", MenuType: accessentity.MenuTypeDirectory, IsFrame: 0},
+		&accessentity.Menu{ID: 2, ParentID: 1, OrderNum: 1, MenuName: "Nested directory", Path: "nested", MenuType: accessentity.MenuTypeDirectory, IsFrame: 0},
+		&accessentity.Menu{ID: 4, ParentID: 1, OrderNum: 2, MenuName: "Docs", Path: "https://docs.example.com", MenuType: accessentity.MenuTypeMenu, IsFrame: 0},
+		&accessentity.Menu{ID: 3, ParentID: 0, OrderNum: 2, MenuName: "Dashboard", Path: "dashboard", Component: "dashboard/index", MenuType: accessentity.MenuTypeMenu, IsFrame: 0},
+	)
+	app := newMenuApp(repo, new(fakeSessionRevoker))
 	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(42, "alice", "session-id", nil, nil))
 
-	reply, err := service.GetRouters(ctx, &emptypb.Empty{})
+	reply, err := app.GetRouters(ctx, &emptypb.Empty{})
 	if err != nil {
 		t.Fatalf("GetRouters: %v", err)
 	}
@@ -105,8 +96,8 @@ func TestGetRoutersUsesRuoYiPathComponentAndFrameSemantics(t *testing.T) {
 }
 
 func TestGetRoutersRequiresPrincipal(t *testing.T) {
-	menuService := newMenuApplication(&currentRouteMenuUsecase{}, testLogger())
-	if _, err := menuService.GetRouters(t.Context(), &emptypb.Empty{}); err != authndomain.ErrCredentialMissing {
+	app := newMenuApp(newFakeMenuRepo(), new(fakeSessionRevoker))
+	if _, err := app.GetRouters(context.Background(), &emptypb.Empty{}); err != authndomain.ErrCredentialMissing {
 		t.Fatalf("GetRouters without Principal = %v", err)
 	}
 }

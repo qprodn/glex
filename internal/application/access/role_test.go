@@ -5,16 +5,18 @@ import (
 	accessentity "glex/internal/domain/access/entity"
 	accessrepo "glex/internal/domain/access/repository"
 
+	accessv1 "glex/api/access/v1"
+
 	"context"
 	"testing"
 
 	"github.com/go-kratos/kratos/v3/errors"
 )
 
-// fakeRoleRepo is an in-memory accessrepo.RoleRepo for testing the usecase in isolation
-// from the infrastructure layer. accessentity.Menu Grant state: links maps roleID → granted menu ids
-// (in insertion order); menuParents supplies the parent ids for
-// ListRoleMenuLinks.
+// fakeRoleRepo is an in-memory accessrepo.RoleRepo for testing the application
+// service in isolation from the infrastructure layer. Menu Grant state: links
+// maps roleID → granted menu ids (in insertion order); menuParents supplies
+// the parent ids for ListRoleMenuLinks.
 type fakeRoleRepo struct {
 	byID        map[int64]*accessentity.Role
 	byName      map[string]*accessentity.Role
@@ -133,15 +135,22 @@ func newFakeMenuRepoForRole(menus map[int64]*accessentity.Menu) *fakeMenuRepo {
 	return repo
 }
 
+func newRoleApp(repo *fakeRoleRepo, menus *fakeMenuRepo, link *fakeUserRoleRepo) *RoleApplication {
+	return NewRoleApplication(repo, menus, link, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+}
+
 func TestCreateRole_Success(t *testing.T) {
 	repo := newFakeRoleRepo()
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	got, err := uc.CreateRole(context.Background(), &accessentity.Role{RoleName: "超级管理员", RoleKey: "superadmin", RoleSort: 1, MenuCheckStrictly: true}, nil)
+	got, err := app.CreateRole(context.Background(), &accessv1.CreateRoleRequest{
+		Role:              &accessv1.Role{RoleName: "超级管理员", RoleKey: "superadmin", RoleSort: 1, MenuCheckStrictly: true},
+		MenuCheckStrictly: boolPtr(true),
+	})
 	if err != nil {
 		t.Fatalf("create role: %v", err)
 	}
-	if got.ID == 0 {
+	if got.GetRoleId() == 0 {
 		t.Fatal("expected a server-assigned id, got 0")
 	}
 	if len(repo.created) != 1 {
@@ -149,26 +158,24 @@ func TestCreateRole_Success(t *testing.T) {
 	}
 	// The DO passes through as-is; the nil→true default lives at the service
 	// boundary (request presence), not in the domain.
-	if !got.MenuCheckStrictly {
+	if !got.GetMenuCheckStrictly() {
 		t.Fatal("expected menu_check_strictly to persist")
 	}
 }
 
 func TestCreateRole_BlankNameRejected(t *testing.T) {
-	repo := newFakeRoleRepo()
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(newFakeRoleRepo(), newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	_, err := uc.CreateRole(context.Background(), &accessentity.Role{RoleName: "", RoleKey: "superadmin"}, nil)
+	_, err := app.CreateRole(context.Background(), &accessv1.CreateRoleRequest{Role: &accessv1.Role{RoleName: "", RoleKey: "superadmin"}})
 	if !errors.Is(err, ErrRoleInvalid) {
 		t.Fatalf("expected ErrRoleInvalid, got %v", err)
 	}
 }
 
 func TestCreateRole_BlankKeyRejected(t *testing.T) {
-	repo := newFakeRoleRepo()
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(newFakeRoleRepo(), newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	_, err := uc.CreateRole(context.Background(), &accessentity.Role{RoleName: "超级管理员", RoleKey: ""}, nil)
+	_, err := app.CreateRole(context.Background(), &accessv1.CreateRoleRequest{Role: &accessv1.Role{RoleName: "超级管理员", RoleKey: ""}})
 	if !errors.Is(err, ErrRoleInvalid) {
 		t.Fatalf("expected ErrRoleInvalid, got %v", err)
 	}
@@ -177,9 +184,9 @@ func TestCreateRole_BlankKeyRejected(t *testing.T) {
 func TestCreateRole_NameConflict(t *testing.T) {
 	repo := newFakeRoleRepo()
 	repo.byName["超级管理员"] = &accessentity.Role{ID: 7, RoleName: "超级管理员", RoleKey: "other"}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	_, err := uc.CreateRole(context.Background(), &accessentity.Role{RoleName: "超级管理员", RoleKey: "superadmin"}, nil)
+	_, err := app.CreateRole(context.Background(), &accessv1.CreateRoleRequest{Role: &accessv1.Role{RoleName: "超级管理员", RoleKey: "superadmin"}})
 	if !errors.Is(err, ErrRoleNameConflict) {
 		t.Fatalf("expected ErrRoleNameConflict, got %v", err)
 	}
@@ -188,9 +195,9 @@ func TestCreateRole_NameConflict(t *testing.T) {
 func TestCreateRole_KeyConflict(t *testing.T) {
 	repo := newFakeRoleRepo()
 	repo.byKey["superadmin"] = &accessentity.Role{ID: 7, RoleName: "other", RoleKey: "superadmin"}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	_, err := uc.CreateRole(context.Background(), &accessentity.Role{RoleName: "超级管理员", RoleKey: "superadmin"}, nil)
+	_, err := app.CreateRole(context.Background(), &accessv1.CreateRoleRequest{Role: &accessv1.Role{RoleName: "超级管理员", RoleKey: "superadmin"}})
 	if !errors.Is(err, ErrRoleKeyConflict) {
 		t.Fatalf("expected ErrRoleKeyConflict, got %v", err)
 	}
@@ -202,15 +209,15 @@ func TestUpdateRole_ConflictExcludingSelf(t *testing.T) {
 	repo.byName["管理员"] = repo.byID[5]
 	repo.byKey["admin"] = repo.byID[5]
 	repo.byName["超级管理员"] = &accessentity.Role{ID: 7, RoleName: "超级管理员", RoleKey: "superadmin"}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
 	// Taking another role's name is rejected...
-	_, err := uc.UpdateRole(context.Background(), &accessentity.Role{ID: 5, RoleName: "超级管理员", RoleKey: "admin"})
+	_, err := app.UpdateRole(context.Background(), &accessv1.UpdateRoleRequest{Role: &accessv1.Role{RoleId: 5, RoleName: "超级管理员", RoleKey: "admin"}})
 	if !errors.Is(err, ErrRoleNameConflict) {
 		t.Fatalf("expected ErrRoleNameConflict, got %v", err)
 	}
 	// ...but keeping its own values passes.
-	_, err = uc.UpdateRole(context.Background(), &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin"})
+	_, err = app.UpdateRole(context.Background(), &accessv1.UpdateRoleRequest{Role: &accessv1.Role{RoleId: 5, RoleName: "管理员", RoleKey: "admin"}})
 	if err != nil {
 		t.Fatalf("update keeping own values: %v", err)
 	}
@@ -219,9 +226,9 @@ func TestUpdateRole_ConflictExcludingSelf(t *testing.T) {
 func TestDeleteRole_Success(t *testing.T) {
 	repo := newFakeRoleRepo()
 	repo.byID[3] = &accessentity.Role{ID: 3, RoleName: "测试", RoleKey: "test"}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	if err := uc.DeleteRole(context.Background(), 3); err != nil {
+	if _, err := app.DeleteRole(context.Background(), &accessv1.DeleteRoleRequest{RoleId: 3}); err != nil {
 		t.Fatalf("delete role: %v", err)
 	}
 	if len(repo.deleted) != 1 || repo.deleted[0] != 3 {
@@ -230,16 +237,15 @@ func TestDeleteRole_Success(t *testing.T) {
 }
 
 func TestDeleteRole_NotFound(t *testing.T) {
-	repo := newFakeRoleRepo()
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(newFakeRoleRepo(), newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	err := uc.DeleteRole(context.Background(), 99)
+	_, err := app.DeleteRole(context.Background(), &accessv1.DeleteRoleRequest{RoleId: 99})
 	if !errors.Is(err, ErrRoleNotFound) {
 		t.Fatalf("expected ErrRoleNotFound, got %v", err)
 	}
 }
 
-// --- accessentity.Menu Grant (菜单授权) ---
+// --- Menu Grant (菜单授权) ---
 
 func TestCreateRole_WithMenus_Success(t *testing.T) {
 	repo := newFakeRoleRepo()
@@ -247,20 +253,20 @@ func TestCreateRole_WithMenus_Success(t *testing.T) {
 		10: {MenuName: "系统管理"},
 		11: {MenuName: "用户管理", ParentID: 10},
 	})
-	uc := NewRoleUsecase(repo, menus, newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, menus, newFakeUserRoleRepo())
 
-	got, err := uc.CreateRole(context.Background(), &accessentity.Role{
-		RoleName:          "运营",
-		RoleKey:           "operator",
-		MenuCheckStrictly: false,
-	}, []int64{10, 11})
+	got, err := app.CreateRole(context.Background(), &accessv1.CreateRoleRequest{
+		Role:              &accessv1.Role{RoleName: "运营", RoleKey: "operator"},
+		MenuIds:           []int64{10, 11},
+		MenuCheckStrictly: boolPtr(false),
+	})
 	if err != nil {
 		t.Fatalf("create role with menus: %v", err)
 	}
-	if got.MenuCheckStrictly {
+	if got.GetMenuCheckStrictly() {
 		t.Fatal("expected menu_check_strictly=false to persist")
 	}
-	gotLinks := repo.links[got.ID]
+	gotLinks := repo.links[got.GetRoleId()]
 	if len(gotLinks) != 2 || gotLinks[0] != 10 || gotLinks[1] != 11 {
 		t.Fatalf("expected grant [10 11], got %v", gotLinks)
 	}
@@ -269,9 +275,9 @@ func TestCreateRole_WithMenus_Success(t *testing.T) {
 func TestCreateRole_UnknownMenuRejected(t *testing.T) {
 	repo := newFakeRoleRepo()
 	menus := newFakeMenuRepoForRole(map[int64]*accessentity.Menu{10: {MenuName: "系统管理"}})
-	uc := NewRoleUsecase(repo, menus, newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, menus, newFakeUserRoleRepo())
 
-	_, err := uc.CreateRole(context.Background(), &accessentity.Role{RoleName: "运营", RoleKey: "operator"}, []int64{10, 99})
+	_, err := app.CreateRole(context.Background(), &accessv1.CreateRoleRequest{Role: &accessv1.Role{RoleName: "运营", RoleKey: "operator"}, MenuIds: []int64{10, 99}})
 	if !errors.Is(err, ErrRoleMenuNotFound) {
 		t.Fatalf("expected ErrRoleMenuNotFound, got %v", err)
 	}
@@ -283,13 +289,13 @@ func TestCreateRole_UnknownMenuRejected(t *testing.T) {
 func TestCreateRole_MenuDuplicatesDeduped(t *testing.T) {
 	repo := newFakeRoleRepo()
 	menus := newFakeMenuRepoForRole(map[int64]*accessentity.Menu{10: {MenuName: "系统管理"}})
-	uc := NewRoleUsecase(repo, menus, newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, menus, newFakeUserRoleRepo())
 
-	got, err := uc.CreateRole(context.Background(), &accessentity.Role{RoleName: "运营", RoleKey: "operator"}, []int64{10, 10, 10})
+	got, err := app.CreateRole(context.Background(), &accessv1.CreateRoleRequest{Role: &accessv1.Role{RoleName: "运营", RoleKey: "operator"}, MenuIds: []int64{10, 10, 10}})
 	if err != nil {
 		t.Fatalf("create role with duplicate menus: %v", err)
 	}
-	gotLinks := repo.links[got.ID]
+	gotLinks := repo.links[got.GetRoleId()]
 	if len(gotLinks) != 1 || gotLinks[0] != 10 {
 		t.Fatalf("expected deduped grant [10], got %v", gotLinks)
 	}
@@ -303,12 +309,13 @@ func TestUpdateRoleMenus_ReplacesGrant(t *testing.T) {
 		2: {MenuName: "用户管理", ParentID: 1},
 		3: {MenuName: "角色管理", ParentID: 1},
 	})
-	uc := NewRoleUsecase(repo, menus, newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, menus, newFakeUserRoleRepo())
 
-	ids, err := uc.UpdateRoleMenus(context.Background(), 5, []int64{1, 2, 3}, true)
+	reply, err := app.UpdateRoleMenus(context.Background(), &accessv1.UpdateRoleMenusRequest{RoleId: 5, MenuIds: []int64{1, 2, 3}, MenuCheckStrictly: boolPtr(true)})
 	if err != nil {
 		t.Fatalf("replace grant: %v", err)
 	}
+	ids := reply.GetMenuIds()
 	if len(ids) != 3 || ids[0] != 1 || ids[2] != 3 {
 		t.Fatalf("expected echo [1 2 3], got %v", ids)
 	}
@@ -320,12 +327,12 @@ func TestUpdateRoleMenus_ReplacesGrant(t *testing.T) {
 	}
 
 	// Full replacement: an empty list clears the grant and flips the flag.
-	ids, err = uc.UpdateRoleMenus(context.Background(), 5, nil, false)
+	reply, err = app.UpdateRoleMenus(context.Background(), &accessv1.UpdateRoleMenusRequest{RoleId: 5, MenuCheckStrictly: boolPtr(false)})
 	if err != nil {
 		t.Fatalf("clear grant: %v", err)
 	}
-	if len(ids) != 0 {
-		t.Fatalf("expected empty echo, got %v", ids)
+	if len(reply.GetMenuIds()) != 0 {
+		t.Fatalf("expected empty echo, got %v", reply.GetMenuIds())
 	}
 	if got := repo.links[5]; len(got) != 0 {
 		t.Fatalf("expected cleared grant, got %v", got)
@@ -339,9 +346,9 @@ func TestUpdateRoleMenus_UnknownMenuRejected(t *testing.T) {
 	repo := newFakeRoleRepo()
 	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "运营", RoleKey: "operator"}
 	menus := newFakeMenuRepoForRole(map[int64]*accessentity.Menu{1: {MenuName: "系统管理"}})
-	uc := NewRoleUsecase(repo, menus, newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, menus, newFakeUserRoleRepo())
 
-	_, err := uc.UpdateRoleMenus(context.Background(), 5, []int64{1, 99}, true)
+	_, err := app.UpdateRoleMenus(context.Background(), &accessv1.UpdateRoleMenusRequest{RoleId: 5, MenuIds: []int64{1, 99}, MenuCheckStrictly: boolPtr(true)})
 	if !errors.Is(err, ErrRoleMenuNotFound) {
 		t.Fatalf("expected ErrRoleMenuNotFound, got %v", err)
 	}
@@ -351,10 +358,9 @@ func TestUpdateRoleMenus_UnknownMenuRejected(t *testing.T) {
 }
 
 func TestUpdateRoleMenus_RoleNotFound(t *testing.T) {
-	repo := newFakeRoleRepo()
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(newFakeRoleRepo(), newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	_, err := uc.UpdateRoleMenus(context.Background(), 99, nil, true)
+	_, err := app.UpdateRoleMenus(context.Background(), &accessv1.UpdateRoleMenusRequest{RoleId: 99, MenuCheckStrictly: boolPtr(true)})
 	if !errors.Is(err, ErrRoleNotFound) {
 		t.Fatalf("expected ErrRoleNotFound, got %v", err)
 	}
@@ -365,12 +371,13 @@ func TestListRoleMenus_StrictDropsHalfCheckedParent(t *testing.T) {
 	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "运营", RoleKey: "operator", MenuCheckStrictly: true}
 	repo.menuParents = map[int64]int64{10: 0, 11: 10, 12: 10, 20: 0}
 	repo.links[5] = []int64{10, 11, 12, 20} // 10 is parent of granted 11/12
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	ids, err := uc.ListRoleMenus(context.Background(), 5)
+	reply, err := app.ListRoleMenus(context.Background(), &accessv1.ListRoleMenusRequest{RoleId: 5})
 	if err != nil {
 		t.Fatalf("list menus: %v", err)
 	}
+	ids := reply.GetMenuIds()
 	if len(ids) != 3 || ids[0] != 11 || ids[1] != 12 || ids[2] != 20 {
 		t.Fatalf("expected [11 12 20] (10 dropped as half-checked parent), got %v", ids)
 	}
@@ -381,12 +388,13 @@ func TestListRoleMenus_StrictDropsFullyCheckedParent(t *testing.T) {
 	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "运营", RoleKey: "operator", MenuCheckStrictly: true}
 	repo.menuParents = map[int64]int64{10: 0, 11: 10}
 	repo.links[5] = []int64{10, 11} // parent 10 fully checked via child 11
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	ids, err := uc.ListRoleMenus(context.Background(), 5)
+	reply, err := app.ListRoleMenus(context.Background(), &accessv1.ListRoleMenusRequest{RoleId: 5})
 	if err != nil {
 		t.Fatalf("list menus: %v", err)
 	}
+	ids := reply.GetMenuIds()
 	if len(ids) != 1 || ids[0] != 11 {
 		t.Fatalf("expected [11] (fully-checked parent 10 excluded), got %v", ids)
 	}
@@ -397,23 +405,25 @@ func TestListRoleMenus_NonStrictReturnsAll(t *testing.T) {
 	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "运营", RoleKey: "operator", MenuCheckStrictly: false}
 	repo.menuParents = map[int64]int64{10: 0, 11: 10, 12: 10, 20: 0}
 	repo.links[5] = []int64{10, 11, 12, 20}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	ids, err := uc.ListRoleMenus(context.Background(), 5)
+	reply, err := app.ListRoleMenus(context.Background(), &accessv1.ListRoleMenusRequest{RoleId: 5})
 	if err != nil {
 		t.Fatalf("list menus: %v", err)
 	}
+	ids := reply.GetMenuIds()
 	if len(ids) != 4 || ids[0] != 10 || ids[3] != 20 {
 		t.Fatalf("expected verbatim [10 11 12 20], got %v", ids)
 	}
 }
 
 func TestListRoleMenus_RoleNotFound(t *testing.T) {
-	repo := newFakeRoleRepo()
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(newFakeRoleRepo(), newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	_, err := uc.ListRoleMenus(context.Background(), 99)
+	_, err := app.ListRoleMenus(context.Background(), &accessv1.ListRoleMenusRequest{RoleId: 99})
 	if !errors.Is(err, ErrRoleNotFound) {
 		t.Fatalf("expected ErrRoleNotFound, got %v", err)
 	}
 }
+
+func boolPtr(b bool) *bool { return &b }

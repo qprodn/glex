@@ -6,14 +6,17 @@ import (
 	accessrepo "glex/internal/domain/access/repository"
 	accessservice "glex/internal/domain/access/service"
 
+	accessv1 "glex/api/access/v1"
+
 	"context"
 	"testing"
 
 	"github.com/go-kratos/kratos/v3/errors"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
-// fakeMenuRepo is an in-memory accessrepo.MenuRepo for testing the usecase in isolation
-// from the infrastructure layer.
+// fakeMenuRepo is an in-memory accessrepo.MenuRepo for testing the application
+// service in isolation from the infrastructure layer.
 type fakeMenuRepo struct {
 	byID        map[int64]*accessentity.Menu
 	next        int64
@@ -109,11 +112,18 @@ func treeIDs(roots []*accessentity.Menu) []int64 {
 	return ids
 }
 
-func TestCreateMenu_TypeRequired(t *testing.T) {
-	repo := newFakeMenuRepo()
-	uc := NewMenuUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+func newMenuApp(repo *fakeMenuRepo, revoker *fakeSessionRevoker) *MenuApplication {
+	return NewMenuApplication(repo, newFakeTransaction(), revoker, testLogger())
+}
 
-	_, err := uc.CreateMenu(context.Background(), &accessentity.Menu{MenuName: "sys", MenuType: 0})
+func createMenuRequest(m *accessv1.Menu) *accessv1.CreateMenuRequest {
+	return &accessv1.CreateMenuRequest{Menu: m}
+}
+
+func TestCreateMenu_TypeRequired(t *testing.T) {
+	app := newMenuApp(newFakeMenuRepo(), new(fakeSessionRevoker))
+
+	_, err := app.CreateMenu(context.Background(), createMenuRequest(&accessv1.Menu{MenuName: "sys", MenuType: 0}))
 	if !errors.Is(err, ErrMenuTypeInvalid) {
 		t.Fatalf("expected ErrMenuTypeInvalid, got %v", err)
 	}
@@ -123,23 +133,22 @@ func TestCreateMenu_SiblingNameConflict(t *testing.T) {
 	repo := newFakeMenuRepo()
 	repo.byID[1] = &accessentity.Menu{ID: 1, MenuName: "sys", ParentID: 0, MenuType: accessentity.MenuTypeDirectory}
 	repo.next = 2
-	uc := NewMenuUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newMenuApp(repo, new(fakeSessionRevoker))
 
-	_, err := uc.CreateMenu(context.Background(), &accessentity.Menu{MenuName: "sys", ParentID: 0, MenuType: accessentity.MenuTypeMenu})
+	_, err := app.CreateMenu(context.Background(), createMenuRequest(&accessv1.Menu{MenuName: "sys", ParentId: 0, MenuType: accessv1.MenuType_MENU_TYPE_DIRECTORY}))
 	if !errors.Is(err, ErrMenuNameConflict) {
 		t.Fatalf("expected ErrMenuNameConflict, got %v", err)
 	}
 }
 
 func TestCreateMenu_Success(t *testing.T) {
-	repo := newFakeMenuRepo()
-	uc := NewMenuUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newMenuApp(newFakeMenuRepo(), new(fakeSessionRevoker))
 
-	got, err := uc.CreateMenu(context.Background(), &accessentity.Menu{MenuName: "sys", ParentID: 0, MenuType: accessentity.MenuTypeDirectory, OrderNum: 1})
+	got, err := app.CreateMenu(context.Background(), createMenuRequest(&accessv1.Menu{MenuName: "sys", ParentId: 0, MenuType: accessv1.MenuType_MENU_TYPE_DIRECTORY, OrderNum: 1}))
 	if err != nil {
 		t.Fatalf("create menu: %v", err)
 	}
-	if got.ID == 0 {
+	if got.GetMenuId() == 0 {
 		t.Fatal("expected non-zero id assigned by the repo")
 	}
 }
@@ -184,27 +193,27 @@ func TestBuildTree_NestingOrderOrphan(t *testing.T) {
 	}
 }
 
-func TestListMenuTree_BuildsFromFlatRepo(t *testing.T) {
+func TestListMenus_BuildsTreeFromFlatRepo(t *testing.T) {
 	repo := newFakeMenuRepo()
 	repo.byID[1] = &accessentity.Menu{ID: 1, ParentID: 0, OrderNum: 1, MenuName: "root", MenuType: accessentity.MenuTypeDirectory}
 	repo.byID[2] = &accessentity.Menu{ID: 2, ParentID: 1, OrderNum: 1, MenuName: "child", MenuType: accessentity.MenuTypeMenu}
-	uc := NewMenuUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newMenuApp(repo, new(fakeSessionRevoker))
 
-	roots, err := uc.ListMenuTree(context.Background())
+	tree, err := app.ListMenus(context.Background(), &accessv1.ListMenusRequest{})
 	if err != nil {
 		t.Fatalf("list tree: %v", err)
 	}
-	if len(roots) != 1 || roots[0].ID != 1 {
-		t.Fatalf("expected single root id 1, got %+v", roots)
+	if len(tree.GetMenus()) != 1 || tree.GetMenus()[0].GetMenuId() != 1 {
+		t.Fatalf("expected single root id 1, got %+v", tree.GetMenus())
 	}
-	if len(roots[0].Children) != 1 || roots[0].Children[0].ID != 2 {
-		t.Fatalf("expected child id 2 under root, got %+v", roots[0].Children)
+	children := tree.GetMenus()[0].GetChildren()
+	if len(children) != 1 || children[0].GetMenuId() != 2 {
+		t.Fatalf("expected child id 2 under root, got %+v", children)
 	}
 }
 
-func TestListUserRouteTree_GrantedNodesIncludeActiveAncestors(t *testing.T) {
-	repo := newFakeMenuRepo()
-	repo.routeAccess = &accessrepo.MenuRouteAccess{
+func TestSelectUserRouteTree_GrantedNodesIncludeActiveAncestors(t *testing.T) {
+	routeAccess := &accessrepo.MenuRouteAccess{
 		RoleKeys:       []string{"operator"},
 		GrantedMenuIDs: []int64{3, 4, 6},
 		ActiveMenus: []*accessentity.Menu{
@@ -217,13 +226,8 @@ func TestListUserRouteTree_GrantedNodesIncludeActiveAncestors(t *testing.T) {
 			{ID: 6, ParentID: 99, OrderNum: 1, MenuName: "Orphan", MenuType: accessentity.MenuTypeMenu},
 		},
 	}
-	uc := NewMenuUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	roots, err := uc.ListUserRouteTree(t.Context(), 42)
-	if err != nil {
-		t.Fatalf("ListUserRouteTree: %v", err)
-	}
-	ids := treeIDs(roots)
+	ids := treeIDs(accessservice.SelectUserRouteTree(routeAccess))
 	want := []int64{1, 4, 2, 3}
 	if len(ids) != len(want) {
 		t.Fatalf("route ids = %v, want %v", ids, want)
@@ -235,29 +239,22 @@ func TestListUserRouteTree_GrantedNodesIncludeActiveAncestors(t *testing.T) {
 	}
 }
 
-func TestListUserRouteTree_ButtonOnlyAndInactiveGrantsProduceNoRoutes(t *testing.T) {
-	repo := newFakeMenuRepo()
-	repo.routeAccess = &accessrepo.MenuRouteAccess{
+func TestSelectUserRouteTree_ButtonOnlyAndInactiveGrantsProduceNoRoutes(t *testing.T) {
+	routeAccess := &accessrepo.MenuRouteAccess{
 		RoleKeys:       []string{"operator"},
-		GrantedMenuIDs: []int64{8, 9}, // absent: Button and inactive accessentity.Menu
+		GrantedMenuIDs: []int64{8, 9}, // absent: Button and inactive Menu
 		ActiveMenus: []*accessentity.Menu{
 			{ID: 1, ParentID: 0, MenuName: "System", MenuType: accessentity.MenuTypeDirectory},
 		},
 	}
-	uc := NewMenuUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	roots, err := uc.ListUserRouteTree(t.Context(), 42)
-	if err != nil {
-		t.Fatalf("ListUserRouteTree: %v", err)
-	}
-	if len(roots) != 0 {
+	if roots := accessservice.SelectUserRouteTree(routeAccess); len(roots) != 0 {
 		t.Fatalf("button/inactive grants produced routes: %v", treeIDs(roots))
 	}
 }
 
-func TestListUserRouteTree_SuperadminGetsAllActiveRouteableNodes(t *testing.T) {
-	repo := newFakeMenuRepo()
-	repo.routeAccess = &accessrepo.MenuRouteAccess{
+func TestSelectUserRouteTree_SuperadminGetsAllActiveRouteableNodes(t *testing.T) {
+	routeAccess := &accessrepo.MenuRouteAccess{
 		RoleKeys:       []string{"operator", "superadmin"},
 		GrantedMenuIDs: nil,
 		ActiveMenus: []*accessentity.Menu{
@@ -266,13 +263,8 @@ func TestListUserRouteTree_SuperadminGetsAllActiveRouteableNodes(t *testing.T) {
 			{ID: 3, ParentID: 2, OrderNum: 1, MenuName: "Child", MenuType: accessentity.MenuTypeMenu},
 		},
 	}
-	uc := NewMenuUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	roots, err := uc.ListUserRouteTree(t.Context(), 42)
-	if err != nil {
-		t.Fatalf("ListUserRouteTree: %v", err)
-	}
-	ids := treeIDs(roots)
+	ids := treeIDs(accessservice.SelectUserRouteTree(routeAccess))
 	want := []int64{2, 3, 1}
 	for i := range want {
 		if len(ids) != len(want) || ids[i] != want[i] {
@@ -281,28 +273,21 @@ func TestListUserRouteTree_SuperadminGetsAllActiveRouteableNodes(t *testing.T) {
 	}
 }
 
-func TestListUserRouteTree_MalformedSuperadminRoleKeyDoesNotBypassGrants(t *testing.T) {
-	repo := newFakeMenuRepo()
-	repo.routeAccess = &accessrepo.MenuRouteAccess{
+func TestSelectUserRouteTree_MalformedSuperadminRoleKeyDoesNotBypassGrants(t *testing.T) {
+	routeAccess := &accessrepo.MenuRouteAccess{
 		RoleKeys: []string{" superadmin "},
 		ActiveMenus: []*accessentity.Menu{
 			{ID: 1, ParentID: 0, MenuName: "System", MenuType: accessentity.MenuTypeDirectory},
 		},
 	}
-	uc := NewMenuUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	roots, err := uc.ListUserRouteTree(t.Context(), 42)
-	if err != nil {
-		t.Fatalf("ListUserRouteTree: %v", err)
-	}
-	if len(roots) != 0 {
-		t.Fatalf("malformed superadmin role key bypassed accessentity.Menu Grants: %v", treeIDs(roots))
+	if roots := accessservice.SelectUserRouteTree(routeAccess); len(roots) != 0 {
+		t.Fatalf("malformed superadmin role key bypassed Menu Grants: %v", treeIDs(roots))
 	}
 }
 
-func TestListUserRouteTree_PreservesRepositoryTieBreakForEqualOrder(t *testing.T) {
-	repo := newFakeMenuRepo()
-	repo.routeAccess = &accessrepo.MenuRouteAccess{
+func TestSelectUserRouteTree_PreservesRepositoryTieBreakForEqualOrder(t *testing.T) {
+	routeAccess := &accessrepo.MenuRouteAccess{
 		RoleKeys:       []string{"operator"},
 		GrantedMenuIDs: []int64{2, 3},
 		// The data repo supplies id order as the tie-break for equal order_num.
@@ -312,12 +297,8 @@ func TestListUserRouteTree_PreservesRepositoryTieBreakForEqualOrder(t *testing.T
 			{ID: 3, ParentID: 1, OrderNum: 5, MenuType: accessentity.MenuTypeMenu},
 		},
 	}
-	uc := NewMenuUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
-	roots, err := uc.ListUserRouteTree(t.Context(), 42)
-	if err != nil {
-		t.Fatalf("ListUserRouteTree: %v", err)
-	}
+	roots := accessservice.SelectUserRouteTree(routeAccess)
 	if len(roots) != 1 || len(roots[0].Children) != 2 || roots[0].Children[0].ID != 2 || roots[0].Children[1].ID != 3 {
 		t.Fatalf("equal-order routes lost repository tie-break: %v", treeIDs(roots))
 	}
@@ -326,9 +307,9 @@ func TestListUserRouteTree_PreservesRepositoryTieBreakForEqualOrder(t *testing.T
 func TestUpdateMenu_ParentSelfRejected(t *testing.T) {
 	repo := newFakeMenuRepo()
 	repo.byID[1] = &accessentity.Menu{ID: 1, MenuName: "sys", ParentID: 0, MenuType: accessentity.MenuTypeDirectory}
-	uc := NewMenuUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newMenuApp(repo, new(fakeSessionRevoker))
 
-	_, err := uc.UpdateMenu(context.Background(), &accessentity.Menu{ID: 1, MenuName: "sys", ParentID: 1, MenuType: accessentity.MenuTypeDirectory})
+	_, err := app.UpdateMenu(context.Background(), &accessv1.UpdateMenuRequest{Menu: &accessv1.Menu{MenuId: 1, MenuName: "sys", ParentId: 1, MenuType: accessv1.MenuType_MENU_TYPE_DIRECTORY}})
 	if !errors.Is(err, ErrMenuParentInvalid) {
 		t.Fatalf("expected ErrMenuParentInvalid, got %v", err)
 	}
@@ -337,9 +318,13 @@ func TestUpdateMenu_ParentSelfRejected(t *testing.T) {
 func TestUpdateMenu_TypeInvalid(t *testing.T) {
 	repo := newFakeMenuRepo()
 	repo.byID[1] = &accessentity.Menu{ID: 1, MenuName: "a", ParentID: 0, MenuType: accessentity.MenuTypeDirectory}
-	uc := NewMenuUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newMenuApp(repo, new(fakeSessionRevoker))
 
-	_, err := uc.UpdateMenu(context.Background(), &accessentity.Menu{ID: 1, MenuName: "a", ParentID: 0, MenuType: 0})
+	// An explicit mask cannot zero menu_type.
+	_, err := app.UpdateMenu(context.Background(), &accessv1.UpdateMenuRequest{
+		Menu:       &accessv1.Menu{MenuId: 1, MenuName: "a", ParentId: 0, MenuType: 0},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"menu_name", "parent_id", "menu_type"}},
+	})
 	if !errors.Is(err, ErrMenuTypeInvalid) {
 		t.Fatalf("expected ErrMenuTypeInvalid, got %v", err)
 	}
@@ -349,14 +334,14 @@ func TestUpdateMenu_SiblingNameConflictExcludingSelf(t *testing.T) {
 	repo := newFakeMenuRepo()
 	repo.byID[1] = &accessentity.Menu{ID: 1, MenuName: "a", ParentID: 0, MenuType: accessentity.MenuTypeDirectory}
 	repo.byID[2] = &accessentity.Menu{ID: 2, MenuName: "b", ParentID: 0, MenuType: accessentity.MenuTypeDirectory}
-	uc := NewMenuUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newMenuApp(repo, new(fakeSessionRevoker))
 
 	// Renaming to its own name (unchanged) is allowed: the match is self.
-	if _, err := uc.UpdateMenu(context.Background(), &accessentity.Menu{ID: 1, MenuName: "a", ParentID: 0, MenuType: accessentity.MenuTypeDirectory}); err != nil {
+	if _, err := app.UpdateMenu(context.Background(), &accessv1.UpdateMenuRequest{Menu: &accessv1.Menu{MenuId: 1, MenuName: "a", MenuType: accessv1.MenuType_MENU_TYPE_DIRECTORY}}); err != nil {
 		t.Fatalf("update to own name should succeed, got %v", err)
 	}
 	// Renaming to a sibling's name conflicts.
-	_, err := uc.UpdateMenu(context.Background(), &accessentity.Menu{ID: 1, MenuName: "b", ParentID: 0, MenuType: accessentity.MenuTypeDirectory})
+	_, err := app.UpdateMenu(context.Background(), &accessv1.UpdateMenuRequest{Menu: &accessv1.Menu{MenuId: 1, MenuName: "b", MenuType: accessv1.MenuType_MENU_TYPE_DIRECTORY}})
 	if !errors.Is(err, ErrMenuNameConflict) {
 		t.Fatalf("expected ErrMenuNameConflict, got %v", err)
 	}
@@ -366,9 +351,9 @@ func TestDeleteMenu_HasChildrenRejected(t *testing.T) {
 	repo := newFakeMenuRepo()
 	repo.byID[1] = &accessentity.Menu{ID: 1, ParentID: 0, MenuType: accessentity.MenuTypeDirectory}
 	repo.byID[2] = &accessentity.Menu{ID: 2, ParentID: 1, MenuType: accessentity.MenuTypeMenu}
-	uc := NewMenuUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newMenuApp(repo, new(fakeSessionRevoker))
 
-	if err := uc.DeleteMenu(context.Background(), 1); !errors.Is(err, ErrMenuHasChildren) {
+	if _, err := app.DeleteMenu(context.Background(), &accessv1.DeleteMenuRequest{MenuId: 1}); !errors.Is(err, ErrMenuHasChildren) {
 		t.Fatalf("expected ErrMenuHasChildren, got %v", err)
 	}
 }
@@ -376,9 +361,9 @@ func TestDeleteMenu_HasChildrenRejected(t *testing.T) {
 func TestDeleteMenu_LeafSuccess(t *testing.T) {
 	repo := newFakeMenuRepo()
 	repo.byID[2] = &accessentity.Menu{ID: 2, ParentID: 1, MenuType: accessentity.MenuTypeMenu}
-	uc := NewMenuUsecase(repo, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newMenuApp(repo, new(fakeSessionRevoker))
 
-	if err := uc.DeleteMenu(context.Background(), 2); err != nil {
+	if _, err := app.DeleteMenu(context.Background(), &accessv1.DeleteMenuRequest{MenuId: 2}); err != nil {
 		t.Fatalf("delete leaf: %v", err)
 	}
 	if _, ok := repo.byID[2]; ok {

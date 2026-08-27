@@ -5,16 +5,19 @@ import (
 	accessentity "glex/internal/domain/access/entity"
 	accessrepo "glex/internal/domain/access/repository"
 
+	accessv1 "glex/api/access/v1"
+
 	"context"
 	"testing"
 
 	"github.com/go-kratos/kratos/v3/errors"
 )
 
-// fakeUserRoleRepo is an in-memory accessrepo.UserRoleRepo for testing the role-assignment usecase
-// and the role delete/disable guards in isolation from the infrastructure layer.
-// roles is the "all active roles" set; links maps userID → assigned role ids
-// (in replacement order); users is the existing-user set behind UserExists.
+// fakeUserRoleRepo is an in-memory accessrepo.UserRoleRepo for testing the
+// role-assignment application service and the role delete/disable guards in
+// isolation from the infrastructure layer. roles is the "all active roles"
+// set; links maps userID → assigned role ids (in replacement order); users is
+// the existing-user set behind UserExists.
 type fakeUserRoleRepo struct {
 	roles    []*accessentity.Role
 	links    map[int64][]int64
@@ -50,13 +53,6 @@ func (r *fakeUserRoleRepo) ReplaceUserRoles(_ context.Context, userID int64, rol
 	return []int64{userID}, nil
 }
 
-// newRoleAssignmentUsecase wires the role-assignment usecase with the test
-// transaction; flows under test reach the session world only through the
-// injected revocation fake.
-func newRoleAssignmentUsecase(link accessrepo.UserRoleRepo) *RoleAssignmentUsecase {
-	return NewRoleAssignmentUsecase(newFakeRoleRepo(), link, new(fakeSessionRevoker), newFakeTransaction(), testLogger())
-}
-
 func (r *fakeUserRoleRepo) ListRoleUsers(context.Context, int64, ...accessrepo.ListOption) ([]*accessrepo.RoleUser, error) {
 	return nil, nil
 }
@@ -73,6 +69,13 @@ func (r *fakeUserRoleRepo) CountUserRoles(_ context.Context, roleID int64) (int,
 	return n, nil
 }
 
+// newRoleAssignmentApp wires the role-assignment application service with the
+// test transaction; flows under test reach the session world only through the
+// injected revocation fake.
+func newRoleAssignmentApp(link *fakeUserRoleRepo) *RoleAssignmentApplication {
+	return NewRoleAssignmentApplication(newFakeRoleRepo(), link, new(fakeSessionRevoker), newFakeTransaction(), testLogger())
+}
+
 // userExists seeds the link fake's existing-user set.
 func userExists(link *fakeUserRoleRepo, userIDs ...int64) *fakeUserRoleRepo {
 	for _, id := range userIDs {
@@ -81,12 +84,12 @@ func userExists(link *fakeUserRoleRepo, userIDs ...int64) *fakeUserRoleRepo {
 	return link
 }
 
-// --- accessentity.Role Assignment (角色分配) — auth usecase ---
+// --- Role Assignment (角色分配) — auth dialog ---
 
 func TestAuthListUserRoles_UserNotFound(t *testing.T) {
-	uc := newRoleAssignmentUsecase(newFakeUserRoleRepo())
+	app := newRoleAssignmentApp(newFakeUserRoleRepo())
 
-	_, err := uc.ListUserRoles(context.Background(), 99)
+	_, err := app.ListUserRoles(context.Background(), &accessv1.ListUserRolesRequest{UserId: 99})
 	if !errors.Is(err, ErrUserNotFound) {
 		t.Fatalf("expected ErrUserNotFound, got %v", err)
 	}
@@ -99,24 +102,25 @@ func TestAuthListUserRoles_AllRolesWithFlags(t *testing.T) {
 		{ID: 2, RoleName: "运营", RoleKey: "operator", RoleSort: 2},
 	}
 	link.links[10] = []int64{2}
-	uc := newRoleAssignmentUsecase(link)
+	app := newRoleAssignmentApp(link)
 
-	got, err := uc.ListUserRoles(context.Background(), 10)
+	got, err := app.ListUserRoles(context.Background(), &accessv1.ListUserRolesRequest{UserId: 10})
 	if err != nil {
 		t.Fatalf("list user roles: %v", err)
 	}
-	if len(got) != 2 {
-		t.Fatalf("expected 2 assignments, got %d", len(got))
+	items := got.GetItems()
+	if len(items) != 2 {
+		t.Fatalf("expected 2 assignments, got %d", len(items))
 	}
-	if got[0].Assigned || !got[1].Assigned {
-		t.Fatalf("expected assigned flags [false true], got [%v %v]", got[0].Assigned, got[1].Assigned)
+	if items[0].GetAssigned() || !items[1].GetAssigned() {
+		t.Fatalf("expected assigned flags [false true], got [%v %v]", items[0].GetAssigned(), items[1].GetAssigned())
 	}
 }
 
 func TestAuthUpdateUserRoles_UserNotFound(t *testing.T) {
-	uc := newRoleAssignmentUsecase(newFakeUserRoleRepo())
+	app := newRoleAssignmentApp(newFakeUserRoleRepo())
 
-	_, err := uc.UpdateUserRoles(context.Background(), 99, []int64{1})
+	_, err := app.UpdateUserRoles(context.Background(), &accessv1.UpdateUserRolesRequest{UserId: 99, RoleIds: []int64{1}})
 	if !errors.Is(err, ErrUserNotFound) {
 		t.Fatalf("expected ErrUserNotFound, got %v", err)
 	}
@@ -125,9 +129,9 @@ func TestAuthUpdateUserRoles_UserNotFound(t *testing.T) {
 func TestAuthUpdateUserRoles_UnknownRoleRejected(t *testing.T) {
 	link := userExists(newFakeUserRoleRepo(), 10)
 	link.roles = []*accessentity.Role{{ID: 1, RoleName: "管理员", RoleKey: "admin"}}
-	uc := newRoleAssignmentUsecase(link)
+	app := newRoleAssignmentApp(link)
 
-	_, err := uc.UpdateUserRoles(context.Background(), 10, []int64{1, 99})
+	_, err := app.UpdateUserRoles(context.Background(), &accessv1.UpdateUserRolesRequest{UserId: 10, RoleIds: []int64{1, 99}})
 	if !errors.Is(err, ErrRoleNotFound) {
 		t.Fatalf("expected ErrRoleNotFound, got %v", err)
 	}
@@ -145,10 +149,10 @@ func TestAuthUpdateUserRoles_FullReplacement(t *testing.T) {
 	}
 	link.links[10] = []int64{1, 2}
 	revoker := &fakeSessionRevoker{}
-	uc := NewRoleAssignmentUsecase(newFakeRoleRepo(), link, revoker, newFakeTransaction(), testLogger())
+	app := NewRoleAssignmentApplication(newFakeRoleRepo(), link, revoker, newFakeTransaction(), testLogger())
 
 	// Replace with [2, 3] — duplicates are silently deduped.
-	got, err := uc.UpdateUserRoles(context.Background(), 10, []int64{2, 3, 2})
+	got, err := app.UpdateUserRoles(context.Background(), &accessv1.UpdateUserRolesRequest{UserId: 10, RoleIds: []int64{2, 3, 2}})
 	if err != nil {
 		t.Fatalf("update user roles: %v", err)
 	}
@@ -164,9 +168,9 @@ func TestAuthUpdateUserRoles_FullReplacement(t *testing.T) {
 	}
 	// The response carries the updated flags for all roles.
 	wantFlags := []bool{false, true, true}
-	for i, a := range got {
-		if a.Assigned != wantFlags[i] {
-			t.Fatalf("expected flag %v at %d, got %v", wantFlags[i], i, a.Assigned)
+	for i, a := range got.GetItems() {
+		if a.GetAssigned() != wantFlags[i] {
+			t.Fatalf("expected flag %v at %d, got %v", wantFlags[i], i, a.GetAssigned())
 		}
 	}
 }
@@ -175,24 +179,25 @@ func TestAuthUpdateUserRoles_EmptyClears(t *testing.T) {
 	link := userExists(newFakeUserRoleRepo(), 10)
 	link.roles = []*accessentity.Role{{ID: 1, RoleName: "管理员", RoleKey: "admin"}}
 	link.links[10] = []int64{1}
-	uc := newRoleAssignmentUsecase(link)
+	app := newRoleAssignmentApp(link)
 
-	got, err := uc.UpdateUserRoles(context.Background(), 10, nil)
+	got, err := app.UpdateUserRoles(context.Background(), &accessv1.UpdateUserRolesRequest{UserId: 10})
 	if err != nil {
 		t.Fatalf("clear user roles: %v", err)
 	}
 	if len(link.links[10]) != 0 {
 		t.Fatalf("expected cleared links, got %v", link.links[10])
 	}
-	if len(got) != 1 || got[0].Assigned {
-		t.Fatalf("expected single unassigned role in response, got %v", got)
+	items := got.GetItems()
+	if len(items) != 1 || items[0].GetAssigned() {
+		t.Fatalf("expected single unassigned role in response, got %v", items)
 	}
 }
 
 func TestAuthListRoleUsers_RoleNotFound(t *testing.T) {
-	uc := newRoleAssignmentUsecase(newFakeUserRoleRepo())
+	app := newRoleAssignmentApp(newFakeUserRoleRepo())
 
-	_, err := uc.ListRoleUsers(context.Background(), 99)
+	_, err := app.ListRoleUsers(context.Background(), &accessv1.ListRoleUsersRequest{RoleId: 99})
 	if !errors.Is(err, ErrRoleNotFound) {
 		t.Fatalf("expected ErrRoleNotFound, got %v", err)
 	}
@@ -205,9 +210,9 @@ func TestRoleDelete_AssignedRejected(t *testing.T) {
 	repo.byID[3] = &accessentity.Role{ID: 3, RoleName: "测试", RoleKey: "test"}
 	link := newFakeUserRoleRepo()
 	link.links[10] = []int64{3}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), link, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, newFakeMenuRepo(), link)
 
-	err := uc.DeleteRole(context.Background(), 3)
+	_, err := app.DeleteRole(context.Background(), &accessv1.DeleteRoleRequest{RoleId: 3})
 	if !errors.Is(err, ErrRoleAssigned) {
 		t.Fatalf("expected ErrRoleAssigned, got %v", err)
 	}
@@ -219,9 +224,9 @@ func TestRoleDelete_AssignedRejected(t *testing.T) {
 func TestRoleDelete_UnassignedAllowed(t *testing.T) {
 	repo := newFakeRoleRepo()
 	repo.byID[3] = &accessentity.Role{ID: 3, RoleName: "测试", RoleKey: "test"}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	if err := uc.DeleteRole(context.Background(), 3); err != nil {
+	if _, err := app.DeleteRole(context.Background(), &accessv1.DeleteRoleRequest{RoleId: 3}); err != nil {
 		t.Fatalf("delete unassigned role: %v", err)
 	}
 	if len(repo.deleted) != 1 || repo.deleted[0] != 3 {
@@ -234,9 +239,9 @@ func TestRoleUpdate_DisableAssignedRejected(t *testing.T) {
 	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 0}
 	link := newFakeUserRoleRepo()
 	link.links[10] = []int64{5}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), link, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, newFakeMenuRepo(), link)
 
-	_, err := uc.UpdateRole(context.Background(), &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 1})
+	_, err := app.UpdateRole(context.Background(), &accessv1.UpdateRoleRequest{Role: &accessv1.Role{RoleId: 5, RoleName: "管理员", RoleKey: "admin", Status: 1}})
 	if !errors.Is(err, ErrRoleAssigned) {
 		t.Fatalf("expected ErrRoleAssigned, got %v", err)
 	}
@@ -245,14 +250,14 @@ func TestRoleUpdate_DisableAssignedRejected(t *testing.T) {
 func TestRoleUpdate_DisableUnassignedAllowed(t *testing.T) {
 	repo := newFakeRoleRepo()
 	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 0}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), newFakeUserRoleRepo(), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	got, err := uc.UpdateRole(context.Background(), &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 1})
+	got, err := app.UpdateRole(context.Background(), &accessv1.UpdateRoleRequest{Role: &accessv1.Role{RoleId: 5, RoleName: "管理员", RoleKey: "admin", Status: 1}})
 	if err != nil {
 		t.Fatalf("disable unassigned role: %v", err)
 	}
-	if got.Status != 1 {
-		t.Fatalf("expected status 1, got %d", got.Status)
+	if got.GetStatus() != 1 {
+		t.Fatalf("expected status 1, got %d", got.GetStatus())
 	}
 }
 
@@ -262,9 +267,9 @@ func TestRoleUpdate_RedisableAlreadyDisabledPasses(t *testing.T) {
 	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 1}
 	link := newFakeUserRoleRepo()
 	link.links[10] = []int64{5}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), link, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, newFakeMenuRepo(), link)
 
-	if _, err := uc.UpdateRole(context.Background(), &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 1}); err != nil {
+	if _, err := app.UpdateRole(context.Background(), &accessv1.UpdateRoleRequest{Role: &accessv1.Role{RoleId: 5, RoleName: "管理员", RoleKey: "admin", Status: 1}}); err != nil {
 		t.Fatalf("re-disabling an already disabled role: %v", err)
 	}
 }
@@ -275,9 +280,9 @@ func TestRoleUpdate_NonStatusChangesPass(t *testing.T) {
 	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 0}
 	link := newFakeUserRoleRepo()
 	link.links[10] = []int64{5}
-	uc := NewRoleUsecase(repo, newFakeMenuRepo(), link, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := newRoleApp(repo, newFakeMenuRepo(), link)
 
-	if _, err := uc.UpdateRole(context.Background(), &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 0, Remark: "x"}); err != nil {
+	if _, err := app.UpdateRole(context.Background(), &accessv1.UpdateRoleRequest{Role: &accessv1.Role{RoleId: 5, RoleName: "管理员", RoleKey: "admin", Status: 0, Remark: "x"}}); err != nil {
 		t.Fatalf("non-status update of assigned role: %v", err)
 	}
 }
