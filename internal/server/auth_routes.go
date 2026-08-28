@@ -11,7 +11,7 @@ import (
 )
 
 // authRoutes is the single declaration of the operations the auth middleware
-// enforces. Every operation absent from the table is public — see ADR 0013.
+// enforces. Every operation absent from the table is public.
 func authRoutes() map[string]authmw.Route {
 	return map[string]authmw.Route{
 		userv1.OperationUserServiceGetInfo:           {Login: true},

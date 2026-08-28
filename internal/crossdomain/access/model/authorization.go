@@ -1,7 +1,7 @@
 // Package model holds the flat snapshots that cross the access crossdomain
 // contract seam. Types here are consumer-shaped scalars only: the provider's
 // domain objects never appear, so consumers never import the provider's
-// domain package (ADR 0017).
+// domain package (ADR 0005).
 package model
 
 // AuthorizationResolution is the resolved authorization content of one System

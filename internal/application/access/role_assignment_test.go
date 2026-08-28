@@ -1,112 +1,93 @@
 package access
 
 import (
-	. "glex/internal/domain/access"
-	accessentity "glex/internal/domain/access/entity"
-	accessrepo "glex/internal/domain/access/repository"
+	"context"
+	"errors"
+	"testing"
+	"time"
 
 	accessv1 "glex/api/access/v1"
+	accessentity "glex/internal/domain/access/entity"
+	accessservice "glex/internal/domain/access/service"
 
-	"context"
-	"testing"
-
-	"github.com/go-kratos/kratos/v3/errors"
+	"go.einride.tech/aip/filtering"
+	"go.einride.tech/aip/ordering"
 )
 
-// fakeUserRoleRepo is an in-memory accessrepo.UserRoleRepo for testing the
-// role-assignment application service and the role delete/disable guards in
-// isolation from the infrastructure layer. roles is the "all active roles"
-// set; links maps userID → assigned role ids (in replacement order); users is
-// the existing-user set behind UserExists.
-type fakeUserRoleRepo struct {
-	roles    []*accessentity.Role
-	links    map[int64][]int64
-	users    map[int64]struct{}
-	replaced []int64
+// fakeRoleAssignmentService is a hand-rolled accessservice.RoleAssignment
+// fake for the application tests: it records every call and returns the
+// configured result, so the tests exercise orchestration only — transaction
+// wrapping, revocation, DTO conversion, pagination, audit stamping — never
+// the domain rules behind the interface.
+type fakeRoleAssignmentService struct {
+	// Configured returns.
+	listed      []*accessentity.RoleAssignment
+	replacement *accessservice.RoleAssignmentReplacement
+	roleUsers   []*accessentity.RoleUser
+	listErr     error
+	replaceErr  error
+	usersErr    error
+
+	// Recorded calls.
+	listUserID     int64
+	replaceCalled  int
+	replaceCtx     context.Context
+	replaceUserID  int64
+	replaceRoleIDs []int64
+	replaceActor   int64
+	usersRoleID    int64
+	usersLimit     int
+	usersOffset    int
 }
 
-func newFakeUserRoleRepo() *fakeUserRoleRepo {
-	return &fakeUserRoleRepo{links: make(map[int64][]int64), users: make(map[int64]struct{})}
-}
-
-func (r *fakeUserRoleRepo) UserExists(_ context.Context, userID int64) (bool, error) {
-	_, ok := r.users[userID]
-	return ok, nil
-}
-
-func (r *fakeUserRoleRepo) ListRoleAssignments(_ context.Context, userID int64) ([]*accessrepo.RoleAssignment, error) {
-	assigned := make(map[int64]struct{}, len(r.links[userID]))
-	for _, id := range r.links[userID] {
-		assigned[id] = struct{}{}
+func (f *fakeRoleAssignmentService) ListForUser(_ context.Context, userID int64) ([]*accessentity.RoleAssignment, error) {
+	f.listUserID = userID
+	if f.listErr != nil {
+		return nil, f.listErr
 	}
-	out := make([]*accessrepo.RoleAssignment, 0, len(r.roles))
-	for _, ro := range r.roles {
-		_, ok := assigned[ro.ID]
-		out = append(out, &accessrepo.RoleAssignment{Role: ro, Assigned: ok})
+	return f.listed, nil
+}
+
+func (f *fakeRoleAssignmentService) ReplaceForUser(ctx context.Context, userID int64, roleIDs []int64, actorID int64) (*accessservice.RoleAssignmentReplacement, error) {
+	f.replaceCalled++
+	f.replaceCtx, f.replaceUserID, f.replaceRoleIDs, f.replaceActor = ctx, userID, roleIDs, actorID
+	if f.replaceErr != nil {
+		return nil, f.replaceErr
 	}
-	return out, nil
+	return f.replacement, nil
 }
 
-func (r *fakeUserRoleRepo) ReplaceUserRoles(_ context.Context, userID int64, roleIDs []int64, _ int64) ([]int64, error) {
-	r.links[userID] = append([]int64(nil), roleIDs...)
-	r.replaced = append(r.replaced, userID)
-	return []int64{userID}, nil
-}
-
-func (r *fakeUserRoleRepo) ListRoleUsers(context.Context, int64, ...accessrepo.ListOption) ([]*accessrepo.RoleUser, error) {
-	return nil, nil
-}
-
-func (r *fakeUserRoleRepo) CountUserRoles(_ context.Context, roleID int64) (int, error) {
-	n := 0
-	for _, ids := range r.links {
-		for _, id := range ids {
-			if id == roleID {
-				n++
-			}
-		}
+func (f *fakeRoleAssignmentService) ListRoleUsers(_ context.Context, roleID int64, _ filtering.Filter, _ ordering.OrderBy, limit, offset int) ([]*accessentity.RoleUser, error) {
+	f.usersRoleID, f.usersLimit, f.usersOffset = roleID, limit, offset
+	if f.usersErr != nil {
+		return nil, f.usersErr
 	}
-	return n, nil
+	return f.roleUsers, nil
 }
 
 // newRoleAssignmentApp wires the role-assignment application service with the
 // test transaction; flows under test reach the session world only through the
 // injected revocation fake.
-func newRoleAssignmentApp(link *fakeUserRoleRepo) *RoleAssignmentApplication {
-	return NewRoleAssignmentApplication(newFakeRoleRepo(), link, new(fakeSessionRevoker), newFakeTransaction(), testLogger())
-}
-
-// userExists seeds the link fake's existing-user set.
-func userExists(link *fakeUserRoleRepo, userIDs ...int64) *fakeUserRoleRepo {
-	for _, id := range userIDs {
-		link.users[id] = struct{}{}
-	}
-	return link
+func newRoleAssignmentApp(svc *fakeRoleAssignmentService, revoker *fakeSessionRevoker) (*RoleAssignmentApplication, *fakeTransaction) {
+	tx := newFakeTransaction()
+	return NewRoleAssignmentApplication(svc, revoker, tx, testLogger()), tx
 }
 
 // --- Role Assignment (角色分配) — auth dialog ---
 
-func TestAuthListUserRoles_UserNotFound(t *testing.T) {
-	app := newRoleAssignmentApp(newFakeUserRoleRepo())
-
-	_, err := app.ListUserRoles(context.Background(), &accessv1.ListUserRolesRequest{UserId: 99})
-	if !errors.Is(err, ErrUserNotFound) {
-		t.Fatalf("expected ErrUserNotFound, got %v", err)
-	}
-}
-
-func TestAuthListUserRoles_AllRolesWithFlags(t *testing.T) {
-	link := userExists(newFakeUserRoleRepo(), 10)
-	link.roles = []*accessentity.Role{
-		{ID: 1, RoleName: "管理员", RoleKey: "admin", RoleSort: 1},
-		{ID: 2, RoleName: "运营", RoleKey: "operator", RoleSort: 2},
-	}
-	link.links[10] = []int64{2}
-	app := newRoleAssignmentApp(link)
+func TestListUserRoles_ConvertsAssignments(t *testing.T) {
+	svc := &fakeRoleAssignmentService{listed: []*accessentity.RoleAssignment{
+		{Role: &accessentity.Role{ID: 1, RoleName: "管理员", RoleKey: "admin"}, Assigned: false},
+		{Role: &accessentity.Role{ID: 2, RoleName: "运营", RoleKey: "operator"}, Assigned: true},
+	}}
+	app, _ := newRoleAssignmentApp(svc, new(fakeSessionRevoker))
 
 	got, err := app.ListUserRoles(context.Background(), &accessv1.ListUserRolesRequest{UserId: 10})
 	if err != nil {
 		t.Fatalf("list user roles: %v", err)
+	}
+	if svc.listUserID != 10 {
+		t.Fatalf("service saw user %d, want 10", svc.listUserID)
 	}
 	items := got.GetItems()
 	if len(items) != 2 {
@@ -115,59 +96,50 @@ func TestAuthListUserRoles_AllRolesWithFlags(t *testing.T) {
 	if items[0].GetAssigned() || !items[1].GetAssigned() {
 		t.Fatalf("expected assigned flags [false true], got [%v %v]", items[0].GetAssigned(), items[1].GetAssigned())
 	}
-}
-
-func TestAuthUpdateUserRoles_UserNotFound(t *testing.T) {
-	app := newRoleAssignmentApp(newFakeUserRoleRepo())
-
-	_, err := app.UpdateUserRoles(context.Background(), &accessv1.UpdateUserRolesRequest{UserId: 99, RoleIds: []int64{1}})
-	if !errors.Is(err, ErrUserNotFound) {
-		t.Fatalf("expected ErrUserNotFound, got %v", err)
+	if items[1].GetRole().GetRoleKey() != "operator" {
+		t.Fatalf("role DTO = %#v", items[1].GetRole())
 	}
 }
 
-func TestAuthUpdateUserRoles_UnknownRoleRejected(t *testing.T) {
-	link := userExists(newFakeUserRoleRepo(), 10)
-	link.roles = []*accessentity.Role{{ID: 1, RoleName: "管理员", RoleKey: "admin"}}
-	app := newRoleAssignmentApp(link)
+func TestListUserRoles_ServiceErrorPropagates(t *testing.T) {
+	svc := &fakeRoleAssignmentService{listErr: errServiceFailed}
+	app, _ := newRoleAssignmentApp(svc, new(fakeSessionRevoker))
 
-	_, err := app.UpdateUserRoles(context.Background(), &accessv1.UpdateUserRolesRequest{UserId: 10, RoleIds: []int64{1, 99}})
-	if !errors.Is(err, ErrRoleNotFound) {
-		t.Fatalf("expected ErrRoleNotFound, got %v", err)
-	}
-	if len(link.replaced) != 0 {
-		t.Fatal("replacement must not run when validation fails")
+	if _, err := app.ListUserRoles(context.Background(), &accessv1.ListUserRolesRequest{UserId: 10}); !errors.Is(err, errServiceFailed) {
+		t.Fatalf("expected the service error to propagate, got %v", err)
 	}
 }
 
-func TestAuthUpdateUserRoles_FullReplacement(t *testing.T) {
-	link := userExists(newFakeUserRoleRepo(), 10)
-	link.roles = []*accessentity.Role{
-		{ID: 1, RoleName: "管理员", RoleKey: "admin", RoleSort: 1},
-		{ID: 2, RoleName: "运营", RoleKey: "operator", RoleSort: 2},
-		{ID: 3, RoleName: "访客", RoleKey: "guest", RoleSort: 3},
-	}
-	link.links[10] = []int64{1, 2}
-	revoker := &fakeSessionRevoker{}
-	app := NewRoleAssignmentApplication(newFakeRoleRepo(), link, revoker, newFakeTransaction(), testLogger())
+func TestUpdateUserRoles_RevokesAffectedAndReturnsFlags(t *testing.T) {
+	svc := &fakeRoleAssignmentService{replacement: &accessservice.RoleAssignmentReplacement{
+		Assignments: []*accessentity.RoleAssignment{
+			{Role: &accessentity.Role{ID: 1, RoleName: "管理员", RoleKey: "admin"}, Assigned: false},
+			{Role: &accessentity.Role{ID: 2, RoleName: "运营", RoleKey: "operator"}, Assigned: true},
+		},
+		AffectedUserIDs: []int64{10},
+	}}
+	revoker := new(fakeSessionRevoker)
+	app, tx := newRoleAssignmentApp(svc, revoker)
 
-	// Replace with [2, 3] — duplicates are silently deduped.
-	got, err := app.UpdateUserRoles(context.Background(), &accessv1.UpdateUserRolesRequest{UserId: 10, RoleIds: []int64{2, 3, 2}})
+	got, err := app.UpdateUserRoles(actorContext(42), &accessv1.UpdateUserRolesRequest{UserId: 10, RoleIds: []int64{2}})
 	if err != nil {
 		t.Fatalf("update user roles: %v", err)
 	}
-	if len(link.replaced) != 1 || link.replaced[0] != 10 {
-		t.Fatalf("expected exactly one replacement of user 10, got %v", link.replaced)
+	if svc.replaceCalled != 1 || svc.replaceUserID != 10 || len(svc.replaceRoleIDs) != 1 || svc.replaceRoleIDs[0] != 2 {
+		t.Fatalf("service saw user/roles = %d/%v, want 10/[2]", svc.replaceUserID, svc.replaceRoleIDs)
 	}
+	if svc.replaceActor != 42 {
+		t.Fatalf("replace audit actor = %d, want 42", svc.replaceActor)
+	}
+	if svc.replaceCtx != tx.bodyCtx {
+		t.Fatal("service ReplaceForUser must see the ctx the transaction body received")
+	}
+	// The replacement revokes the user whose snapshot the write invalidates.
 	if len(revoker.requests) != 1 || len(revoker.requests[0].SystemUserIDs) != 1 || revoker.requests[0].SystemUserIDs[0] != 10 {
 		t.Fatalf("revocation requests = %#v, want one request revoking user 10", revoker.requests)
 	}
-	want := []int64{2, 3}
-	if len(link.links[10]) != 2 || link.links[10][0] != want[0] || link.links[10][1] != want[1] {
-		t.Fatalf("expected links %v, got %v", want, link.links[10])
-	}
-	// The response carries the updated flags for all roles.
-	wantFlags := []bool{false, true, true}
+	// The response carries the service's assignments as DTOs.
+	wantFlags := []bool{false, true}
 	for i, a := range got.GetItems() {
 		if a.GetAssigned() != wantFlags[i] {
 			t.Fatalf("expected flag %v at %d, got %v", wantFlags[i], i, a.GetAssigned())
@@ -175,114 +147,91 @@ func TestAuthUpdateUserRoles_FullReplacement(t *testing.T) {
 	}
 }
 
-func TestAuthUpdateUserRoles_EmptyClears(t *testing.T) {
-	link := userExists(newFakeUserRoleRepo(), 10)
-	link.roles = []*accessentity.Role{{ID: 1, RoleName: "管理员", RoleKey: "admin"}}
-	link.links[10] = []int64{1}
-	app := newRoleAssignmentApp(link)
+func TestUpdateUserRoles_RevocationFailureFailsTheWrite(t *testing.T) {
+	svc := &fakeRoleAssignmentService{replacement: &accessservice.RoleAssignmentReplacement{
+		AffectedUserIDs: []int64{10},
+	}}
+	revoker := &fakeSessionRevoker{err: errRevokeFailed, failOnRequest: 1}
+	app, _ := newRoleAssignmentApp(svc, revoker)
 
-	got, err := app.UpdateUserRoles(context.Background(), &accessv1.UpdateUserRolesRequest{UserId: 10})
+	// Redis revocation failure rolling back the PostgreSQL replacement is
+	// part of this operation's business contract.
+	if _, err := app.UpdateUserRoles(context.Background(), &accessv1.UpdateUserRolesRequest{UserId: 10, RoleIds: []int64{1}}); !errors.Is(err, errRevokeFailed) {
+		t.Fatalf("expected the revocation failure to fail the write, got %v", err)
+	}
+}
+
+func TestUpdateUserRoles_EmptyAffectedSkipsRevocation(t *testing.T) {
+	svc := &fakeRoleAssignmentService{replacement: &accessservice.RoleAssignmentReplacement{}}
+	revoker := new(fakeSessionRevoker)
+	app, _ := newRoleAssignmentApp(svc, revoker)
+
+	if _, err := app.UpdateUserRoles(context.Background(), &accessv1.UpdateUserRolesRequest{UserId: 10}); err != nil {
+		t.Fatalf("update user roles: %v", err)
+	}
+	if len(revoker.requests) != 0 {
+		t.Fatalf("expected no revocation without affected users, got %#v", revoker.requests)
+	}
+}
+
+func TestUpdateUserRoles_ServiceErrorPropagates(t *testing.T) {
+	svc := &fakeRoleAssignmentService{replaceErr: errServiceFailed}
+	app, _ := newRoleAssignmentApp(svc, new(fakeSessionRevoker))
+
+	if _, err := app.UpdateUserRoles(context.Background(), &accessv1.UpdateUserRolesRequest{UserId: 10, RoleIds: []int64{1}}); !errors.Is(err, errServiceFailed) {
+		t.Fatalf("expected the service error to propagate, got %v", err)
+	}
+}
+
+func TestListRoleUsers_PaginatesAndConverts(t *testing.T) {
+	loginAt := time.Now()
+	svc := &fakeRoleAssignmentService{roleUsers: []*accessentity.RoleUser{
+		{ID: 1, UserName: "alice", Status: 0, LoginDate: &loginAt},
+		{ID: 2, UserName: "bob", Status: 1},
+	}}
+	app, _ := newRoleAssignmentApp(svc, new(fakeSessionRevoker))
+
+	set, err := app.ListRoleUsers(context.Background(), &accessv1.ListRoleUsersRequest{RoleId: 5, PageSize: 2})
 	if err != nil {
-		t.Fatalf("clear user roles: %v", err)
+		t.Fatalf("list role users: %v", err)
 	}
-	if len(link.links[10]) != 0 {
-		t.Fatalf("expected cleared links, got %v", link.links[10])
+	if svc.usersRoleID != 5 || svc.usersLimit != 2 || svc.usersOffset != 0 {
+		t.Fatalf("service saw role/limit/offset = %d/%d/%d, want 5/2/0", svc.usersRoleID, svc.usersLimit, svc.usersOffset)
 	}
-	items := got.GetItems()
-	if len(items) != 1 || items[0].GetAssigned() {
-		t.Fatalf("expected single unassigned role in response, got %v", items)
+	users := set.GetUsers()
+	if len(users) != 2 {
+		t.Fatalf("expected 2 users, got %d", len(users))
 	}
-}
-
-func TestAuthListRoleUsers_RoleNotFound(t *testing.T) {
-	app := newRoleAssignmentApp(newFakeUserRoleRepo())
-
-	_, err := app.ListRoleUsers(context.Background(), &accessv1.ListRoleUsersRequest{RoleId: 99})
-	if !errors.Is(err, ErrRoleNotFound) {
-		t.Fatalf("expected ErrRoleNotFound, got %v", err)
+	if users[0].GetUserName() != "alice" || !users[0].GetLoginDate().AsTime().Equal(loginAt) {
+		t.Fatalf("user DTO = %#v", users[0])
 	}
-}
-
-// --- delete/disable guards (角色已分配，不能删除/禁用) ---
-
-func TestRoleDelete_AssignedRejected(t *testing.T) {
-	repo := newFakeRoleRepo()
-	repo.byID[3] = &accessentity.Role{ID: 3, RoleName: "测试", RoleKey: "test"}
-	link := newFakeUserRoleRepo()
-	link.links[10] = []int64{3}
-	app := newRoleApp(repo, newFakeMenuRepo(), link)
-
-	_, err := app.DeleteRole(context.Background(), &accessv1.DeleteRoleRequest{RoleId: 3})
-	if !errors.Is(err, ErrRoleAssigned) {
-		t.Fatalf("expected ErrRoleAssigned, got %v", err)
+	if users[1].GetUserName() != "bob" || users[1].GetLoginDate() != nil {
+		t.Fatalf("user DTO = %#v", users[1])
 	}
-	if len(repo.deleted) != 0 {
-		t.Fatal("role must not be deleted when users are assigned")
+	if set.GetNextPageToken() == "" {
+		t.Fatal("expected a next page token on a full page")
 	}
-}
 
-func TestRoleDelete_UnassignedAllowed(t *testing.T) {
-	repo := newFakeRoleRepo()
-	repo.byID[3] = &accessentity.Role{ID: 3, RoleName: "测试", RoleKey: "test"}
-	app := newRoleApp(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
-
-	if _, err := app.DeleteRole(context.Background(), &accessv1.DeleteRoleRequest{RoleId: 3}); err != nil {
-		t.Fatalf("delete unassigned role: %v", err)
-	}
-	if len(repo.deleted) != 1 || repo.deleted[0] != 3 {
-		t.Fatalf("expected role 3 deleted, got %v", repo.deleted)
-	}
-}
-
-func TestRoleUpdate_DisableAssignedRejected(t *testing.T) {
-	repo := newFakeRoleRepo()
-	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 0}
-	link := newFakeUserRoleRepo()
-	link.links[10] = []int64{5}
-	app := newRoleApp(repo, newFakeMenuRepo(), link)
-
-	_, err := app.UpdateRole(context.Background(), &accessv1.UpdateRoleRequest{Role: &accessv1.Role{RoleId: 5, RoleName: "管理员", RoleKey: "admin", Status: 1}})
-	if !errors.Is(err, ErrRoleAssigned) {
-		t.Fatalf("expected ErrRoleAssigned, got %v", err)
-	}
-}
-
-func TestRoleUpdate_DisableUnassignedAllowed(t *testing.T) {
-	repo := newFakeRoleRepo()
-	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 0}
-	app := newRoleApp(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
-
-	got, err := app.UpdateRole(context.Background(), &accessv1.UpdateRoleRequest{Role: &accessv1.Role{RoleId: 5, RoleName: "管理员", RoleKey: "admin", Status: 1}})
+	// Following the token resumes at the next offset; a short page yields no
+	// further token.
+	svc.roleUsers = []*accessentity.RoleUser{{ID: 3, UserName: "carol"}}
+	set, err = app.ListRoleUsers(context.Background(), &accessv1.ListRoleUsersRequest{RoleId: 5, PageSize: 2, PageToken: set.GetNextPageToken()})
 	if err != nil {
-		t.Fatalf("disable unassigned role: %v", err)
+		t.Fatalf("list role users with token: %v", err)
 	}
-	if got.GetStatus() != 1 {
-		t.Fatalf("expected status 1, got %d", got.GetStatus())
+	if svc.usersOffset != 2 {
+		t.Fatalf("service saw offset %d after the token, want 2", svc.usersOffset)
 	}
-}
-
-func TestRoleUpdate_RedisableAlreadyDisabledPasses(t *testing.T) {
-	// Re-saving an already-disabled role must not trip the guard.
-	repo := newFakeRoleRepo()
-	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 1}
-	link := newFakeUserRoleRepo()
-	link.links[10] = []int64{5}
-	app := newRoleApp(repo, newFakeMenuRepo(), link)
-
-	if _, err := app.UpdateRole(context.Background(), &accessv1.UpdateRoleRequest{Role: &accessv1.Role{RoleId: 5, RoleName: "管理员", RoleKey: "admin", Status: 1}}); err != nil {
-		t.Fatalf("re-disabling an already disabled role: %v", err)
+	if set.GetNextPageToken() != "" {
+		t.Fatalf("expected no next page token on a short page, got %q", set.GetNextPageToken())
 	}
 }
 
-func TestRoleUpdate_NonStatusChangesPass(t *testing.T) {
-	// Updating other fields of an assigned role must pass.
-	repo := newFakeRoleRepo()
-	repo.byID[5] = &accessentity.Role{ID: 5, RoleName: "管理员", RoleKey: "admin", Status: 0}
-	link := newFakeUserRoleRepo()
-	link.links[10] = []int64{5}
-	app := newRoleApp(repo, newFakeMenuRepo(), link)
+func TestListRoleUsers_ServiceErrorPropagates(t *testing.T) {
+	svc := &fakeRoleAssignmentService{usersErr: errServiceFailed}
+	app, _ := newRoleAssignmentApp(svc, new(fakeSessionRevoker))
 
-	if _, err := app.UpdateRole(context.Background(), &accessv1.UpdateRoleRequest{Role: &accessv1.Role{RoleId: 5, RoleName: "管理员", RoleKey: "admin", Status: 0, Remark: "x"}}); err != nil {
-		t.Fatalf("non-status update of assigned role: %v", err)
+	if _, err := app.ListRoleUsers(context.Background(), &accessv1.ListRoleUsersRequest{RoleId: 5}); !errors.Is(err, errServiceFailed) {
+		t.Fatalf("expected the service error to propagate, got %v", err)
 	}
 }

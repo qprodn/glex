@@ -1,21 +1,25 @@
 package user
 
 import (
+	"context"
+	"testing"
+	"time"
+
 	authnmodel "glex/internal/crossdomain/authn/model"
 	authndomain "glex/internal/domain/authn"
 	authnentity "glex/internal/domain/authn/entity"
 	authnservice "glex/internal/domain/authn/service"
-	. "glex/internal/domain/user"
+	userdomain "glex/internal/domain/user"
 	userentity "glex/internal/domain/user/entity"
-	userrepo "glex/internal/domain/user/repository"
+	userservice "glex/internal/domain/user/service"
 
 	userv1 "glex/api/user/v1"
 
-	"context"
-	"testing"
-
 	"github.com/go-kratos/kratos/v3/errors"
+	"go.einride.tech/aip/filtering"
+	"go.einride.tech/aip/ordering"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 // fakeCredentialWriter records password requests handed to authn's credential
@@ -23,106 +27,93 @@ import (
 type fakeCredentialWriter struct {
 	written []*authnmodel.SystemUserCredential
 	err     error
+	steps   *[]string
 }
 
 func (w *fakeCredentialWriter) WriteSystemUserCredential(_ context.Context, request *authnmodel.SystemUserCredential) error {
 	snapshot := *request
 	w.written = append(w.written, &snapshot)
+	recordStep(w.steps, "credentials.write")
 	return w.err
 }
 
-// fakeUserRepo is an in-memory UserRepo for testing the application service in
-// isolation from the infrastructure layer.
-type fakeUserRepo struct {
-	byID        map[int64]*userentity.User
-	byName      map[string]*userentity.User
-	byEmail     map[string]*userentity.User
-	byPhone     map[string]*userentity.User
-	userNameErr error
-	nextID      int64
-	created     []*userentity.User
-	updated     []userentity.User
-	deleted     []int64
+// fakeUserService is an in-memory userservice.User for testing the application
+// orchestration in isolation from the domain: it carries no domain rules (the
+// uniqueness checks live in the service's own tests), just enough state to
+// observe what the application hands over and returns across its seams.
+type fakeUserService struct {
+	byID   map[int64]*userentity.User
+	nextID int64
+	// list backs List with offset/limit windowing so pagination flows through
+	// the real page-token mechanics.
+	list []*userentity.User
+
+	created      []*userentity.User
+	updated      []userentity.User
+	deletedIDs   []int64
+	deletedBy    []int64
+	lastListCall struct {
+		limit  int
+		offset int
+	}
+	steps *[]string
 }
 
-func newFakeUserRepo() *fakeUserRepo {
-	return &fakeUserRepo{
-		byID:    make(map[int64]*userentity.User),
-		byName:  make(map[string]*userentity.User),
-		byEmail: make(map[string]*userentity.User),
-		byPhone: make(map[string]*userentity.User),
-		nextID:  1,
+func newFakeUserService() *fakeUserService {
+	return &fakeUserService{
+		byID:   make(map[int64]*userentity.User),
+		nextID: 1,
 	}
 }
 
-func (r *fakeUserRepo) FindByID(_ context.Context, id int64) (*userentity.User, error) {
-	u, ok := r.byID[id]
+var _ userservice.User = (*fakeUserService)(nil)
+
+func (s *fakeUserService) Get(_ context.Context, id int64) (*userentity.User, error) {
+	u, ok := s.byID[id]
 	if !ok {
-		return nil, ErrUserNotFound
+		return nil, userdomain.ErrUserNotFound
 	}
 	return u, nil
 }
 
-func (r *fakeUserRepo) FindByUserName(_ context.Context, name string) (*userentity.User, error) {
-	if r.userNameErr != nil {
-		return nil, r.userNameErr
+func (s *fakeUserService) List(_ context.Context, _ filtering.Filter, _ ordering.OrderBy, limit, offset int) ([]*userentity.User, error) {
+	s.lastListCall.limit = limit
+	s.lastListCall.offset = offset
+	if offset >= len(s.list) {
+		return nil, nil
 	}
-	u, ok := r.byName[name]
-	if !ok {
-		return nil, ErrUserNotFound
+	end := len(s.list)
+	if limit > 0 && offset+limit < end {
+		end = offset + limit
 	}
+	return append([]*userentity.User(nil), s.list[offset:end]...), nil
+}
+
+func (s *fakeUserService) Create(_ context.Context, u *userentity.User) (*userentity.User, error) {
+	u.ID = s.nextID
+	s.nextID++
+	s.byID[u.ID] = u
+	s.created = append(s.created, u)
+	recordStep(s.steps, "svc.create")
 	return u, nil
 }
 
-func (r *fakeUserRepo) FindByEmail(_ context.Context, email string) (*userentity.User, error) {
-	u, ok := r.byEmail[email]
-	if !ok {
-		return nil, ErrUserNotFound
-	}
-	return u, nil
+func (s *fakeUserService) Update(_ context.Context, u *userentity.User) (*userentity.UserUpdate, error) {
+	previous := s.byID[u.ID]
+	s.byID[u.ID] = u
+	s.updated = append(s.updated, *u)
+	return &userentity.UserUpdate{User: u, Previous: previous}, nil
 }
 
-func (r *fakeUserRepo) FindByPhoneNumber(_ context.Context, phone string) (*userentity.User, error) {
-	u, ok := r.byPhone[phone]
-	if !ok {
-		return nil, ErrUserNotFound
-	}
-	return u, nil
-}
-
-func (r *fakeUserRepo) ListUsers(context.Context, ...userrepo.ListOption) ([]*userentity.User, error) {
-	return nil, nil
-}
-
-func (r *fakeUserRepo) CreateUser(_ context.Context, u *userentity.User) (*userentity.User, error) {
-	u.ID = r.nextID
-	r.nextID++
-	r.byID[u.ID] = u
-	r.byName[u.UserName] = u
-	if u.Email != "" {
-		r.byEmail[u.Email] = u
-	}
-	if u.PhoneNumber != "" {
-		r.byPhone[u.PhoneNumber] = u
-	}
-	r.created = append(r.created, u)
-	return u, nil
-}
-
-func (r *fakeUserRepo) UpdateUser(_ context.Context, u *userentity.User) (*userrepo.UserUpdate, error) {
-	previous := r.byID[u.ID]
-	r.byID[u.ID] = u
-	r.updated = append(r.updated, *u)
-	return &userrepo.UserUpdate{User: u, Previous: previous}, nil
-}
-
-func (r *fakeUserRepo) DeleteUser(_ context.Context, id int64, _ int64) ([]int64, error) {
-	r.deleted = append(r.deleted, id)
+func (s *fakeUserService) Delete(_ context.Context, id int64, actorID int64) ([]int64, error) {
+	s.deletedIDs = append(s.deletedIDs, id)
+	s.deletedBy = append(s.deletedBy, actorID)
+	delete(s.byID, id)
 	return []int64{id}, nil
 }
 
-func newTestUserApplication(repo *fakeUserRepo, credentials *fakeCredentialWriter, revoker *fakeSessionRevoker) *UserApplication {
-	return NewUserApplication(repo, credentials, newFakeTransaction(), revoker, testLogger())
+func newTestUserApplication(svc *fakeUserService, credentials *fakeCredentialWriter, revoker *fakeSessionRevoker) *UserApplication {
+	return NewUserApplication(svc, credentials, newFakeTransaction(), revoker, testLogger())
 }
 
 func createUserRequest(u *userv1.User) *userv1.CreateUserRequest {
@@ -134,71 +125,85 @@ func updateUserRequest(u *userv1.User) *userv1.UpdateUserRequest {
 }
 
 func TestCreateUserDelegatesCredentialToAuthn(t *testing.T) {
-	repo := newFakeUserRepo()
+	svc := newFakeUserService()
 	credentials := new(fakeCredentialWriter)
-	app := newTestUserApplication(repo, credentials, new(fakeSessionRevoker))
+	app := newTestUserApplication(svc, credentials, new(fakeSessionRevoker))
 
 	_, err := app.CreateUser(context.Background(), createUserRequest(&userv1.User{UserName: "bob", NickName: "Bob", Password: "secret"}))
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	if len(repo.created) != 1 {
-		t.Fatalf("expected 1 created user, got %d", len(repo.created))
+	if len(svc.created) != 1 {
+		t.Fatalf("expected 1 created user, got %d", len(svc.created))
 	}
-	if len(credentials.written) != 1 || credentials.written[0].SystemUserID != repo.created[0].ID || credentials.written[0].Password != "secret" {
+	if len(credentials.written) != 1 || credentials.written[0].SystemUserID != svc.created[0].ID || credentials.written[0].Password != "secret" {
 		t.Fatalf("credential writes = %#v, want one write of the created user's plaintext", credentials.written)
 	}
 }
 
+func TestCreateUserRunsCreateAndCredentialWriteInOneTransaction(t *testing.T) {
+	tx := newFakeTransaction()
+	steps := tx.step()
+	svc := newFakeUserService()
+	svc.steps = steps
+	credentials := &fakeCredentialWriter{steps: steps}
+	app := NewUserApplication(svc, credentials, tx, new(fakeSessionRevoker), testLogger())
+
+	if _, err := app.CreateUser(context.Background(), createUserRequest(&userv1.User{UserName: "bob", Password: "secret"})); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	if tx.began != 1 {
+		t.Fatalf("InTx began %d times, want exactly one transaction", tx.began)
+	}
+	assertSteps(t, steps, "svc.create", "credentials.write")
+}
+
 func TestCreateUser_PasswordRequired(t *testing.T) {
-	app := newTestUserApplication(newFakeUserRepo(), new(fakeCredentialWriter), new(fakeSessionRevoker))
+	// The password-required guard runs in the application before any service
+	// call, so a missing password leaves the service untouched.
+	svc := newFakeUserService()
+	app := newTestUserApplication(svc, new(fakeCredentialWriter), new(fakeSessionRevoker))
 
 	_, err := app.CreateUser(context.Background(), createUserRequest(&userv1.User{UserName: "bob", Password: ""}))
-	if err == nil {
-		t.Fatal("expected error for missing password, got nil")
-	}
-	if !errors.Is(err, ErrPasswordRequired) {
+	if !errors.Is(err, userdomain.ErrPasswordRequired) {
 		t.Fatalf("expected ErrPasswordRequired, got %v", err)
 	}
-}
-
-func TestCreateUser_UserNameConflict(t *testing.T) {
-	repo := newFakeUserRepo()
-	repo.byName["bob"] = &userentity.User{ID: 7, UserName: "bob"}
-	app := newTestUserApplication(repo, new(fakeCredentialWriter), new(fakeSessionRevoker))
-
-	_, err := app.CreateUser(context.Background(), createUserRequest(&userv1.User{UserName: "bob", Password: "secret"}))
-	if !errors.Is(err, ErrUserNameConflict) {
-		t.Fatalf("expected ErrUserNameConflict, got %v", err)
+	if len(svc.created) != 0 {
+		t.Fatalf("missing password must not reach the service, got %d creates", len(svc.created))
 	}
 }
 
-func TestCreateUser_EmailConflict(t *testing.T) {
-	repo := newFakeUserRepo()
-	repo.byEmail["a@b.com"] = &userentity.User{ID: 7, UserName: "someone", Email: "a@b.com"}
-	app := newTestUserApplication(repo, new(fakeCredentialWriter), new(fakeSessionRevoker))
+func TestUpdateUserAppliesUpdateMask(t *testing.T) {
+	// Fields outside the mask are ignored: only nick_name changes, and the
+	// masked-out password means "leave unchanged".
+	svc := newFakeUserService()
+	svc.byID[5] = &userentity.User{ID: 5, UserName: "alice", NickName: "old"}
+	credentials := new(fakeCredentialWriter)
+	app := newTestUserApplication(svc, credentials, new(fakeSessionRevoker))
 
-	_, err := app.CreateUser(context.Background(), createUserRequest(&userv1.User{UserName: "bob", Email: "a@b.com", Password: "secret"}))
-	if !errors.Is(err, ErrEmailConflict) {
-		t.Fatalf("expected ErrEmailConflict, got %v", err)
-	}
-}
-
-func TestCreateUser_EmptyEmailNotChecked(t *testing.T) {
-	// A user with no email must not trip the email-uniqueness check.
-	app := newTestUserApplication(newFakeUserRepo(), new(fakeCredentialWriter), new(fakeSessionRevoker))
-
-	_, err := app.CreateUser(context.Background(), createUserRequest(&userv1.User{UserName: "bob", Password: "secret"}))
+	updated, err := app.UpdateUser(context.Background(), &userv1.UpdateUserRequest{
+		User:       &userv1.User{UserId: 5, UserName: "mallory", NickName: "new", Password: "newsecret"},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"nick_name"}},
+	})
 	if err != nil {
-		t.Fatalf("create user without email: %v", err)
+		t.Fatalf("update user: %v", err)
+	}
+	if len(svc.updated) != 1 || svc.updated[0].UserName != "alice" || svc.updated[0].NickName != "new" {
+		t.Fatalf("persisted change = %#v, want user_name unchanged and nick_name updated", svc.updated)
+	}
+	if updated.GetUserName() != "alice" || updated.GetNickName() != "new" {
+		t.Fatalf("returned user = %#v, want the merged masked state", updated)
+	}
+	if len(credentials.written) != 0 {
+		t.Fatalf("a password outside the mask must not write a credential, got %#v", credentials.written)
 	}
 }
 
 func TestUpdateUser_EmptyPasswordLeftUnchanged(t *testing.T) {
-	repo := newFakeUserRepo()
-	repo.byID[1] = &userentity.User{ID: 1, UserName: "bob"}
+	svc := newFakeUserService()
+	svc.byID[1] = &userentity.User{ID: 1, UserName: "bob"}
 	credentials := new(fakeCredentialWriter)
-	app := newTestUserApplication(repo, credentials, new(fakeSessionRevoker))
+	app := newTestUserApplication(svc, credentials, new(fakeSessionRevoker))
 
 	_, err := app.UpdateUser(context.Background(), updateUserRequest(&userv1.User{UserId: 1, UserName: "bob"}))
 	if err != nil {
@@ -210,10 +215,10 @@ func TestUpdateUser_EmptyPasswordLeftUnchanged(t *testing.T) {
 }
 
 func TestUpdateUserDelegatesNewCredentialToAuthn(t *testing.T) {
-	repo := newFakeUserRepo()
-	repo.byID[1] = &userentity.User{ID: 1, UserName: "bob"}
+	svc := newFakeUserService()
+	svc.byID[1] = &userentity.User{ID: 1, UserName: "bob"}
 	credentials := new(fakeCredentialWriter)
-	app := newTestUserApplication(repo, credentials, new(fakeSessionRevoker))
+	app := newTestUserApplication(svc, credentials, new(fakeSessionRevoker))
 
 	_, err := app.UpdateUser(context.Background(), updateUserRequest(&userv1.User{UserId: 1, UserName: "bob", Password: "newsecret"}))
 	if err != nil {
@@ -225,10 +230,10 @@ func TestUpdateUserDelegatesNewCredentialToAuthn(t *testing.T) {
 }
 
 func TestUpdateUserSelfPasswordPreservesOnlyCurrentSession(t *testing.T) {
-	repo := newFakeUserRepo()
-	repo.byID[42] = &userentity.User{ID: 42, UserName: "alice", Password: "old-hash"}
+	svc := newFakeUserService()
+	svc.byID[42] = &userentity.User{ID: 42, UserName: "alice"}
 	revoker := &fakeSessionRevoker{}
-	app := newTestUserApplication(repo, new(fakeCredentialWriter), revoker)
+	app := newTestUserApplication(svc, new(fakeCredentialWriter), revoker)
 	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(42, "alice", "current-session", nil, nil))
 
 	if _, err := app.UpdateUser(ctx, updateUserRequest(&userv1.User{UserId: 42, UserName: "alice", Password: "newsecret"})); err != nil {
@@ -244,10 +249,10 @@ func TestUpdateUserSelfPasswordPreservesOnlyCurrentSession(t *testing.T) {
 }
 
 func TestUpdateUserAdministrativePasswordResetRevokesAllSessions(t *testing.T) {
-	repo := newFakeUserRepo()
-	repo.byID[42] = &userentity.User{ID: 42, UserName: "alice", Password: "old-hash"}
+	svc := newFakeUserService()
+	svc.byID[42] = &userentity.User{ID: 42, UserName: "alice"}
 	revoker := &fakeSessionRevoker{}
-	app := newTestUserApplication(repo, new(fakeCredentialWriter), revoker)
+	app := newTestUserApplication(svc, new(fakeCredentialWriter), revoker)
 	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(7, "admin", "admin-session", nil, nil))
 
 	if _, err := app.UpdateUser(ctx, updateUserRequest(&userv1.User{UserId: 42, UserName: "alice", Password: "reset-secret"})); err != nil {
@@ -263,10 +268,10 @@ func TestUpdateUserAdministrativePasswordResetRevokesAllSessions(t *testing.T) {
 }
 
 func TestUpdateUserProfileOnlyChangeSkipsRevocation(t *testing.T) {
-	repo := newFakeUserRepo()
-	repo.byID[42] = &userentity.User{ID: 42, UserName: "alice", NickName: "old"}
+	svc := newFakeUserService()
+	svc.byID[42] = &userentity.User{ID: 42, UserName: "alice", NickName: "old"}
 	revoker := &fakeSessionRevoker{}
-	app := newTestUserApplication(repo, new(fakeCredentialWriter), revoker)
+	app := newTestUserApplication(svc, new(fakeCredentialWriter), revoker)
 
 	if _, err := app.UpdateUser(context.Background(), updateUserRequest(&userv1.User{UserId: 42, UserName: "alice", NickName: "new"})); err != nil {
 		t.Fatalf("UpdateUser: %v", err)
@@ -279,69 +284,20 @@ func TestUpdateUserProfileOnlyChangeSkipsRevocation(t *testing.T) {
 func TestUpdateUserRevocationFailureFailsTheWrite(t *testing.T) {
 	// The revocation is the last step inside the closure; its failure must
 	// surface so the transaction rolls the mutation back.
-	repo := newFakeUserRepo()
-	repo.byID[42] = &userentity.User{ID: 42, UserName: "alice", Password: "old-hash"}
+	svc := newFakeUserService()
+	svc.byID[42] = &userentity.User{ID: 42, UserName: "alice"}
 	revoker := &fakeSessionRevoker{err: authndomain.ErrAuthBackendUnavailable, failOnRequest: 1}
-	app := newTestUserApplication(repo, new(fakeCredentialWriter), revoker)
+	app := newTestUserApplication(svc, new(fakeCredentialWriter), revoker)
 
 	if _, err := app.UpdateUser(context.Background(), updateUserRequest(&userv1.User{UserId: 42, UserName: "alice", Password: "reset"})); err == nil {
 		t.Fatal("revocation failure must fail UpdateUser")
 	}
 }
 
-func TestUpdateUser_UserNameConflict(t *testing.T) {
-	repo := newFakeUserRepo()
-	repo.byID[2] = &userentity.User{ID: 2, UserName: "old"}
-	repo.byName["bob"] = &userentity.User{ID: 7, UserName: "bob"}
-	app := newTestUserApplication(repo, new(fakeCredentialWriter), new(fakeSessionRevoker))
-
-	_, err := app.UpdateUser(context.Background(), updateUserRequest(&userv1.User{UserId: 2, UserName: "bob"}))
-	if !errors.Is(err, ErrUserNameConflict) {
-		t.Fatalf("expected ErrUserNameConflict, got %v", err)
-	}
-}
-
-func TestUpdateUser_SameValuesPass(t *testing.T) {
-	// Updating a record while keeping its own unique values must pass: the
-	// check excludes the record being updated.
-	repo := newFakeUserRepo()
-	repo.byID[5] = &userentity.User{ID: 5, UserName: "alice"}
-	repo.byName["alice"] = repo.byID[5]
-	app := newTestUserApplication(repo, new(fakeCredentialWriter), new(fakeSessionRevoker))
-
-	_, err := app.UpdateUser(context.Background(), updateUserRequest(&userv1.User{UserId: 5, UserName: "alice", Email: "a@b.com"}))
-	if err != nil {
-		t.Fatalf("update keeping own values: %v", err)
-	}
-}
-
-func TestUpdateUser_EmailConflict(t *testing.T) {
-	repo := newFakeUserRepo()
-	repo.byID[2] = &userentity.User{ID: 2, UserName: "bob"}
-	repo.byEmail["a@b.com"] = &userentity.User{ID: 7, UserName: "someone", Email: "a@b.com"}
-	app := newTestUserApplication(repo, new(fakeCredentialWriter), new(fakeSessionRevoker))
-
-	_, err := app.UpdateUser(context.Background(), updateUserRequest(&userv1.User{UserId: 2, UserName: "bob", Email: "a@b.com"}))
-	if !errors.Is(err, ErrEmailConflict) {
-		t.Fatalf("expected ErrEmailConflict, got %v", err)
-	}
-}
-
-func TestUpdateUser_EmptyEmailNotChecked(t *testing.T) {
-	repo := newFakeUserRepo()
-	repo.byID[1] = &userentity.User{ID: 1, UserName: "bob"}
-	app := newTestUserApplication(repo, new(fakeCredentialWriter), new(fakeSessionRevoker))
-
-	_, err := app.UpdateUser(context.Background(), updateUserRequest(&userv1.User{UserId: 1, UserName: "bob"}))
-	if err != nil {
-		t.Fatalf("update without email: %v", err)
-	}
-}
-
 func TestGetInfoReadsUserAndProjectsPrincipalSnapshot(t *testing.T) {
-	repo := newFakeUserRepo()
-	repo.byID[42] = &userentity.User{ID: 42, UserName: "alice"}
-	app := newTestUserApplication(repo, new(fakeCredentialWriter), new(fakeSessionRevoker))
+	svc := newFakeUserService()
+	svc.byID[42] = &userentity.User{ID: 42, UserName: "alice"}
+	app := newTestUserApplication(svc, new(fakeCredentialWriter), new(fakeSessionRevoker))
 	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(42, "alice", "session-id", []string{"operator"}, []string{"system:user:list"}))
 
 	info, err := app.GetInfo(ctx, &emptypb.Empty{})
@@ -357,20 +313,113 @@ func TestGetInfoReadsUserAndProjectsPrincipalSnapshot(t *testing.T) {
 }
 
 func TestGetInfoRequiresPrincipal(t *testing.T) {
-	app := newTestUserApplication(newFakeUserRepo(), new(fakeCredentialWriter), new(fakeSessionRevoker))
+	app := newTestUserApplication(newFakeUserService(), new(fakeCredentialWriter), new(fakeSessionRevoker))
 	if _, err := app.GetInfo(t.Context(), &emptypb.Empty{}); !errors.Is(err, authndomain.ErrCredentialMissing) {
 		t.Fatalf("GetInfo without Principal = %v", err)
 	}
 }
 
-func TestDeleteSystemUserDelegatesSecurityTrigger(t *testing.T) {
-	repo := newFakeUserRepo()
-	app := newTestUserApplication(repo, new(fakeCredentialWriter), new(fakeSessionRevoker))
+func TestListUsersPaginatesWithPageTokens(t *testing.T) {
+	svc := newFakeUserService()
+	for i := 1; i <= 25; i++ {
+		u := &userentity.User{ID: int64(i), UserName: "user"}
+		svc.byID[u.ID] = u
+		svc.list = append(svc.list, u)
+	}
+	app := newTestUserApplication(svc, new(fakeCredentialWriter), new(fakeSessionRevoker))
 
-	if _, err := app.DeleteUser(t.Context(), &userv1.DeleteUserRequest{UserId: 42}); err != nil {
+	// Page one: a full page carries a next-page token.
+	page, err := app.ListUsers(context.Background(), &userv1.ListUsersRequest{PageSize: 10})
+	if err != nil {
+		t.Fatalf("list page one: %v", err)
+	}
+	if len(page.GetUsers()) != 10 || page.GetUsers()[0].GetUserId() != 1 || page.GetUsers()[9].GetUserId() != 10 {
+		t.Fatalf("page one users = %#v, want ids 1-10", page.GetUsers())
+	}
+	if page.GetNextPageToken() == "" {
+		t.Fatal("full page must carry a next-page token")
+	}
+	if svc.lastListCall.limit != 10 || svc.lastListCall.offset != 0 {
+		t.Fatalf("service list window = limit %d offset %d, want 10/0", svc.lastListCall.limit, svc.lastListCall.offset)
+	}
+
+	// Page two: the opaque token resumes at the recorded offset.
+	page, err = app.ListUsers(context.Background(), &userv1.ListUsersRequest{PageSize: 10, PageToken: page.GetNextPageToken()})
+	if err != nil {
+		t.Fatalf("list page two: %v", err)
+	}
+	if len(page.GetUsers()) != 10 || page.GetUsers()[0].GetUserId() != 11 || page.GetUsers()[9].GetUserId() != 20 {
+		t.Fatalf("page two users = %#v, want ids 11-20", page.GetUsers())
+	}
+	if svc.lastListCall.offset != 10 {
+		t.Fatalf("service list offset = %d, want 10", svc.lastListCall.offset)
+	}
+	if page.GetNextPageToken() == "" {
+		t.Fatal("full page must carry a next-page token")
+	}
+
+	// Page three: a short final page has no token.
+	page, err = app.ListUsers(context.Background(), &userv1.ListUsersRequest{PageSize: 10, PageToken: page.GetNextPageToken()})
+	if err != nil {
+		t.Fatalf("list page three: %v", err)
+	}
+	if len(page.GetUsers()) != 5 || page.GetUsers()[0].GetUserId() != 21 || page.GetUsers()[4].GetUserId() != 25 {
+		t.Fatalf("page three users = %#v, want ids 21-25", page.GetUsers())
+	}
+	if page.GetNextPageToken() != "" {
+		t.Fatalf("final partial page must not carry a token, got %q", page.GetNextPageToken())
+	}
+}
+
+func TestListUsersDefaultsPageSizeToTwenty(t *testing.T) {
+	svc := newFakeUserService()
+	svc.list = []*userentity.User{{ID: 1, UserName: "user"}}
+	app := newTestUserApplication(svc, new(fakeCredentialWriter), new(fakeSessionRevoker))
+
+	if _, err := app.ListUsers(context.Background(), &userv1.ListUsersRequest{}); err != nil {
+		t.Fatalf("list users: %v", err)
+	}
+	if svc.lastListCall.limit != 20 {
+		t.Fatalf("service list limit = %d, want the default page size 20", svc.lastListCall.limit)
+	}
+}
+
+func TestDeleteUserDelegatesDeleteAndRevocation(t *testing.T) {
+	svc := newFakeUserService()
+	revoker := &fakeSessionRevoker{}
+	app := newTestUserApplication(svc, new(fakeCredentialWriter), revoker)
+	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(7, "admin", "admin-session", nil, nil))
+
+	if _, err := app.DeleteUser(ctx, &userv1.DeleteUserRequest{UserId: 42}); err != nil {
 		t.Fatalf("DeleteUser: %v", err)
 	}
-	if len(repo.deleted) != 1 || repo.deleted[0] != 42 {
-		t.Fatalf("deleted System Users = %v, want [42]", repo.deleted)
+	if len(svc.deletedIDs) != 1 || svc.deletedIDs[0] != 42 || svc.deletedBy[0] != 7 {
+		t.Fatalf("service deletes = %v by %v, want user 42 by actor 7", svc.deletedIDs, svc.deletedBy)
+	}
+	if len(revoker.requests) != 1 || len(revoker.requests[0].SystemUserIDs) != 1 || revoker.requests[0].SystemUserIDs[0] != 42 || revoker.requests[0].PreservedSessionID != "" {
+		t.Fatalf("revocation requests = %#v, want one revoke-all request for user 42", revoker.requests)
+	}
+}
+
+func TestConvertUserOmitsPasswordAndMapsFields(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	loginDate := now.Add(time.Hour)
+	dto := convertUser(&userentity.User{
+		ID: 7, UserName: "alice", NickName: "Alice", Email: "a@b.com", PhoneNumber: "13800000000",
+		Gender: 1, Password: "plaintext-secret", Status: 1, Avatar: "http://avatar", Remark: "r",
+		CreateBy: 1, UpdateBy: 2, LoginIP: "127.0.0.1", LoginDate: &loginDate, CreatedAt: now, UpdatedAt: now,
+	})
+
+	if dto.GetUserId() != 7 || dto.GetUserName() != "alice" || dto.GetNickName() != "Alice" ||
+		dto.GetEmail() != "a@b.com" || dto.GetPhoneNumber() != "13800000000" || dto.GetGender() != 1 ||
+		dto.GetStatus() != 1 || dto.GetAvatar() != "http://avatar" || dto.GetRemark() != "r" ||
+		dto.GetCreateBy() != 1 || dto.GetUpdateBy() != 2 || dto.GetLoginIp() != "127.0.0.1" {
+		t.Fatalf("field mapping = %#v", dto)
+	}
+	if dto.GetPassword() != "" {
+		t.Fatalf("password is write-only and must never be returned, got %q", dto.GetPassword())
+	}
+	if !dto.GetLoginDate().AsTime().Equal(loginDate) || !dto.GetCreatedAt().AsTime().Equal(now) || !dto.GetUpdatedAt().AsTime().Equal(now) {
+		t.Fatalf("timestamp mapping = %#v", dto)
 	}
 }

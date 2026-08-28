@@ -7,7 +7,7 @@ import (
 	accessv1 "glex/api/access/v1"
 	userv1 "glex/api/user/v1"
 	"glex/internal/crossdomain/authn"
-	accessrepo "glex/internal/domain/access/repository"
+	accessentity "glex/internal/domain/access/entity"
 	accessservice "glex/internal/domain/access/service"
 
 	"go.einride.tech/aip/filtering"
@@ -16,18 +16,18 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// convertRoleAssignment maps a accessrepo.RoleAssignment DO to the proto DTO.
-func convertRoleAssignment(a *accessrepo.RoleAssignment) *accessv1.RoleAssignment {
+// convertRoleAssignment maps a accessentity.RoleAssignment DO to the proto DTO.
+func convertRoleAssignment(a *accessentity.RoleAssignment) *accessv1.RoleAssignment {
 	return &accessv1.RoleAssignment{
 		Role:     convertRole(a.Role),
 		Assigned: a.Assigned,
 	}
 }
 
-// convertRoleUser maps a accessrepo.RoleUser DO to the proto User DTO —
+// convertRoleUser maps a accessentity.RoleUser DO to the proto User DTO —
 // access's own projection of the by-role listing; the user module's converter
 // is not shared across the module seam.
-func convertRoleUser(m *accessrepo.RoleUser) *userv1.User {
+func convertRoleUser(m *accessentity.RoleUser) *userv1.User {
 	u := &userv1.User{
 		UserId:      m.ID,
 		UserName:    m.UserName,
@@ -51,7 +51,7 @@ func convertRoleUser(m *accessrepo.RoleUser) *userv1.User {
 }
 
 // toUserRoles maps a list of assignments to the UserRoles DTO.
-func toUserRoles(assignments []*accessrepo.RoleAssignment) *accessv1.UserRoles {
+func toUserRoles(assignments []*accessentity.RoleAssignment) *accessv1.UserRoles {
 	items := make([]*accessv1.RoleAssignment, 0, len(assignments))
 	for _, a := range assignments {
 		items = append(items, convertRoleAssignment(a))
@@ -62,31 +62,28 @@ func toUserRoles(assignments []*accessrepo.RoleAssignment) *accessv1.UserRoles {
 // RoleAssignmentApplication implements the access-owned
 // RoleAssignmentService: the three user↔role assignment endpoints behind
 // RuoYi's authRole dialog. It owns the assignment replacement's transaction
-// boundary and the revocation through the authn crossdomain contract;
-// intra-domain checks (user existence, role assignability) live in the domain
-// service.
+// boundary and the revocation through the authn crossdomain contract; all
+// repository access and the intra-domain checks (user existence, role
+// assignability) live in the domain service (ADR 0005).
 type RoleAssignmentApplication struct {
 	accessv1.UnimplementedRoleAssignmentServiceServer
 
-	roleRepo accessrepo.RoleRepo
-	linkRepo accessrepo.UserRoleRepo
-	revoker  authn.SessionRevoker
-	tx       Transaction
-	logger   *slog.Logger
+	svc     accessservice.RoleAssignment
+	revoker authn.SessionRevoker
+	tx      Transaction
+	logger  *slog.Logger
 }
 
-// NewRoleAssignmentApplication creates a RoleAssignmentApplication. roleRepo
-// backs the role existence check; linkRepo owns the sys_user_role rows and the
-// by-user existence gate; revoker performs Role Assignment revocations through
-// the authn crossdomain contract; tx owns the Role Assignment replacement
-// transaction boundary.
-func NewRoleAssignmentApplication(roleRepo accessrepo.RoleRepo, linkRepo accessrepo.UserRoleRepo, revoker authn.SessionRevoker, tx Transaction, logger *slog.Logger) *RoleAssignmentApplication {
+// NewRoleAssignmentApplication creates a RoleAssignmentApplication. svc is
+// the Role Assignment domain service — the module's only repository holder;
+// revoker performs Role Assignment revocations through the authn crossdomain
+// contract; tx owns the Role Assignment replacement transaction boundary.
+func NewRoleAssignmentApplication(svc accessservice.RoleAssignment, revoker authn.SessionRevoker, tx Transaction, logger *slog.Logger) *RoleAssignmentApplication {
 	return &RoleAssignmentApplication{
-		roleRepo: roleRepo,
-		linkRepo: linkRepo,
-		revoker:  revoker,
-		tx:       tx,
-		logger:   logger.With(slog.String("component", "application.access.role_assignment")),
+		svc:     svc,
+		revoker: revoker,
+		tx:      tx,
+		logger:  logger.With(slog.String("component", "application.access.role_assignment")),
 	}
 }
 
@@ -94,10 +91,7 @@ func NewRoleAssignmentApplication(roleRepo accessrepo.RoleRepo, linkRepo accessr
 // user (the assign dialog's data in one call). The user must exist (and not
 // be soft-deleted).
 func (s *RoleAssignmentApplication) ListUserRoles(ctx context.Context, req *accessv1.ListUserRolesRequest) (*accessv1.UserRoles, error) {
-	if err := accessservice.AssertUserExists(ctx, s.linkRepo, req.GetUserId()); err != nil {
-		return nil, err
-	}
-	assignments, err := s.linkRepo.ListRoleAssignments(ctx, req.GetUserId())
+	assignments, err := s.svc.ListForUser(ctx, req.GetUserId())
 	if err != nil {
 		return nil, err
 	}
@@ -111,32 +105,16 @@ func (s *RoleAssignmentApplication) ListUserRoles(ctx context.Context, req *acce
 // failure rolling back the PostgreSQL replacement is part of this operation's
 // business contract.
 func (s *RoleAssignmentApplication) UpdateUserRoles(ctx context.Context, req *accessv1.UpdateUserRolesRequest) (*accessv1.UserRoles, error) {
-	if err := accessservice.AssertUserExists(ctx, s.linkRepo, req.GetUserId()); err != nil {
-		return nil, err
-	}
-	assignments, err := s.linkRepo.ListRoleAssignments(ctx, req.GetUserId())
-	if err != nil {
-		return nil, err
-	}
-	unique, err := accessservice.AssertRolesAssignable(assignments, req.GetRoleIds())
-	if err != nil {
-		return nil, err
-	}
+	var assignments []*accessentity.RoleAssignment
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.linkRepo.ReplaceUserRoles(ctx, req.GetUserId(), unique, auditActor(ctx))
+		result, err := s.svc.ReplaceForUser(ctx, req.GetUserId(), req.GetRoleIds(), auditActor(ctx))
 		if err != nil {
 			return err
 		}
-		return revokeAllSystemUsers(ctx, s.revoker, affected...)
+		assignments = result.Assignments
+		return revokeAllSystemUsers(ctx, s.revoker, result.AffectedUserIDs...)
 	}); err != nil {
 		return nil, err
-	}
-	assigned := make(map[int64]struct{}, len(unique))
-	for _, id := range unique {
-		assigned[id] = struct{}{}
-	}
-	for _, a := range assignments {
-		_, a.Assigned = assigned[a.Role.ID]
 	}
 	return toUserRoles(assignments), nil
 }
@@ -172,15 +150,7 @@ func (s *RoleAssignmentApplication) ListRoleUsers(ctx context.Context, req *acce
 	if req.GetPageSize() <= 0 {
 		req.PageSize = 20
 	}
-	if _, err := s.roleRepo.FindByID(ctx, req.GetRoleId()); err != nil {
-		return nil, err
-	}
-	users, err := s.linkRepo.ListRoleUsers(ctx, req.GetRoleId(),
-		accessrepo.ListFilter(filter),
-		accessrepo.ListOrderBy(orderBy),
-		accessrepo.ListLimit(int(req.GetPageSize())),
-		accessrepo.ListOffset(int(pageToken.Offset)),
-	)
+	users, err := s.svc.ListRoleUsers(ctx, req.GetRoleId(), filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
 	if err != nil {
 		return nil, err
 	}

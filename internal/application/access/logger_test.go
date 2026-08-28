@@ -16,8 +16,8 @@ func TestApplicationsReceiveComponentLogger(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(&output, nil))
 
 	NewMenuApplication(nil, nil, nil, logger).logger.Info("configured")
-	NewRoleApplication(nil, nil, nil, nil, nil, logger).logger.Info("configured")
-	NewRoleAssignmentApplication(nil, nil, nil, nil, logger).logger.Info("configured")
+	NewRoleApplication(nil, nil, nil, logger).logger.Info("configured")
+	NewRoleAssignmentApplication(nil, nil, nil, logger).logger.Info("configured")
 
 	for _, component := range []string{
 		"application.access.menu",

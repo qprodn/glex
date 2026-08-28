@@ -16,7 +16,7 @@ import (
 )
 
 // toBiz maps an ent User PO to a userentity.User DO. The credential column is
-// deliberately not mapped: only authn's adapters read it (ADR 0016).
+// deliberately not mapped: only authn's adapters read it (ADR 0005).
 func toBiz(po *ent.User) *userentity.User {
 	u := &userentity.User{
 		ID:        po.ID,
@@ -157,8 +157,8 @@ func (r *userRepo) CreateUser(ctx context.Context, u *userentity.User) (*userent
 // UpdateUser re-reads the record, applies the mutation, and returns the
 // persisted record with its pre-image for UserUsecase revocation
 // classification. The caller owns the surrounding transaction.
-func (r *userRepo) UpdateUser(ctx context.Context, u *userentity.User) (*userrepo.UserUpdate, error) {
-	result := &userrepo.UserUpdate{}
+func (r *userRepo) UpdateUser(ctx context.Context, u *userentity.User) (*userentity.UserUpdate, error) {
+	result := &userentity.UserUpdate{}
 	current, err := r.data.DB.User(ctx).Query().Where(user.IDEQ(u.ID), user.DeletedAtIsNil()).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {

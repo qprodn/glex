@@ -1,0 +1,63 @@
+# golangci-lint configuration. The enabled rule set is deliberately minimal:
+# depguard enforces the layering boundary decided in ADR 0005 —
+#
+#   1. application business code never imports a repository package;
+#   2. crossdomain impls never import a repository package (they delegate to
+#      the provider's domain service);
+#   3. a module's domain code never imports another module's domain
+#      (cross-module access goes through crossdomain contracts only).
+#
+# Enable more linters as the codebase adopts them; keep these rules intact.
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - depguard
+  settings:
+    depguard:
+      rules:
+        application-no-repository:
+          files:
+            - "**/internal/application/**"
+          deny:
+            - pkg: glex/internal/domain/access/repository
+              desc: application calls domain services, never repositories (ADR 0005)
+            - pkg: glex/internal/domain/authn/repository
+              desc: application calls domain services, never repositories (ADR 0005)
+            - pkg: glex/internal/domain/user/repository
+              desc: application calls domain services, never repositories (ADR 0005)
+        crossdomain-impl-no-repository:
+          files:
+            - "**/internal/crossdomain/**/impl/**"
+          deny:
+            - pkg: glex/internal/domain/access/repository
+              desc: crossdomain impls delegate to domain services (ADR 0005)
+            - pkg: glex/internal/domain/authn/repository
+              desc: crossdomain impls delegate to domain services (ADR 0005)
+            - pkg: glex/internal/domain/user/repository
+              desc: crossdomain impls delegate to domain services (ADR 0005)
+        domain-access-no-cross-module:
+          files:
+            - "**/internal/domain/access/**"
+          deny:
+            - pkg: glex/internal/domain/authn
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/user
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+        domain-authn-no-cross-module:
+          files:
+            - "**/internal/domain/authn/**"
+          deny:
+            - pkg: glex/internal/domain/access
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/user
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+        domain-user-no-cross-module:
+          files:
+            - "**/internal/domain/user/**"
+          deny:
+            - pkg: glex/internal/domain/access
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/authn
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)

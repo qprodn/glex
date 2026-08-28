@@ -3,32 +3,28 @@ package impl
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
 	"glex/internal/crossdomain/authn/model"
-	authnrepo "glex/internal/domain/authn/repository"
-	authnservice "glex/internal/domain/authn/service"
 )
 
-// recordingCredentialRepo records stored hashes; the embedded interface stays
-// nil because the adapter under test touches nothing else.
-type recordingCredentialRepo struct {
-	authnrepo.CredentialRepo
+// recordingCredentialService records Store calls; hashing is the provider's
+// domain policy, so the adapter must hand over the plaintext verbatim.
+type recordingCredentialService struct {
 	stored map[int64]string
 	err    error
 }
 
-func (r *recordingCredentialRepo) StoreCredential(_ context.Context, systemUserID int64, passwordHash string) error {
-	if r.stored == nil {
-		r.stored = make(map[int64]string)
+func (s *recordingCredentialService) Store(_ context.Context, systemUserID int64, password string) error {
+	if s.stored == nil {
+		s.stored = make(map[int64]string)
 	}
-	r.stored[systemUserID] = passwordHash
-	return r.err
+	s.stored[systemUserID] = password
+	return s.err
 }
 
-func TestCredentialWriterHashesAndStoresPlaintext(t *testing.T) {
-	credentials := &recordingCredentialRepo{}
+func TestCredentialWriterPassesPlaintextToTheProvider(t *testing.T) {
+	credentials := &recordingCredentialService{}
 	writer := NewCredentialWriter(credentials)
 
 	if err := writer.WriteSystemUserCredential(t.Context(), &model.SystemUserCredential{SystemUserID: 42, Password: "secret"}); err != nil {
@@ -36,18 +32,15 @@ func TestCredentialWriterHashesAndStoresPlaintext(t *testing.T) {
 	}
 	stored, ok := credentials.stored[42]
 	if !ok {
-		t.Fatal("no credential was stored")
+		t.Fatal("no credential was delegated to the provider")
 	}
-	if stored == "secret" || !strings.HasPrefix(stored, "$2") {
-		t.Fatalf("stored credential = %q, want a bcrypt hash, not the plaintext", stored)
-	}
-	if !authnservice.VerifyPassword(stored, "secret") {
-		t.Fatal("stored credential does not verify against the plaintext")
+	if stored != "secret" {
+		t.Fatalf("delegated password = %q, want the plaintext (hashing is the provider's policy)", stored)
 	}
 }
 
 func TestCredentialWriterRejectsMissingUser(t *testing.T) {
-	credentials := &recordingCredentialRepo{}
+	credentials := &recordingCredentialService{}
 	writer := NewCredentialWriter(credentials)
 
 	if err := writer.WriteSystemUserCredential(t.Context(), &model.SystemUserCredential{Password: "secret"}); err == nil {
@@ -63,7 +56,7 @@ func TestCredentialWriterRejectsMissingUser(t *testing.T) {
 
 func TestCredentialWriterPropagatesProviderFailure(t *testing.T) {
 	failure := errors.New("store credential: boom")
-	credentials := &recordingCredentialRepo{err: failure}
+	credentials := &recordingCredentialService{err: failure}
 	writer := NewCredentialWriter(credentials)
 
 	if err := writer.WriteSystemUserCredential(t.Context(), &model.SystemUserCredential{SystemUserID: 42, Password: "secret"}); !errors.Is(err, failure) {

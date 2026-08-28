@@ -35,6 +35,11 @@ all:
 	make config
 	make generate
 
+.PHONY: lint
+# lint (depguard enforces the ADR 0005 layering boundary)
+lint:
+	golangci-lint run
+
 # show help
 help:
 	@echo ''

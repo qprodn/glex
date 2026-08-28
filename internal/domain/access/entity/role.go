@@ -35,3 +35,12 @@ func (r *Role) Validate() error {
 func (r *Role) AuthorizationChangedFrom(current *Role) bool {
 	return r != nil && current != nil && (r.RoleKey != current.RoleKey || r.Status != current.Status)
 }
+
+// RoleUpdate pairs the persisted Role with its pre-image and the active
+// System Users assigned it — identities whose Authorization Snapshot the
+// write may invalidate.
+type RoleUpdate struct {
+	Role            *Role
+	Previous        *Role
+	AssignedUserIDs []int64
+}

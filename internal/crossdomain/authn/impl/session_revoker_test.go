@@ -6,26 +6,26 @@ import (
 
 	"glex/internal/crossdomain/authn/model"
 	authndomain "glex/internal/domain/authn"
-	authnrepo "glex/internal/domain/authn/repository"
+	authnservice "glex/internal/domain/authn/service"
 )
 
-// recordingLoginSessionRepo records batch revocations; the embedded interface
-// stays nil because the adapter under test touches nothing else.
-type recordingLoginSessionRepo struct {
-	authnrepo.LoginSessionRepo
+// recordingOnlineSessionService records batch revocations; the embedded
+// interface stays nil because the adapter under test touches nothing else.
+type recordingOnlineSessionService struct {
+	authnservice.OnlineSession
 	batches [][]int64
 	excepts []string
 	err     error
 }
 
-func (r *recordingLoginSessionRepo) RevokeSystemUsers(_ context.Context, systemUserIDs []int64, exceptSessionID string) error {
-	r.batches = append(r.batches, append([]int64(nil), systemUserIDs...))
-	r.excepts = append(r.excepts, exceptSessionID)
-	return r.err
+func (s *recordingOnlineSessionService) RevokeSystemUsers(_ context.Context, systemUserIDs []int64, exceptSessionID string) error {
+	s.batches = append(s.batches, append([]int64(nil), systemUserIDs...))
+	s.excepts = append(s.excepts, exceptSessionID)
+	return s.err
 }
 
 func TestSessionRevokerRevokeAllForEveryAffectedUser(t *testing.T) {
-	sessions := &recordingLoginSessionRepo{}
+	sessions := &recordingOnlineSessionService{}
 	revoker := NewSessionRevoker(sessions)
 
 	err := revoker.RevokeSystemUsers(t.Context(), &model.RevocationRequest{SystemUserIDs: []int64{7, 42}})
@@ -44,7 +44,7 @@ func TestSessionRevokerRevokeAllForEveryAffectedUser(t *testing.T) {
 }
 
 func TestSessionRevokerPreservesRequestedSession(t *testing.T) {
-	sessions := &recordingLoginSessionRepo{}
+	sessions := &recordingOnlineSessionService{}
 	revoker := NewSessionRevoker(sessions)
 
 	err := revoker.RevokeSystemUsers(t.Context(), &model.RevocationRequest{
@@ -63,7 +63,7 @@ func TestSessionRevokerPreservesRequestedSession(t *testing.T) {
 }
 
 func TestSessionRevokerSkipsEmptyRequest(t *testing.T) {
-	sessions := &recordingLoginSessionRepo{}
+	sessions := &recordingOnlineSessionService{}
 	revoker := NewSessionRevoker(sessions)
 
 	if err := revoker.RevokeSystemUsers(t.Context(), nil); err != nil {
@@ -78,7 +78,7 @@ func TestSessionRevokerSkipsEmptyRequest(t *testing.T) {
 }
 
 func TestSessionRevokerPropagatesProviderFailure(t *testing.T) {
-	sessions := &recordingLoginSessionRepo{err: authndomain.ErrAuthBackendUnavailable}
+	sessions := &recordingOnlineSessionService{err: authndomain.ErrAuthBackendUnavailable}
 	revoker := NewSessionRevoker(sessions)
 
 	if err := revoker.RevokeSystemUsers(t.Context(), &model.RevocationRequest{SystemUserIDs: []int64{42}}); err != authndomain.ErrAuthBackendUnavailable {

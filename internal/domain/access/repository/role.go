@@ -14,15 +14,6 @@ type RoleMenuLink struct {
 	ParentID int64
 }
 
-// RoleUpdate pairs the persisted Role with its pre-image and the active
-// System Users assigned it — identities whose Authorization Snapshot the
-// write may invalidate.
-type RoleUpdate struct {
-	Role            *entity.Role
-	Previous        *entity.Role
-	AssignedUserIDs []int64
-}
-
 // RoleRepo is the repository interface for roles (the inversion seam declared
 // in domain, implemented in data).
 type RoleRepo interface {
@@ -35,7 +26,7 @@ type RoleRepo interface {
 	CreateRole(ctx context.Context, r *entity.Role, menuIDs []int64) (*entity.Role, error)
 	// UpdateRole returns the persisted role with its pre-image and currently
 	// assigned users. The Application service owns the transaction.
-	UpdateRole(ctx context.Context, r *entity.Role) (*RoleUpdate, error)
+	UpdateRole(ctx context.Context, r *entity.Role) (*entity.RoleUpdate, error)
 	// DeleteRole is a security write: it soft-deletes the role and its Menu
 	// Grant (ADR 0002 — no row is hard-deleted), stamping actorID into the
 	// audit fields, and returns the System User identities assigned the role

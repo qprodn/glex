@@ -1,4 +1,4 @@
-// Package access owns the access module per ADR 0016: Menus, Roles, Menu
+// Package access owns the access module per ADR 0005: Menus, Roles, Menu
 // Grants, and Role Assignments, together with the Authorization Resolution
 // capability. The package root holds only the typed errors; the objects live
 // in entity, the ports in repository, and the module's own rules in service.

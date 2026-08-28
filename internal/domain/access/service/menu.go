@@ -1,7 +1,10 @@
-// Package service holds the access module's own rules and intra-domain
-// orchestration: policies that need no other module and no transaction
-// boundary. Cross-domain orchestration (transactions, session revocation)
-// stays with the Application services.
+// Package service holds the access module's domain services: the only holders
+// of the module's repository ports (ADR 0005). Application use cases call
+// these interfaces and never touch a repository directly; the Application
+// service remains the transaction root, so every method joins the caller's
+// ambient transaction. Pure rule and shaping functions (tree assembly, route
+// selection, checked-keys shaping) remain free functions and stay callable
+// from anywhere.
 package service
 
 import (
@@ -12,7 +15,90 @@ import (
 	"glex/internal/domain/access"
 	"glex/internal/domain/access/entity"
 	"glex/internal/domain/access/repository"
+
+	"go.einride.tech/aip/filtering"
+	"go.einride.tech/aip/ordering"
 )
+
+// Menu is the access domain service behind the menu endpoints: the only path
+// to the Menu reads and writes (ADR 0005). Methods join the caller's ambient
+// transaction; the Application service owns the transaction boundary and the
+// cross-domain revocation.
+type Menu interface {
+	Get(ctx context.Context, id int64) (*entity.Menu, error)
+	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy) ([]*entity.Menu, error)
+	// LoadRouteAccess freshly reads the System User's route authorization
+	// data (active Role Assignments, Menu Grants, and routeable menus).
+	LoadRouteAccess(ctx context.Context, systemUserID int64) (*entity.MenuRouteAccess, error)
+	// Create validates the node (type, sibling-name uniqueness) and persists
+	// it.
+	Create(ctx context.Context, m *entity.Menu) (*entity.Menu, error)
+	// Update validates the change (self-parent, type, sibling-name
+	// uniqueness) and persists it, returning the write with its pre-image and
+	// the users reaching the menu.
+	Update(ctx context.Context, m *entity.Menu) (*entity.MenuUpdate, error)
+	// Delete soft-deletes the menu and its role links, refusing while it has
+	// children, and returns the identities reaching the menu.
+	Delete(ctx context.Context, id, actorID int64) ([]int64, error)
+}
+
+type menuImpl struct {
+	menus repository.MenuRepo
+}
+
+// NewMenuService creates the menu domain service.
+func NewMenuService(menus repository.MenuRepo) Menu {
+	return &menuImpl{menus: menus}
+}
+
+func (s *menuImpl) Get(ctx context.Context, id int64) (*entity.Menu, error) {
+	return s.menus.FindByID(ctx, id)
+}
+
+func (s *menuImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy) ([]*entity.Menu, error) {
+	return s.menus.ListMenus(ctx,
+		repository.ListFilter(filter),
+		repository.ListOrderBy(orderBy),
+	)
+}
+
+func (s *menuImpl) LoadRouteAccess(ctx context.Context, systemUserID int64) (*entity.MenuRouteAccess, error) {
+	return s.menus.LoadRouteAccess(ctx, systemUserID)
+}
+
+func (s *menuImpl) Create(ctx context.Context, m *entity.Menu) (*entity.Menu, error) {
+	if err := ValidateMenuType(m.MenuType); err != nil {
+		return nil, err
+	}
+	if err := AssertSiblingNameUnique(ctx, s.menus, m, false); err != nil {
+		return nil, err
+	}
+	return s.menus.CreateMenu(ctx, m)
+}
+
+func (s *menuImpl) Update(ctx context.Context, m *entity.Menu) (*entity.MenuUpdate, error) {
+	if m.ParentID == m.ID {
+		return nil, access.ErrMenuParentInvalid
+	}
+	if err := ValidateMenuType(m.MenuType); err != nil {
+		return nil, err
+	}
+	if err := AssertSiblingNameUnique(ctx, s.menus, m, true); err != nil {
+		return nil, err
+	}
+	return s.menus.UpdateMenu(ctx, m)
+}
+
+func (s *menuImpl) Delete(ctx context.Context, id, actorID int64) ([]int64, error) {
+	has, err := s.menus.HasChildren(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if has {
+		return nil, access.ErrMenuHasChildren
+	}
+	return s.menus.DeleteMenu(ctx, id, actorID)
+}
 
 // ValidateMenuType rejects anything outside the MenuType enum range.
 func ValidateMenuType(t int32) error {
@@ -72,7 +158,7 @@ func BuildMenuTree(menus []*entity.Menu) []*entity.Menu {
 // active routeable node. The result preserves the repository's (parent_id,
 // order_num, id) order — BuildMenuTree's stable order_num sort then retains id
 // as the deterministic tie-break — and returns the menus as an ordered tree.
-func SelectUserRouteTree(routeAccess *repository.MenuRouteAccess) []*entity.Menu {
+func SelectUserRouteTree(routeAccess *entity.MenuRouteAccess) []*entity.Menu {
 	if routeAccess == nil {
 		return []*entity.Menu{}
 	}

@@ -1,7 +1,7 @@
 // Package impl adapts authn's domain capabilities to the crossdomain
-// contracts. Adapters live here rather than in infra (ADR 0017): this is the
+// contracts. Adapters live here rather than in infra (ADR 0005): this is the
 // only place that knows both the contract snapshots and the provider's domain
-// types.
+// services.
 package impl
 
 import (
@@ -9,18 +9,18 @@ import (
 
 	"glex/internal/crossdomain/authn"
 	"glex/internal/crossdomain/authn/model"
-	authnrepo "glex/internal/domain/authn/repository"
+	authnservice "glex/internal/domain/authn/service"
 )
 
-// sessionRevoker satisfies the revocation contract by wrapping the Login
-// Session repository.
+// sessionRevoker satisfies the revocation contract by delegating to the
+// provider's Online Session domain service.
 type sessionRevoker struct {
-	sessions authnrepo.LoginSessionRepo
+	sessions authnservice.OnlineSession
 }
 
-// NewSessionRevoker adapts the Login Session repository to the crossdomain
-// revocation contract.
-func NewSessionRevoker(sessions authnrepo.LoginSessionRepo) authn.SessionRevoker {
+// NewSessionRevoker adapts the authn Online Session domain service to the
+// crossdomain revocation contract.
+func NewSessionRevoker(sessions authnservice.OnlineSession) authn.SessionRevoker {
 	return &sessionRevoker{sessions: sessions}
 }
 

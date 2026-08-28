@@ -5,7 +5,7 @@ import (
 )
 
 // CredentialRepo is the only writer of the credential column on the System
-// User row (ADR 0016: the hash physically stays there until a service split
+// User row (ADR 0005: the hash physically stays there until a service split
 // forces a dedicated credential table). Writes join the Application
 // transaction propagated through ctx.
 type CredentialRepo interface {

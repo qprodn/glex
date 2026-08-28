@@ -3,90 +3,116 @@ package authn
 import (
 	authndomain "glex/internal/domain/authn"
 	authnentity "glex/internal/domain/authn/entity"
-	authnservice "glex/internal/domain/authn/service"
 
 	"context"
 	"errors"
 	"testing"
 	"time"
 
+	authnv1 "glex/api/authn/v1"
 	"glex/internal/crossdomain/access"
 	accessmodel "glex/internal/crossdomain/access/model"
-
-	kratoserrors "github.com/go-kratos/kratos/v3/errors"
 )
 
-// fakeAuthLoginRepo records the login protocol's primitive calls in order and
-// answers them from preloaded fields, so tests can assert the orchestration
-// shape (lock → snapshot → record → issue, Redis last). The pre-transaction
-// account lookup answers from accounts/accountErr.
-type fakeAuthLoginRepo struct {
-	accounts   map[string]*authnentity.LoginAccount
-	accountErr error
+// fakeLoginService stands in for the login domain service: it records every
+// orchestration step in order (verify → clear → lock → snapshot → record →
+// issue, Redis last) and answers each call from preloaded fields, so tests can
+// assert the sequencing, the snapshot fill, and the commit-failure
+// compensation without touching the domain rules themselves.
+type fakeLoginService struct {
+	account   *authnentity.LoginAccount
+	verifyErr error
 
-	steps          []string
+	verifyName string
+	steps      []string
+	cleared    []string
+	clearErr   error
+	failures   int
+
 	locked         *authnentity.LoginAccount
 	lockErr        error
 	recordIP       string
 	recordAt       time.Time
-	recordErr      error
 	result         *authnentity.LoginResult
 	issueErr       error
 	issued         *authnentity.LoginSession
 	issuedSnapshot *authnentity.AuthorizationSnapshot
 	discarded      []string
+	logoutIDs      []string
+	logoutErr      error
 }
 
-func (r *fakeAuthLoginRepo) FindLoginAccount(_ context.Context, userName string) (*authnentity.LoginAccount, error) {
-	if r.accountErr != nil {
-		return nil, r.accountErr
+func (s *fakeLoginService) VerifyPassword(_ context.Context, userName, _, _ string) (*authnentity.LoginAccount, error) {
+	s.steps = append(s.steps, "verify")
+	s.verifyName = userName
+	if s.verifyErr != nil {
+		return nil, s.verifyErr
 	}
-	account, ok := r.accounts[userName]
-	if !ok {
-		return nil, authndomain.ErrLoginAccountNotFound
+	if s.account == nil {
+		s.account = &authnentity.LoginAccount{ID: 42, UserName: userName, PasswordHash: "hash"}
 	}
-	return account, nil
+	return s.account, nil
 }
 
-func (r *fakeAuthLoginRepo) Revalidate(_ context.Context, systemUserID int64, userName, _ string) (*authnentity.LoginAccount, error) {
-	r.steps = append(r.steps, "lock")
-	if r.lockErr != nil {
-		return nil, r.lockErr
-	}
-	if r.locked == nil {
-		r.locked = &authnentity.LoginAccount{ID: systemUserID, UserName: userName}
-	}
-	return r.locked, nil
+// RecordFailure answers with the below-threshold normalized outcome, like the
+// domain service does once the attempt is recorded.
+func (s *fakeLoginService) RecordFailure(_ context.Context, _, _ string) error {
+	s.steps = append(s.steps, "fail")
+	s.failures++
+	return authndomain.ErrInvalidCredentials
 }
 
-func (r *fakeAuthLoginRepo) RecordLogin(_ context.Context, _ int64, sourceIP string, loginTime time.Time) error {
-	r.steps = append(r.steps, "record")
-	r.recordIP = sourceIP
-	r.recordAt = loginTime
-	return r.recordErr
+func (s *fakeLoginService) ClearFailures(_ context.Context, userName string) error {
+	s.steps = append(s.steps, "clear")
+	s.cleared = append(s.cleared, userName)
+	return s.clearErr
 }
 
-func (r *fakeAuthLoginRepo) IssueCredential(_ context.Context, snapshot *authnentity.AuthorizationSnapshot, session *authnentity.LoginSession) (*authnentity.LoginResult, error) {
-	r.steps = append(r.steps, "issue")
-	r.issuedSnapshot = snapshot
-	r.issued = session
-	if r.issueErr != nil {
-		return nil, r.issueErr
+func (s *fakeLoginService) Revalidate(_ context.Context, systemUserID int64, userName, _ string) (*authnentity.LoginAccount, error) {
+	s.steps = append(s.steps, "lock")
+	if s.lockErr != nil {
+		return nil, s.lockErr
 	}
-	if r.result == nil {
-		r.result = &authnentity.LoginResult{AccessToken: "secret"}
+	if s.locked == nil {
+		s.locked = &authnentity.LoginAccount{ID: systemUserID, UserName: userName}
 	}
-	return r.result, nil
+	return s.locked, nil
 }
 
-func (r *fakeAuthLoginRepo) DiscardCredential(_ context.Context, _ int64, bearerToken string) error {
-	r.steps = append(r.steps, "discard")
-	r.discarded = append(r.discarded, bearerToken)
+func (s *fakeLoginService) RecordLogin(_ context.Context, _ int64, sourceIP string, loginTime time.Time) error {
+	s.steps = append(s.steps, "record")
+	s.recordIP = sourceIP
+	s.recordAt = loginTime
 	return nil
 }
 
-// fakeAuthorizer stands in for the access crossdomain contract: it records
-// the snapshot step and answers from preloaded fields.
+func (s *fakeLoginService) IssueCredential(_ context.Context, snapshot *authnentity.AuthorizationSnapshot, session *authnentity.LoginSession) (*authnentity.LoginResult, error) {
+	s.steps = append(s.steps, "issue")
+	s.issuedSnapshot = snapshot
+	s.issued = session
+	if s.issueErr != nil {
+		return nil, s.issueErr
+	}
+	if s.result == nil {
+		s.result = &authnentity.LoginResult{AccessToken: "secret"}
+	}
+	return s.result, nil
+}
+
+func (s *fakeLoginService) DiscardCredential(_ context.Context, _ int64, bearerToken string) error {
+	s.steps = append(s.steps, "discard")
+	s.discarded = append(s.discarded, bearerToken)
+	return nil
+}
+
+func (s *fakeLoginService) Logout(_ context.Context, sessionID string) error {
+	s.steps = append(s.steps, "logout")
+	s.logoutIDs = append(s.logoutIDs, sessionID)
+	return s.logoutErr
+}
+
+// fakeAuthorizer stands in for the access crossdomain contract: it records the
+// snapshot step and answers from preloaded fields.
 type fakeAuthorizer struct {
 	steps      *[]string
 	resolution *accessmodel.AuthorizationResolution
@@ -106,138 +132,68 @@ func (a *fakeAuthorizer) ResolveAuthorization(_ context.Context, _ int64) (*acce
 	return a.resolution, nil
 }
 
-type fakeLoginCounterRepo struct {
-	remaining     time.Duration
-	failRemaining time.Duration
-	err           error
-	failures      int
-	cleared       []string
+func newLoginApp(login *fakeLoginService) *LoginApplication {
+	return newLoginAppWithTx(login, newFakeTransaction())
 }
 
-func (r *fakeLoginCounterRepo) LockRemaining(context.Context, string, string) (time.Duration, error) {
-	return r.remaining, r.err
-}
-
-func (r *fakeLoginCounterRepo) RecordFailure(context.Context, string, string) (time.Duration, error) {
-	r.failures++
-	return r.failRemaining, r.err
-}
-
-func (r *fakeLoginCounterRepo) ClearUserName(_ context.Context, userName string) error {
-	r.cleared = append(r.cleared, userName)
-	return r.err
-}
-
-func newLoginApp(issuer *fakeAuthLoginRepo, counters *fakeLoginCounterRepo) *LoginApplication {
-	return newLoginAppWithTx(issuer, counters, newFakeTransaction())
-}
-
-func newLoginAppWithTx(issuer *fakeAuthLoginRepo, counters *fakeLoginCounterRepo, tx *fakeTransaction) *LoginApplication {
-	app := NewLoginApplication(issuer, counters, &stubSessionRepo{}, &fakeAuthorizer{steps: &issuer.steps}, tx, testLogger())
+func newLoginAppWithTx(login *fakeLoginService, tx *fakeTransaction) *LoginApplication {
+	app := NewLoginApplication(login, &fakeAuthorizer{steps: &login.steps}, tx, testLogger())
 	app.now = func() time.Time { return time.Unix(1_700_000_000, 0) }
 	return app
 }
 
-// newLoginAppWithAuthorizer lets a test inject its own access contract
-// fake (step sharing, resolution content, or failure).
-func newLoginAppWithAuthorizer(issuer *fakeAuthLoginRepo, counters *fakeLoginCounterRepo, authorizer access.AuthorizationResolver) *LoginApplication {
-	app := NewLoginApplication(issuer, counters, &stubSessionRepo{}, authorizer, newFakeTransaction(), testLogger())
+// newLoginAppWithAuthorizer lets a test inject its own access contract fake
+// (step sharing, resolution content, or failure).
+func newLoginAppWithAuthorizer(login *fakeLoginService, authorizer access.AuthorizationResolver) *LoginApplication {
+	app := NewLoginApplication(login, authorizer, newFakeTransaction(), testLogger())
 	app.now = func() time.Time { return time.Unix(1_700_000_000, 0) }
 	return app
 }
 
-func accountWithPassword(userName, password string) *authnentity.LoginAccount {
-	hash, err := authnservice.HashPassword(password)
+func TestLoginMapsTheIssuedCredentialOntoTheReply(t *testing.T) {
+	login := &fakeLoginService{result: &authnentity.LoginResult{
+		AccessToken: "secret",
+		ExpiresIn:   7 * 24 * time.Hour,
+	}}
+
+	reply, err := newLoginApp(login).Login(t.Context(), &authnv1.LoginRequest{Username: "alice", Password: "correct"})
 	if err != nil {
-		panic(err)
+		t.Fatalf("Login: %v", err)
 	}
-	return &authnentity.LoginAccount{ID: 42, UserName: userName, PasswordHash: hash}
-}
-
-func TestLoginUnknownAccountAndBadPasswordAreIndistinguishable(t *testing.T) {
-	for _, tc := range []struct {
-		name     string
-		userName string
-	}{
-		{name: "unknown", userName: "missing"},
-		{name: "bad password", userName: "alice"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			issuer := &fakeAuthLoginRepo{accounts: map[string]*authnentity.LoginAccount{
-				"alice": accountWithPassword("alice", "correct"),
-			}}
-			counters := &fakeLoginCounterRepo{}
-			_, err := newLoginApp(issuer, counters).authenticate(t.Context(), &LoginRequest{
-				UserName: tc.userName,
-				Password: "wrong",
-				SourceIP: "192.0.2.10",
-			})
-			if !errors.Is(err, authndomain.ErrInvalidCredentials) {
-				t.Fatalf("Login error = %v, want ErrInvalidCredentials", err)
-			}
-			if got := kratoserrors.Reason(err); got != "INVALID_CREDENTIALS" {
-				t.Fatalf("reason = %q, want INVALID_CREDENTIALS", got)
-			}
-			if counters.failures != 1 || len(issuer.steps) != 0 {
-				t.Fatalf("failures/steps = %d/%v, want 1/[]", counters.failures, issuer.steps)
-			}
-		})
+	if reply.GetAccessToken() != "secret" {
+		t.Fatalf("AccessToken = %q, want the issued token", reply.GetAccessToken())
+	}
+	if reply.GetExpireIn() != int64((7*24*time.Hour)/time.Second) {
+		t.Fatalf("ExpireIn = %d, want %d", reply.GetExpireIn(), int64((7*24*time.Hour)/time.Second))
 	}
 }
 
-func TestLoginAmbiguousAccountIsIndistinguishableFromInvalidCredentials(t *testing.T) {
-	issuer := &fakeAuthLoginRepo{accountErr: authndomain.ErrLoginAccountAmbiguous}
-	counters := &fakeLoginCounterRepo{}
+func TestLoginPropagatesVerificationFailure(t *testing.T) {
+	login := &fakeLoginService{verifyErr: authndomain.ErrInvalidCredentials}
 
-	_, err := newLoginApp(issuer, counters).authenticate(t.Context(), &LoginRequest{
-		UserName: "alice", Password: "wrong", SourceIP: "192.0.2.10",
-	})
+	_, err := newLoginApp(login).authenticate(t.Context(), &LoginRequest{UserName: "alice", Password: "wrong"})
 	if !errors.Is(err, authndomain.ErrInvalidCredentials) {
-		t.Fatalf("Login error = %v, want ErrInvalidCredentials", err)
+		t.Fatalf("Login error = %v, want the verification failure", err)
 	}
-	if counters.failures != 1 || len(issuer.steps) != 0 {
-		t.Fatalf("ambiguous account must not authenticate: failures=%d steps=%v", counters.failures, issuer.steps)
-	}
+	// A failed verification never opens the transaction: nothing was cleared,
+	// recorded, or issued.
+	assertSteps(t, &login.steps, "verify")
 }
 
-func TestLoginDisabledAccountRejectedOnlyAfterPasswordMatches(t *testing.T) {
-	disabled := accountWithPassword("alice", "correct")
-	disabled.Status = 1
-	issuer := &fakeAuthLoginRepo{accounts: map[string]*authnentity.LoginAccount{"alice": disabled}}
-	counters := &fakeLoginCounterRepo{}
-	app := newLoginApp(issuer, counters)
+func TestLoginClearFailureAbortsBeforeTheTransaction(t *testing.T) {
+	login := &fakeLoginService{clearErr: authndomain.ErrAuthBackendUnavailable}
 
-	if _, err := app.authenticate(t.Context(), &LoginRequest{UserName: "alice", Password: "wrong"}); !errors.Is(err, authndomain.ErrInvalidCredentials) {
-		t.Fatalf("wrong password = %v, want ErrInvalidCredentials", err)
+	_, err := newLoginApp(login).authenticate(t.Context(), &LoginRequest{UserName: "alice", Password: "correct"})
+	if !errors.Is(err, authndomain.ErrAuthBackendUnavailable) {
+		t.Fatalf("Login error = %v, want the counter-clearing failure", err)
 	}
-	if _, err := app.authenticate(t.Context(), &LoginRequest{UserName: "alice", Password: "correct"}); !errors.Is(err, authndomain.ErrSystemUserDisabled) {
-		t.Fatalf("correct password = %v, want ErrSystemUserDisabled", err)
-	}
-	if len(issuer.steps) != 0 {
-		t.Fatal("disabled account must not create a Login Session")
-	}
+	assertSteps(t, &login.steps, "verify", "clear")
 }
 
-func TestLoginLockedCarriesRemainingDuration(t *testing.T) {
-	counters := &fakeLoginCounterRepo{remaining: 90*time.Second + time.Millisecond}
-	_, err := newLoginApp(&fakeAuthLoginRepo{}, counters).authenticate(t.Context(), &LoginRequest{UserName: "alice"})
-	if kratoserrors.Reason(err) != "LOGIN_LOCKED" {
-		t.Fatalf("reason = %q, want LOGIN_LOCKED", kratoserrors.Reason(err))
-	}
-	if got := kratoserrors.FromError(err).Metadata["remaining_seconds"]; got != "91" {
-		t.Fatalf("remaining_seconds = %q, want 91", got)
-	}
-}
+func TestLoginSuccessRunsServiceStepsThenIssuesCredentialLast(t *testing.T) {
+	login := &fakeLoginService{result: &authnentity.LoginResult{AccessToken: "secret", ExpiresIn: 7 * 24 * time.Hour}}
 
-func TestLoginSuccessRunsDatabaseStepsThenRedisLast(t *testing.T) {
-	issuer := &fakeAuthLoginRepo{
-		accounts: map[string]*authnentity.LoginAccount{"alice": accountWithPassword("alice", "correct")},
-		result:   &authnentity.LoginResult{AccessToken: "secret", ExpiresIn: 7 * 24 * time.Hour},
-	}
-	counters := &fakeLoginCounterRepo{}
-	app := newLoginApp(issuer, counters)
-
-	got, err := app.authenticate(t.Context(), &LoginRequest{
+	got, err := newLoginApp(login).authenticate(t.Context(), &LoginRequest{
 		UserName:  " alice ",
 		Password:  "correct",
 		SourceIP:  "192.0.2.10",
@@ -246,34 +202,38 @@ func TestLoginSuccessRunsDatabaseStepsThenRedisLast(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Login: %v", err)
 	}
-	if got.AccessToken != "secret" || len(counters.cleared) != 1 || counters.cleared[0] != "alice" {
-		t.Fatalf("result/cleared = %#v/%v", got, counters.cleared)
+	if got.AccessToken != "secret" {
+		t.Fatalf("AccessToken = %q, want secret", got.AccessToken)
+	}
+	// The trimmed username reaches the service, and the counter is cleared
+	// before any transaction step runs.
+	if login.verifyName != "alice" {
+		t.Fatalf("VerifyPassword name = %q, want the trimmed alice", login.verifyName)
+	}
+	if len(login.cleared) != 1 || login.cleared[0] != "alice" {
+		t.Fatalf("cleared = %v, want [alice]", login.cleared)
 	}
 	// Orchestration order: lock → snapshot → record (PostgreSQL) → issue
 	// (Redis, deliberately last); nothing after it inside the closure.
-	assertSteps(t, &issuer.steps, "lock", "snapshot", "record", "issue")
-	if issuer.issued == nil {
+	assertSteps(t, &login.steps, "verify", "clear", "lock", "snapshot", "record", "issue")
+	if login.issued == nil {
 		t.Fatal("no Login Session was registered")
 	}
-	if issuer.issued.DeviceType != "mobile" || issuer.issued.Browser != "Chrome" || issuer.issued.OS != "iOS" {
-		t.Fatalf("metadata = %q/%q/%q, want mobile/Chrome/iOS", issuer.issued.DeviceType, issuer.issued.Browser, issuer.issued.OS)
+	if login.issued.DeviceType != "mobile" || login.issued.Browser != "Chrome" || login.issued.OS != "iOS" {
+		t.Fatalf("metadata = %q/%q/%q, want mobile/Chrome/iOS", login.issued.DeviceType, login.issued.Browser, login.issued.OS)
 	}
-	if issuer.issued.LoginTime != time.Unix(1_700_000_000, 0) || issuer.issued.IPAddress != "192.0.2.10" || issuer.issued.SystemUserID != 42 {
-		t.Fatalf("session = %#v", issuer.issued)
+	if login.issued.LoginTime != time.Unix(1_700_000_000, 0) || login.issued.IPAddress != "192.0.2.10" || login.issued.SystemUserID != 42 {
+		t.Fatalf("session = %#v", login.issued)
 	}
-	if issuer.recordIP != "192.0.2.10" || issuer.recordAt != time.Unix(1_700_000_000, 0) {
-		t.Fatalf("recorded login = %q/%v", issuer.recordIP, issuer.recordAt)
+	if login.recordIP != "192.0.2.10" || login.recordAt != time.Unix(1_700_000_000, 0) {
+		t.Fatalf("recorded login = %q/%v", login.recordIP, login.recordAt)
 	}
 }
 
 func TestLoginRevalidationFailureFeedsTheCounter(t *testing.T) {
-	issuer := &fakeAuthLoginRepo{
-		accounts: map[string]*authnentity.LoginAccount{"alice": accountWithPassword("alice", "correct")},
-		lockErr:  authndomain.ErrInvalidCredentials,
-	}
-	counters := &fakeLoginCounterRepo{}
+	login := &fakeLoginService{lockErr: authndomain.ErrInvalidCredentials}
 
-	_, err := newLoginApp(issuer, counters).authenticate(t.Context(), &LoginRequest{
+	_, err := newLoginApp(login).authenticate(t.Context(), &LoginRequest{
 		UserName: "alice",
 		Password: "correct",
 		SourceIP: "192.0.2.10",
@@ -281,22 +241,16 @@ func TestLoginRevalidationFailureFeedsTheCounter(t *testing.T) {
 	if !errors.Is(err, authndomain.ErrInvalidCredentials) {
 		t.Fatalf("Login error = %v, want ErrInvalidCredentials", err)
 	}
-	if counters.failures != 1 {
-		t.Fatalf("failures = %d, want 1 (stale hash counts as a failed attempt)", counters.failures)
+	if login.failures != 1 {
+		t.Fatalf("failures = %d, want 1 (a stale hash counts as a failed attempt)", login.failures)
 	}
-	if len(issuer.steps) != 1 || issuer.steps[0] != "lock" {
-		t.Fatalf("steps = %v, want [lock]", issuer.steps)
-	}
+	assertSteps(t, &login.steps, "verify", "clear", "lock", "fail")
 }
 
-func TestLoginRedisFailureRollsBackWithoutCompensation(t *testing.T) {
-	issuer := &fakeAuthLoginRepo{
-		accounts: map[string]*authnentity.LoginAccount{"alice": accountWithPassword("alice", "correct")},
-		issueErr: authndomain.ErrAuthBackendUnavailable,
-	}
-	counters := &fakeLoginCounterRepo{}
+func TestLoginIssueFailureRollsBackWithoutCompensation(t *testing.T) {
+	login := &fakeLoginService{issueErr: authndomain.ErrAuthBackendUnavailable}
 
-	_, err := newLoginApp(issuer, counters).authenticate(t.Context(), &LoginRequest{
+	_, err := newLoginApp(login).authenticate(t.Context(), &LoginRequest{
 		UserName: "alice",
 		Password: "correct",
 		SourceIP: "192.0.2.10",
@@ -304,23 +258,19 @@ func TestLoginRedisFailureRollsBackWithoutCompensation(t *testing.T) {
 	if !errors.Is(err, authndomain.ErrAuthBackendUnavailable) {
 		t.Fatalf("Login error = %v, want ErrAuthBackendUnavailable", err)
 	}
-	// The credential was never fully issued, so the data wrapper cleaned up
-	// its partial writes itself — the usecase must not discard again.
-	if len(issuer.discarded) != 0 {
-		t.Fatalf("discarded = %v, want none on Redis failure", issuer.discarded)
+	// The credential was never fully issued, so the service cleaned up its
+	// partial writes itself — the usecase must not discard again.
+	if len(login.discarded) != 0 {
+		t.Fatalf("discarded = %v, want none on issue failure", login.discarded)
 	}
-	assertSteps(t, &issuer.steps, "lock", "snapshot", "record", "issue")
+	assertSteps(t, &login.steps, "verify", "clear", "lock", "snapshot", "record", "issue")
 }
 
 func TestLoginCommitFailureDiscardsTheCredential(t *testing.T) {
-	issuer := &fakeAuthLoginRepo{
-		accounts: map[string]*authnentity.LoginAccount{"alice": accountWithPassword("alice", "correct")},
-		result:   &authnentity.LoginResult{AccessToken: "leaked"},
-	}
-	counters := &fakeLoginCounterRepo{}
+	login := &fakeLoginService{result: &authnentity.LoginResult{AccessToken: "leaked"}}
 	tx := &fakeTransaction{err: authndomain.ErrAuthBackendUnavailable} // commit fails after the body
 
-	_, err := newLoginAppWithTx(issuer, counters, tx).authenticate(t.Context(), &LoginRequest{
+	_, err := newLoginAppWithTx(login, tx).authenticate(t.Context(), &LoginRequest{
 		UserName: "alice",
 		Password: "correct",
 		SourceIP: "192.0.2.10",
@@ -328,71 +278,41 @@ func TestLoginCommitFailureDiscardsTheCredential(t *testing.T) {
 	if !errors.Is(err, authndomain.ErrAuthBackendUnavailable) {
 		t.Fatalf("Login error = %v, want the commit failure", err)
 	}
-	if len(issuer.discarded) != 1 || issuer.discarded[0] != "leaked" {
-		t.Fatalf("discarded = %v, want [leaked]", issuer.discarded)
+	if len(login.discarded) != 1 || login.discarded[0] != "leaked" {
+		t.Fatalf("discarded = %v, want [leaked]", login.discarded)
 	}
-	assertSteps(t, &issuer.steps, "lock", "snapshot", "record", "issue", "discard")
-}
-
-func TestLoginFailureThatReachesThresholdReturnsLocked(t *testing.T) {
-	counters := &fakeLoginCounterRepo{failRemaining: 10 * time.Minute}
-	_, err := newLoginApp(&fakeAuthLoginRepo{}, counters).authenticate(t.Context(), &LoginRequest{UserName: "missing", Password: "wrong"})
-	if kratoserrors.Reason(err) != "LOGIN_LOCKED" {
-		t.Fatalf("reason = %q, want LOGIN_LOCKED", kratoserrors.Reason(err))
-	}
-}
-
-func TestLoginBackendFailurePropagatesWithoutTouchingTheCounter(t *testing.T) {
-	issuer := &fakeAuthLoginRepo{accountErr: errors.New("database unavailable")}
-	counters := &fakeLoginCounterRepo{}
-
-	_, err := newLoginApp(issuer, counters).authenticate(t.Context(), &LoginRequest{
-		UserName: "alice", Password: "wrong", SourceIP: "192.0.2.10",
-	})
-	if err == nil || !errors.Is(err, issuer.accountErr) {
-		t.Fatalf("Login error = %v, want the propagated backend failure", err)
-	}
-	if counters.failures != 0 {
-		t.Fatalf("failures = %d, want 0 (backend failures are not login failures)", counters.failures)
-	}
+	assertSteps(t, &login.steps, "verify", "clear", "lock", "snapshot", "record", "issue", "discard")
 }
 
 func TestLoginResolutionFailureIsAuthBackendUnavailable(t *testing.T) {
-	issuer := &fakeAuthLoginRepo{
-		accounts: map[string]*authnentity.LoginAccount{"alice": accountWithPassword("alice", "correct")},
-	}
-	counters := &fakeLoginCounterRepo{}
+	login := &fakeLoginService{}
 
-	_, err := newLoginAppWithAuthorizer(issuer, counters, &fakeAuthorizer{steps: &issuer.steps, err: errors.New("access unavailable")}).authenticate(t.Context(), &LoginRequest{
+	_, err := newLoginAppWithAuthorizer(login, &fakeAuthorizer{steps: &login.steps, err: errors.New("access unavailable")}).authenticate(t.Context(), &LoginRequest{
 		UserName: "alice", Password: "correct", SourceIP: "192.0.2.10",
 	})
 	if !errors.Is(err, authndomain.ErrAuthBackendUnavailable) {
 		t.Fatalf("Login error = %v, want ErrAuthBackendUnavailable", err)
 	}
-	if counters.failures != 0 {
-		t.Fatalf("failures = %d, want 0 (resolution failures are not login failures)", counters.failures)
+	if login.failures != 0 {
+		t.Fatalf("failures = %d, want 0 (resolution failures are not login failures)", login.failures)
 	}
 	// Resolution happens between revalidation and the last-login write; the
 	// credential is never issued.
-	assertSteps(t, &issuer.steps, "lock", "snapshot")
+	assertSteps(t, &login.steps, "verify", "clear", "lock", "snapshot")
 }
 
 func TestLoginFillsSnapshotFromTheAccessContract(t *testing.T) {
-	issuer := &fakeAuthLoginRepo{
-		accounts: map[string]*authnentity.LoginAccount{"alice": accountWithPassword("alice", "correct")},
-		result:   &authnentity.LoginResult{AccessToken: "secret"},
-	}
-	counters := &fakeLoginCounterRepo{}
+	login := &fakeLoginService{result: &authnentity.LoginResult{AccessToken: "secret"}}
 	authorizer := &fakeAuthorizer{resolution: &accessmodel.AuthorizationResolution{
 		RoleKeys:    []string{"viewer"},
 		Permissions: []string{"system:user:list"},
 	}}
-	app := newLoginAppWithAuthorizer(issuer, counters, authorizer)
+	app := newLoginAppWithAuthorizer(login, authorizer)
 
 	if _, err := app.authenticate(t.Context(), &LoginRequest{UserName: "alice", Password: "correct"}); err != nil {
 		t.Fatalf("Login: %v", err)
 	}
-	snapshot := issuer.issuedSnapshot
+	snapshot := login.issuedSnapshot
 	if snapshot == nil {
 		t.Fatal("no Authorization Snapshot was issued")
 	}

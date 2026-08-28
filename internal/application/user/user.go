@@ -11,7 +11,6 @@ import (
 	authnservice "glex/internal/domain/authn/service"
 	userdomain "glex/internal/domain/user"
 	userentity "glex/internal/domain/user/entity"
-	userrepo "glex/internal/domain/user/repository"
 	userservice "glex/internal/domain/user/service"
 
 	"go.einride.tech/aip/fieldmask"
@@ -49,28 +48,30 @@ func convertUser(m *userentity.User) *userv1.User {
 
 // UserApplication implements the system-user CRUD service. It owns the
 // module's cross-domain orchestration: the transaction boundary, credential
-// writes through the authn crossdomain contract, and session revocation.
-// Intra-domain rules (uniqueness) live in the domain service; authentication
-// and the operation's Functional Permission policy are enforced by the
-// registered HTTP middleware.
+// writes through the authn crossdomain contract, and session revocation. All
+// repository access goes through the System User domain service; the
+// uniqueness rules live there too (ADR 0005). Authentication and the
+// operation's Functional Permission policy are enforced by the registered
+// HTTP middleware.
 type UserApplication struct {
 	userv1.UnimplementedUserServiceServer
 
-	repo        userrepo.UserRepo
+	svc         userservice.User
 	credentials authn.CredentialWriter
 	tx          Transaction
 	revoker     authn.SessionRevoker
 	logger      *slog.Logger
 }
 
-// NewUserApplication creates a UserApplication. credentials stores password
+// NewUserApplication creates a UserApplication. svc is the System User domain
+// service — the module's only repository holder; credentials stores password
 // requests through the authn crossdomain contract (the credential column is
-// authn's, per ADR 0016); tx wraps security writes together with their session
-// revocation; revoker performs the revocation through the authn crossdomain
-// contract.
-func NewUserApplication(repo userrepo.UserRepo, credentials authn.CredentialWriter, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *UserApplication {
+// authn's, per ADR 0005); tx wraps security writes together with their
+// session revocation; revoker performs the revocation through the authn
+// crossdomain contract.
+func NewUserApplication(svc userservice.User, credentials authn.CredentialWriter, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *UserApplication {
 	return &UserApplication{
-		repo:        repo,
+		svc:         svc,
 		credentials: credentials,
 		tx:          tx,
 		revoker:     revoker,
@@ -102,13 +103,10 @@ func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUser
 	if u.Password == "" {
 		return nil, userdomain.ErrPasswordRequired
 	}
-	if err := userservice.AssertUnique(ctx, s.repo, u, 0); err != nil {
-		return nil, err
-	}
 	var created *userentity.User
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
 		var err error
-		created, err = s.repo.CreateUser(ctx, u)
+		created, err = s.svc.Create(ctx, u)
 		if err != nil {
 			return err
 		}
@@ -121,7 +119,7 @@ func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUser
 
 // GetUser retrieves a system user by id.
 func (s *UserApplication) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*userv1.User, error) {
-	u, err := s.repo.FindByID(ctx, req.GetUserId())
+	u, err := s.svc.Get(ctx, req.GetUserId())
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +133,7 @@ func (s *UserApplication) GetInfo(ctx context.Context, _ *emptypb.Empty) (*userv
 	if !ok {
 		return nil, authndomain.ErrCredentialMissing
 	}
-	u, err := s.repo.FindByID(ctx, principal.SystemUserID())
+	u, err := s.svc.Get(ctx, principal.SystemUserID())
 	if err != nil {
 		return nil, err
 	}
@@ -194,12 +192,7 @@ func (s *UserApplication) ListUsers(ctx context.Context, req *userv1.ListUsersRe
 	if req.GetPageSize() <= 0 {
 		req.PageSize = 20
 	}
-	users, err := s.repo.ListUsers(ctx,
-		userrepo.ListFilter(filter),
-		userrepo.ListOrderBy(orderBy),
-		userrepo.ListLimit(int(req.GetPageSize())),
-		userrepo.ListOffset(int(pageToken.Offset)),
-	)
+	users, err := s.svc.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
 	if err != nil {
 		return nil, err
 	}
@@ -240,9 +233,6 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 		Remark:      current.GetRemark(),
 		UpdateBy:    auditActor(ctx),
 	}
-	if err := userservice.AssertUnique(ctx, s.repo, u, u.ID); err != nil {
-		return nil, err
-	}
 	passwordPolicy := userentity.RevokeAllLoginSessions()
 	if u.Password != "" {
 		if principal, ok := authnservice.PrincipalFromContext(ctx); ok && principal.SystemUserID() == u.ID {
@@ -251,7 +241,7 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 	}
 	var updated *userentity.User
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		result, err := s.repo.UpdateUser(ctx, u)
+		result, err := s.svc.Update(ctx, u)
 		if err != nil {
 			return err
 		}
@@ -276,7 +266,7 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 // Sessions in the same transaction.
 func (s *UserApplication) DeleteUser(ctx context.Context, req *userv1.DeleteUserRequest) (*emptypb.Empty, error) {
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.repo.DeleteUser(ctx, req.GetUserId(), auditActor(ctx))
+		affected, err := s.svc.Delete(ctx, req.GetUserId(), auditActor(ctx))
 		if err != nil {
 			return err
 		}

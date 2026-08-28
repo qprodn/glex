@@ -1,4 +1,4 @@
-// Package authn owns the authentication module per ADR 0016: Credentials
+// Package authn owns the authentication module per ADR 0005: Credentials
 // (hash, policy, verification), Login Sessions and their tokens, and the
 // Principal. The credential column physically stays on the System User table,
 // but only authn's adapters read or write it. The package root holds only the

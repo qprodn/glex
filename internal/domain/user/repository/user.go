@@ -8,13 +8,6 @@ import (
 	"glex/internal/domain/user/entity"
 )
 
-// UserUpdate pairs the persisted System User with its pre-image so the
-// Application service can classify session revocation.
-type UserUpdate struct {
-	User     *entity.User
-	Previous *entity.User
-}
-
 // UserRepo is the repository interface for system users (the inversion seam
 // declared in domain, implemented in data).
 type UserRepo interface {
@@ -26,7 +19,7 @@ type UserRepo interface {
 	CreateUser(ctx context.Context, u *entity.User) (*entity.User, error)
 	// UpdateUser returns the persisted record with its pre-image. The
 	// Application service owns its transaction and session revocation.
-	UpdateUser(ctx context.Context, u *entity.User) (*UserUpdate, error)
+	UpdateUser(ctx context.Context, u *entity.User) (*entity.UserUpdate, error)
 	// DeleteUser is a security write: it soft-deletes the user and its Role
 	// Assignment (ADR 0002 — no row is hard-deleted), stamping actorID into
 	// the audit fields, and returns the System User identities whose sessions

@@ -1,4 +1,4 @@
-// Package user owns the System User module per ADR 0016: the System User
+// Package user owns the System User module per ADR 0005: the System User
 // domain object, its security-change policy, typed errors, and the module's
 // ports. The package root holds only the typed errors; the object lives in
 // entity, the ports in repository, and the module's own rules in service.

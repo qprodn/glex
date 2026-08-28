@@ -6,9 +6,7 @@ import (
 
 	accessv1 "glex/api/access/v1"
 	"glex/internal/crossdomain/authn"
-	accessdomain "glex/internal/domain/access"
 	accessentity "glex/internal/domain/access/entity"
-	accessrepo "glex/internal/domain/access/repository"
 	accessservice "glex/internal/domain/access/service"
 
 	"go.einride.tech/aip/fieldmask"
@@ -38,35 +36,29 @@ func convertRole(r *accessentity.Role) *accessv1.Role {
 
 // RoleApplication implements the system-role CRUD service. It owns the
 // module's cross-domain orchestration: the transaction boundary and session
-// revocation through the authn crossdomain contract. Intra-domain rules
-// (uniqueness, menu-grant validity, disable guards, checked-keys shaping)
-// live in the domain service; authentication and the operation's Functional
-// Permission policy are enforced by the registered HTTP middleware.
+// revocation through the authn crossdomain contract. All repository access
+// goes through the role domain service; intra-domain rules live there too
+// (ADR 0005). Authentication and the operation's Functional Permission policy
+// are enforced by the registered HTTP middleware.
 type RoleApplication struct {
 	accessv1.UnimplementedRoleServiceServer
 
-	repo         accessrepo.RoleRepo
-	menuRepo     accessrepo.MenuRepo
-	userRoleRepo accessrepo.UserRoleRepo
-	tx           Transaction
-	revoker      authn.SessionRevoker
-	logger       *slog.Logger
+	svc     accessservice.Role
+	tx      Transaction
+	revoker authn.SessionRevoker
+	logger  *slog.Logger
 }
 
-// NewRoleApplication creates a RoleApplication. menuRepo backs Menu Grant
-// validation (granted menus must exist and not be soft-deleted); userRoleRepo
-// backs the "a role with users cannot be deleted/disabled" guard (Role
-// Assignment); tx wraps security writes together with their session
-// revocation; revoker performs the revocation through the authn crossdomain
-// contract.
-func NewRoleApplication(repo accessrepo.RoleRepo, menuRepo accessrepo.MenuRepo, userRoleRepo accessrepo.UserRoleRepo, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *RoleApplication {
+// NewRoleApplication creates a RoleApplication. svc is the role domain
+// service — the module's only repository holder; tx wraps security writes
+// together with their session revocation; revoker performs the revocation
+// through the authn crossdomain contract.
+func NewRoleApplication(svc accessservice.Role, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *RoleApplication {
 	return &RoleApplication{
-		repo:         repo,
-		menuRepo:     menuRepo,
-		userRoleRepo: userRoleRepo,
-		tx:           tx,
-		revoker:      revoker,
-		logger:       logger.With(slog.String("component", "application.access.role")),
+		svc:     svc,
+		tx:      tx,
+		revoker: revoker,
+		logger:  logger.With(slog.String("component", "application.access.role")),
 	}
 }
 
@@ -91,20 +83,10 @@ func (s *RoleApplication) CreateRole(ctx context.Context, req *accessv1.CreateRo
 	}
 	actor := auditActor(ctx)
 	r.CreateBy, r.UpdateBy = actor, actor
-	if err := accessservice.ValidateRole(r); err != nil {
-		return nil, err
-	}
-	if err := accessservice.AssertRoleUnique(ctx, s.repo, r, 0); err != nil {
-		return nil, err
-	}
-	unique, err := accessservice.AssertMenusGrantable(ctx, s.menuRepo, req.GetMenuIds())
-	if err != nil {
-		return nil, err
-	}
 	var created *accessentity.Role
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
 		var err error
-		created, err = s.repo.CreateRole(ctx, r, unique)
+		created, err = s.svc.Create(ctx, r, req.GetMenuIds())
 		return err
 	}); err != nil {
 		return nil, err
@@ -114,7 +96,7 @@ func (s *RoleApplication) CreateRole(ctx context.Context, req *accessv1.CreateRo
 
 // GetRole retrieves a role by id.
 func (s *RoleApplication) GetRole(ctx context.Context, req *accessv1.GetRoleRequest) (*accessv1.Role, error) {
-	r, err := s.repo.FindByID(ctx, req.GetRoleId())
+	r, err := s.svc.Get(ctx, req.GetRoleId())
 	if err != nil {
 		return nil, err
 	}
@@ -153,12 +135,7 @@ func (s *RoleApplication) ListRoles(ctx context.Context, req *accessv1.ListRoles
 	if req.GetPageSize() <= 0 {
 		req.PageSize = 20
 	}
-	roles, err := s.repo.ListRoles(ctx,
-		accessrepo.ListFilter(filter),
-		accessrepo.ListOrderBy(orderBy),
-		accessrepo.ListLimit(int(req.GetPageSize())),
-		accessrepo.ListOffset(int(pageToken.Offset)),
-	)
+	roles, err := s.svc.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
 	if err != nil {
 		return nil, err
 	}
@@ -195,18 +172,9 @@ func (s *RoleApplication) UpdateRole(ctx context.Context, req *accessv1.UpdateRo
 		Remark:   current.GetRemark(),
 		UpdateBy: auditActor(ctx),
 	}
-	if err := accessservice.ValidateRole(r); err != nil {
-		return nil, err
-	}
-	if err := accessservice.AssertRoleUnique(ctx, s.repo, r, r.ID); err != nil {
-		return nil, err
-	}
-	if err := accessservice.AssertRoleDisableAllowed(ctx, s.repo, s.userRoleRepo, r); err != nil {
-		return nil, err
-	}
 	var updated *accessentity.Role
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		result, err := s.repo.UpdateRole(ctx, r)
+		result, err := s.svc.Update(ctx, r)
 		if err != nil {
 			return err
 		}
@@ -221,22 +189,12 @@ func (s *RoleApplication) UpdateRole(ctx context.Context, req *accessv1.UpdateRo
 	return convertRole(updated), nil
 }
 
-// DeleteRole soft-deletes a role by id (and its Menu Grant, repo side);
+// DeleteRole soft-deletes a role by id (and its Menu Grant, service side);
 // refused while users are still assigned (RuoYi: 已分配，不能删除). The delete
 // revokes the assigned users' Login Sessions in one transaction.
 func (s *RoleApplication) DeleteRole(ctx context.Context, req *accessv1.DeleteRoleRequest) (*emptypb.Empty, error) {
-	if _, err := s.repo.FindByID(ctx, req.GetRoleId()); err != nil {
-		return nil, err
-	}
-	n, err := s.userRoleRepo.CountUserRoles(ctx, req.GetRoleId())
-	if err != nil {
-		return nil, err
-	}
-	if n > 0 {
-		return nil, accessdomain.ErrRoleAssigned
-	}
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.repo.DeleteRole(ctx, req.GetRoleId(), auditActor(ctx))
+		affected, err := s.svc.Delete(ctx, req.GetRoleId(), auditActor(ctx))
 		if err != nil {
 			return err
 		}
@@ -249,20 +207,16 @@ func (s *RoleApplication) DeleteRole(ctx context.Context, req *accessv1.DeleteRo
 
 // ListRoleMenus returns the role's checkedKeys (granted menu ids shaped by
 // menu_check_strictly): every granted menu id (buttons included;
-// soft-deleted excluded, repo-side) in (parent_id, order_num) order. When
+// soft-deleted excluded, service side) in (parent_id, order_num) order. When
 // menu_check_strictly is on, a granted menu that is the parent of another
 // granted menu is dropped — RuoYi semantics: half- and fully-checked parents
 // show as tree state, not as grants (their children carry the grant).
 func (s *RoleApplication) ListRoleMenus(ctx context.Context, req *accessv1.ListRoleMenusRequest) (*accessv1.RoleMenus, error) {
-	role, err := s.repo.FindByID(ctx, req.GetRoleId())
+	menuIDs, err := s.svc.CheckedMenuIDs(ctx, req.GetRoleId())
 	if err != nil {
 		return nil, err
 	}
-	links, err := s.repo.ListRoleMenuLinks(ctx, req.GetRoleId())
-	if err != nil {
-		return nil, err
-	}
-	return &accessv1.RoleMenus{MenuIds: accessservice.CheckedMenuIDs(role, links)}, nil
+	return &accessv1.RoleMenus{MenuIds: menuIDs}, nil
 }
 
 // UpdateRoleMenus replaces the role's Menu Grant and menu_check_strictly in
@@ -277,21 +231,16 @@ func (s *RoleApplication) UpdateRoleMenus(ctx context.Context, req *accessv1.Upd
 	if req.MenuCheckStrictly != nil {
 		strict = *req.MenuCheckStrictly
 	}
-	if _, err := s.repo.FindByID(ctx, req.GetRoleId()); err != nil {
-		return nil, err
-	}
-	unique, err := accessservice.AssertMenusGrantable(ctx, s.menuRepo, req.GetMenuIds())
-	if err != nil {
-		return nil, err
-	}
+	var granted []int64
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.repo.ReplaceRoleMenus(ctx, req.GetRoleId(), unique, strict, auditActor(ctx))
+		unique, affected, err := s.svc.ReplaceMenus(ctx, req.GetRoleId(), req.GetMenuIds(), strict, auditActor(ctx))
 		if err != nil {
 			return err
 		}
+		granted = unique
 		return revokeAllSystemUsers(ctx, s.revoker, affected...)
 	}); err != nil {
 		return nil, err
 	}
-	return &accessv1.RoleMenus{MenuIds: unique}, nil
+	return &accessv1.RoleMenus{MenuIds: granted}, nil
 }

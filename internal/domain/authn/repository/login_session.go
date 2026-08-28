@@ -34,6 +34,6 @@ type LoginSessionRepo interface {
 	// RevokeSystemUsers atomically revokes every Login Session of the given
 	// System Users except one optional Session ID (empty revokes all). The
 	// batch takes flat scalars so no other module's vocabulary crosses this
-	// port; callers classify security changes on their own side (ADR 0016).
+	// port; callers classify security changes on their own side (ADR 0005).
 	RevokeSystemUsers(ctx context.Context, systemUserIDs []int64, exceptSessionID string) error
 }

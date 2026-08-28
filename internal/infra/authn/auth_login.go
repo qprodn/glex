@@ -50,7 +50,7 @@ func NewAuthLoginBackend(data *store.Data, manager *core.Manager, sessions authn
 
 // FindLoginAccount loads the authentication view of the account answering a
 // login identifier. This adapter is the only reader of the credential column
-// (ADR 0016).
+// (ADR 0005).
 func (r *authLoginRepo) FindLoginAccount(ctx context.Context, userName string) (*authnentity.LoginAccount, error) {
 	po, err := r.data.DB.User(ctx).Query().
 		Where(user.UserNameEQ(userName), user.DeletedAtIsNil()).

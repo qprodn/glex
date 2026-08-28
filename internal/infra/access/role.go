@@ -134,8 +134,8 @@ func (r *roleRepo) CreateRole(ctx context.Context, ro *accessentity.Role, menuID
 // UpdateRole reads the record and assigned users, applies the mutation, and
 // returns both snapshots for RoleUsecase revocation classification. The
 // caller owns the transaction.
-func (r *roleRepo) UpdateRole(ctx context.Context, ro *accessentity.Role) (*accessrepo.RoleUpdate, error) {
-	result := &accessrepo.RoleUpdate{}
+func (r *roleRepo) UpdateRole(ctx context.Context, ro *accessentity.Role) (*accessentity.RoleUpdate, error) {
+	result := &accessentity.RoleUpdate{}
 	current, err := r.data.DB.Role(ctx).Query().Where(role.IDEQ(ro.ID), role.DeletedAtIsNil()).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {

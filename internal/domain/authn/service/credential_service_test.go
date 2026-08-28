@@ -1,0 +1,49 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"strings"
+	"testing"
+)
+
+// fakeCredentialRepo records stored hashes by System User.
+type fakeCredentialRepo struct {
+	stored map[int64]string
+	err    error
+}
+
+func (r *fakeCredentialRepo) StoreCredential(_ context.Context, systemUserID int64, passwordHash string) error {
+	if r.stored == nil {
+		r.stored = make(map[int64]string)
+	}
+	r.stored[systemUserID] = passwordHash
+	return r.err
+}
+
+func TestCredentialStoreHashesThePlaintext(t *testing.T) {
+	credentials := &fakeCredentialRepo{}
+
+	if err := NewCredentialService(credentials).Store(t.Context(), 42, "secret"); err != nil {
+		t.Fatalf("Store: %v", err)
+	}
+	stored, ok := credentials.stored[42]
+	if !ok {
+		t.Fatal("no credential was stored")
+	}
+	if stored == "secret" || !strings.HasPrefix(stored, "$2") {
+		t.Fatalf("stored credential = %q, want a bcrypt hash, not the plaintext", stored)
+	}
+	if !VerifyPassword(stored, "secret") {
+		t.Fatal("stored credential does not verify against the plaintext")
+	}
+}
+
+func TestCredentialStorePropagatesBackendFailure(t *testing.T) {
+	failure := errors.New("store credential: boom")
+	credentials := &fakeCredentialRepo{err: failure}
+
+	if err := NewCredentialService(credentials).Store(t.Context(), 42, "secret"); !errors.Is(err, failure) {
+		t.Fatalf("Store error = %v, want the backend failure surfaced", err)
+	}
+}

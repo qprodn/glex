@@ -17,12 +17,12 @@ import (
 
 func TestGetInfoNeverExposesPassword(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
-	repo := newFakeUserRepo()
-	repo.byID[42] = &userentity.User{
+	svc := newFakeUserService()
+	svc.byID[42] = &userentity.User{
 		ID: 42, UserName: "alice", NickName: "Alice", Password: "bcrypt-secret-hash",
 		Email: "alice@example.com", LoginDate: &now, CreatedAt: now, UpdatedAt: now,
 	}
-	app := newTestUserApplication(repo, new(fakeCredentialWriter), new(fakeSessionRevoker))
+	app := newTestUserApplication(svc, new(fakeCredentialWriter), new(fakeSessionRevoker))
 	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(
 		42, "alice", "safe-session-id", []string{"operator"}, []string{"system:user:list"},
 	))
@@ -47,7 +47,7 @@ func TestGetInfoNeverExposesPassword(t *testing.T) {
 }
 
 func TestCurrentUserHandlersRequirePrincipal(t *testing.T) {
-	app := newTestUserApplication(newFakeUserRepo(), new(fakeCredentialWriter), new(fakeSessionRevoker))
+	app := newTestUserApplication(newFakeUserService(), new(fakeCredentialWriter), new(fakeSessionRevoker))
 	if _, err := app.GetInfo(context.Background(), &emptypb.Empty{}); err != authndomain.ErrCredentialMissing {
 		t.Fatalf("GetInfo without Principal = %v", err)
 	}

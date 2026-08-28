@@ -6,6 +6,9 @@ import (
 	userapp "glex/internal/application/user"
 	accessimpl "glex/internal/crossdomain/access/impl"
 	authnimpl "glex/internal/crossdomain/authn/impl"
+	accessservice "glex/internal/domain/access/service"
+	authnservice "glex/internal/domain/authn/service"
+	userservice "glex/internal/domain/user/service"
 	accessinfra "glex/internal/infra/access"
 	authninfra "glex/internal/infra/authn"
 	lockerinfra "glex/internal/infra/locker"
@@ -16,8 +19,10 @@ import (
 	"go.uber.org/fx"
 )
 
-// appModule assembles the whole dependency graph. The Transaction adapters
-// keep the dependency rule: each application module consumes its own
+// appModule assembles the whole dependency graph (ADR 0005: infra provides
+// the repo ports, the domain services are the ports' only consumers, and the
+// application use cases consume the domain services). The Transaction
+// adapters keep the dependency rule: each application module consumes its own
 // interface, and only the composition root knows that *store.TxManager
 // satisfies all three.
 var appModule = fx.Options(
@@ -27,6 +32,10 @@ var appModule = fx.Options(
 	accessinfra.Module,
 	authninfra.Module,
 	lockerinfra.Module,
+	// domain services
+	userservice.Module,
+	accessservice.Module,
+	authnservice.Module,
 	// crossdomain contract adapters
 	accessimpl.Module,
 	authnimpl.Module,

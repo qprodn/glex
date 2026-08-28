@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-kratos/aip-go/ents"
 	"glex/internal/domain/access"
+	accessentity "glex/internal/domain/access/entity"
 	accessrepo "glex/internal/domain/access/repository"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/role"
@@ -20,7 +21,7 @@ import (
 // — link-entity traversal for reads, soft-delete-then-insert in one tx for
 // writes (ADR 0002: every table carries the audit fields; no row is
 // hard-deleted). The user rows it reaches through the links are access's
-// storage reality until the tables split (ADR 0016); they surface only as
+// storage reality until the tables split (ADR 0005); they surface only as
 // RoleUser snapshots.
 type userRoleRepo struct {
 	data *store.Data
@@ -32,9 +33,9 @@ func NewUserRoleRepo(data *store.Data) accessrepo.UserRoleRepo {
 }
 
 // toRoleUser maps an ent User PO to the by-role endpoint's RoleUser snapshot.
-// The credential column is deliberately not mapped: it is authn's (ADR 0016).
-func toRoleUser(po *ent.User) *accessrepo.RoleUser {
-	u := &accessrepo.RoleUser{
+// The credential column is deliberately not mapped: it is authn's (ADR 0005).
+func toRoleUser(po *ent.User) *accessentity.RoleUser {
+	u := &accessentity.RoleUser{
 		ID:        po.ID,
 		UserName:  po.UserName,
 		NickName:  po.NickName,
@@ -70,7 +71,7 @@ func (r *userRoleRepo) UserExists(ctx context.Context, userID int64) (bool, erro
 // whether the user is assigned it, ordered by (role_sort, id). The
 // assigned flag comes from the user's active link rows; user existence itself
 // is checked by RoleAssignmentUsecase.
-func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([]*accessrepo.RoleAssignment, error) {
+func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([]*accessentity.RoleAssignment, error) {
 	assignedIDs, err := r.data.DB.UserRole(ctx).Query().
 		Where(userrole.UserIDEQ(userID), userrole.DeletedAtIsNil()).
 		QueryRole().
@@ -90,10 +91,10 @@ func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([
 	if err != nil {
 		return nil, err
 	}
-	assignments := make([]*accessrepo.RoleAssignment, 0, len(pos))
+	assignments := make([]*accessentity.RoleAssignment, 0, len(pos))
 	for _, po := range pos {
 		_, ok := assigned[po.ID]
-		assignments = append(assignments, &accessrepo.RoleAssignment{
+		assignments = append(assignments, &accessentity.RoleAssignment{
 			Role:     toBizRole(po),
 			Assigned: ok,
 		})
@@ -153,7 +154,7 @@ func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleI
 // ListRoleUsers lists the active users assigned the role, applying the given
 // list options (filter/order/offset/limit). The role's existence is checked
 // by RoleAssignmentUsecase.
-func (r *userRoleRepo) ListRoleUsers(ctx context.Context, roleID int64, opts ...accessrepo.ListOption) ([]*accessrepo.RoleUser, error) {
+func (r *userRoleRepo) ListRoleUsers(ctx context.Context, roleID int64, opts ...accessrepo.ListOption) ([]*accessentity.RoleUser, error) {
 	o := accessrepo.ListOptions{Limit: 20}
 	for _, opt := range opts {
 		opt(&o)
@@ -171,7 +172,7 @@ func (r *userRoleRepo) ListRoleUsers(ctx context.Context, roleID int64, opts ...
 	if err != nil {
 		return nil, err
 	}
-	users := make([]*accessrepo.RoleUser, 0, len(pos))
+	users := make([]*accessentity.RoleUser, 0, len(pos))
 	for _, po := range pos {
 		users = append(users, toRoleUser(po))
 	}

@@ -2,9 +2,11 @@ package access
 
 import "context"
 
-// Transaction owns the Application Usecase transaction boundary. The
-// callback receives a context carrying the infrastructure transaction and
-// must pass it to every repository call in the critical section.
+// Transaction owns the Application Usecase transaction boundary (ADR 0005).
+// The callback receives a context carrying the infrastructure transaction
+// and must pass it to every domain-service call in the critical section;
+// service methods and the repositories under them join the ambient
+// transaction through that context.
 //
 // Application Usecases are transaction roots and must not call another
 // Usecase from inside this callback.

@@ -11,7 +11,6 @@ import (
 	"glex/internal/crossdomain/access"
 	authndomain "glex/internal/domain/authn"
 	authnentity "glex/internal/domain/authn/entity"
-	authnrepo "glex/internal/domain/authn/repository"
 	authnservice "glex/internal/domain/authn/service"
 
 	"github.com/go-kratos/kratos/v3/transport"
@@ -31,37 +30,31 @@ type LoginRequest struct {
 // LoginApplication implements the authn-owned proto AuthService: the
 // Login/Logout endpoints. It owns the module's cross-domain orchestration:
 // the login transaction boundary, the Authorization Snapshot filled through
-// the access crossdomain contract, and the commit-failure compensation.
-// Intra-domain rules (credential verification, failure-counter normalization)
-// live in the domain service; authentication policy is enforced by the
-// registered HTTP middleware.
+// the access crossdomain contract, and the commit-failure compensation. All
+// repository access goes through the login domain service (ADR 0005);
+// authentication policy is enforced by the registered HTTP middleware.
 type LoginApplication struct {
 	authnv1.UnimplementedAuthServiceServer
 
-	login       authnrepo.AuthLoginBackend
-	counterRepo authnrepo.LoginCounterRepo
-	sessionRepo authnrepo.LoginSessionRepo
-	authorizer  access.AuthorizationResolver
-	tx          Transaction
-	logger      *slog.Logger
-	now         func() time.Time
+	login      authnservice.Login
+	authorizer access.AuthorizationResolver
+	tx         Transaction
+	logger     *slog.Logger
+	now        func() time.Time
 }
 
-// NewLoginApplication creates a LoginApplication. login backs the account
-// protocol (lookup, revalidation, credential issuance); counterRepo owns the
-// two login failure counters; sessionRepo backs Logout; authorizer fills the
-// Authorization Snapshot through the access crossdomain contract (login never
-// derives permissions itself, ADR 0016/0017); tx owns the login transaction
-// boundary.
-func NewLoginApplication(login authnrepo.AuthLoginBackend, counterRepo authnrepo.LoginCounterRepo, sessionRepo authnrepo.LoginSessionRepo, authorizer access.AuthorizationResolver, tx Transaction, logger *slog.Logger) *LoginApplication {
+// NewLoginApplication creates a LoginApplication. login is the login domain
+// service — the module's only repository holder (account protocol, failure
+// counters, session store); authorizer fills the Authorization Snapshot
+// through the access crossdomain contract (login never derives permissions
+// itself, ADR 0005); tx owns the login transaction boundary.
+func NewLoginApplication(login authnservice.Login, authorizer access.AuthorizationResolver, tx Transaction, logger *slog.Logger) *LoginApplication {
 	return &LoginApplication{
-		login:       login,
-		counterRepo: counterRepo,
-		sessionRepo: sessionRepo,
-		authorizer:  authorizer,
-		tx:          tx,
-		logger:      logger.With(slog.String("component", "application.authn.login")),
-		now:         time.Now,
+		login:      login,
+		authorizer: authorizer,
+		tx:         tx,
+		logger:     logger.With(slog.String("component", "application.authn.login")),
+		now:        time.Now,
 	}
 }
 
@@ -96,7 +89,7 @@ func (s *LoginApplication) Logout(ctx context.Context, _ *emptypb.Empty) (*empty
 	if principal == nil {
 		return &emptypb.Empty{}, nil
 	}
-	if err := s.sessionRepo.Logout(ctx, principal.SessionID()); err != nil {
+	if err := s.login.Logout(ctx, principal.SessionID()); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -105,37 +98,18 @@ func (s *LoginApplication) Logout(ctx context.Context, _ *emptypb.Empty) (*empty
 // login verifies credentials without revealing whether the account exists,
 // enforces the two failure counters, validates account state only after the
 // password matches, and delegates token/snapshot creation to the login
-// backend. Credential issuance is deliberately the last transaction step; a
+// service. Credential issuance is deliberately the last transaction step; a
 // commit failure after it is compensated by discarding the credential.
 func (s *LoginApplication) authenticate(ctx context.Context, req *LoginRequest) (*authnentity.LoginResult, error) {
-	if req == nil || s.login == nil || s.counterRepo == nil {
-		return nil, authndomain.ErrInvalidCredentials
-	}
 	userName := strings.TrimSpace(req.UserName)
-	if remaining, err := s.counterRepo.LockRemaining(ctx, userName, req.SourceIP); err != nil {
-		return nil, err
-	} else if remaining > 0 {
-		return nil, authndomain.NewLoginLocked(remaining)
-	}
-
-	account, err := s.login.FindLoginAccount(ctx, userName)
+	account, err := s.login.VerifyPassword(ctx, userName, req.Password, req.SourceIP)
 	if err != nil {
-		if !errors.Is(err, authndomain.ErrLoginAccountNotFound) && !errors.Is(err, authndomain.ErrLoginAccountAmbiguous) {
-			return nil, err
-		}
-		_ = authnservice.VerifyPassword(authnservice.DecoyCredentialHash, req.Password)
-		return nil, authnservice.RecordInvalidLogin(ctx, s.counterRepo, userName, req.SourceIP)
-	}
-	if !authnservice.VerifyPassword(account.PasswordHash, req.Password) {
-		return nil, authnservice.RecordInvalidLogin(ctx, s.counterRepo, userName, req.SourceIP)
-	}
-	if account.Status != 0 {
-		return nil, authndomain.ErrSystemUserDisabled
+		return nil, err
 	}
 	// Clear before issuing a bearer credential: a Redis failure cannot leave an
-	// unreturned but live Login Session behind. The login backend revalidates
+	// unreturned but live Login Session behind. The login service revalidates
 	// the password hash and status inside the Application transaction.
-	if err := s.counterRepo.ClearUserName(ctx, userName); err != nil {
+	if err := s.login.ClearFailures(ctx, userName); err != nil {
 		return nil, err
 	}
 	deviceType, browser, os := loginClientMetadata(req.UserAgent)
@@ -168,7 +142,7 @@ func (s *LoginApplication) authenticate(ctx context.Context, req *LoginRequest) 
 	})
 	if err != nil {
 		if errors.Is(err, authndomain.ErrInvalidCredentials) {
-			return nil, authnservice.RecordInvalidLogin(ctx, s.counterRepo, userName, req.SourceIP)
+			return nil, s.login.RecordFailure(ctx, userName, req.SourceIP)
 		}
 		if result != nil {
 			// Every Redis write succeeded, so the failure is the commit:
@@ -183,7 +157,7 @@ func (s *LoginApplication) authenticate(ctx context.Context, req *LoginRequest) 
 
 // loadAuthorization fills the Authorization Snapshot's authorization content
 // through the access crossdomain contract — login never derives permissions
-// itself (ADR 0016). The carrier fields (identity) are authn's own; any
+// itself (ADR 0005). The carrier fields (identity) are authn's own; any
 // resolution failure is the authorization backend being unavailable.
 func (s *LoginApplication) loadAuthorization(ctx context.Context, locked *authnentity.LoginAccount) (*authnentity.AuthorizationSnapshot, error) {
 	resolution, err := s.authorizer.ResolveAuthorization(ctx, locked.ID)

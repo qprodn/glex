@@ -12,4 +12,4 @@ Infrastructure contains outward adapters:
 
 Infrastructure may import its own module's Domain package to implement its
 ports. It must not import another module's domain, application, or crossdomain
-packages (ADR 0016), nor Application or Proto DTO packages.
+packages (ADR 0005), nor Application or Proto DTO packages.

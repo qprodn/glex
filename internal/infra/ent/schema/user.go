@@ -41,7 +41,7 @@ func (User) Fields() []ent.Field {
 			dialect.Postgres: "smallint",
 		}),
 		// The credential column: read and written only by authn's adapters
-		// (ADR 0016); it stays on this table until a service split forces a
+		// (ADR 0005); it stays on this table until a service split forces a
 		// dedicated credential store.
 		field.String("password").Default(""),
 		field.String("avatar").Optional().Default("").MaxLen(256),

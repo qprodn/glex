@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	accessentity "glex/internal/domain/access/entity"
-	accessrepo "glex/internal/domain/access/repository"
 	authndomain "glex/internal/domain/authn"
 	authnentity "glex/internal/domain/authn/entity"
 	authnservice "glex/internal/domain/authn/service"
@@ -15,22 +14,25 @@ import (
 
 // routerFixture builds a superadmin routeAccess over the given flat menus so
 // GetRouters renders every node.
-func routerFixture(menus ...*accessentity.Menu) *accessrepo.MenuRouteAccess {
-	return &accessrepo.MenuRouteAccess{RoleKeys: []string{"superadmin"}, ActiveMenus: menus}
+func routerFixture(menus ...*accessentity.Menu) *accessentity.MenuRouteAccess {
+	return &accessentity.MenuRouteAccess{RoleKeys: []string{"superadmin"}, ActiveMenus: menus}
 }
 
 func TestGetRoutersProjectsRouteMetadataPerRequest(t *testing.T) {
-	repo := newFakeMenuRepo()
-	repo.routeAccess = routerFixture(
+	svc := &fakeMenuService{routeAccess: routerFixture(
 		&accessentity.Menu{ID: 1, ParentID: 0, OrderNum: 1, MenuName: "System", Path: "system", MenuType: accessentity.MenuTypeDirectory, IsCache: 1},
 		&accessentity.Menu{ID: 2, ParentID: 1, OrderNum: 1, MenuName: "Users", Path: "users", Component: "system/user/index", QueryParam: `{"tab":"active"}`, MenuType: accessentity.MenuTypeMenu, Visible: 1, IsCache: 0, Icon: "user", ActiveMenu: "/system/users"},
-	)
-	app := newMenuApp(repo, new(fakeSessionRevoker))
+	)}
+	app, _ := newMenuApp(svc, new(fakeSessionRevoker))
 	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(42, "alice", "session-id", nil, []string{"unrelated:permission"}))
 
 	first, err := app.GetRouters(ctx, &emptypb.Empty{})
 	if err != nil {
 		t.Fatalf("first GetRouters: %v", err)
+	}
+	// The route data is loaded for the authenticated System User.
+	if svc.routeUserID != 42 {
+		t.Fatalf("service saw system user %d, want the principal's 42", svc.routeUserID)
 	}
 	if len(first.GetRouters()) != 1 || len(first.GetRouters()[0].GetChildren()) != 1 {
 		t.Fatalf("first route tree = %#v", first)
@@ -47,8 +49,8 @@ func TestGetRoutersProjectsRouteMetadataPerRequest(t *testing.T) {
 		t.Fatalf("Router meta = %#v", child.GetMeta())
 	}
 
-	// The route tree is resolved fresh from the store on every request.
-	repo.routeAccess = nil
+	// The route tree is resolved fresh from the service on every request.
+	svc.routeAccess = nil
 	second, err := app.GetRouters(ctx, &emptypb.Empty{})
 	if err != nil {
 		t.Fatalf("second GetRouters: %v", err)
@@ -59,14 +61,13 @@ func TestGetRoutersProjectsRouteMetadataPerRequest(t *testing.T) {
 }
 
 func TestGetRoutersUsesRuoYiPathComponentAndFrameSemantics(t *testing.T) {
-	repo := newFakeMenuRepo()
-	repo.routeAccess = routerFixture(
+	svc := &fakeMenuService{routeAccess: routerFixture(
 		&accessentity.Menu{ID: 1, ParentID: 0, OrderNum: 1, MenuName: "Root directory", Path: "system", MenuType: accessentity.MenuTypeDirectory, IsFrame: 0},
 		&accessentity.Menu{ID: 2, ParentID: 1, OrderNum: 1, MenuName: "Nested directory", Path: "nested", MenuType: accessentity.MenuTypeDirectory, IsFrame: 0},
 		&accessentity.Menu{ID: 4, ParentID: 1, OrderNum: 2, MenuName: "Docs", Path: "https://docs.example.com", MenuType: accessentity.MenuTypeMenu, IsFrame: 0},
 		&accessentity.Menu{ID: 3, ParentID: 0, OrderNum: 2, MenuName: "Dashboard", Path: "dashboard", Component: "dashboard/index", MenuType: accessentity.MenuTypeMenu, IsFrame: 0},
-	)
-	app := newMenuApp(repo, new(fakeSessionRevoker))
+	)}
+	app, _ := newMenuApp(svc, new(fakeSessionRevoker))
 	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(42, "alice", "session-id", nil, nil))
 
 	reply, err := app.GetRouters(ctx, &emptypb.Empty{})
@@ -96,7 +97,7 @@ func TestGetRoutersUsesRuoYiPathComponentAndFrameSemantics(t *testing.T) {
 }
 
 func TestGetRoutersRequiresPrincipal(t *testing.T) {
-	app := newMenuApp(newFakeMenuRepo(), new(fakeSessionRevoker))
+	app, _ := newMenuApp(new(fakeMenuService), new(fakeSessionRevoker))
 	if _, err := app.GetRouters(context.Background(), &emptypb.Empty{}); err != authndomain.ErrCredentialMissing {
 		t.Fatalf("GetRouters without Principal = %v", err)
 	}

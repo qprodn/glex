@@ -1,15 +1,43 @@
-// Package service holds the authn module's own rules and intra-domain
-// orchestration: credential hashing policy, Principal context plumbing, and
-// login-failure normalization. Cross-domain orchestration (transactions,
-// authorization resolution) stays with the Application services.
 package service
 
 import (
+	"context"
+	"fmt"
+
+	"glex/internal/domain/authn/repository"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
+// Credential is the authn domain service behind the crossdomain credential
+// contract: the only writer of the credential column besides the login flow
+// (ADR 0005). Hashing happens here, beside the provider's domain policy, so
+// consumers never pick a hash format.
+type Credential interface {
+	// Store hashes the requested password with authn's policy and stores it
+	// inside the caller's propagated transaction.
+	Store(ctx context.Context, systemUserID int64, password string) error
+}
+
+type credentialImpl struct {
+	credentials repository.CredentialRepo
+}
+
+// NewCredentialService creates the credential domain service.
+func NewCredentialService(credentials repository.CredentialRepo) Credential {
+	return &credentialImpl{credentials: credentials}
+}
+
+func (s *credentialImpl) Store(ctx context.Context, systemUserID int64, password string) error {
+	hash, err := HashPassword(password)
+	if err != nil {
+		return fmt.Errorf("write system user credential: hash password: %w", err)
+	}
+	return s.credentials.StoreCredential(ctx, systemUserID, hash)
+}
+
 // HashPassword hashes a plaintext password with the project's bcrypt policy.
-// Credentials belong to authn (ADR 0016), so no other module picks the cost.
+// Credentials belong to authn (ADR 0005), so no other module picks the cost.
 func HashPassword(password string) (string, error) {
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {

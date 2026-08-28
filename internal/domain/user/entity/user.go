@@ -17,7 +17,7 @@ type User struct {
 	// Password carries the caller's requested plaintext credential on
 	// create/update requests only. It is never populated on reads and never
 	// persisted by this module: the stored hash belongs to authn and is
-	// written solely through its credential capability (ADR 0016).
+	// written solely through its credential capability (ADR 0005).
 	Password  string
 	Status    int32
 	Avatar    string
@@ -28,6 +28,13 @@ type User struct {
 	LoginDate *time.Time
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+// UserUpdate pairs the persisted System User with its pre-image so the
+// Application service can classify session revocation.
+type UserUpdate struct {
+	User     *User
+	Previous *User
 }
 
 // SessionRevocationFrom classifies System User writes. The receiver is the
@@ -63,7 +70,7 @@ type CurrentUserInfo struct {
 // self-service change keeps. Its fields are private so callers cannot encode
 // policy with an empty Session ID or an arbitrary primitive value. The
 // revocation itself is performed through the authn crossdomain contract; this
-// type never crosses the module seam (ADR 0016).
+// type never crosses the module seam (ADR 0005).
 type SessionRevocation struct {
 	required           bool
 	preservedSessionID string

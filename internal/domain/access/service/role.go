@@ -7,7 +7,128 @@ import (
 	"glex/internal/domain/access"
 	"glex/internal/domain/access/entity"
 	"glex/internal/domain/access/repository"
+
+	"go.einride.tech/aip/filtering"
+	"go.einride.tech/aip/ordering"
 )
+
+// Role is the access domain service behind the role endpoints: the only path
+// to the Role, Menu Grant, and assignment-guard reads and writes (ADR 0005).
+// Methods join the caller's ambient transaction; the Application service
+// owns the transaction boundary and the cross-domain revocation.
+type Role interface {
+	Get(ctx context.Context, id int64) (*entity.Role, error)
+	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.Role, error)
+	// Create validates the role and its initial Menu Grant and persists both.
+	Create(ctx context.Context, r *entity.Role, menuIDs []int64) (*entity.Role, error)
+	// Update validates the change (shape, uniqueness, disable guard) and
+	// persists it, returning the write with its pre-image and assigned users.
+	Update(ctx context.Context, r *entity.Role) (*entity.RoleUpdate, error)
+	// Delete soft-deletes the role and its Menu Grant, refusing while users
+	// are still assigned, and returns the assigned identities.
+	Delete(ctx context.Context, id, actorID int64) ([]int64, error)
+	// CheckedMenuIDs returns the role's granted menu ids shaped by
+	// menu_check_strictly (the role editor's checked keys).
+	CheckedMenuIDs(ctx context.Context, roleID int64) ([]int64, error)
+	// ReplaceMenus validates and dedupes menuIDs, replaces the role's Menu
+	// Grant together with menu_check_strictly, and returns the stored grant
+	// with the assigned identities whose snapshots the write invalidates.
+	ReplaceMenus(ctx context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool, actorID int64) (granted []int64, affectedUserIDs []int64, err error)
+}
+
+type roleImpl struct {
+	roles     repository.RoleRepo
+	menus     repository.MenuRepo
+	userRoles repository.UserRoleRepo
+}
+
+// NewRoleService creates the role domain service. menus backs Menu Grant
+// validation; userRoles backs the "a role with users cannot be deleted or
+// disabled" guard.
+func NewRoleService(roles repository.RoleRepo, menus repository.MenuRepo, userRoles repository.UserRoleRepo) Role {
+	return &roleImpl{roles: roles, menus: menus, userRoles: userRoles}
+}
+
+func (s *roleImpl) Get(ctx context.Context, id int64) (*entity.Role, error) {
+	return s.roles.FindByID(ctx, id)
+}
+
+func (s *roleImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.Role, error) {
+	return s.roles.ListRoles(ctx,
+		repository.ListFilter(filter),
+		repository.ListOrderBy(orderBy),
+		repository.ListLimit(limit),
+		repository.ListOffset(offset),
+	)
+}
+
+func (s *roleImpl) Create(ctx context.Context, r *entity.Role, menuIDs []int64) (*entity.Role, error) {
+	if err := ValidateRole(r); err != nil {
+		return nil, err
+	}
+	if err := AssertRoleUnique(ctx, s.roles, r, 0); err != nil {
+		return nil, err
+	}
+	unique, err := AssertMenusGrantable(ctx, s.menus, menuIDs)
+	if err != nil {
+		return nil, err
+	}
+	return s.roles.CreateRole(ctx, r, unique)
+}
+
+func (s *roleImpl) Update(ctx context.Context, r *entity.Role) (*entity.RoleUpdate, error) {
+	if err := ValidateRole(r); err != nil {
+		return nil, err
+	}
+	if err := AssertRoleUnique(ctx, s.roles, r, r.ID); err != nil {
+		return nil, err
+	}
+	if err := AssertRoleDisableAllowed(ctx, s.roles, s.userRoles, r); err != nil {
+		return nil, err
+	}
+	return s.roles.UpdateRole(ctx, r)
+}
+
+func (s *roleImpl) Delete(ctx context.Context, id, actorID int64) ([]int64, error) {
+	if _, err := s.roles.FindByID(ctx, id); err != nil {
+		return nil, err
+	}
+	n, err := s.userRoles.CountUserRoles(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if n > 0 {
+		return nil, access.ErrRoleAssigned
+	}
+	return s.roles.DeleteRole(ctx, id, actorID)
+}
+
+func (s *roleImpl) CheckedMenuIDs(ctx context.Context, roleID int64) ([]int64, error) {
+	role, err := s.roles.FindByID(ctx, roleID)
+	if err != nil {
+		return nil, err
+	}
+	links, err := s.roles.ListRoleMenuLinks(ctx, roleID)
+	if err != nil {
+		return nil, err
+	}
+	return CheckedMenuIDs(role, links), nil
+}
+
+func (s *roleImpl) ReplaceMenus(ctx context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool, actorID int64) ([]int64, []int64, error) {
+	if _, err := s.roles.FindByID(ctx, roleID); err != nil {
+		return nil, nil, err
+	}
+	unique, err := AssertMenusGrantable(ctx, s.menus, menuIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+	affected, err := s.roles.ReplaceRoleMenus(ctx, roleID, unique, menuCheckStrictly, actorID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return unique, affected, nil
+}
 
 // ValidateRole rejects blank role_name/role_key (non-blank is the only rule).
 func ValidateRole(r *entity.Role) error {

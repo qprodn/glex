@@ -1,7 +1,7 @@
 // Package impl adapts access's domain capabilities to the crossdomain
-// contracts. Adapters live here rather than in infra (ADR 0017): this is the
+// contracts. Adapters live here rather than in infra (ADR 0005): this is the
 // only place that knows both the contract snapshots and the provider's domain
-// types.
+// services.
 package impl
 
 import (
@@ -9,18 +9,18 @@ import (
 
 	"glex/internal/crossdomain/access"
 	"glex/internal/crossdomain/access/model"
-	accessrepo "glex/internal/domain/access/repository"
+	accessservice "glex/internal/domain/access/service"
 )
 
-// authorizationResolver satisfies the resolution contract by wrapping the
-// provider's Authorization Resolution capability.
+// authorizationResolver satisfies the resolution contract by delegating to
+// the provider's Authorization Resolution domain service.
 type authorizationResolver struct {
-	resolver accessrepo.AuthorizationResolver
+	resolver accessservice.Authorization
 }
 
-// NewAuthorizationResolver adapts the access domain's AuthorizationResolver
-// port to the crossdomain resolution contract.
-func NewAuthorizationResolver(resolver accessrepo.AuthorizationResolver) access.AuthorizationResolver {
+// NewAuthorizationResolver adapts the access domain's Authorization
+// Resolution service to the crossdomain resolution contract.
+func NewAuthorizationResolver(resolver accessservice.Authorization) access.AuthorizationResolver {
 	return &authorizationResolver{resolver: resolver}
 }
 

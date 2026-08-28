@@ -58,3 +58,23 @@ func (m *Menu) Validate() error {
 func (m *Menu) AuthorizationChangedFrom(current *Menu) bool {
 	return m != nil && current != nil && (m.Perms != current.Perms || m.Status != current.Status)
 }
+
+// MenuRouteAccess is the freshly loaded authorization data used to build one
+// System User's route tree. It deliberately carries menu ids rather than
+// Functional Permission handles: routes follow active Role Assignments and
+// Menu Grants, while permission checks use the separate Authorization
+// Snapshot.
+type MenuRouteAccess struct {
+	RoleKeys       []string
+	GrantedMenuIDs []int64
+	ActiveMenus    []*Menu
+}
+
+// MenuUpdate pairs the persisted Menu with its pre-image and the active
+// System Users reaching the menu through active Roles — identities whose
+// Authorization Snapshot the write may invalidate.
+type MenuUpdate struct {
+	Menu            *Menu
+	Previous        *Menu
+	AffectedUserIDs []int64
+}

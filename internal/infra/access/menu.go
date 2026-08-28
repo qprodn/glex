@@ -121,7 +121,7 @@ func (r *menuRepo) ListMenus(ctx context.Context, opts ...accessrepo.ListOption)
 // active Role Assignments, their Menu Grants, and all active routeable Menus.
 // It intentionally does not consult Functional Permission handles or an
 // Account Session snapshot.
-func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*accessrepo.MenuRouteAccess, error) {
+func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*accessentity.MenuRouteAccess, error) {
 	assignedRoles, err := r.data.DB.User(ctx).Query().
 		Where(
 			user.IDEQ(systemUserID),
@@ -173,7 +173,7 @@ func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*ac
 	for _, po := range pos {
 		menus = append(menus, toBizMenu(po))
 	}
-	return &accessrepo.MenuRouteAccess{
+	return &accessentity.MenuRouteAccess{
 		RoleKeys:       roleKeys,
 		GrantedMenuIDs: grantedMenuIDs,
 		ActiveMenus:    menus,
@@ -210,8 +210,8 @@ func (r *menuRepo) CreateMenu(ctx context.Context, m *accessentity.Menu) (*acces
 // UpdateMenu re-reads the record and its affected users, applies the mutation,
 // and returns the persisted menu with its pre-image for MenuUsecase
 // revocation classification. The caller owns the transaction.
-func (r *menuRepo) UpdateMenu(ctx context.Context, m *accessentity.Menu) (*accessrepo.MenuUpdate, error) {
-	result := &accessrepo.MenuUpdate{}
+func (r *menuRepo) UpdateMenu(ctx context.Context, m *accessentity.Menu) (*accessentity.MenuUpdate, error) {
+	result := &accessentity.MenuUpdate{}
 	current, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(m.ID), menu.DeletedAtIsNil()).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {

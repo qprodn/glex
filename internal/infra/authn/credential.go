@@ -14,7 +14,7 @@ type credentialRepo struct {
 }
 
 // NewCredentialRepo constructs the credential store — the only writer of the
-// credential column on the System User row (ADR 0016).
+// credential column on the System User row (ADR 0005).
 func NewCredentialRepo(data *store.Data) authnrepo.CredentialRepo {
 	return &credentialRepo{data: data}
 }

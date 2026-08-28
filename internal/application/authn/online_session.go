@@ -6,7 +6,6 @@ import (
 
 	authnv1 "glex/api/authn/v1"
 	authndomain "glex/internal/domain/authn"
-	authnrepo "glex/internal/domain/authn/repository"
 	authnservice "glex/internal/domain/authn/service"
 
 	"go.einride.tech/aip/filtering"
@@ -17,20 +16,21 @@ import (
 )
 
 // OnlineSessionApplication implements the four RuoYi-compatible Login Session
-// operations. It holds the Login Session repository port directly; bulk
-// revocation is intentionally absent from the service, and authentication
-// policy is enforced by the registered HTTP middleware.
+// operations. All repository access goes through the Online Session domain
+// service (ADR 0005); bulk revocation is intentionally absent from the
+// endpoints, and authentication policy is enforced by the registered HTTP
+// middleware.
 type OnlineSessionApplication struct {
 	authnv1.UnimplementedOnlineSessionServiceServer
 
-	repo   authnrepo.LoginSessionRepo
+	svc    authnservice.OnlineSession
 	logger *slog.Logger
 }
 
 // NewOnlineSessionApplication creates an OnlineSessionApplication.
-func NewOnlineSessionApplication(repo authnrepo.LoginSessionRepo, logger *slog.Logger) *OnlineSessionApplication {
+func NewOnlineSessionApplication(svc authnservice.OnlineSession, logger *slog.Logger) *OnlineSessionApplication {
 	return &OnlineSessionApplication{
-		repo:   repo,
+		svc:    svc,
 		logger: logger.With(slog.String("component", "application.online_session")),
 	}
 }
@@ -63,12 +63,7 @@ func (s *OnlineSessionApplication) ListOnlineSessions(ctx context.Context, req *
 	if req.GetPageSize() <= 0 {
 		req.PageSize = 20
 	}
-	sessions, err := s.repo.List(ctx,
-		authnrepo.ListFilter(filter),
-		authnrepo.ListOrderBy(orderBy),
-		authnrepo.ListLimit(int(req.GetPageSize())),
-		authnrepo.ListOffset(int(pageToken.Offset)),
-	)
+	sessions, err := s.svc.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +87,7 @@ func (s *OnlineSessionApplication) ListOnlineSessions(ctx context.Context, req *
 
 // KickoutOnlineSession revokes one Session ID for an administrator.
 func (s *OnlineSessionApplication) KickoutOnlineSession(ctx context.Context, req *authnv1.OnlineSessionRequest) (*emptypb.Empty, error) {
-	if err := s.repo.Kickout(ctx, req.GetTokenId()); err != nil {
+	if err := s.svc.Kickout(ctx, req.GetTokenId()); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -104,7 +99,7 @@ func (s *OnlineSessionApplication) ListMyOnlineSessions(ctx context.Context, _ *
 	if !ok {
 		return nil, authndomain.ErrCredentialMissing
 	}
-	sessions, err := s.repo.ListBySystemUser(ctx, principal.SystemUserID())
+	sessions, err := s.svc.ListBySystemUser(ctx, principal.SystemUserID())
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +125,7 @@ func (s *OnlineSessionApplication) DeleteMyOnlineSession(ctx context.Context, re
 	if !ok {
 		return nil, authndomain.ErrCredentialMissing
 	}
-	if err := s.repo.LogoutOwned(ctx, principal.SystemUserID(), req.GetTokenId()); err != nil {
+	if err := s.svc.LogoutOwned(ctx, principal.SystemUserID(), req.GetTokenId()); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

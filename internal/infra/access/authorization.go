@@ -41,7 +41,7 @@ func NewAuthorizationResolver(data *store.Data) accessrepo.AuthorizationResolver
 // and their Menu Grants and computes the Role Keys and Functional Permissions
 // captured by an Authorization Snapshot. Reads join the transaction propagated
 // through ctx when one is active.
-func (r *authorizationResolver) ResolveAuthorization(ctx context.Context, systemUserID int64) (*accessrepo.AuthorizationResolution, error) {
+func (r *authorizationResolver) ResolveAuthorization(ctx context.Context, systemUserID int64) (*accessentity.AuthorizationResolution, error) {
 	resolution, err := resolveAuthorization(ctx, r.data.DB, systemUserID)
 	if err != nil {
 		r.logger.WarnContext(ctx, "authorization resolution database operation failed",
@@ -53,7 +53,7 @@ func (r *authorizationResolver) ResolveAuthorization(ctx context.Context, system
 	return resolution, nil
 }
 
-func resolveAuthorization(ctx context.Context, db *ent.Database, systemUserID int64) (*accessrepo.AuthorizationResolution, error) {
+func resolveAuthorization(ctx context.Context, db *ent.Database, systemUserID int64) (*accessentity.AuthorizationResolution, error) {
 	roles, err := db.User(ctx).Query().
 		Where(user.IDEQ(systemUserID), user.DeletedAtIsNil()).
 		QueryRoleAssignments().Where(userrole.DeletedAtIsNil()).
@@ -89,7 +89,7 @@ func resolveAuthorization(ctx context.Context, db *ent.Database, systemUserID in
 // resolution: blank Role keys are dropped, permission handles are deduped, and
 // the wildcard `*:*:*` is added only through an exact superadmin Role key (a
 // menu carrying it otherwise is ignored). Both sets are returned sorted.
-func toBizResolution(roles []*ent.Role, menus []*ent.Menu) *accessrepo.AuthorizationResolution {
+func toBizResolution(roles []*ent.Role, menus []*ent.Menu) *accessentity.AuthorizationResolution {
 	roleKeys := make([]string, 0, len(roles))
 	superadmin := false
 	for _, assignedRole := range roles {
@@ -122,7 +122,7 @@ func toBizResolution(roles []*ent.Role, menus []*ent.Menu) *accessrepo.Authoriza
 	}
 	sort.Strings(roleKeys)
 	sort.Strings(permissions)
-	return &accessrepo.AuthorizationResolution{
+	return &accessentity.AuthorizationResolution{
 		RoleKeys:    roleKeys,
 		Permissions: permissions,
 	}

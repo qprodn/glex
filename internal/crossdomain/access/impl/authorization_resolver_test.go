@@ -7,30 +7,31 @@ import (
 
 	"glex/internal/crossdomain/access/model"
 	accessdomain "glex/internal/domain/access"
-	accessrepo "glex/internal/domain/access/repository"
+	accessentity "glex/internal/domain/access/entity"
 )
 
-// fakeResolver is an in-memory access.AuthorizationResolver for testing the
-// contract adapter in isolation from the provider's infrastructure.
-type fakeResolver struct {
-	resolution *accessrepo.AuthorizationResolution
+// fakeAuthorizationService is an in-memory accessservice.Authorization stand-in
+// for testing the contract adapter in isolation from the provider's
+// infrastructure.
+type fakeAuthorizationService struct {
+	resolution *accessentity.AuthorizationResolution
 	err        error
 	calledWith []int64
 }
 
-func (r *fakeResolver) ResolveAuthorization(_ context.Context, systemUserID int64) (*accessrepo.AuthorizationResolution, error) {
-	r.calledWith = append(r.calledWith, systemUserID)
-	if r.err != nil {
-		return nil, r.err
+func (s *fakeAuthorizationService) ResolveAuthorization(_ context.Context, systemUserID int64) (*accessentity.AuthorizationResolution, error) {
+	s.calledWith = append(s.calledWith, systemUserID)
+	if s.err != nil {
+		return nil, s.err
 	}
-	if r.resolution == nil {
-		r.resolution = &accessrepo.AuthorizationResolution{}
+	if s.resolution == nil {
+		s.resolution = &accessentity.AuthorizationResolution{}
 	}
-	return r.resolution, nil
+	return s.resolution, nil
 }
 
 func TestAuthorizationResolverReturnsModelSnapshot(t *testing.T) {
-	provider := &fakeResolver{resolution: &accessrepo.AuthorizationResolution{
+	provider := &fakeAuthorizationService{resolution: &accessentity.AuthorizationResolution{
 		RoleKeys:    []string{"superadmin", "viewer"},
 		Permissions: []string{"*:*:*", "system:user:list"},
 	}}
@@ -52,7 +53,7 @@ func TestAuthorizationResolverReturnsModelSnapshot(t *testing.T) {
 }
 
 func TestAuthorizationResolverPassesProviderFailureThrough(t *testing.T) {
-	provider := &fakeResolver{err: accessdomain.ErrAuthorizationUnavailable}
+	provider := &fakeAuthorizationService{err: accessdomain.ErrAuthorizationUnavailable}
 	adapter := NewAuthorizationResolver(provider)
 
 	got, err := adapter.ResolveAuthorization(t.Context(), 42)
@@ -67,7 +68,7 @@ func TestAuthorizationResolverPassesProviderFailureThrough(t *testing.T) {
 func TestAuthorizationResolverNilResolutionDegradesToEmptyModel(t *testing.T) {
 	// A nil model must never cross the seam; the adapter degrades it to an
 	// empty resolution so consumers can fill an empty snapshot.
-	provider := &fakeResolver{}
+	provider := &fakeAuthorizationService{}
 	adapter := NewAuthorizationResolver(provider)
 
 	got, err := adapter.ResolveAuthorization(t.Context(), 42)

@@ -9,9 +9,7 @@ import (
 
 	accessv1 "glex/api/access/v1"
 	"glex/internal/crossdomain/authn"
-	accessdomain "glex/internal/domain/access"
 	accessentity "glex/internal/domain/access/entity"
-	accessrepo "glex/internal/domain/access/repository"
 	accessservice "glex/internal/domain/access/service"
 	authndomain "glex/internal/domain/authn"
 	authnservice "glex/internal/domain/authn/service"
@@ -120,25 +118,27 @@ func innerLinkPath(path string) string {
 
 // MenuApplication implements the system-menu CRUD + tree service. It owns the
 // module's cross-domain orchestration: the transaction boundary and session
-// revocation through the authn crossdomain contract. Intra-domain rules (type
-// validation, sibling-name uniqueness, tree assembly, route selection) live in
-// the domain service; authentication and the operation's Functional Permission
-// policy are enforced by the registered HTTP middleware.
+// revocation through the authn crossdomain contract. All repository access
+// goes through the menu domain service; intra-domain rules (type validation,
+// sibling-name uniqueness, tree assembly, route selection) live there too
+// (ADR 0005). Authentication and the operation's Functional Permission policy
+// are enforced by the registered HTTP middleware.
 type MenuApplication struct {
 	accessv1.UnimplementedMenuServiceServer
 
-	repo    accessrepo.MenuRepo
+	svc     accessservice.Menu
 	tx      Transaction
 	revoker authn.SessionRevoker
 	logger  *slog.Logger
 }
 
-// NewMenuApplication creates a MenuApplication. tx wraps security writes
+// NewMenuApplication creates a MenuApplication. svc is the menu domain
+// service — the module's only repository holder; tx wraps security writes
 // together with their session revocation; revoker performs the revocation
 // through the authn crossdomain contract.
-func NewMenuApplication(repo accessrepo.MenuRepo, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *MenuApplication {
+func NewMenuApplication(svc accessservice.Menu, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *MenuApplication {
 	return &MenuApplication{
-		repo:    repo,
+		svc:     svc,
 		tx:      tx,
 		revoker: revoker,
 		logger:  logger.With(slog.String("component", "application.access.menu")),
@@ -170,16 +170,10 @@ func (s *MenuApplication) CreateMenu(ctx context.Context, req *accessv1.CreateMe
 		CreateBy:   actor,
 		UpdateBy:   actor,
 	}
-	if err := accessservice.ValidateMenuType(m.MenuType); err != nil {
-		return nil, err
-	}
-	if err := accessservice.AssertSiblingNameUnique(ctx, s.repo, m, false); err != nil {
-		return nil, err
-	}
 	var created *accessentity.Menu
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
 		var err error
-		created, err = s.repo.CreateMenu(ctx, m)
+		created, err = s.svc.Create(ctx, m)
 		return err
 	}); err != nil {
 		return nil, err
@@ -189,7 +183,7 @@ func (s *MenuApplication) CreateMenu(ctx context.Context, req *accessv1.CreateMe
 
 // GetMenu retrieves a menu by id.
 func (s *MenuApplication) GetMenu(ctx context.Context, req *accessv1.GetMenuRequest) (*accessv1.Menu, error) {
-	m, err := s.repo.FindByID(ctx, req.GetMenuId())
+	m, err := s.svc.Get(ctx, req.GetMenuId())
 	if err != nil {
 		return nil, err
 	}
@@ -218,10 +212,7 @@ func (s *MenuApplication) ListMenus(ctx context.Context, req *accessv1.ListMenus
 	if err != nil {
 		return nil, err
 	}
-	menus, err := s.repo.ListMenus(ctx,
-		accessrepo.ListFilter(filter),
-		accessrepo.ListOrderBy(orderBy),
-	)
+	menus, err := s.svc.List(ctx, filter, orderBy)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +230,7 @@ func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*ac
 	if !ok {
 		return nil, authndomain.ErrCredentialMissing
 	}
-	routeAccess, err := s.repo.LoadRouteAccess(ctx, principal.SystemUserID())
+	routeAccess, err := s.svc.LoadRouteAccess(ctx, principal.SystemUserID())
 	if err != nil {
 		return nil, err
 	}
@@ -337,18 +328,9 @@ func (s *MenuApplication) UpdateMenu(ctx context.Context, req *accessv1.UpdateMe
 		Ext:        current.GetExt(),
 		UpdateBy:   auditActor(ctx),
 	}
-	if m.ParentID == m.ID {
-		return nil, accessdomain.ErrMenuParentInvalid
-	}
-	if err := accessservice.ValidateMenuType(m.MenuType); err != nil {
-		return nil, err
-	}
-	if err := accessservice.AssertSiblingNameUnique(ctx, s.repo, m, true); err != nil {
-		return nil, err
-	}
 	var updated *accessentity.Menu
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		result, err := s.repo.UpdateMenu(ctx, m)
+		result, err := s.svc.Update(ctx, m)
 		if err != nil {
 			return err
 		}
@@ -367,15 +349,8 @@ func (s *MenuApplication) UpdateMenu(ctx context.Context, req *accessv1.UpdateMe
 // soft delete removes its role links and revokes affected users' Login
 // Sessions in one transaction.
 func (s *MenuApplication) DeleteMenu(ctx context.Context, req *accessv1.DeleteMenuRequest) (*emptypb.Empty, error) {
-	has, err := s.repo.HasChildren(ctx, req.GetMenuId())
-	if err != nil {
-		return nil, err
-	}
-	if has {
-		return nil, accessdomain.ErrMenuHasChildren
-	}
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.repo.DeleteMenu(ctx, req.GetMenuId(), auditActor(ctx))
+		affected, err := s.svc.Delete(ctx, req.GetMenuId(), auditActor(ctx))
 		if err != nil {
 			return err
 		}
