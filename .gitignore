@@ -40,3 +40,4 @@ bin/
 *.swp
 RuoYi-Vue-Plus/*
 go-wind-admin/*
+/.zcode/
