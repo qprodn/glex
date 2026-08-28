@@ -87,7 +87,7 @@ export default {
     "全量替换：清空勾选即清空该角色的菜单授权；保存后需相关用户重新登录生效。",
   "pages.role.menuGrant.strictly": "父子联动",
   "pages.role.menuGrant.strictlyHint":
-    "开 = 勾选子菜单时父菜单不自动入授权（RuoYi 菜单联动显示）",
+    "开 = 勾选子菜单时父菜单不自动入授权",
   "pages.role.members": "成员",
   "pages.role.members.title": "成员 — {name}",
 

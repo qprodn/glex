@@ -109,7 +109,7 @@ const MenuGrantDrawer: React.FC<MenuGrantDrawerProps> = ({ role, onClose }) => {
             <span style={{ color: "rgba(0,0,0,0.45)" }}>
               {intl.formatMessage({
                 id: "pages.role.menuGrant.strictlyHint",
-                defaultMessage: "开 = 勾选子菜单时父菜单不自动入授权（RuoYi 菜单联动显示）",
+                defaultMessage: "开 = 勾选子菜单时父菜单不自动入授权",
               })}
             </span>
           </div>

@@ -70,7 +70,7 @@ func newLogger(handler slog.Handler) *slog.Logger {
 func main() {
 	flag.Parse()
 	logger := newLogger(
-		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			AddSource: true,
 			Level:     slog.LevelInfo,
 		}),
