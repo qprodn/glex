@@ -17,8 +17,11 @@ import (
 // atomically update the same sa-token keys as Manager. Upstream otherwise
 // supplies this value implicitly when Config.KeyPrefix is empty. It is the
 // project-owned part of the Redis key contract: the whole-graph integration
-// suites and operational tooling share it when addressing raw keys.
-const AuthManagerKeyPrefix = "satoken"
+// suites and operational tooling share it when addressing raw keys. It must
+// end with the separator colon — sa-token appends its sub-prefixes (token:,
+// account:, session:, …) verbatim, so a bare value concatenates into keys
+// like "satokentoken:<bearer>". Final layout: <namespace>satoken:token:<bearer>.
+const AuthManagerKeyPrefix = "satoken:"
 
 // NewAuthManager constructs the sa-token Manager after explicitly validating
 // the auth configuration. The Manager stays inside data; every caller above
