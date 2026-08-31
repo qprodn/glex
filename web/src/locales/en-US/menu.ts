@@ -5,5 +5,6 @@ export default {
   "menu.iam.user": "Users",
   "menu.iam.role": "Roles",
   "menu.iam.menu": "Menus",
+  "menu.iam.dict": "Dictionaries",
   "menu.monitor.online": "Online Sessions",
 };

@@ -5,6 +5,7 @@ import (
 
 	accessv1 "glex/api/access/v1"
 	authnv1 "glex/api/authn/v1"
+	dictv1 "glex/api/dict/v1"
 	userv1 "glex/api/user/v1"
 	authnrepo "glex/internal/domain/authn/repository"
 	authmw "glex/pkg/middleware/auth"
@@ -37,6 +38,20 @@ func authRoutes() map[string]authmw.Route {
 		accessv1.OperationRoleAssignmentServiceListUserRoles:   {Permission: "system:user:query"},
 		accessv1.OperationRoleAssignmentServiceUpdateUserRoles: {Permission: "system:user:edit"},
 		accessv1.OperationRoleAssignmentServiceListRoleUsers:   {Permission: "system:role:list"},
+
+		dictv1.OperationDictServiceCreateDictType:       {Permission: "system:dict:add"},
+		dictv1.OperationDictServiceGetDictType:          {Permission: "system:dict:query"},
+		dictv1.OperationDictServiceListDictTypes:        {Permission: "system:dict:list"},
+		dictv1.OperationDictServiceUpdateDictType:       {Permission: "system:dict:edit"},
+		dictv1.OperationDictServiceDeleteDictType:       {Permission: "system:dict:remove"},
+		dictv1.OperationDictServiceCreateDictEntry:      {Permission: "system:dict:add"},
+		dictv1.OperationDictServiceGetDictEntry:         {Permission: "system:dict:query"},
+		dictv1.OperationDictServiceListDictEntries:      {Permission: "system:dict:list"},
+		dictv1.OperationDictServiceUpdateDictEntry:      {Permission: "system:dict:edit"},
+		dictv1.OperationDictServiceDeleteDictEntry:      {Permission: "system:dict:remove"},
+		// The consumption read every page's selects and status tags use:
+		// login required, no Functional Permission (GetInfo's pattern).
+		dictv1.OperationDictServiceListDictEntriesByType: {Login: true},
 
 		authnv1.OperationOnlineSessionServiceListOnlineSessions:    {Permission: "monitor:online:list"},
 		authnv1.OperationOnlineSessionServiceKickoutOnlineSession:  {Permission: "monitor:online:forceLogout"},

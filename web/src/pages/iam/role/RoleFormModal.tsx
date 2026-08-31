@@ -1,4 +1,5 @@
 import type { Role } from "@/services/access/v1";
+import { numericOptions, useDict } from "@/hooks/useDict";
 import { services } from "@/services";
 import { collectUpdateMask } from "@/utils/fieldMask";
 import {
@@ -29,6 +30,7 @@ const EDITABLE_FIELDS = [
 const RoleFormModal: React.FC<RoleFormModalProps> = ({ open, record, onClose }) => {
   const intl = useIntl();
   const { message } = App.useApp();
+  const statusOptions = useDict("sys_normal_disable");
   const isEdit = Boolean(record);
 
   return (
@@ -94,10 +96,7 @@ const RoleFormModal: React.FC<RoleFormModalProps> = ({ open, record, onClose }) 
       <ProFormRadio.Group
         name="status"
         label={intl.formatMessage({ id: "common.status", defaultMessage: "状态" })}
-        options={[
-          { value: 0, label: intl.formatMessage({ id: "common.status.normal", defaultMessage: "正常" }) },
-          { value: 1, label: intl.formatMessage({ id: "common.status.disabled", defaultMessage: "停用" }) },
-        ]}
+        options={numericOptions(statusOptions)}
       />
       <ProFormTextArea
         name="remark"

@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"glex/internal/infra/ent/dictdata"
+	"glex/internal/infra/ent/dicttype"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/predicate"
 	"glex/internal/infra/ent/role"
@@ -28,12 +30,1945 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
+	TypeDictData = "DictData"
+	TypeDictType = "DictType"
 	TypeMenu     = "Menu"
 	TypeRole     = "Role"
 	TypeRoleMenu = "RoleMenu"
 	TypeUser     = "User"
 	TypeUserRole = "UserRole"
 )
+
+// DictDataMutation represents an operation that mutates the DictData nodes in the graph.
+type DictDataMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int64
+	create_by     *int64
+	addcreate_by  *int64
+	update_by     *int64
+	addupdate_by  *int64
+	created_at    *time.Time
+	updated_at    *time.Time
+	deleted_at    *time.Time
+	dict_sort     *int
+	adddict_sort  *int
+	dict_label    *string
+	dict_value    *string
+	dict_type     *string
+	list_class    *string
+	is_default    *bool
+	remark        *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*DictData, error)
+	predicates    []predicate.DictData
+}
+
+var _ ent.Mutation = (*DictDataMutation)(nil)
+
+// dictdataOption allows management of the mutation configuration using functional options.
+type dictdataOption func(*DictDataMutation)
+
+// newDictDataMutation creates new mutation for the DictData entity.
+func newDictDataMutation(c config, op Op, opts ...dictdataOption) *DictDataMutation {
+	m := &DictDataMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDictData,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDictDataID sets the ID field of the mutation.
+func withDictDataID(id int64) dictdataOption {
+	return func(m *DictDataMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DictData
+		)
+		m.oldValue = func(ctx context.Context) (*DictData, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DictData.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDictData sets the old DictData of the mutation.
+func withDictData(node *DictData) dictdataOption {
+	return func(m *DictDataMutation) {
+		m.oldValue = func(context.Context) (*DictData, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DictDataMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DictDataMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of DictData entities.
+func (m *DictDataMutation) SetID(id int64) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DictDataMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DictDataMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DictData.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreateBy sets the "create_by" field.
+func (m *DictDataMutation) SetCreateBy(i int64) {
+	m.create_by = &i
+	m.addcreate_by = nil
+}
+
+// CreateBy returns the value of the "create_by" field in the mutation.
+func (m *DictDataMutation) CreateBy() (r int64, exists bool) {
+	v := m.create_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreateBy returns the old "create_by" field's value of the DictData entity.
+// If the DictData object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictDataMutation) OldCreateBy(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreateBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreateBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreateBy: %w", err)
+	}
+	return oldValue.CreateBy, nil
+}
+
+// AddCreateBy adds i to the "create_by" field.
+func (m *DictDataMutation) AddCreateBy(i int64) {
+	if m.addcreate_by != nil {
+		*m.addcreate_by += i
+	} else {
+		m.addcreate_by = &i
+	}
+}
+
+// AddedCreateBy returns the value that was added to the "create_by" field in this mutation.
+func (m *DictDataMutation) AddedCreateBy() (r int64, exists bool) {
+	v := m.addcreate_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearCreateBy clears the value of the "create_by" field.
+func (m *DictDataMutation) ClearCreateBy() {
+	m.create_by = nil
+	m.addcreate_by = nil
+	m.clearedFields[dictdata.FieldCreateBy] = struct{}{}
+}
+
+// CreateByCleared returns if the "create_by" field was cleared in this mutation.
+func (m *DictDataMutation) CreateByCleared() bool {
+	_, ok := m.clearedFields[dictdata.FieldCreateBy]
+	return ok
+}
+
+// ResetCreateBy resets all changes to the "create_by" field.
+func (m *DictDataMutation) ResetCreateBy() {
+	m.create_by = nil
+	m.addcreate_by = nil
+	delete(m.clearedFields, dictdata.FieldCreateBy)
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (m *DictDataMutation) SetUpdateBy(i int64) {
+	m.update_by = &i
+	m.addupdate_by = nil
+}
+
+// UpdateBy returns the value of the "update_by" field in the mutation.
+func (m *DictDataMutation) UpdateBy() (r int64, exists bool) {
+	v := m.update_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdateBy returns the old "update_by" field's value of the DictData entity.
+// If the DictData object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictDataMutation) OldUpdateBy(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdateBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdateBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdateBy: %w", err)
+	}
+	return oldValue.UpdateBy, nil
+}
+
+// AddUpdateBy adds i to the "update_by" field.
+func (m *DictDataMutation) AddUpdateBy(i int64) {
+	if m.addupdate_by != nil {
+		*m.addupdate_by += i
+	} else {
+		m.addupdate_by = &i
+	}
+}
+
+// AddedUpdateBy returns the value that was added to the "update_by" field in this mutation.
+func (m *DictDataMutation) AddedUpdateBy() (r int64, exists bool) {
+	v := m.addupdate_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearUpdateBy clears the value of the "update_by" field.
+func (m *DictDataMutation) ClearUpdateBy() {
+	m.update_by = nil
+	m.addupdate_by = nil
+	m.clearedFields[dictdata.FieldUpdateBy] = struct{}{}
+}
+
+// UpdateByCleared returns if the "update_by" field was cleared in this mutation.
+func (m *DictDataMutation) UpdateByCleared() bool {
+	_, ok := m.clearedFields[dictdata.FieldUpdateBy]
+	return ok
+}
+
+// ResetUpdateBy resets all changes to the "update_by" field.
+func (m *DictDataMutation) ResetUpdateBy() {
+	m.update_by = nil
+	m.addupdate_by = nil
+	delete(m.clearedFields, dictdata.FieldUpdateBy)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *DictDataMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *DictDataMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the DictData entity.
+// If the DictData object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictDataMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *DictDataMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *DictDataMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *DictDataMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the DictData entity.
+// If the DictData object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictDataMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *DictDataMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *DictDataMutation) SetDeletedAt(t time.Time) {
+	m.deleted_at = &t
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *DictDataMutation) DeletedAt() (r time.Time, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the DictData entity.
+// If the DictData object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictDataMutation) OldDeletedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (m *DictDataMutation) ClearDeletedAt() {
+	m.deleted_at = nil
+	m.clearedFields[dictdata.FieldDeletedAt] = struct{}{}
+}
+
+// DeletedAtCleared returns if the "deleted_at" field was cleared in this mutation.
+func (m *DictDataMutation) DeletedAtCleared() bool {
+	_, ok := m.clearedFields[dictdata.FieldDeletedAt]
+	return ok
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *DictDataMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	delete(m.clearedFields, dictdata.FieldDeletedAt)
+}
+
+// SetDictSort sets the "dict_sort" field.
+func (m *DictDataMutation) SetDictSort(i int) {
+	m.dict_sort = &i
+	m.adddict_sort = nil
+}
+
+// DictSort returns the value of the "dict_sort" field in the mutation.
+func (m *DictDataMutation) DictSort() (r int, exists bool) {
+	v := m.dict_sort
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDictSort returns the old "dict_sort" field's value of the DictData entity.
+// If the DictData object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictDataMutation) OldDictSort(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDictSort is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDictSort requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDictSort: %w", err)
+	}
+	return oldValue.DictSort, nil
+}
+
+// AddDictSort adds i to the "dict_sort" field.
+func (m *DictDataMutation) AddDictSort(i int) {
+	if m.adddict_sort != nil {
+		*m.adddict_sort += i
+	} else {
+		m.adddict_sort = &i
+	}
+}
+
+// AddedDictSort returns the value that was added to the "dict_sort" field in this mutation.
+func (m *DictDataMutation) AddedDictSort() (r int, exists bool) {
+	v := m.adddict_sort
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDictSort resets all changes to the "dict_sort" field.
+func (m *DictDataMutation) ResetDictSort() {
+	m.dict_sort = nil
+	m.adddict_sort = nil
+}
+
+// SetDictLabel sets the "dict_label" field.
+func (m *DictDataMutation) SetDictLabel(s string) {
+	m.dict_label = &s
+}
+
+// DictLabel returns the value of the "dict_label" field in the mutation.
+func (m *DictDataMutation) DictLabel() (r string, exists bool) {
+	v := m.dict_label
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDictLabel returns the old "dict_label" field's value of the DictData entity.
+// If the DictData object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictDataMutation) OldDictLabel(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDictLabel is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDictLabel requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDictLabel: %w", err)
+	}
+	return oldValue.DictLabel, nil
+}
+
+// ResetDictLabel resets all changes to the "dict_label" field.
+func (m *DictDataMutation) ResetDictLabel() {
+	m.dict_label = nil
+}
+
+// SetDictValue sets the "dict_value" field.
+func (m *DictDataMutation) SetDictValue(s string) {
+	m.dict_value = &s
+}
+
+// DictValue returns the value of the "dict_value" field in the mutation.
+func (m *DictDataMutation) DictValue() (r string, exists bool) {
+	v := m.dict_value
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDictValue returns the old "dict_value" field's value of the DictData entity.
+// If the DictData object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictDataMutation) OldDictValue(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDictValue is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDictValue requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDictValue: %w", err)
+	}
+	return oldValue.DictValue, nil
+}
+
+// ResetDictValue resets all changes to the "dict_value" field.
+func (m *DictDataMutation) ResetDictValue() {
+	m.dict_value = nil
+}
+
+// SetDictType sets the "dict_type" field.
+func (m *DictDataMutation) SetDictType(s string) {
+	m.dict_type = &s
+}
+
+// DictType returns the value of the "dict_type" field in the mutation.
+func (m *DictDataMutation) DictType() (r string, exists bool) {
+	v := m.dict_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDictType returns the old "dict_type" field's value of the DictData entity.
+// If the DictData object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictDataMutation) OldDictType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDictType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDictType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDictType: %w", err)
+	}
+	return oldValue.DictType, nil
+}
+
+// ResetDictType resets all changes to the "dict_type" field.
+func (m *DictDataMutation) ResetDictType() {
+	m.dict_type = nil
+}
+
+// SetListClass sets the "list_class" field.
+func (m *DictDataMutation) SetListClass(s string) {
+	m.list_class = &s
+}
+
+// ListClass returns the value of the "list_class" field in the mutation.
+func (m *DictDataMutation) ListClass() (r string, exists bool) {
+	v := m.list_class
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldListClass returns the old "list_class" field's value of the DictData entity.
+// If the DictData object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictDataMutation) OldListClass(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldListClass is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldListClass requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldListClass: %w", err)
+	}
+	return oldValue.ListClass, nil
+}
+
+// ResetListClass resets all changes to the "list_class" field.
+func (m *DictDataMutation) ResetListClass() {
+	m.list_class = nil
+}
+
+// SetIsDefault sets the "is_default" field.
+func (m *DictDataMutation) SetIsDefault(b bool) {
+	m.is_default = &b
+}
+
+// IsDefault returns the value of the "is_default" field in the mutation.
+func (m *DictDataMutation) IsDefault() (r bool, exists bool) {
+	v := m.is_default
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsDefault returns the old "is_default" field's value of the DictData entity.
+// If the DictData object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictDataMutation) OldIsDefault(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsDefault is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsDefault requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsDefault: %w", err)
+	}
+	return oldValue.IsDefault, nil
+}
+
+// ResetIsDefault resets all changes to the "is_default" field.
+func (m *DictDataMutation) ResetIsDefault() {
+	m.is_default = nil
+}
+
+// SetRemark sets the "remark" field.
+func (m *DictDataMutation) SetRemark(s string) {
+	m.remark = &s
+}
+
+// Remark returns the value of the "remark" field in the mutation.
+func (m *DictDataMutation) Remark() (r string, exists bool) {
+	v := m.remark
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRemark returns the old "remark" field's value of the DictData entity.
+// If the DictData object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictDataMutation) OldRemark(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRemark is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRemark requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRemark: %w", err)
+	}
+	return oldValue.Remark, nil
+}
+
+// ResetRemark resets all changes to the "remark" field.
+func (m *DictDataMutation) ResetRemark() {
+	m.remark = nil
+}
+
+// Where appends a list predicates to the DictDataMutation builder.
+func (m *DictDataMutation) Where(ps ...predicate.DictData) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DictDataMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DictDataMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DictData, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DictDataMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DictDataMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DictData).
+func (m *DictDataMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DictDataMutation) Fields() []string {
+	fields := make([]string, 0, 12)
+	if m.create_by != nil {
+		fields = append(fields, dictdata.FieldCreateBy)
+	}
+	if m.update_by != nil {
+		fields = append(fields, dictdata.FieldUpdateBy)
+	}
+	if m.created_at != nil {
+		fields = append(fields, dictdata.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, dictdata.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, dictdata.FieldDeletedAt)
+	}
+	if m.dict_sort != nil {
+		fields = append(fields, dictdata.FieldDictSort)
+	}
+	if m.dict_label != nil {
+		fields = append(fields, dictdata.FieldDictLabel)
+	}
+	if m.dict_value != nil {
+		fields = append(fields, dictdata.FieldDictValue)
+	}
+	if m.dict_type != nil {
+		fields = append(fields, dictdata.FieldDictType)
+	}
+	if m.list_class != nil {
+		fields = append(fields, dictdata.FieldListClass)
+	}
+	if m.is_default != nil {
+		fields = append(fields, dictdata.FieldIsDefault)
+	}
+	if m.remark != nil {
+		fields = append(fields, dictdata.FieldRemark)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DictDataMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case dictdata.FieldCreateBy:
+		return m.CreateBy()
+	case dictdata.FieldUpdateBy:
+		return m.UpdateBy()
+	case dictdata.FieldCreatedAt:
+		return m.CreatedAt()
+	case dictdata.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case dictdata.FieldDeletedAt:
+		return m.DeletedAt()
+	case dictdata.FieldDictSort:
+		return m.DictSort()
+	case dictdata.FieldDictLabel:
+		return m.DictLabel()
+	case dictdata.FieldDictValue:
+		return m.DictValue()
+	case dictdata.FieldDictType:
+		return m.DictType()
+	case dictdata.FieldListClass:
+		return m.ListClass()
+	case dictdata.FieldIsDefault:
+		return m.IsDefault()
+	case dictdata.FieldRemark:
+		return m.Remark()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DictDataMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case dictdata.FieldCreateBy:
+		return m.OldCreateBy(ctx)
+	case dictdata.FieldUpdateBy:
+		return m.OldUpdateBy(ctx)
+	case dictdata.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case dictdata.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case dictdata.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case dictdata.FieldDictSort:
+		return m.OldDictSort(ctx)
+	case dictdata.FieldDictLabel:
+		return m.OldDictLabel(ctx)
+	case dictdata.FieldDictValue:
+		return m.OldDictValue(ctx)
+	case dictdata.FieldDictType:
+		return m.OldDictType(ctx)
+	case dictdata.FieldListClass:
+		return m.OldListClass(ctx)
+	case dictdata.FieldIsDefault:
+		return m.OldIsDefault(ctx)
+	case dictdata.FieldRemark:
+		return m.OldRemark(ctx)
+	}
+	return nil, fmt.Errorf("unknown DictData field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DictDataMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case dictdata.FieldCreateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreateBy(v)
+		return nil
+	case dictdata.FieldUpdateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdateBy(v)
+		return nil
+	case dictdata.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case dictdata.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case dictdata.FieldDeletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case dictdata.FieldDictSort:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDictSort(v)
+		return nil
+	case dictdata.FieldDictLabel:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDictLabel(v)
+		return nil
+	case dictdata.FieldDictValue:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDictValue(v)
+		return nil
+	case dictdata.FieldDictType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDictType(v)
+		return nil
+	case dictdata.FieldListClass:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetListClass(v)
+		return nil
+	case dictdata.FieldIsDefault:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsDefault(v)
+		return nil
+	case dictdata.FieldRemark:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRemark(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DictData field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DictDataMutation) AddedFields() []string {
+	var fields []string
+	if m.addcreate_by != nil {
+		fields = append(fields, dictdata.FieldCreateBy)
+	}
+	if m.addupdate_by != nil {
+		fields = append(fields, dictdata.FieldUpdateBy)
+	}
+	if m.adddict_sort != nil {
+		fields = append(fields, dictdata.FieldDictSort)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DictDataMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case dictdata.FieldCreateBy:
+		return m.AddedCreateBy()
+	case dictdata.FieldUpdateBy:
+		return m.AddedUpdateBy()
+	case dictdata.FieldDictSort:
+		return m.AddedDictSort()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DictDataMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case dictdata.FieldCreateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCreateBy(v)
+		return nil
+	case dictdata.FieldUpdateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddUpdateBy(v)
+		return nil
+	case dictdata.FieldDictSort:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDictSort(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DictData numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DictDataMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(dictdata.FieldCreateBy) {
+		fields = append(fields, dictdata.FieldCreateBy)
+	}
+	if m.FieldCleared(dictdata.FieldUpdateBy) {
+		fields = append(fields, dictdata.FieldUpdateBy)
+	}
+	if m.FieldCleared(dictdata.FieldDeletedAt) {
+		fields = append(fields, dictdata.FieldDeletedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DictDataMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DictDataMutation) ClearField(name string) error {
+	switch name {
+	case dictdata.FieldCreateBy:
+		m.ClearCreateBy()
+		return nil
+	case dictdata.FieldUpdateBy:
+		m.ClearUpdateBy()
+		return nil
+	case dictdata.FieldDeletedAt:
+		m.ClearDeletedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown DictData nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DictDataMutation) ResetField(name string) error {
+	switch name {
+	case dictdata.FieldCreateBy:
+		m.ResetCreateBy()
+		return nil
+	case dictdata.FieldUpdateBy:
+		m.ResetUpdateBy()
+		return nil
+	case dictdata.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case dictdata.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case dictdata.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case dictdata.FieldDictSort:
+		m.ResetDictSort()
+		return nil
+	case dictdata.FieldDictLabel:
+		m.ResetDictLabel()
+		return nil
+	case dictdata.FieldDictValue:
+		m.ResetDictValue()
+		return nil
+	case dictdata.FieldDictType:
+		m.ResetDictType()
+		return nil
+	case dictdata.FieldListClass:
+		m.ResetListClass()
+		return nil
+	case dictdata.FieldIsDefault:
+		m.ResetIsDefault()
+		return nil
+	case dictdata.FieldRemark:
+		m.ResetRemark()
+		return nil
+	}
+	return fmt.Errorf("unknown DictData field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DictDataMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DictDataMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DictDataMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DictDataMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DictDataMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DictDataMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DictDataMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown DictData unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DictDataMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown DictData edge %s", name)
+}
+
+// DictTypeMutation represents an operation that mutates the DictType nodes in the graph.
+type DictTypeMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int64
+	create_by     *int64
+	addcreate_by  *int64
+	update_by     *int64
+	addupdate_by  *int64
+	created_at    *time.Time
+	updated_at    *time.Time
+	deleted_at    *time.Time
+	dict_name     *string
+	dict_type     *string
+	remark        *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*DictType, error)
+	predicates    []predicate.DictType
+}
+
+var _ ent.Mutation = (*DictTypeMutation)(nil)
+
+// dicttypeOption allows management of the mutation configuration using functional options.
+type dicttypeOption func(*DictTypeMutation)
+
+// newDictTypeMutation creates new mutation for the DictType entity.
+func newDictTypeMutation(c config, op Op, opts ...dicttypeOption) *DictTypeMutation {
+	m := &DictTypeMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDictType,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDictTypeID sets the ID field of the mutation.
+func withDictTypeID(id int64) dicttypeOption {
+	return func(m *DictTypeMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DictType
+		)
+		m.oldValue = func(ctx context.Context) (*DictType, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DictType.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDictType sets the old DictType of the mutation.
+func withDictType(node *DictType) dicttypeOption {
+	return func(m *DictTypeMutation) {
+		m.oldValue = func(context.Context) (*DictType, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DictTypeMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DictTypeMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of DictType entities.
+func (m *DictTypeMutation) SetID(id int64) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DictTypeMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DictTypeMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DictType.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreateBy sets the "create_by" field.
+func (m *DictTypeMutation) SetCreateBy(i int64) {
+	m.create_by = &i
+	m.addcreate_by = nil
+}
+
+// CreateBy returns the value of the "create_by" field in the mutation.
+func (m *DictTypeMutation) CreateBy() (r int64, exists bool) {
+	v := m.create_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreateBy returns the old "create_by" field's value of the DictType entity.
+// If the DictType object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictTypeMutation) OldCreateBy(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreateBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreateBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreateBy: %w", err)
+	}
+	return oldValue.CreateBy, nil
+}
+
+// AddCreateBy adds i to the "create_by" field.
+func (m *DictTypeMutation) AddCreateBy(i int64) {
+	if m.addcreate_by != nil {
+		*m.addcreate_by += i
+	} else {
+		m.addcreate_by = &i
+	}
+}
+
+// AddedCreateBy returns the value that was added to the "create_by" field in this mutation.
+func (m *DictTypeMutation) AddedCreateBy() (r int64, exists bool) {
+	v := m.addcreate_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearCreateBy clears the value of the "create_by" field.
+func (m *DictTypeMutation) ClearCreateBy() {
+	m.create_by = nil
+	m.addcreate_by = nil
+	m.clearedFields[dicttype.FieldCreateBy] = struct{}{}
+}
+
+// CreateByCleared returns if the "create_by" field was cleared in this mutation.
+func (m *DictTypeMutation) CreateByCleared() bool {
+	_, ok := m.clearedFields[dicttype.FieldCreateBy]
+	return ok
+}
+
+// ResetCreateBy resets all changes to the "create_by" field.
+func (m *DictTypeMutation) ResetCreateBy() {
+	m.create_by = nil
+	m.addcreate_by = nil
+	delete(m.clearedFields, dicttype.FieldCreateBy)
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (m *DictTypeMutation) SetUpdateBy(i int64) {
+	m.update_by = &i
+	m.addupdate_by = nil
+}
+
+// UpdateBy returns the value of the "update_by" field in the mutation.
+func (m *DictTypeMutation) UpdateBy() (r int64, exists bool) {
+	v := m.update_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdateBy returns the old "update_by" field's value of the DictType entity.
+// If the DictType object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictTypeMutation) OldUpdateBy(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdateBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdateBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdateBy: %w", err)
+	}
+	return oldValue.UpdateBy, nil
+}
+
+// AddUpdateBy adds i to the "update_by" field.
+func (m *DictTypeMutation) AddUpdateBy(i int64) {
+	if m.addupdate_by != nil {
+		*m.addupdate_by += i
+	} else {
+		m.addupdate_by = &i
+	}
+}
+
+// AddedUpdateBy returns the value that was added to the "update_by" field in this mutation.
+func (m *DictTypeMutation) AddedUpdateBy() (r int64, exists bool) {
+	v := m.addupdate_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearUpdateBy clears the value of the "update_by" field.
+func (m *DictTypeMutation) ClearUpdateBy() {
+	m.update_by = nil
+	m.addupdate_by = nil
+	m.clearedFields[dicttype.FieldUpdateBy] = struct{}{}
+}
+
+// UpdateByCleared returns if the "update_by" field was cleared in this mutation.
+func (m *DictTypeMutation) UpdateByCleared() bool {
+	_, ok := m.clearedFields[dicttype.FieldUpdateBy]
+	return ok
+}
+
+// ResetUpdateBy resets all changes to the "update_by" field.
+func (m *DictTypeMutation) ResetUpdateBy() {
+	m.update_by = nil
+	m.addupdate_by = nil
+	delete(m.clearedFields, dicttype.FieldUpdateBy)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *DictTypeMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *DictTypeMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the DictType entity.
+// If the DictType object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictTypeMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *DictTypeMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *DictTypeMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *DictTypeMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the DictType entity.
+// If the DictType object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictTypeMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *DictTypeMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *DictTypeMutation) SetDeletedAt(t time.Time) {
+	m.deleted_at = &t
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *DictTypeMutation) DeletedAt() (r time.Time, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the DictType entity.
+// If the DictType object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictTypeMutation) OldDeletedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (m *DictTypeMutation) ClearDeletedAt() {
+	m.deleted_at = nil
+	m.clearedFields[dicttype.FieldDeletedAt] = struct{}{}
+}
+
+// DeletedAtCleared returns if the "deleted_at" field was cleared in this mutation.
+func (m *DictTypeMutation) DeletedAtCleared() bool {
+	_, ok := m.clearedFields[dicttype.FieldDeletedAt]
+	return ok
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *DictTypeMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	delete(m.clearedFields, dicttype.FieldDeletedAt)
+}
+
+// SetDictName sets the "dict_name" field.
+func (m *DictTypeMutation) SetDictName(s string) {
+	m.dict_name = &s
+}
+
+// DictName returns the value of the "dict_name" field in the mutation.
+func (m *DictTypeMutation) DictName() (r string, exists bool) {
+	v := m.dict_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDictName returns the old "dict_name" field's value of the DictType entity.
+// If the DictType object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictTypeMutation) OldDictName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDictName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDictName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDictName: %w", err)
+	}
+	return oldValue.DictName, nil
+}
+
+// ResetDictName resets all changes to the "dict_name" field.
+func (m *DictTypeMutation) ResetDictName() {
+	m.dict_name = nil
+}
+
+// SetDictType sets the "dict_type" field.
+func (m *DictTypeMutation) SetDictType(s string) {
+	m.dict_type = &s
+}
+
+// DictType returns the value of the "dict_type" field in the mutation.
+func (m *DictTypeMutation) DictType() (r string, exists bool) {
+	v := m.dict_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDictType returns the old "dict_type" field's value of the DictType entity.
+// If the DictType object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictTypeMutation) OldDictType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDictType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDictType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDictType: %w", err)
+	}
+	return oldValue.DictType, nil
+}
+
+// ResetDictType resets all changes to the "dict_type" field.
+func (m *DictTypeMutation) ResetDictType() {
+	m.dict_type = nil
+}
+
+// SetRemark sets the "remark" field.
+func (m *DictTypeMutation) SetRemark(s string) {
+	m.remark = &s
+}
+
+// Remark returns the value of the "remark" field in the mutation.
+func (m *DictTypeMutation) Remark() (r string, exists bool) {
+	v := m.remark
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRemark returns the old "remark" field's value of the DictType entity.
+// If the DictType object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictTypeMutation) OldRemark(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRemark is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRemark requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRemark: %w", err)
+	}
+	return oldValue.Remark, nil
+}
+
+// ResetRemark resets all changes to the "remark" field.
+func (m *DictTypeMutation) ResetRemark() {
+	m.remark = nil
+}
+
+// Where appends a list predicates to the DictTypeMutation builder.
+func (m *DictTypeMutation) Where(ps ...predicate.DictType) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DictTypeMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DictTypeMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DictType, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DictTypeMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DictTypeMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DictType).
+func (m *DictTypeMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DictTypeMutation) Fields() []string {
+	fields := make([]string, 0, 8)
+	if m.create_by != nil {
+		fields = append(fields, dicttype.FieldCreateBy)
+	}
+	if m.update_by != nil {
+		fields = append(fields, dicttype.FieldUpdateBy)
+	}
+	if m.created_at != nil {
+		fields = append(fields, dicttype.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, dicttype.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, dicttype.FieldDeletedAt)
+	}
+	if m.dict_name != nil {
+		fields = append(fields, dicttype.FieldDictName)
+	}
+	if m.dict_type != nil {
+		fields = append(fields, dicttype.FieldDictType)
+	}
+	if m.remark != nil {
+		fields = append(fields, dicttype.FieldRemark)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DictTypeMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case dicttype.FieldCreateBy:
+		return m.CreateBy()
+	case dicttype.FieldUpdateBy:
+		return m.UpdateBy()
+	case dicttype.FieldCreatedAt:
+		return m.CreatedAt()
+	case dicttype.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case dicttype.FieldDeletedAt:
+		return m.DeletedAt()
+	case dicttype.FieldDictName:
+		return m.DictName()
+	case dicttype.FieldDictType:
+		return m.DictType()
+	case dicttype.FieldRemark:
+		return m.Remark()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DictTypeMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case dicttype.FieldCreateBy:
+		return m.OldCreateBy(ctx)
+	case dicttype.FieldUpdateBy:
+		return m.OldUpdateBy(ctx)
+	case dicttype.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case dicttype.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case dicttype.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case dicttype.FieldDictName:
+		return m.OldDictName(ctx)
+	case dicttype.FieldDictType:
+		return m.OldDictType(ctx)
+	case dicttype.FieldRemark:
+		return m.OldRemark(ctx)
+	}
+	return nil, fmt.Errorf("unknown DictType field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DictTypeMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case dicttype.FieldCreateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreateBy(v)
+		return nil
+	case dicttype.FieldUpdateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdateBy(v)
+		return nil
+	case dicttype.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case dicttype.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case dicttype.FieldDeletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case dicttype.FieldDictName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDictName(v)
+		return nil
+	case dicttype.FieldDictType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDictType(v)
+		return nil
+	case dicttype.FieldRemark:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRemark(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DictType field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DictTypeMutation) AddedFields() []string {
+	var fields []string
+	if m.addcreate_by != nil {
+		fields = append(fields, dicttype.FieldCreateBy)
+	}
+	if m.addupdate_by != nil {
+		fields = append(fields, dicttype.FieldUpdateBy)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DictTypeMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case dicttype.FieldCreateBy:
+		return m.AddedCreateBy()
+	case dicttype.FieldUpdateBy:
+		return m.AddedUpdateBy()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DictTypeMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case dicttype.FieldCreateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCreateBy(v)
+		return nil
+	case dicttype.FieldUpdateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddUpdateBy(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DictType numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DictTypeMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(dicttype.FieldCreateBy) {
+		fields = append(fields, dicttype.FieldCreateBy)
+	}
+	if m.FieldCleared(dicttype.FieldUpdateBy) {
+		fields = append(fields, dicttype.FieldUpdateBy)
+	}
+	if m.FieldCleared(dicttype.FieldDeletedAt) {
+		fields = append(fields, dicttype.FieldDeletedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DictTypeMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DictTypeMutation) ClearField(name string) error {
+	switch name {
+	case dicttype.FieldCreateBy:
+		m.ClearCreateBy()
+		return nil
+	case dicttype.FieldUpdateBy:
+		m.ClearUpdateBy()
+		return nil
+	case dicttype.FieldDeletedAt:
+		m.ClearDeletedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown DictType nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DictTypeMutation) ResetField(name string) error {
+	switch name {
+	case dicttype.FieldCreateBy:
+		m.ResetCreateBy()
+		return nil
+	case dicttype.FieldUpdateBy:
+		m.ResetUpdateBy()
+		return nil
+	case dicttype.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case dicttype.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case dicttype.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case dicttype.FieldDictName:
+		m.ResetDictName()
+		return nil
+	case dicttype.FieldDictType:
+		m.ResetDictType()
+		return nil
+	case dicttype.FieldRemark:
+		m.ResetRemark()
+		return nil
+	}
+	return fmt.Errorf("unknown DictType field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DictTypeMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DictTypeMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DictTypeMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DictTypeMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DictTypeMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DictTypeMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DictTypeMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown DictType unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DictTypeMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown DictType edge %s", name)
+}
 
 // MenuMutation represents an operation that mutates the Menu nodes in the graph.
 type MenuMutation struct {

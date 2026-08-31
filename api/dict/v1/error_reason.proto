@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dict.v1;
+
+option go_package = "glex/api/dict/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.dict.v1";
+
+// ErrorReason is the stable vocabulary for the `reason` field of the error
+// body. Values are wire-visible: protojson encodes them as their names, so
+// clients branch on the name (e.g. "DICT_TYPE_IN_USE") rather than on an HTTP
+// status. The integer tags are internal to the enum; only the names cross
+// the wire.
+enum ErrorReason {
+  // Unset. Never returned; reserved by proto3 for the zero value.
+  ERROR_REASON_UNSPECIFIED = 0;
+
+  // Dict Type reasons (DictService).
+  // The requested dict type does not exist (or is soft-deleted).
+  DICT_TYPE_NOT_FOUND = 1;
+  // The dict_type key already exists among active types.
+  DICT_TYPE_CONFLICT = 2;
+  // dict_name/dict_type is blank or the key violates ^[a-z][a-z0-9_]*$.
+  DICT_TYPE_INVALID = 3;
+  // The type still has active entries and cannot be deleted.
+  DICT_TYPE_IN_USE = 4;
+
+  // Dict Entry reasons (DictService).
+  // The requested entry does not exist (or is soft-deleted).
+  DICT_ENTRY_NOT_FOUND = 5;
+  // The (dict_type, dict_value) pair already exists among active entries.
+  DICT_ENTRY_CONFLICT = 6;
+  // dict_label/dict_value is blank or tag_style is not a valid preset.
+  DICT_ENTRY_INVALID = 7;
+}

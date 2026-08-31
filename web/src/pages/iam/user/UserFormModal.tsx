@@ -1,4 +1,5 @@
 import type { User } from "@/services/user/v1";
+import { numericOptions, useDict } from "@/hooks/useDict";
 import { services } from "@/services";
 import { collectUpdateMask } from "@/utils/fieldMask";
 import {
@@ -35,6 +36,8 @@ const EDITABLE_FIELDS = [
 const UserFormModal: React.FC<UserFormModalProps> = ({ open, record, onClose }) => {
   const intl = useIntl();
   const { message } = App.useApp();
+  const genderOptions = useDict("sys_user_gender");
+  const statusOptions = useDict("sys_normal_disable");
   const isEdit = Boolean(record);
 
   return (
@@ -151,19 +154,12 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ open, record, onClose }) 
       <ProFormRadio.Group
         name="gender"
         label={intl.formatMessage({ id: "common.gender", defaultMessage: "性别" })}
-        options={[
-          { value: 0, label: intl.formatMessage({ id: "common.gender.male", defaultMessage: "男" }) },
-          { value: 1, label: intl.formatMessage({ id: "common.gender.female", defaultMessage: "女" }) },
-          { value: 2, label: intl.formatMessage({ id: "common.gender.unknown", defaultMessage: "未知" }) },
-        ]}
+        options={numericOptions(genderOptions)}
       />
       <ProFormRadio.Group
         name="status"
         label={intl.formatMessage({ id: "common.status", defaultMessage: "状态" })}
-        options={[
-          { value: 0, label: intl.formatMessage({ id: "common.status.normal", defaultMessage: "正常" }) },
-          { value: 1, label: intl.formatMessage({ id: "common.status.disabled", defaultMessage: "停用" }) },
-        ]}
+        options={numericOptions(statusOptions)}
       />
       <ProFormTextArea
         name="remark"

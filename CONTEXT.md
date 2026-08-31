@@ -1,11 +1,14 @@
 # glex — Identity & Access
 
 The domain concerned with **who can operate the system, the navigation they see,
-and how their identity is established**. It is organized as three modules in one
-service: **user** (System User accounts), **access** (authorization — roles,
-menus, grants, and permission resolution), and **authn** (authentication —
-credentials, login sessions, and tokens), ported from RuoYi-Vue-Plus's
-`sys_user`, `sys_menu`, `sys_role`, and `sys_user_role`.
+how their identity is established, and the controlled vocabularies the back
+office renders choices from**. It is organized as four modules in one service:
+**user** (System User accounts), **access** (authorization — roles, menus,
+grants, and permission resolution), **authn** (authentication — credentials,
+login sessions, and tokens), and **dict** (dictionaries — the labeled option
+vocabularies pages render selects and status tags from), ported from
+RuoYi-Vue-Plus's `sys_user`, `sys_menu`, `sys_role`, `sys_user_role`,
+`sys_dict_type`, and `sys_dict_data`.
 
 ## Language
 
@@ -119,6 +122,24 @@ Resolution. A new login refreshes the shared snapshot; a Role Assignment or
 Menu Grant change makes it stale and requires all affected Login Sessions to
 end.
 _Avoid_: Permission Cache, Live Permissions.
+
+### dict
+
+**Dict Type** (字典类型):
+A named, system-wide vocabulary of labeled options, ported from RuoYi's
+`sys_dict_type` and identified by its key (`dict_type`, e.g.
+`sys_normal_disable`). The key is immutable once the type is created — it is
+referenced by pages and validations as an identifier — while the display name
+stays editable. A Dict Type that still has active Dict Entries cannot be
+withdrawn.
+_Avoid_: Dictionary, Enum, Config, Dict Category.
+
+**Dict Entry** (字典项):
+One labeled option inside a Dict Type: a machine value (`dict_value`), a
+display label, a sort position, a tag style, and a default flag. The pair
+(Dict Type key, value) is unique among active entries. Pages consume entries
+to render selects and status tags; sorting is by sort position.
+_Avoid_: Dict Data, Option, Enum Value, Dictionary Item.
 
 ### cross-module
 

@@ -1,0 +1,139 @@
+package dictinfra
+
+import (
+	"context"
+	"time"
+
+	"github.com/go-kratos/aip-go/ents"
+	"glex/internal/domain/dict"
+	dictentity "glex/internal/domain/dict/entity"
+	dictrepo "glex/internal/domain/dict/repository"
+	"glex/internal/infra/ent"
+	"glex/internal/infra/ent/dicttype"
+	"glex/internal/infra/store"
+)
+
+// toBizDictType maps an ent DictType PO to a dictentity.DictType DO.
+func toBizDictType(po *ent.DictType) *dictentity.DictType {
+	return &dictentity.DictType{
+		ID:        po.ID,
+		DictName:  po.DictName,
+		DictType:  po.DictType,
+		Remark:    po.Remark,
+		CreateBy:  po.CreateBy,
+		UpdateBy:  po.UpdateBy,
+		CreatedAt: po.CreatedAt,
+		UpdatedAt: po.UpdatedAt,
+	}
+}
+
+type dictTypeRepo struct {
+	data *store.Data
+}
+
+// NewDictTypeRepo creates a new DictTypeRepo instance.
+func NewDictTypeRepo(data *store.Data) dictrepo.DictTypeRepo {
+	return &dictTypeRepo{data: data}
+}
+
+func (r *dictTypeRepo) FindByID(ctx context.Context, id int64) (*dictentity.DictType, error) {
+	po, err := r.data.DB.DictType(ctx).Query().
+		Where(dicttype.IDEQ(id), dicttype.DeletedAtIsNil()).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, dict.ErrDictTypeNotFound
+		}
+		return nil, err
+	}
+	return toBizDictType(po), nil
+}
+
+func (r *dictTypeRepo) FindByKey(ctx context.Context, key string) (*dictentity.DictType, error) {
+	po, err := r.data.DB.DictType(ctx).Query().
+		Where(dicttype.DictTypeEQ(key), dicttype.DeletedAtIsNil()).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, dict.ErrDictTypeNotFound
+		}
+		return nil, err
+	}
+	return toBizDictType(po), nil
+}
+
+func (r *dictTypeRepo) List(ctx context.Context, opts ...dictrepo.ListOption) ([]*dictentity.DictType, error) {
+	o := dictrepo.ListOptions{Limit: 20}
+	for _, opt := range opts {
+		opt(&o)
+	}
+	pos, err := r.data.DB.DictType(ctx).Query().
+		Where(
+			dicttype.DeletedAtIsNil(),
+			ents.ApplyFilter(o.Filter),
+		).
+		Order(ents.ApplyOrderBy(o.OrderBy)).
+		Offset(o.Offset).
+		Limit(o.Limit).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	types := make([]*dictentity.DictType, 0, len(pos))
+	for _, po := range pos {
+		types = append(types, toBizDictType(po))
+	}
+	return types, nil
+}
+
+// CreateDictType inserts the type row. The caller owns the transaction; the
+// partial unique index on dict_type is the race-proof backstop behind the
+// service's friendly pre-check.
+func (r *dictTypeRepo) Create(ctx context.Context, t *dictentity.DictType) (*dictentity.DictType, error) {
+	po, err := r.data.DB.DictType(ctx).Create().
+		SetID(newSnowflakeID()).
+		SetDictName(t.DictName).
+		SetDictType(t.DictType).
+		SetRemark(t.Remark).
+		SetCreateBy(t.CreateBy).
+		SetUpdateBy(t.UpdateBy).
+		Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return toBizDictType(po), nil
+}
+
+// UpdateDictType applies the updatable fields (dict_name, remark; the key is
+// immutable — ADR 0006 — and never set here). The caller owns the
+// transaction.
+func (r *dictTypeRepo) Update(ctx context.Context, t *dictentity.DictType) (*dictentity.DictType, error) {
+	po, err := r.data.DB.DictType(ctx).UpdateOneID(t.ID).
+		SetDictName(t.DictName).
+		SetRemark(t.Remark).
+		SetUpdateBy(t.UpdateBy).
+		Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, dict.ErrDictTypeNotFound
+		}
+		return nil, err
+	}
+	return toBizDictType(po), nil
+}
+
+// DeleteDictType soft-deletes the type (ADR 0002 — no row is hard-deleted),
+// stamping actorID into the audit fields. The caller owns the transaction.
+func (r *dictTypeRepo) Delete(ctx context.Context, id, actorID int64) error {
+	err := r.data.DB.DictType(ctx).UpdateOneID(id).
+		SetDeletedAt(time.Now()).
+		SetUpdateBy(actorID).
+		Exec(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return dict.ErrDictTypeNotFound
+		}
+		return err
+	}
+	return nil
+}

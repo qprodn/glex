@@ -8,6 +8,30 @@ import (
 	"glex/internal/infra/ent"
 )
 
+// The DictDataFunc type is an adapter to allow the use of ordinary
+// function as DictData mutator.
+type DictDataFunc func(context.Context, *ent.DictDataMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DictDataFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DictDataMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DictDataMutation", m)
+}
+
+// The DictTypeFunc type is an adapter to allow the use of ordinary
+// function as DictType mutator.
+type DictTypeFunc func(context.Context, *ent.DictTypeMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DictTypeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DictTypeMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DictTypeMutation", m)
+}
+
 // The MenuFunc type is an adapter to allow the use of ordinary
 // function as Menu mutator.
 type MenuFunc func(context.Context, *ent.MenuMutation) (ent.Value, error)

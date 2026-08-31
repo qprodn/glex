@@ -1,4 +1,6 @@
 import type { User } from "@/services/user/v1";
+import { DictTag } from "@/components";
+import { useDict, valueEnumOf } from "@/hooks/useDict";
 import { services } from "@/services";
 import { buildFilter } from "@/utils/aipFilter";
 import { createTokenPagedRequest } from "@/utils/pager";
@@ -10,7 +12,7 @@ import {
   ProTable,
 } from "@ant-design/pro-components";
 import { Access, useAccess, useIntl } from "@umijs/max";
-import { App, Button, Modal, Tag, Typography } from "antd";
+import { App, Button, Modal, Typography } from "antd";
 import React, { useRef, useState } from "react";
 import RoleAssignDrawer from "./RoleAssignDrawer";
 import UserFormModal from "./UserFormModal";
@@ -20,6 +22,9 @@ const UserList: React.FC = () => {
   const access = useAccess();
   const intl = useIntl();
   const { message } = App.useApp();
+  // Dict-driven rendering: labels and tag colors come from the dict types,
+  // the single source of truth (no hardcoded fallback enum — see useDict).
+  const statusOptions = useDict("sys_normal_disable");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<User | undefined>();
   const [assignUser, setAssignUser] = useState<User | undefined>();
@@ -76,28 +81,15 @@ const UserList: React.FC = () => {
     {
       title: intl.formatMessage({ id: "common.gender", defaultMessage: "性别" }),
       dataIndex: "gender",
-      search: false,
-      valueEnum: {
-        0: { text: intl.formatMessage({ id: "common.gender.male", defaultMessage: "男" }) },
-        1: { text: intl.formatMessage({ id: "common.gender.female", defaultMessage: "女" }) },
-        2: { text: intl.formatMessage({ id: "common.gender.unknown", defaultMessage: "未知" }) },
-      },
+      search: false, // user ListUsers declares no gender filter field
+      render: (_, record) => <DictTag typeKey="sys_user_gender" value={record.gender} />,
     },
     {
       title: intl.formatMessage({ id: "common.status", defaultMessage: "状态" }),
       dataIndex: "status",
       valueType: "select",
-      valueEnum: {
-        0: { text: intl.formatMessage({ id: "common.status.normal", defaultMessage: "正常" }) },
-        1: { text: intl.formatMessage({ id: "common.status.disabled", defaultMessage: "停用" }) },
-      },
-      render: (_, record) => (
-        <Tag color={record.status === 0 ? "success" : "error"}>
-          {record.status === 0
-            ? intl.formatMessage({ id: "common.status.normal", defaultMessage: "正常" })
-            : intl.formatMessage({ id: "common.status.disabled", defaultMessage: "停用" })}
-        </Tag>
-      ),
+      valueEnum: valueEnumOf(statusOptions),
+      render: (_, record) => <DictTag typeKey="sys_normal_disable" value={record.status} />,
     },
     { title: intl.formatMessage({ id: "pages.user.loginIp", defaultMessage: "登录 IP" }), dataIndex: "loginIp", search: false },
     {

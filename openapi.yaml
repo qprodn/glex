@@ -41,6 +41,296 @@ paths:
                 "200":
                     description: OK
                     content: {}
+    /iam/dict/entries:
+        get:
+            tags:
+                - DictService
+            description: |-
+                ListDictEntries lists entries with AIP filter/order/page-token. Filter
+                 on `dict_type` is exact; label/value support standard string matching.
+            operationId: DictService_ListDictEntries
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `dict_type` (e.g. `dict_type="sys_normal_disable"`, exact)
+                       * `dict_label` (e.g. `dict_label="正常"`)
+                       * `dict_value` (e.g. `dict_value="0"`)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: Optional. AIP-132 order, e.g. `dict_sort` or `dict_sort, entry_id`.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/dict.v1.DictEntrySet'
+        post:
+            tags:
+                - DictService
+            description: |-
+                CreateDictEntry creates a new entry under an active type. dict_label /
+                 dict_value must be non-blank; (dict_type, dict_value) must be unique
+                 among active entries.
+            operationId: DictService_CreateDictEntry
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/dict.v1.DictEntry'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/dict.v1.DictEntry'
+    /iam/dict/entries/{entry.entry_id}:
+        patch:
+            tags:
+                - DictService
+            description: |-
+                UpdateDictEntry partially updates an entry (field-mask). dict_type is
+                 immutable (ADR 0006): it is ignored here regardless of the mask.
+            operationId: DictService_UpdateDictEntry
+            parameters:
+                - name: entry.entry_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: updateMask
+                  in: query
+                  description: |-
+                    Required. Mask of fields to update. `dict_type` in the mask has no
+                     effect (immutable, ADR 0006).
+                  schema:
+                    type: string
+                    format: field-mask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/dict.v1.DictEntry'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/dict.v1.DictEntry'
+    /iam/dict/entries/{entryId}:
+        get:
+            tags:
+                - DictService
+            description: GetDictEntry retrieves an entry by id.
+            operationId: DictService_GetDictEntry
+            parameters:
+                - name: entryId
+                  in: path
+                  description: Required. The id of the entry to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/dict.v1.DictEntry'
+        delete:
+            tags:
+                - DictService
+            description: DeleteDictEntry soft-deletes an entry by id.
+            operationId: DictService_DeleteDictEntry
+            parameters:
+                - name: entryId
+                  in: path
+                  description: Required. The id of the entry to delete.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /iam/dict/types:
+        get:
+            tags:
+                - DictService
+            description: ListDictTypes lists dict types with AIP filter/order/page-token.
+            operationId: DictService_ListDictTypes
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `dict_name` (e.g. `dict_name="用户性别"`)
+                       * `dict_type` (e.g. `dict_type="sys_user_gender"`)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: Optional. AIP-132 order, e.g. `dict_type_id`.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/dict.v1.DictTypeSet'
+        post:
+            tags:
+                - DictService
+            description: |-
+                CreateDictType creates a new dict type. dict_name must be non-blank and
+                 dict_type must match ^[a-z][a-z0-9_]*$ and be unique among active types.
+            operationId: DictService_CreateDictType
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/dict.v1.DictType'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/dict.v1.DictType'
+    /iam/dict/types/{dictTypeId}:
+        get:
+            tags:
+                - DictService
+            description: GetDictType retrieves a dict type by id.
+            operationId: DictService_GetDictType
+            parameters:
+                - name: dictTypeId
+                  in: path
+                  description: Required. The id of the dict type to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/dict.v1.DictType'
+        delete:
+            tags:
+                - DictService
+            description: |-
+                DeleteDictType soft-deletes a dict type by id; refused while the type
+                 still has active entries (RuoYi: 已分配，不能删除).
+            operationId: DictService_DeleteDictType
+            parameters:
+                - name: dictTypeId
+                  in: path
+                  description: Required. The id of the dict type to delete.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /iam/dict/types/{dictType}/entries:
+        get:
+            tags:
+                - DictService
+            description: |-
+                ListDictEntriesByType returns one type's active entries as lightweight
+                 options, ordered by dict_sort asc then entry_id asc. An unknown type key
+                 yields an empty list, not an error. Login required; no Functional
+                 Permission — every page consumes options.
+            operationId: DictService_ListDictEntriesByType
+            parameters:
+                - name: dictType
+                  in: path
+                  description: |-
+                    Required. The Dict Type key whose options are read (e.g.
+                     "sys_normal_disable").
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/dict.v1.DictEntryOptionSet'
+    /iam/dict/types/{dict_type.dict_type_id}:
+        patch:
+            tags:
+                - DictService
+            description: |-
+                UpdateDictType partially updates a dict type (field-mask). dict_type is
+                 immutable (ADR 0006): it is ignored here regardless of the mask.
+            operationId: DictService_UpdateDictType
+            parameters:
+                - name: dict_type.dict_type_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: updateMask
+                  in: query
+                  description: |-
+                    Required. Mask of fields to update. `dict_type` in the mask has no
+                     effect (immutable, ADR 0006).
+                  schema:
+                    type: string
+                    format: field-mask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/dict.v1.DictType'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/dict.v1.DictType'
     /iam/menu:
         get:
             tags:
@@ -993,6 +1283,139 @@ components:
                 nextPageToken:
                     type: string
             description: OnlineSessionSet is a page of active Login Sessions.
+        dict.v1.DictEntry:
+            type: object
+            properties:
+                entryId:
+                    type: string
+                    description: Snowflake ID. Server-assigned on create.
+                dictType:
+                    type: string
+                    description: |-
+                        Owning Dict Type key (e.g. "sys_normal_disable"). Required; must
+                         reference an active type; immutable after create.
+                dictLabel:
+                    type: string
+                    description: Display label (e.g. "正常"). Required, non-blank.
+                dictValue:
+                    type: string
+                    description: |-
+                        Machine value (e.g. "0"). Required, non-blank; unique within the type
+                         among active entries.
+                dictSort:
+                    type: integer
+                    description: Display order. Defaults to 0; smaller first.
+                    format: int32
+                tagStyle:
+                    type: integer
+                    description: Tag color preset for list rendering (RuoYi list_class).
+                    format: enum
+                isDefault:
+                    type: boolean
+                    description: |-
+                        Whether forms should preselect this option. Multiple defaults may
+                         coexist (RuoYi semantics); consumers take the first by sort.
+                remark:
+                    type: string
+                createBy:
+                    type: string
+                    description: 'Audit: who created/updated. Filled from the authenticated identity.'
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                DictEntry is one labeled option inside a Dict Type (字典项), ported from
+                 RuoYi sys_dict_data (the domain noun was renamed; the table keeps RuoYi's
+                 name — see CONTEXT.md). The owning type key is set at create and not
+                 updatable (ADR 0006): UpdateDictEntry ignores it.
+        dict.v1.DictEntryOption:
+            type: object
+            properties:
+                value:
+                    type: string
+                    description: Machine value.
+                label:
+                    type: string
+                    description: Display label.
+                tagStyle:
+                    type: integer
+                    description: Tag color preset.
+                    format: enum
+                isDefault:
+                    type: boolean
+                    description: Whether forms should preselect this option.
+            description: |-
+                DictEntryOption is the lightweight consumption view of a Dict Entry: the
+                 four fields a select or status tag needs, nothing else. Returned by
+                 ListDictEntriesByType, which any authenticated principal may call — audit
+                 fields never appear here.
+        dict.v1.DictEntryOptionSet:
+            type: object
+            properties:
+                options:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/dict.v1.DictEntryOption'
+            description: DictEntryOptionSet is the ordered option list of one Dict Type.
+        dict.v1.DictEntrySet:
+            type: object
+            properties:
+                entries:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/dict.v1.DictEntry'
+                nextPageToken:
+                    type: string
+                    description: Opaque token for the next page; empty when on the last page.
+            description: DictEntrySet is a page of dict entries.
+        dict.v1.DictType:
+            type: object
+            properties:
+                dictTypeId:
+                    type: string
+                    description: Snowflake ID. Server-assigned on create.
+                dictName:
+                    type: string
+                    description: Display name (e.g. "系统启用停用"). Required, non-blank.
+                dictType:
+                    type: string
+                    description: |-
+                        Vocabulary key (e.g. "sys_normal_disable"). Required; must match
+                         ^[a-z][a-z0-9_]*$ ; unique among active types. Immutable after create
+                         (ADR 0006): UpdateDictType ignores it.
+                remark:
+                    type: string
+                createBy:
+                    type: string
+                    description: 'Audit: who created/updated. Filled from the authenticated identity.'
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                DictType is a named, system-wide vocabulary of labeled options (字典类型),
+                 ported from RuoYi sys_dict_type. The key (`dict_type`) is immutable once
+                 created (ADR 0006); the display name and remark stay editable.
+        dict.v1.DictTypeSet:
+            type: object
+            properties:
+                dictTypes:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/dict.v1.DictType'
+                nextPageToken:
+                    type: string
+                    description: Opaque token for the next page; empty when on the last page.
+            description: DictTypeSet is a page of dict types.
         user.v1.CurrentUser:
             type: object
             properties:
@@ -1120,6 +1543,12 @@ tags:
       description: |-
         AuthService owns login/logout for Login Sessions. The user↔role link it
          once hosted moved to access.v1.RoleAssignmentService.
+    - name: DictService
+      description: |-
+        DictService is the dictionary management service: Dict Type and Dict Entry
+         CRUD plus the consumption read. v1 has no read cache (reads hit the
+         indexed tables directly) and no backend consumer — pages are the only
+         client.
     - name: MenuService
       description: MenuService is the system-menu CRUD + tree service.
     - name: OnlineSessionService

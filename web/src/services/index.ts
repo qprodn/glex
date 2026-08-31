@@ -4,6 +4,7 @@ import {
   createRoleAssignmentServiceClient,
   createRoleServiceClient,
 } from "@/services/access/v1";
+import { createDictServiceClient } from "@/services/dict/v1";
 import { createUserServiceClient } from "@/services/user/v1";
 import { request } from "@umijs/max";
 import { getToken } from "@/utils/token";
@@ -46,6 +47,7 @@ export const services = {
   role: createRoleServiceClient(requestHandler),
   assignment: createRoleAssignmentServiceClient(requestHandler),
   menu: createMenuServiceClient(requestHandler),
+  dict: createDictServiceClient(requestHandler),
 };
 
 /**

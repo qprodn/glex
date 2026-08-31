@@ -5,5 +5,6 @@ export default {
   "menu.iam.user": "用户管理",
   "menu.iam.role": "角色管理",
   "menu.iam.menu": "菜单管理",
+  "menu.iam.dict": "字典管理",
   "menu.monitor.online": "在线会话",
 };

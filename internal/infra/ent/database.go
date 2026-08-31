@@ -79,6 +79,16 @@ func (db *Database) Query(ctx context.Context, query string, args ...interface{}
 	return &rows, nil
 }
 
+// DictData is the client for interacting with the DictData builders.
+func (db *Database) DictData(ctx context.Context) *DictDataClient {
+	return db.loadClient(ctx).DictData
+}
+
+// DictType is the client for interacting with the DictType builders.
+func (db *Database) DictType(ctx context.Context) *DictTypeClient {
+	return db.loadClient(ctx).DictType
+}
+
 // Menu is the client for interacting with the Menu builders.
 func (db *Database) Menu(ctx context.Context) *MenuClient {
 	return db.loadClient(ctx).Menu

@@ -1,0 +1,276 @@
+syntax = "proto3";
+
+package dict.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/field_mask.proto";
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "glex/api/dict/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.dict.v1";
+
+// DictType is a named, system-wide vocabulary of labeled options (字典类型),
+// ported from RuoYi sys_dict_type. The key (`dict_type`) is immutable once
+// created (ADR 0006); the display name and remark stay editable.
+message DictType {
+  // Snowflake ID. Server-assigned on create.
+  int64 dict_type_id = 1;
+  // Display name (e.g. "系统启用停用"). Required, non-blank.
+  string dict_name = 2;
+  // Vocabulary key (e.g. "sys_normal_disable"). Required; must match
+  // ^[a-z][a-z0-9_]*$ ; unique among active types. Immutable after create
+  // (ADR 0006): UpdateDictType ignores it.
+  string dict_type = 3;
+  string remark = 4;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  int64 create_by = 5;
+  int64 update_by = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// DictTypeSet is a page of dict types.
+message DictTypeSet {
+  repeated DictType dict_types = 1;
+  // Opaque token for the next page; empty when on the last page.
+  string next_page_token = 2;
+}
+
+// DictEntry is one labeled option inside a Dict Type (字典项), ported from
+// RuoYi sys_dict_data (the domain noun was renamed; the table keeps RuoYi's
+// name — see CONTEXT.md). The owning type key is set at create and not
+// updatable (ADR 0006): UpdateDictEntry ignores it.
+message DictEntry {
+  // Snowflake ID. Server-assigned on create.
+  int64 entry_id = 1;
+  // Owning Dict Type key (e.g. "sys_normal_disable"). Required; must
+  // reference an active type; immutable after create.
+  string dict_type = 2;
+  // Display label (e.g. "正常"). Required, non-blank.
+  string dict_label = 3;
+  // Machine value (e.g. "0"). Required, non-blank; unique within the type
+  // among active entries.
+  string dict_value = 4;
+  // Display order. Defaults to 0; smaller first.
+  int32 dict_sort = 5;
+  // Tag color preset for list rendering (RuoYi list_class).
+  TagStyle tag_style = 6;
+  // Whether forms should preselect this option. Multiple defaults may
+  // coexist (RuoYi semantics); consumers take the first by sort.
+  bool is_default = 7;
+  string remark = 8;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  int64 create_by = 9;
+  int64 update_by = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// TagStyle is the tag color preset for rendering a Dict Entry (RuoYi
+// list_class; css_class was dropped as an unused escape hatch).
+enum TagStyle {
+  // Unset; treated as TAG_STYLE_DEFAULT.
+  TAG_STYLE_UNSPECIFIED = 0;
+  TAG_STYLE_DEFAULT = 1;
+  TAG_STYLE_PRIMARY = 2;
+  TAG_STYLE_SUCCESS = 3;
+  TAG_STYLE_WARNING = 4;
+  TAG_STYLE_DANGER = 5;
+  TAG_STYLE_INFO = 6;
+}
+
+// DictEntrySet is a page of dict entries.
+message DictEntrySet {
+  repeated DictEntry entries = 1;
+  // Opaque token for the next page; empty when on the last page.
+  string next_page_token = 2;
+}
+
+// DictEntryOption is the lightweight consumption view of a Dict Entry: the
+// four fields a select or status tag needs, nothing else. Returned by
+// ListDictEntriesByType, which any authenticated principal may call — audit
+// fields never appear here.
+message DictEntryOption {
+  // Machine value.
+  string value = 1;
+  // Display label.
+  string label = 2;
+  // Tag color preset.
+  TagStyle tag_style = 3;
+  // Whether forms should preselect this option.
+  bool is_default = 4;
+}
+
+// DictEntryOptionSet is the ordered option list of one Dict Type.
+message DictEntryOptionSet {
+  repeated DictEntryOption options = 1;
+}
+
+// DictService is the dictionary management service: Dict Type and Dict Entry
+// CRUD plus the consumption read. v1 has no read cache (reads hit the
+// indexed tables directly) and no backend consumer — pages are the only
+// client.
+service DictService {
+  // CreateDictType creates a new dict type. dict_name must be non-blank and
+  // dict_type must match ^[a-z][a-z0-9_]*$ and be unique among active types.
+  rpc CreateDictType(CreateDictTypeRequest) returns (DictType) {
+    option (google.api.http) = {
+      post: "/iam/dict/types"
+      body: "dict_type"
+    };
+  }
+  // GetDictType retrieves a dict type by id.
+  rpc GetDictType(GetDictTypeRequest) returns (DictType) {
+    option (google.api.http) = {
+      get: "/iam/dict/types/{dict_type_id}"
+    };
+  }
+  // ListDictTypes lists dict types with AIP filter/order/page-token.
+  rpc ListDictTypes(ListDictTypesRequest) returns (DictTypeSet) {
+    option (google.api.http) = {
+      get: "/iam/dict/types"
+    };
+  }
+  // UpdateDictType partially updates a dict type (field-mask). dict_type is
+  // immutable (ADR 0006): it is ignored here regardless of the mask.
+  rpc UpdateDictType(UpdateDictTypeRequest) returns (DictType) {
+    option (google.api.http) = {
+      patch: "/iam/dict/types/{dict_type.dict_type_id}"
+      body: "dict_type"
+    };
+  }
+  // DeleteDictType soft-deletes a dict type by id; refused while the type
+  // still has active entries (RuoYi: 已分配，不能删除).
+  rpc DeleteDictType(DeleteDictTypeRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/iam/dict/types/{dict_type_id}"
+    };
+  }
+  // CreateDictEntry creates a new entry under an active type. dict_label /
+  // dict_value must be non-blank; (dict_type, dict_value) must be unique
+  // among active entries.
+  rpc CreateDictEntry(CreateDictEntryRequest) returns (DictEntry) {
+    option (google.api.http) = {
+      post: "/iam/dict/entries"
+      body: "entry"
+    };
+  }
+  // GetDictEntry retrieves an entry by id.
+  rpc GetDictEntry(GetDictEntryRequest) returns (DictEntry) {
+    option (google.api.http) = {
+      get: "/iam/dict/entries/{entry_id}"
+    };
+  }
+  // ListDictEntries lists entries with AIP filter/order/page-token. Filter
+  // on `dict_type` is exact; label/value support standard string matching.
+  rpc ListDictEntries(ListDictEntriesRequest) returns (DictEntrySet) {
+    option (google.api.http) = {
+      get: "/iam/dict/entries"
+    };
+  }
+  // UpdateDictEntry partially updates an entry (field-mask). dict_type is
+  // immutable (ADR 0006): it is ignored here regardless of the mask.
+  rpc UpdateDictEntry(UpdateDictEntryRequest) returns (DictEntry) {
+    option (google.api.http) = {
+      patch: "/iam/dict/entries/{entry.entry_id}"
+      body: "entry"
+    };
+  }
+  // DeleteDictEntry soft-deletes an entry by id.
+  rpc DeleteDictEntry(DeleteDictEntryRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/iam/dict/entries/{entry_id}"
+    };
+  }
+  // ListDictEntriesByType returns one type's active entries as lightweight
+  // options, ordered by dict_sort asc then entry_id asc. An unknown type key
+  // yields an empty list, not an error. Login required; no Functional
+  // Permission — every page consumes options.
+  rpc ListDictEntriesByType(ListDictEntriesByTypeRequest) returns (DictEntryOptionSet) {
+    option (google.api.http) = {
+      get: "/iam/dict/types/{dict_type}/entries"
+    };
+  }
+}
+
+message CreateDictTypeRequest {
+  // Required. The dict type to create.
+  DictType dict_type = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetDictTypeRequest {
+  // Required. The id of the dict type to retrieve.
+  int64 dict_type_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListDictTypesRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `dict_name` (e.g. `dict_name="用户性别"`)
+  //   * `dict_type` (e.g. `dict_type="sys_user_gender"`)
+  string filter = 3;
+  // Optional. AIP-132 order, e.g. `dict_type_id`.
+  string order_by = 4;
+}
+
+message UpdateDictTypeRequest {
+  // Required. The dict type to update. dict_type_id identifies the record.
+  DictType dict_type = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. Mask of fields to update. `dict_type` in the mask has no
+  // effect (immutable, ADR 0006).
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteDictTypeRequest {
+  // Required. The id of the dict type to delete.
+  int64 dict_type_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message CreateDictEntryRequest {
+  // Required. The entry to create.
+  DictEntry entry = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetDictEntryRequest {
+  // Required. The id of the entry to retrieve.
+  int64 entry_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListDictEntriesRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `dict_type` (e.g. `dict_type="sys_normal_disable"`, exact)
+  //   * `dict_label` (e.g. `dict_label="正常"`)
+  //   * `dict_value` (e.g. `dict_value="0"`)
+  string filter = 3;
+  // Optional. AIP-132 order, e.g. `dict_sort` or `dict_sort, entry_id`.
+  string order_by = 4;
+}
+
+message UpdateDictEntryRequest {
+  // Required. The entry to update. entry_id identifies the record.
+  DictEntry entry = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. Mask of fields to update. `dict_type` in the mask has no
+  // effect (immutable, ADR 0006).
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteDictEntryRequest {
+  // Required. The id of the entry to delete.
+  int64 entry_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListDictEntriesByTypeRequest {
+  // Required. The Dict Type key whose options are read (e.g.
+  // "sys_normal_disable").
+  string dict_type = 1 [(google.api.field_behavior) = REQUIRED];
+}

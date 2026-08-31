@@ -15,6 +15,9 @@ const reasonMessageId: Record<string, string> = {
   PHONE_CONFLICT: "pages.error.phoneConflict",
   ROLE_ASSIGNED: "pages.error.roleAssigned",
   MENU_HAS_CHILDREN: "pages.error.menuHasChildren",
+  DICT_TYPE_CONFLICT: "pages.error.dictTypeConflict",
+  DICT_TYPE_IN_USE: "pages.error.dictTypeInUse",
+  DICT_ENTRY_CONFLICT: "pages.error.dictEntryConflict",
 };
 
 /**

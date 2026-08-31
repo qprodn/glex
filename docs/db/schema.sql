@@ -179,3 +179,72 @@ comment on column sys_user_role.update_by is '更新者用户ID';
 comment on column sys_user_role.created_at is '创建时间';
 comment on column sys_user_role.updated_at is '更新时间';
 comment on column sys_user_role.deleted_at is '软删除时间；NULL=未删除';
+
+
+create table if not exists sys_dict_type (
+    id         bigint       not null,
+    dict_name  varchar(256) not null,
+    dict_type  varchar(256) not null,               -- vocabulary key; ^[a-z][a-z0-9_]*$; immutable after create (ADR 0006)
+    remark     varchar(256) not null default '',
+    create_by  bigint       not null default 0,     -- audit; Application stamps from Principal (ADR 0002)
+    update_by  bigint       not null default 0,
+    created_at timestamptz  not null default now(),
+    updated_at timestamptz  not null default now(),
+    deleted_at timestamptz,                         -- soft delete; NULL = active
+    constraint sys_dict_type_pkey primary key (id)
+);
+
+-- Unlike sys_role (code-only check), the dict key carries a DB uniqueness
+-- guarantee: it is an exact-match identifier every consumer references, and
+-- the partial index is the race-proof backstop behind the domain pre-check.
+create unique index if not exists dicttype_dict_type
+    on sys_dict_type (dict_type) where deleted_at is null;
+
+comment on table sys_dict_type is '字典类型表';
+
+comment on column sys_dict_type.id is '主键ID（雪花）';
+comment on column sys_dict_type.dict_name is '字典名称';
+comment on column sys_dict_type.dict_type is '字典类型键；满足 ^[a-z][a-z0-9_]*$；创建后不可变（ADR 0006）';
+comment on column sys_dict_type.remark is '备注';
+comment on column sys_dict_type.create_by is '创建者用户ID';
+comment on column sys_dict_type.update_by is '更新者用户ID';
+comment on column sys_dict_type.created_at is '创建时间';
+comment on column sys_dict_type.updated_at is '更新时间';
+comment on column sys_dict_type.deleted_at is '软删除时间；NULL=未删除';
+
+
+create table if not exists sys_dict_data (
+    id         bigint       not null,
+    dict_sort  integer      not null default 0,     -- display order
+    dict_label varchar(256) not null,
+    dict_value varchar(256) not null,
+    dict_type  varchar(256) not null,               -- owning type key; immutable after create (ADR 0006); no FK (RuoYi style)
+    list_class varchar(256) not null default 'default', -- tag color preset: default/primary/success/warning/danger/info (proto tag_style)
+    is_default boolean      not null default false, -- forms preselect; multiple defaults may coexist (RuoYi semantics)
+    remark     varchar(256) not null default '',
+    create_by  bigint       not null default 0,     -- audit; Application stamps from Principal (ADR 0002)
+    update_by  bigint       not null default 0,
+    created_at timestamptz  not null default now(),
+    updated_at timestamptz  not null default now(),
+    deleted_at timestamptz,                         -- soft delete; NULL = active
+    constraint sys_dict_data_pkey primary key (id)
+);
+
+create unique index if not exists dictdata_dict_type_dict_value
+    on sys_dict_data (dict_type, dict_value) where deleted_at is null;
+
+comment on table sys_dict_data is '字典数据表（字典项）';
+
+comment on column sys_dict_data.id is '主键ID（雪花；RuoYi 的 dict_code）';
+comment on column sys_dict_data.dict_sort is '显示顺序';
+comment on column sys_dict_data.dict_label is '字典标签';
+comment on column sys_dict_data.dict_value is '字典键值；同类型内唯一（活跃行）';
+comment on column sys_dict_data.dict_type is '所属字典类型键；创建后不可变（ADR 0006）；无外键（RuoYi 风格）';
+comment on column sys_dict_data.list_class is '标签回显样式（proto tag_style）：default/primary/success/warning/danger/info';
+comment on column sys_dict_data.is_default is '是否默认（表单预选）；允许多个默认共存（RuoYi 语义）';
+comment on column sys_dict_data.remark is '备注';
+comment on column sys_dict_data.create_by is '创建者用户ID';
+comment on column sys_dict_data.update_by is '更新者用户ID';
+comment on column sys_dict_data.created_at is '创建时间';
+comment on column sys_dict_data.updated_at is '更新时间';
+comment on column sys_dict_data.deleted_at is '软删除时间；NULL=未删除';

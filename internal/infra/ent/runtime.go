@@ -3,6 +3,8 @@
 package ent
 
 import (
+	"glex/internal/infra/ent/dictdata"
+	"glex/internal/infra/ent/dicttype"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/rolemenu"
@@ -16,6 +18,72 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	dictdataMixin := schema.DictData{}.Mixin()
+	dictdataMixinFields0 := dictdataMixin[0].Fields()
+	_ = dictdataMixinFields0
+	dictdataFields := schema.DictData{}.Fields()
+	_ = dictdataFields
+	// dictdataDescCreateBy is the schema descriptor for create_by field.
+	dictdataDescCreateBy := dictdataMixinFields0[0].Descriptor()
+	// dictdata.DefaultCreateBy holds the default value on creation for the create_by field.
+	dictdata.DefaultCreateBy = dictdataDescCreateBy.Default.(int64)
+	// dictdataDescUpdateBy is the schema descriptor for update_by field.
+	dictdataDescUpdateBy := dictdataMixinFields0[1].Descriptor()
+	// dictdata.DefaultUpdateBy holds the default value on creation for the update_by field.
+	dictdata.DefaultUpdateBy = dictdataDescUpdateBy.Default.(int64)
+	// dictdataDescCreatedAt is the schema descriptor for created_at field.
+	dictdataDescCreatedAt := dictdataMixinFields0[2].Descriptor()
+	// dictdata.DefaultCreatedAt holds the default value on creation for the created_at field.
+	dictdata.DefaultCreatedAt = dictdataDescCreatedAt.Default.(func() time.Time)
+	// dictdataDescUpdatedAt is the schema descriptor for updated_at field.
+	dictdataDescUpdatedAt := dictdataMixinFields0[3].Descriptor()
+	// dictdata.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	dictdata.DefaultUpdatedAt = dictdataDescUpdatedAt.Default.(func() time.Time)
+	// dictdata.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	dictdata.UpdateDefaultUpdatedAt = dictdataDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// dictdataDescDictSort is the schema descriptor for dict_sort field.
+	dictdataDescDictSort := dictdataFields[1].Descriptor()
+	// dictdata.DefaultDictSort holds the default value on creation for the dict_sort field.
+	dictdata.DefaultDictSort = dictdataDescDictSort.Default.(int)
+	// dictdataDescListClass is the schema descriptor for list_class field.
+	dictdataDescListClass := dictdataFields[5].Descriptor()
+	// dictdata.DefaultListClass holds the default value on creation for the list_class field.
+	dictdata.DefaultListClass = dictdataDescListClass.Default.(string)
+	// dictdataDescIsDefault is the schema descriptor for is_default field.
+	dictdataDescIsDefault := dictdataFields[6].Descriptor()
+	// dictdata.DefaultIsDefault holds the default value on creation for the is_default field.
+	dictdata.DefaultIsDefault = dictdataDescIsDefault.Default.(bool)
+	// dictdataDescRemark is the schema descriptor for remark field.
+	dictdataDescRemark := dictdataFields[7].Descriptor()
+	// dictdata.DefaultRemark holds the default value on creation for the remark field.
+	dictdata.DefaultRemark = dictdataDescRemark.Default.(string)
+	dicttypeMixin := schema.DictType{}.Mixin()
+	dicttypeMixinFields0 := dicttypeMixin[0].Fields()
+	_ = dicttypeMixinFields0
+	dicttypeFields := schema.DictType{}.Fields()
+	_ = dicttypeFields
+	// dicttypeDescCreateBy is the schema descriptor for create_by field.
+	dicttypeDescCreateBy := dicttypeMixinFields0[0].Descriptor()
+	// dicttype.DefaultCreateBy holds the default value on creation for the create_by field.
+	dicttype.DefaultCreateBy = dicttypeDescCreateBy.Default.(int64)
+	// dicttypeDescUpdateBy is the schema descriptor for update_by field.
+	dicttypeDescUpdateBy := dicttypeMixinFields0[1].Descriptor()
+	// dicttype.DefaultUpdateBy holds the default value on creation for the update_by field.
+	dicttype.DefaultUpdateBy = dicttypeDescUpdateBy.Default.(int64)
+	// dicttypeDescCreatedAt is the schema descriptor for created_at field.
+	dicttypeDescCreatedAt := dicttypeMixinFields0[2].Descriptor()
+	// dicttype.DefaultCreatedAt holds the default value on creation for the created_at field.
+	dicttype.DefaultCreatedAt = dicttypeDescCreatedAt.Default.(func() time.Time)
+	// dicttypeDescUpdatedAt is the schema descriptor for updated_at field.
+	dicttypeDescUpdatedAt := dicttypeMixinFields0[3].Descriptor()
+	// dicttype.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	dicttype.DefaultUpdatedAt = dicttypeDescUpdatedAt.Default.(func() time.Time)
+	// dicttype.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	dicttype.UpdateDefaultUpdatedAt = dicttypeDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// dicttypeDescRemark is the schema descriptor for remark field.
+	dicttypeDescRemark := dicttypeFields[3].Descriptor()
+	// dicttype.DefaultRemark holds the default value on creation for the remark field.
+	dicttype.DefaultRemark = dicttypeDescRemark.Default.(string)
 	menuMixin := schema.Menu{}.Mixin()
 	menuMixinFields0 := menuMixin[0].Fields()
 	_ = menuMixinFields0

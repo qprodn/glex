@@ -5,9 +5,11 @@ import (
 
 	accessv1 "glex/api/access/v1"
 	authnv1 "glex/api/authn/v1"
+	dictv1 "glex/api/dict/v1"
 	userv1 "glex/api/user/v1"
 	accessapp "glex/internal/application/access"
 	authnapp "glex/internal/application/authn"
+	dictapp "glex/internal/application/dict"
 	userapp "glex/internal/application/user"
 	"glex/internal/conf"
 	authnrepo "glex/internal/domain/authn/repository"
@@ -21,7 +23,7 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, authenticator authnrepo.Authenticator, logger *slog.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, dict *dictapp.DictApplication, authenticator authnrepo.Authenticator, logger *slog.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Filter(
 			requestid.HTTP(requestid.WithLogger(logger)),
@@ -49,5 +51,6 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 	accessv1.RegisterRoleAssignmentServiceHTTPServer(srv, assignment)
 	authnv1.RegisterAuthServiceHTTPServer(srv, login)
 	authnv1.RegisterOnlineSessionServiceHTTPServer(srv, online)
+	dictv1.RegisterDictServiceHTTPServer(srv, dict)
 	return srv
 }

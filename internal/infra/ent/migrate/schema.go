@@ -9,6 +9,66 @@ import (
 )
 
 var (
+	// SysDictDataColumns holds the columns for the "sys_dict_data" table.
+	SysDictDataColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "dict_sort", Type: field.TypeInt, Default: 0, SchemaType: map[string]string{"postgres": "integer"}},
+		{Name: "dict_label", Type: field.TypeString},
+		{Name: "dict_value", Type: field.TypeString},
+		{Name: "dict_type", Type: field.TypeString},
+		{Name: "list_class", Type: field.TypeString, Default: "default"},
+		{Name: "is_default", Type: field.TypeBool, Default: false},
+		{Name: "remark", Type: field.TypeString, Default: ""},
+	}
+	// SysDictDataTable holds the schema information for the "sys_dict_data" table.
+	SysDictDataTable = &schema.Table{
+		Name:       "sys_dict_data",
+		Columns:    SysDictDataColumns,
+		PrimaryKey: []*schema.Column{SysDictDataColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "dictdata_dict_type_dict_value",
+				Unique:  true,
+				Columns: []*schema.Column{SysDictDataColumns[9], SysDictDataColumns[8]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+		},
+	}
+	// SysDictTypeColumns holds the columns for the "sys_dict_type" table.
+	SysDictTypeColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "dict_name", Type: field.TypeString},
+		{Name: "dict_type", Type: field.TypeString},
+		{Name: "remark", Type: field.TypeString, Default: ""},
+	}
+	// SysDictTypeTable holds the schema information for the "sys_dict_type" table.
+	SysDictTypeTable = &schema.Table{
+		Name:       "sys_dict_type",
+		Columns:    SysDictTypeColumns,
+		PrimaryKey: []*schema.Column{SysDictTypeColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "dicttype_dict_type",
+				Unique:  true,
+				Columns: []*schema.Column{SysDictTypeColumns[7]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+		},
+	}
 	// SysMenuColumns holds the columns for the "sys_menu" table.
 	SysMenuColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -170,6 +230,8 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		SysDictDataTable,
+		SysDictTypeTable,
 		SysMenuTable,
 		SysRoleTable,
 		SysRoleMenuTable,
@@ -179,6 +241,12 @@ var (
 )
 
 func init() {
+	SysDictDataTable.Annotation = &entsql.Annotation{
+		Table: "sys_dict_data",
+	}
+	SysDictTypeTable.Annotation = &entsql.Annotation{
+		Table: "sys_dict_type",
+	}
 	SysMenuTable.Annotation = &entsql.Annotation{
 		Table: "sys_menu",
 	}
