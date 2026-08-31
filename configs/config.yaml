@@ -18,7 +18,7 @@ data:
 auth:
   # Seven days, encoded in protobuf Duration text format.
   fixed_lifetime: 604800s
-  idle_lifetime: 1800s
+  idle_lifetime: 10800s
   max_sessions_per_user: 5
   username_login_counter:
     max_failures: 5
