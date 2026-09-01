@@ -4,6 +4,7 @@ import (
 	"glex/internal/infra/store"
 
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -67,7 +68,7 @@ func (r *menuRepo) FindByID(ctx context.Context, id int64) (*accessentity.Menu, 
 		if ent.IsNotFound(err) {
 			return nil, access.ErrMenuNotFound
 		}
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.menu.find_by_id", err)
 	}
 	return toBizMenu(po), nil
 }
@@ -80,7 +81,7 @@ func (r *menuRepo) FindByParentAndName(ctx context.Context, parentID int64, name
 		if ent.IsNotFound(err) {
 			return nil, access.ErrMenuNotFound
 		}
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.menu.find_by_parent_and_name", err)
 	}
 	return toBizMenu(po), nil
 }
@@ -90,7 +91,7 @@ func (r *menuRepo) HasChildren(ctx context.Context, id int64) (bool, error) {
 		Where(menu.ParentIDEQ(id), menu.DeletedAtIsNil()).
 		Count(ctx)
 	if err != nil {
-		return false, err
+		return false, accessStoreError(ctx, r.logger, "access.menu.has_children", err)
 	}
 	return n > 0, nil
 }
@@ -108,7 +109,7 @@ func (r *menuRepo) ListMenus(ctx context.Context, opts ...accessrepo.ListOption)
 		Order(ents.ApplyOrderBy(o.OrderBy)).
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.menu.list", err)
 	}
 	menus := make([]*accessentity.Menu, 0, len(pos))
 	for _, po := range pos {
@@ -202,7 +203,7 @@ func (r *menuRepo) CreateMenu(ctx context.Context, m *accessentity.Menu) (*acces
 		SetUpdateBy(m.UpdateBy).
 		Save(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.menu.create", err)
 	}
 	return toBizMenu(po), nil
 }
@@ -217,17 +218,17 @@ func (r *menuRepo) UpdateMenu(ctx context.Context, m *accessentity.Menu) (*acces
 		if ent.IsNotFound(err) {
 			return nil, access.ErrMenuNotFound
 		}
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.menu.update", err)
 	}
 	roleIDs, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(m.ID)).
 		QueryRoleLinks().Where(rolemenu.DeletedAtIsNil()).
 		QueryRole().Where(role.DeletedAtIsNil()).IDs(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.menu.update", err)
 	}
 	userIDs, err := systemUserIDsForRoles(ctx, r.data.DB, roleIDs)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.menu.update", err)
 	}
 	po, err := r.data.DB.Menu(ctx).UpdateOneID(m.ID).
 		SetMenuName(m.MenuName).
@@ -248,7 +249,7 @@ func (r *menuRepo) UpdateMenu(ctx context.Context, m *accessentity.Menu) (*acces
 		SetUpdateBy(m.UpdateBy).
 		Save(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.menu.update", err)
 	}
 	result.Menu = toBizMenu(po)
 	result.Previous = toBizMenu(current)
@@ -266,7 +267,7 @@ func (r *menuRepo) ListByIDs(ctx context.Context, ids []int64) ([]*accessentity.
 		Where(menu.IDIn(ids...), menu.DeletedAtIsNil()).
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.menu.list_by_ids", err)
 	}
 	out := make([]*accessentity.Menu, 0, len(pos))
 	for _, po := range pos {
@@ -284,18 +285,18 @@ func (r *menuRepo) DeleteMenu(ctx context.Context, id int64, actorID int64) ([]i
 		QueryRoleLinks().Where(rolemenu.DeletedAtIsNil()).
 		QueryRole().Where(role.DeletedAtIsNil()).IDs(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.menu.delete", err)
 	}
 	userIDs, err := systemUserIDsForRoles(ctx, r.data.DB, roleIDs)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.menu.delete", err)
 	}
 	if _, err := r.data.DB.RoleMenu(ctx).Update().
 		Where(rolemenu.MenuIDEQ(id), rolemenu.DeletedAtIsNil()).
 		SetDeletedAt(time.Now()).
 		SetUpdateBy(actorID).
 		Save(ctx); err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.menu.delete", err)
 	}
 	err = r.data.DB.Menu(ctx).UpdateOneID(id).
 		SetDeletedAt(time.Now()).
@@ -305,7 +306,7 @@ func (r *menuRepo) DeleteMenu(ctx context.Context, id int64, actorID int64) ([]i
 		if ent.IsNotFound(err) {
 			return nil, access.ErrMenuNotFound
 		}
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.menu.delete", err)
 	}
 	return userIDs, nil
 }
@@ -318,6 +319,24 @@ func systemUserIDsForRoles(ctx context.Context, db *ent.Database, roleIDs []int6
 		user.DeletedAtIsNil(),
 		user.HasRoleAssignmentsWith(userrole.RoleIDIn(roleIDs...), userrole.DeletedAtIsNil()),
 	).IDs(ctx)
+}
+
+// accessStoreError is the log-and-map for unexpected access-store failures
+// behind the Menu, Role, and Role Assignment repos (ADR 0007): the raw error
+// is logged once at the handling site with its operation and returned as the
+// module's sentinel, so no raw ent error crosses the repository boundary.
+// Expected business conditions (ent.IsNotFound and friends) map silently at
+// the call sites; a canceled request is benign and returns the sentinel
+// without logging.
+func accessStoreError(ctx context.Context, logger *slog.Logger, operation string, err error) error {
+	if errors.Is(err, context.Canceled) {
+		return access.ErrAccessStoreUnavailable
+	}
+	logger.ErrorContext(ctx, "access store operation failed",
+		slog.String("operation", operation),
+		slog.Any("error", err),
+	)
+	return access.ErrAccessStoreUnavailable
 }
 
 // routeAccessError maps a database failure behind route resolution (which

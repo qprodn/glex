@@ -23,3 +23,11 @@ var (
 	// ErrPasswordRequired: create called without a password.
 	ErrPasswordRequired = errors.BadRequest("PASSWORD_REQUIRED", "password is required")
 )
+
+var (
+	// ErrUserStoreUnavailable: a user-store operation failed unexpectedly —
+	// driver down, tx failure, serialization. Adapters log the raw error once
+	// and return this sentinel (ADR 0007), so no driver text crosses the
+	// repository boundary; clients see 503, never a driver message.
+	ErrUserStoreUnavailable = errors.ServiceUnavailable("USER_STORE_UNAVAILABLE", "user store unavailable")
+)

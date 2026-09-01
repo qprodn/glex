@@ -2,6 +2,7 @@ package dictinfra
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/go-kratos/aip-go/ents"
@@ -34,12 +35,16 @@ func toBizDictEntry(po *ent.DictData) *dictentity.DictEntry {
 }
 
 type dictEntryRepo struct {
-	data *store.Data
+	data   *store.Data
+	logger *slog.Logger
 }
 
 // NewDictEntryRepo creates a new DictEntryRepo instance.
 func NewDictEntryRepo(data *store.Data) dictrepo.DictEntryRepo {
-	return &dictEntryRepo{data: data}
+	return &dictEntryRepo{
+		data:   data,
+		logger: data.Logger.With(slog.String("component", "infra.dict.dict_entry")),
+	}
 }
 
 func (r *dictEntryRepo) FindByID(ctx context.Context, id int64) (*dictentity.DictEntry, error) {
@@ -50,7 +55,7 @@ func (r *dictEntryRepo) FindByID(ctx context.Context, id int64) (*dictentity.Dic
 		if ent.IsNotFound(err) {
 			return nil, dict.ErrDictEntryNotFound
 		}
-		return nil, err
+		return nil, dictStoreError(ctx, r.logger, "dict.entry.find_by_id", err)
 	}
 	return toBizDictEntry(po), nil
 }
@@ -63,7 +68,7 @@ func (r *dictEntryRepo) FindByTypeAndValue(ctx context.Context, dictType, value 
 		if ent.IsNotFound(err) {
 			return nil, dict.ErrDictEntryNotFound
 		}
-		return nil, err
+		return nil, dictStoreError(ctx, r.logger, "dict.entry.find_by_type_and_value", err)
 	}
 	return toBizDictEntry(po), nil
 }
@@ -83,7 +88,7 @@ func (r *dictEntryRepo) List(ctx context.Context, opts ...dictrepo.ListOption) (
 		Limit(o.Limit).
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, dictStoreError(ctx, r.logger, "dict.entry.list", err)
 	}
 	entries := make([]*dictentity.DictEntry, 0, len(pos))
 	for _, po := range pos {
@@ -101,7 +106,7 @@ func (r *dictEntryRepo) ListByDictKey(ctx context.Context, key string) ([]*dicte
 		Order(dictdata.ByDictSort(), dictdata.ByID()).
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, dictStoreError(ctx, r.logger, "dict.entry.list_by_dict_key", err)
 	}
 	entries := make([]*dictentity.DictEntry, 0, len(pos))
 	for _, po := range pos {
@@ -111,9 +116,13 @@ func (r *dictEntryRepo) ListByDictKey(ctx context.Context, key string) ([]*dicte
 }
 
 func (r *dictEntryRepo) CountByDictKey(ctx context.Context, key string) (int, error) {
-	return r.data.DB.DictData(ctx).Query().
+	count, err := r.data.DB.DictData(ctx).Query().
 		Where(dictdata.DictTypeEQ(key), dictdata.DeletedAtIsNil()).
 		Count(ctx)
+	if err != nil {
+		return 0, dictStoreError(ctx, r.logger, "dict.entry.count_by_dict_key", err)
+	}
+	return count, nil
 }
 
 // CreateDictEntry inserts the entry row. The caller owns the transaction;
@@ -133,7 +142,7 @@ func (r *dictEntryRepo) Create(ctx context.Context, e *dictentity.DictEntry) (*d
 		SetUpdateBy(e.UpdateBy).
 		Save(ctx)
 	if err != nil {
-		return nil, err
+		return nil, dictStoreError(ctx, r.logger, "dict.entry.create", err)
 	}
 	return toBizDictEntry(po), nil
 }
@@ -155,7 +164,7 @@ func (r *dictEntryRepo) Update(ctx context.Context, e *dictentity.DictEntry) (*d
 		if ent.IsNotFound(err) {
 			return nil, dict.ErrDictEntryNotFound
 		}
-		return nil, err
+		return nil, dictStoreError(ctx, r.logger, "dict.entry.update", err)
 	}
 	return toBizDictEntry(po), nil
 }
@@ -171,7 +180,7 @@ func (r *dictEntryRepo) Delete(ctx context.Context, id, actorID int64) error {
 		if ent.IsNotFound(err) {
 			return dict.ErrDictEntryNotFound
 		}
-		return err
+		return dictStoreError(ctx, r.logger, "dict.entry.delete", err)
 	}
 	return nil
 }

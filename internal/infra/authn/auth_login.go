@@ -62,7 +62,7 @@ func (r *authLoginRepo) FindLoginAccount(ctx context.Context, userName string) (
 		if ent.IsNotSingular(err) {
 			return nil, authndomain.ErrLoginAccountAmbiguous
 		}
-		return nil, err
+		return nil, authDatabaseBackendError(ctx, r.logger, "authn.find_login_account", err)
 	}
 	return &authnentity.LoginAccount{
 		ID:           po.ID,

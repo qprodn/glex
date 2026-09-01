@@ -34,3 +34,11 @@ var (
 	// a valid preset.
 	ErrDictEntryInvalid = errors.BadRequest("DICT_ENTRY_INVALID", "dict_label and dict_value are required and tag_style must be a valid preset")
 )
+
+var (
+	// ErrDictStoreUnavailable: a dict-store operation failed unexpectedly —
+	// driver down, tx failure, serialization. Adapters log the raw error once
+	// and return this sentinel (ADR 0007), so no driver text crosses the
+	// repository boundary; clients see 503, never a driver message.
+	ErrDictStoreUnavailable = errors.ServiceUnavailable("DICT_STORE_UNAVAILABLE", "dict store unavailable")
+)

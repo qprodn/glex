@@ -4,6 +4,7 @@ import (
 	"glex/internal/infra/store"
 
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/go-kratos/aip-go/ents"
@@ -36,12 +37,16 @@ func toBizRole(po *ent.Role) *accessentity.Role {
 }
 
 type roleRepo struct {
-	data *store.Data
+	data   *store.Data
+	logger *slog.Logger
 }
 
 // NewRoleRepo creates a new RoleRepo instance.
 func NewRoleRepo(data *store.Data) accessrepo.RoleRepo {
-	return &roleRepo{data: data}
+	return &roleRepo{
+		data:   data,
+		logger: data.Logger.With(slog.String("component", "infra.access.role")),
+	}
 }
 
 func (r *roleRepo) FindByID(ctx context.Context, id int64) (*accessentity.Role, error) {
@@ -52,7 +57,7 @@ func (r *roleRepo) FindByID(ctx context.Context, id int64) (*accessentity.Role, 
 		if ent.IsNotFound(err) {
 			return nil, access.ErrRoleNotFound
 		}
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.find_by_id", err)
 	}
 	return toBizRole(po), nil
 }
@@ -65,7 +70,7 @@ func (r *roleRepo) FindByRoleName(ctx context.Context, roleName string) (*access
 		if ent.IsNotFound(err) {
 			return nil, access.ErrRoleNotFound
 		}
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.find_by_name", err)
 	}
 	return toBizRole(po), nil
 }
@@ -78,7 +83,7 @@ func (r *roleRepo) FindByRoleKey(ctx context.Context, roleKey string) (*accessen
 		if ent.IsNotFound(err) {
 			return nil, access.ErrRoleNotFound
 		}
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.find_by_key", err)
 	}
 	return toBizRole(po), nil
 }
@@ -98,7 +103,7 @@ func (r *roleRepo) ListRoles(ctx context.Context, opts ...accessrepo.ListOption)
 		Limit(o.Limit).
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.list", err)
 	}
 	roles := make([]*accessentity.Role, 0, len(pos))
 	for _, po := range pos {
@@ -123,10 +128,10 @@ func (r *roleRepo) CreateRole(ctx context.Context, ro *accessentity.Role, menuID
 		SetUpdateBy(ro.UpdateBy).
 		Save(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.create", err)
 	}
 	if err := insertMenuGrants(ctx, r.data, ro.ID, menuIDs, ro.CreateBy); err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.create", err)
 	}
 	return toBizRole(po), nil
 }
@@ -141,13 +146,13 @@ func (r *roleRepo) UpdateRole(ctx context.Context, ro *accessentity.Role) (*acce
 		if ent.IsNotFound(err) {
 			return nil, access.ErrRoleNotFound
 		}
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.update", err)
 	}
 	userIDs, err := r.data.DB.Role(ctx).Query().Where(role.IDEQ(ro.ID)).
 		QueryUserLinks().Where(userrole.DeletedAtIsNil()).
 		QueryUser().Where(user.DeletedAtIsNil()).IDs(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.update", err)
 	}
 	po, err := r.data.DB.Role(ctx).UpdateOneID(ro.ID).
 		SetRoleName(ro.RoleName).
@@ -158,7 +163,7 @@ func (r *roleRepo) UpdateRole(ctx context.Context, ro *accessentity.Role) (*acce
 		SetUpdateBy(ro.UpdateBy).
 		Save(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.update", err)
 	}
 	result.Role = toBizRole(po)
 	result.Previous = toBizRole(current)
@@ -175,14 +180,14 @@ func (r *roleRepo) DeleteRole(ctx context.Context, id int64, actorID int64) ([]i
 		QueryUserLinks().Where(userrole.DeletedAtIsNil()).
 		QueryUser().Where(user.DeletedAtIsNil()).IDs(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.delete", err)
 	}
 	if _, err := r.data.DB.RoleMenu(ctx).Update().
 		Where(rolemenu.RoleIDEQ(id), rolemenu.DeletedAtIsNil()).
 		SetDeletedAt(time.Now()).
 		SetUpdateBy(actorID).
 		Save(ctx); err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.delete", err)
 	}
 	err = r.data.DB.Role(ctx).UpdateOneID(id).
 		SetDeletedAt(time.Now()).
@@ -192,7 +197,7 @@ func (r *roleRepo) DeleteRole(ctx context.Context, id int64, actorID int64) ([]i
 		if ent.IsNotFound(err) {
 			return nil, access.ErrRoleNotFound
 		}
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.delete", err)
 	}
 	return userIDs, nil
 }
@@ -208,7 +213,7 @@ func (r *roleRepo) ListRoleMenuLinks(ctx context.Context, roleID int64) ([]*acce
 		Order(menu.ByParentID(), menu.ByOrderNum()).
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.list_menu_links", err)
 	}
 	links := make([]*accessrepo.RoleMenuLink, 0, len(pos))
 	for _, po := range pos {
@@ -227,7 +232,7 @@ func (r *roleRepo) ReplaceRoleMenus(ctx context.Context, roleID int64, menuIDs [
 	if len(menuIDs) > 0 {
 		count, err := r.data.DB.Menu(ctx).Query().Where(menu.IDIn(menuIDs...), menu.DeletedAtIsNil()).Count(ctx)
 		if err != nil {
-			return nil, err
+			return nil, accessStoreError(ctx, r.logger, "access.role.replace_menu_grants", err)
 		}
 		if count != len(sortedIDs(menuIDs)) {
 			return nil, access.ErrRoleMenuNotFound
@@ -237,14 +242,14 @@ func (r *roleRepo) ReplaceRoleMenus(ctx context.Context, roleID int64, menuIDs [
 		QueryUserLinks().Where(userrole.DeletedAtIsNil()).
 		QueryUser().Where(user.DeletedAtIsNil()).IDs(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.replace_menu_grants", err)
 	}
 	if _, err := r.data.DB.RoleMenu(ctx).Update().
 		Where(rolemenu.RoleIDEQ(roleID), rolemenu.DeletedAtIsNil()).
 		SetDeletedAt(time.Now()).
 		SetUpdateBy(actorID).
 		Save(ctx); err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.replace_menu_grants", err)
 	}
 	if _, err := r.data.DB.Role(ctx).UpdateOneID(roleID).
 		SetMenuCheckStrictly(menuCheckStrictly).
@@ -253,10 +258,10 @@ func (r *roleRepo) ReplaceRoleMenus(ctx context.Context, roleID int64, menuIDs [
 		if ent.IsNotFound(err) {
 			return nil, access.ErrRoleNotFound
 		}
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.replace_menu_grants", err)
 	}
 	if err := insertMenuGrants(ctx, r.data, roleID, menuIDs, actorID); err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role.replace_menu_grants", err)
 	}
 	return userIDs, nil
 }

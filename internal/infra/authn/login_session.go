@@ -285,6 +285,20 @@ func authRedisBackendError(ctx context.Context, logger *slog.Logger, operation s
 	return authndomain.ErrAuthBackendUnavailable
 }
 
+// authSessionLocalError is the log-and-map for Login Session failures that
+// happen inside the adapter around the Redis round trip — session id
+// generation, payload encoding, undecodable stored metadata. Like the backend
+// mappers, it logs the raw error once at the handling site and returns the
+// authn availability sentinel, so no raw error crosses the repository
+// boundary (ADR 0007).
+func authSessionLocalError(ctx context.Context, logger *slog.Logger, operation string, err error) error {
+	logger.ErrorContext(ctx, "authentication session operation failed",
+		slog.String("operation", operation),
+		slog.Any("error", err),
+	)
+	return authndomain.ErrAuthBackendUnavailable
+}
+
 func (r *loginSessionRepo) Create(ctx context.Context, bearerToken string, session *authnentity.LoginSession) (*authnentity.LoginSession, error) {
 	if bearerToken == "" || session == nil || session.SystemUserID <= 0 {
 		return nil, authndomain.ErrTokenInvalid
@@ -292,12 +306,12 @@ func (r *loginSessionRepo) Create(ctx context.Context, bearerToken string, sessi
 	for attempts := 0; attempts < 3; attempts++ {
 		id, err := uuid.NewRandom()
 		if err != nil {
-			return nil, fmt.Errorf("generate Session ID: %w", err)
+			return nil, authSessionLocalError(ctx, r.logger, "authn.create_session_id", err)
 		}
 		po := newLoginSession(session, id.String(), bearerToken)
 		payload, err := json.Marshal(po)
 		if err != nil {
-			return nil, fmt.Errorf("encode Login Session: %w", err)
+			return nil, authSessionLocalError(ctx, r.logger, "authn.encode_login_session", err)
 		}
 		writeCtx, cancel := context.WithTimeout(ctx, store.BoundedTimeout(r.writeTimeout, store.DefaultAuthWriteTimeout))
 		result, err := createLoginSessionScript.Run(writeCtx, r.rdb, []string{
@@ -333,7 +347,7 @@ func (r *loginSessionRepo) Create(ctx context.Context, bearerToken string, sessi
 			return nil, authndomain.ErrTokenInvalid
 		}
 	}
-	return nil, fmt.Errorf("generate unique Session ID: collision limit reached")
+	return nil, authSessionLocalError(ctx, r.logger, "authn.create_session_id", errors.New("generate unique Session ID: collision limit reached"))
 }
 
 func (r *loginSessionRepo) FindByID(ctx context.Context, sessionID string) (*authnentity.LoginSession, error) {
@@ -400,7 +414,7 @@ func (r *loginSessionRepo) findPO(ctx context.Context, sessionID string) (*login
 	}
 	var po loginSessionPO
 	if err := json.Unmarshal([]byte(encoded), &po); err != nil {
-		return nil, authndomain.ErrAuthBackendUnavailable
+		return nil, authSessionLocalError(ctx, r.logger, "authn.decode_login_session", err)
 	}
 	return &po, nil
 }
@@ -465,7 +479,7 @@ func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...au
 		}
 		var po loginSessionPO
 		if err := json.Unmarshal([]byte(encoded), &po); err != nil {
-			return nil, authndomain.ErrAuthBackendUnavailable
+			return nil, authSessionLocalError(ctx, r.logger, "authn.decode_login_session", err)
 		}
 		session, err := toBizLoginSession(&po)
 		if err != nil {

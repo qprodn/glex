@@ -4,6 +4,7 @@ import (
 	"glex/internal/infra/store"
 
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/go-kratos/aip-go/ents"
@@ -24,12 +25,16 @@ import (
 // storage reality until the tables split (ADR 0005); they surface only as
 // RoleUser snapshots.
 type userRoleRepo struct {
-	data *store.Data
+	data   *store.Data
+	logger *slog.Logger
 }
 
 // NewUserRoleRepo creates a new UserRoleRepo instance.
 func NewUserRoleRepo(data *store.Data) accessrepo.UserRoleRepo {
-	return &userRoleRepo{data: data}
+	return &userRoleRepo{
+		data:   data,
+		logger: data.Logger.With(slog.String("component", "infra.access.user_role")),
+	}
 }
 
 // toRoleUser maps an ent User PO to the by-role endpoint's RoleUser snapshot.
@@ -62,9 +67,13 @@ func toRoleUser(po *ent.User) *accessentity.RoleUser {
 // UserExists reports whether the System User exists and is not soft-deleted —
 // the storage behind the by-user endpoints' existence gate.
 func (r *userRoleRepo) UserExists(ctx context.Context, userID int64) (bool, error) {
-	return r.data.DB.User(ctx).Query().
+	exists, err := r.data.DB.User(ctx).Query().
 		Where(user.IDEQ(userID), user.DeletedAtIsNil()).
 		Exist(ctx)
+	if err != nil {
+		return false, accessStoreError(ctx, r.logger, "access.role_assignment.user_exists", err)
+	}
+	return exists, nil
 }
 
 // ListRoleAssignments reads every active role (the dialog's "all roles") with
@@ -78,7 +87,7 @@ func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([
 		Where(role.DeletedAtIsNil()).
 		IDs(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role_assignment.list", err)
 	}
 	assigned := make(map[int64]struct{}, len(assignedIDs))
 	for _, id := range assignedIDs {
@@ -89,7 +98,7 @@ func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([
 		Order(role.ByRoleSort(), role.ByID()).
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role_assignment.list", err)
 	}
 	assignments := make([]*accessentity.RoleAssignment, 0, len(pos))
 	for _, po := range pos {
@@ -112,7 +121,7 @@ func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleI
 	if len(roleIDs) > 0 {
 		count, err := r.data.DB.Role(ctx).Query().Where(role.IDIn(roleIDs...), role.DeletedAtIsNil()).Count(ctx)
 		if err != nil {
-			return nil, err
+			return nil, accessStoreError(ctx, r.logger, "access.role_assignment.replace", err)
 		}
 		if count != len(sortedIDs(roleIDs)) {
 			return nil, access.ErrRoleNotFound
@@ -122,7 +131,7 @@ func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleI
 		Where(user.IDEQ(userID), user.DeletedAtIsNil()).
 		Exist(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role_assignment.replace", err)
 	}
 	if !exists {
 		return nil, access.ErrUserNotFound
@@ -132,7 +141,7 @@ func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleI
 		SetDeletedAt(time.Now()).
 		SetUpdateBy(actorID).
 		Save(ctx); err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role_assignment.replace", err)
 	}
 	if len(roleIDs) > 0 {
 		builders := make([]*ent.UserRoleCreate, 0, len(roleIDs))
@@ -145,7 +154,7 @@ func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleI
 				SetUpdateBy(actorID))
 		}
 		if err := r.data.DB.UserRole(ctx).CreateBulk(builders...).Exec(ctx); err != nil {
-			return nil, err
+			return nil, accessStoreError(ctx, r.logger, "access.role_assignment.replace", err)
 		}
 	}
 	return []int64{userID}, nil
@@ -170,7 +179,7 @@ func (r *userRoleRepo) ListRoleUsers(ctx context.Context, roleID int64, opts ...
 		Limit(o.Limit).
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, accessStoreError(ctx, r.logger, "access.role_assignment.list_users", err)
 	}
 	users := make([]*accessentity.RoleUser, 0, len(pos))
 	for _, po := range pos {
@@ -183,9 +192,13 @@ func (r *userRoleRepo) ListRoleUsers(ctx context.Context, roleID int64, opts ...
 // role with users cannot be deleted or disabled". Only active links count
 // (ADR 0002).
 func (r *userRoleRepo) CountUserRoles(ctx context.Context, roleID int64) (int, error) {
-	return r.data.DB.UserRole(ctx).Query().
+	count, err := r.data.DB.UserRole(ctx).Query().
 		Where(userrole.RoleIDEQ(roleID), userrole.DeletedAtIsNil()).
 		QueryUser().
 		Where(user.DeletedAtIsNil()).
 		Count(ctx)
+	if err != nil {
+		return 0, accessStoreError(ctx, r.logger, "access.role_assignment.count_users", err)
+	}
+	return count, nil
 }

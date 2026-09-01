@@ -2,6 +2,8 @@ package dictinfra
 
 import (
 	"context"
+	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/go-kratos/aip-go/ents"
@@ -28,12 +30,33 @@ func toBizDictType(po *ent.DictType) *dictentity.DictType {
 }
 
 type dictTypeRepo struct {
-	data *store.Data
+	data   *store.Data
+	logger *slog.Logger
 }
 
 // NewDictTypeRepo creates a new DictTypeRepo instance.
 func NewDictTypeRepo(data *store.Data) dictrepo.DictTypeRepo {
-	return &dictTypeRepo{data: data}
+	return &dictTypeRepo{
+		data:   data,
+		logger: data.Logger.With(slog.String("component", "infra.dict.dict_type")),
+	}
+}
+
+// dictStoreError is the log-and-map for unexpected dict-store failures (ADR
+// 0007): the raw error is logged once at the handling site with its operation
+// and returned as the module's sentinel, so no raw ent error crosses the
+// repository boundary. Expected business conditions (ent.IsNotFound and
+// friends) map silently at the call sites; a canceled request is benign and
+// returns the sentinel without logging.
+func dictStoreError(ctx context.Context, logger *slog.Logger, operation string, err error) error {
+	if errors.Is(err, context.Canceled) {
+		return dict.ErrDictStoreUnavailable
+	}
+	logger.ErrorContext(ctx, "dict store operation failed",
+		slog.String("operation", operation),
+		slog.Any("error", err),
+	)
+	return dict.ErrDictStoreUnavailable
 }
 
 func (r *dictTypeRepo) FindByID(ctx context.Context, id int64) (*dictentity.DictType, error) {
@@ -44,7 +67,7 @@ func (r *dictTypeRepo) FindByID(ctx context.Context, id int64) (*dictentity.Dict
 		if ent.IsNotFound(err) {
 			return nil, dict.ErrDictTypeNotFound
 		}
-		return nil, err
+		return nil, dictStoreError(ctx, r.logger, "dict.type.find_by_id", err)
 	}
 	return toBizDictType(po), nil
 }
@@ -57,7 +80,7 @@ func (r *dictTypeRepo) FindByKey(ctx context.Context, key string) (*dictentity.D
 		if ent.IsNotFound(err) {
 			return nil, dict.ErrDictTypeNotFound
 		}
-		return nil, err
+		return nil, dictStoreError(ctx, r.logger, "dict.type.find_by_key", err)
 	}
 	return toBizDictType(po), nil
 }
@@ -77,7 +100,7 @@ func (r *dictTypeRepo) List(ctx context.Context, opts ...dictrepo.ListOption) ([
 		Limit(o.Limit).
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, dictStoreError(ctx, r.logger, "dict.type.list", err)
 	}
 	types := make([]*dictentity.DictType, 0, len(pos))
 	for _, po := range pos {
@@ -99,7 +122,7 @@ func (r *dictTypeRepo) Create(ctx context.Context, t *dictentity.DictType) (*dic
 		SetUpdateBy(t.UpdateBy).
 		Save(ctx)
 	if err != nil {
-		return nil, err
+		return nil, dictStoreError(ctx, r.logger, "dict.type.create", err)
 	}
 	return toBizDictType(po), nil
 }
@@ -117,7 +140,7 @@ func (r *dictTypeRepo) Update(ctx context.Context, t *dictentity.DictType) (*dic
 		if ent.IsNotFound(err) {
 			return nil, dict.ErrDictTypeNotFound
 		}
-		return nil, err
+		return nil, dictStoreError(ctx, r.logger, "dict.type.update", err)
 	}
 	return toBizDictType(po), nil
 }
@@ -133,7 +156,7 @@ func (r *dictTypeRepo) Delete(ctx context.Context, id, actorID int64) error {
 		if ent.IsNotFound(err) {
 			return dict.ErrDictTypeNotFound
 		}
-		return err
+		return dictStoreError(ctx, r.logger, "dict.type.delete", err)
 	}
 	return nil
 }

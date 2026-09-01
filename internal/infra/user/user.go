@@ -4,6 +4,8 @@ import (
 	"glex/internal/infra/store"
 
 	"context"
+	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/go-kratos/aip-go/ents"
@@ -43,12 +45,33 @@ func toBiz(po *ent.User) *userentity.User {
 }
 
 type userRepo struct {
-	data *store.Data
+	data   *store.Data
+	logger *slog.Logger
 }
 
 // NewUserRepo creates a new UserRepo instance.
 func NewUserRepo(data *store.Data) userrepo.UserRepo {
-	return &userRepo{data: data}
+	return &userRepo{
+		data:   data,
+		logger: data.Logger.With(slog.String("component", "infra.user.user")),
+	}
+}
+
+// userStoreError is the log-and-map for unexpected user-store failures (ADR
+// 0007): the raw error is logged once at the handling site with its operation
+// and returned as the module's sentinel, so no raw ent error crosses the
+// repository boundary. Expected business conditions (ent.IsNotFound and
+// friends) map silently at the call sites; a canceled request is benign and
+// returns the sentinel without logging.
+func userStoreError(ctx context.Context, logger *slog.Logger, operation string, err error) error {
+	if errors.Is(err, context.Canceled) {
+		return userdomain.ErrUserStoreUnavailable
+	}
+	logger.ErrorContext(ctx, "user store operation failed",
+		slog.String("operation", operation),
+		slog.Any("error", err),
+	)
+	return userdomain.ErrUserStoreUnavailable
 }
 
 func (r *userRepo) FindByID(ctx context.Context, id int64) (*userentity.User, error) {
@@ -59,7 +82,7 @@ func (r *userRepo) FindByID(ctx context.Context, id int64) (*userentity.User, er
 		if ent.IsNotFound(err) {
 			return nil, userdomain.ErrUserNotFound
 		}
-		return nil, err
+		return nil, userStoreError(ctx, r.logger, "user.find_by_id", err)
 	}
 	return toBiz(po), nil
 }
@@ -75,7 +98,7 @@ func (r *userRepo) FindByUserName(ctx context.Context, userName string) (*useren
 		if ent.IsNotSingular(err) {
 			return nil, userdomain.ErrUserNameAmbiguous
 		}
-		return nil, err
+		return nil, userStoreError(ctx, r.logger, "user.find_by_user_name", err)
 	}
 	return toBiz(po), nil
 }
@@ -88,7 +111,7 @@ func (r *userRepo) FindByEmail(ctx context.Context, email string) (*userentity.U
 		if ent.IsNotFound(err) {
 			return nil, userdomain.ErrUserNotFound
 		}
-		return nil, err
+		return nil, userStoreError(ctx, r.logger, "user.find_by_email", err)
 	}
 	return toBiz(po), nil
 }
@@ -101,7 +124,7 @@ func (r *userRepo) FindByPhoneNumber(ctx context.Context, phone string) (*useren
 		if ent.IsNotFound(err) {
 			return nil, userdomain.ErrUserNotFound
 		}
-		return nil, err
+		return nil, userStoreError(ctx, r.logger, "user.find_by_phone_number", err)
 	}
 	return toBiz(po), nil
 }
@@ -121,7 +144,7 @@ func (r *userRepo) ListUsers(ctx context.Context, opts ...userrepo.ListOption) (
 		Limit(o.Limit).
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, userStoreError(ctx, r.logger, "user.list", err)
 	}
 	users := make([]*userentity.User, 0, len(pos))
 	for _, po := range pos {
@@ -149,7 +172,7 @@ func (r *userRepo) CreateUser(ctx context.Context, u *userentity.User) (*userent
 	}
 	po, err := b.Save(ctx)
 	if err != nil {
-		return nil, err
+		return nil, userStoreError(ctx, r.logger, "user.create", err)
 	}
 	return toBiz(po), nil
 }
@@ -164,7 +187,7 @@ func (r *userRepo) UpdateUser(ctx context.Context, u *userentity.User) (*userent
 		if ent.IsNotFound(err) {
 			return nil, userdomain.ErrUserNotFound
 		}
-		return nil, err
+		return nil, userStoreError(ctx, r.logger, "user.update", err)
 	}
 	upd := r.data.DB.User(ctx).UpdateOneID(u.ID).
 		SetUserName(u.UserName).
@@ -182,7 +205,7 @@ func (r *userRepo) UpdateUser(ctx context.Context, u *userentity.User) (*userent
 	}
 	po, err := upd.Save(ctx)
 	if err != nil {
-		return nil, err
+		return nil, userStoreError(ctx, r.logger, "user.update", err)
 	}
 	result.User = toBiz(po)
 	result.Previous = toBiz(current)
@@ -198,7 +221,7 @@ func (r *userRepo) DeleteUser(ctx context.Context, id int64, actorID int64) ([]i
 		SetDeletedAt(time.Now()).
 		SetUpdateBy(actorID).
 		Save(ctx); err != nil {
-		return nil, err
+		return nil, userStoreError(ctx, r.logger, "user.delete", err)
 	}
 	err := r.data.DB.User(ctx).UpdateOneID(id).
 		SetDeletedAt(time.Now()).
@@ -208,7 +231,7 @@ func (r *userRepo) DeleteUser(ctx context.Context, id int64, actorID int64) ([]i
 		if ent.IsNotFound(err) {
 			return nil, userdomain.ErrUserNotFound
 		}
-		return nil, err
+		return nil, userStoreError(ctx, r.logger, "user.delete", err)
 	}
 	return []int64{id}, nil
 }

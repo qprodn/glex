@@ -61,4 +61,10 @@ var (
 	// store. The reason is internal to access; consumers map it onto their
 	// own availability vocabulary, so it never reaches a client as-is.
 	ErrAuthorizationUnavailable = errors.New(500, "AUTHORIZATION_UNAVAILABLE", "authorization resolution unavailable")
+	// ErrAccessStoreUnavailable: an access-store operation behind the Menu,
+	// Role, or Role Assignment repos failed unexpectedly — driver down, tx
+	// failure, serialization. Adapters log the raw error once and return this
+	// sentinel (ADR 0007), so no driver text crosses the repository boundary;
+	// clients see 503, never a driver message.
+	ErrAccessStoreUnavailable = errors.ServiceUnavailable("ACCESS_STORE_UNAVAILABLE", "access store unavailable")
 )
