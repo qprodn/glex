@@ -278,7 +278,10 @@ func tokenFingerprint(token string) string {
 }
 
 func authRedisBackendError(ctx context.Context, logger *slog.Logger, operation string, err error) error {
-	logger.WarnContext(ctx, "authentication Redis operation failed",
+	if errors.Is(err, context.Canceled) {
+		return authndomain.ErrAuthBackendUnavailable
+	}
+	logger.ErrorContext(ctx, "authentication Redis operation failed",
 		slog.String("operation", operation),
 		slog.Any("error", err),
 	)
@@ -338,7 +341,7 @@ func (r *loginSessionRepo) Create(ctx context.Context, bearerToken string, sessi
 		).Int()
 		cancel()
 		if err != nil {
-			return nil, authRedisBackendError(ctx, r.logger, "create_login_session", err)
+			return nil, authRedisBackendError(ctx, r.logger, "authn.create_login_session", err)
 		}
 		if result == 1 {
 			return toBizLoginSession(po)
@@ -357,7 +360,7 @@ func (r *loginSessionRepo) FindByID(ctx context.Context, sessionID string) (*aut
 	}
 	session, err := toBizLoginSession(po)
 	if err != nil {
-		return nil, authRedisBackendError(ctx, r.logger, "decode_system_user_id", err)
+		return nil, authRedisBackendError(ctx, r.logger, "authn.decode_system_user_id", err)
 	}
 	return session, nil
 }
@@ -383,7 +386,7 @@ func (r *loginSessionRepo) FindByToken(ctx context.Context, bearerToken string) 
 		return nil, authndomain.ErrTokenInvalid
 	}
 	if err != nil {
-		return nil, authRedisBackendError(ctx, r.logger, "find_login_session_by_token", err)
+		return nil, authRedisBackendError(ctx, r.logger, "authn.find_login_session_by_token", err)
 	}
 	return r.FindByID(ctx, sessionID)
 }
@@ -398,7 +401,7 @@ func (r *loginSessionRepo) missingTokenError(ctx context.Context, bearerToken st
 	case errors.Is(err, redis.Nil):
 		return authndomain.ErrTokenInvalid
 	default:
-		return authRedisBackendError(ctx, r.logger, "classify_missing_login_session_token", err)
+		return authRedisBackendError(ctx, r.logger, "authn.classify_missing_login_session_token", err)
 	}
 }
 
@@ -410,7 +413,7 @@ func (r *loginSessionRepo) findPO(ctx context.Context, sessionID string) (*login
 		return nil, authndomain.ErrLoginSessionNotFound
 	}
 	if err != nil {
-		return nil, authRedisBackendError(ctx, r.logger, "find_login_session_by_id", err)
+		return nil, authRedisBackendError(ctx, r.logger, "authn.find_login_session_by_id", err)
 	}
 	var po loginSessionPO
 	if err := json.Unmarshal([]byte(encoded), &po); err != nil {
@@ -456,7 +459,7 @@ func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...au
 	defer cancel()
 	ids, err := r.rdb.ZRange(readCtx, indexKey, 0, -1).Result()
 	if err != nil {
-		return nil, authRedisBackendError(ctx, r.logger, "list_login_session_index", err)
+		return nil, authRedisBackendError(ctx, r.logger, "authn.list_login_session_index", err)
 	}
 	if len(ids) == 0 {
 		return []*authnentity.LoginSession{}, nil
@@ -467,7 +470,7 @@ func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...au
 	}
 	values, err := r.rdb.MGet(readCtx, keys...).Result()
 	if err != nil {
-		return nil, authRedisBackendError(ctx, r.logger, "list_login_session_metadata", err)
+		return nil, authRedisBackendError(ctx, r.logger, "authn.list_login_session_metadata", err)
 	}
 	result := make([]*authnentity.LoginSession, 0, len(values))
 	staleIDs := make([]any, 0)
@@ -483,7 +486,7 @@ func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...au
 		}
 		session, err := toBizLoginSession(&po)
 		if err != nil {
-			return nil, authRedisBackendError(ctx, r.logger, "decode_system_user_id", err)
+			return nil, authRedisBackendError(ctx, r.logger, "authn.decode_system_user_id", err)
 		}
 		matches, err := matchesLoginSessionFilter(o.Filter.CheckedExpr.GetExpr(), session)
 		if err != nil {
@@ -498,7 +501,7 @@ func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...au
 		err := r.rdb.ZRem(writeCtx, indexKey, staleIDs...).Err()
 		writeCancel()
 		if err != nil {
-			return nil, authRedisBackendError(ctx, r.logger, "clean_stale_login_session_index", err)
+			return nil, authRedisBackendError(ctx, r.logger, "authn.clean_stale_login_session_index", err)
 		}
 	}
 	if len(o.OrderBy.Fields) > 0 {
@@ -687,7 +690,7 @@ func (r *loginSessionRepo) RevokeSystemUsers(ctx context.Context, systemUserIDs 
 	}
 	_, err := revokeSystemUsersLoginSessionsScript.Run(writeCtx, r.rdb, nil, args...).Result()
 	if err != nil {
-		return authRedisBackendError(ctx, r.logger, "revoke_system_users_login_sessions", err)
+		return authRedisBackendError(ctx, r.logger, "authn.revoke_system_users_login_sessions", err)
 	}
 	return nil
 }
@@ -714,7 +717,7 @@ func (r *loginSessionRepo) revoke(ctx context.Context, sessionID string, expecte
 		r.key(AuthManagerKeyPrefix+satokensession.AccountSessionKeyPrefix),
 	).Int()
 	if err != nil {
-		return authRedisBackendError(ctx, r.logger, "revoke_login_session", err)
+		return authRedisBackendError(ctx, r.logger, "authn.revoke_login_session", err)
 	}
 	if result == -1 {
 		return authndomain.ErrLoginSessionNotOwned

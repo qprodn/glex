@@ -4,6 +4,7 @@ import (
 	"glex/internal/infra/store"
 
 	"context"
+	"errors"
 	"log/slog"
 	"strconv"
 	"time"
@@ -84,7 +85,7 @@ func (r *authLoginRepo) Revalidate(ctx context.Context, systemUserID int64, user
 		if ent.IsNotFound(err) {
 			return nil, authndomain.ErrInvalidCredentials
 		}
-		return nil, authDatabaseBackendError(ctx, r.logger, "reload_login_system_user", err)
+		return nil, authDatabaseBackendError(ctx, r.logger, "authn.reload_login_system_user", err)
 	}
 	if current.UserName != userName || current.Password != passwordHash {
 		return nil, authndomain.ErrInvalidCredentials
@@ -107,7 +108,7 @@ func (r *authLoginRepo) RecordLogin(ctx context.Context, systemUserID int64, sou
 		SetLoginIP(sourceIP).
 		SetLoginDate(loginTime).
 		Exec(ctx); err != nil {
-		return authDatabaseBackendError(ctx, r.logger, "update_last_login", err)
+		return authDatabaseBackendError(ctx, r.logger, "authn.update_last_login", err)
 	}
 	return nil
 }
@@ -182,7 +183,10 @@ func loginAndReplaceAuthorizationSnapshot(manager *core.Manager, snapshot *authn
 }
 
 func authDatabaseBackendError(ctx context.Context, logger *slog.Logger, operation string, err error) error {
-	logger.WarnContext(ctx, "authentication database operation failed",
+	if errors.Is(err, context.Canceled) {
+		return authndomain.ErrAuthBackendUnavailable
+	}
+	logger.ErrorContext(ctx, "authentication database operation failed",
 		slog.String("operation", operation),
 		slog.Any("error", err),
 	)

@@ -4,6 +4,7 @@ import (
 	"glex/internal/infra/store"
 
 	"context"
+	"errors"
 	"log/slog"
 	"sort"
 	"strings"
@@ -44,8 +45,11 @@ func NewAuthorizationResolver(data *store.Data) accessrepo.AuthorizationResolver
 func (r *authorizationResolver) ResolveAuthorization(ctx context.Context, systemUserID int64) (*accessentity.AuthorizationResolution, error) {
 	resolution, err := resolveAuthorization(ctx, r.data.DB, systemUserID)
 	if err != nil {
-		r.logger.WarnContext(ctx, "authorization resolution database operation failed",
-			slog.String("operation", "resolve_authorization"),
+		if errors.Is(err, context.Canceled) {
+			return nil, access.ErrAuthorizationUnavailable
+		}
+		r.logger.ErrorContext(ctx, "authorization resolution database operation failed",
+			slog.String("operation", "access.resolve_authorization"),
 			slog.Any("error", err),
 		)
 		return nil, access.ErrAuthorizationUnavailable

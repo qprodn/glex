@@ -92,10 +92,10 @@ func newDataCleanup(logger *slog.Logger, db, rdb dataResourceCloser) func() {
 	return func() {
 		once.Do(func() {
 			if err := db.Close(); err != nil {
-				logger.Warn("failed closing database client", slog.Any("error", err))
+				logger.Warn("failed closing database client", slog.String("operation", "store.close_database"), slog.Any("error", err))
 			}
 			if err := rdb.Close(); err != nil {
-				logger.Warn("failed closing Redis client", slog.Any("error", err))
+				logger.Warn("failed closing Redis client", slog.String("operation", "store.close_redis"), slog.Any("error", err))
 			}
 		})
 	}

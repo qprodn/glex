@@ -138,7 +138,7 @@ func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*ac
 		Order(role.ByRoleKey(), role.ByID()).
 		All(ctx)
 	if err != nil {
-		return nil, routeAccessError(ctx, r.logger, "load_route_role_assignments", err)
+		return nil, routeAccessError(ctx, r.logger, "access.load_route_role_assignments", err)
 	}
 
 	roleKeys := make([]string, 0, len(assignedRoles))
@@ -155,7 +155,7 @@ func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*ac
 			QueryMenu().
 			IDs(ctx)
 		if err != nil {
-			return nil, routeAccessError(ctx, r.logger, "load_route_menu_grants", err)
+			return nil, routeAccessError(ctx, r.logger, "access.load_route_menu_grants", err)
 		}
 	}
 
@@ -168,7 +168,7 @@ func (r *menuRepo) LoadRouteAccess(ctx context.Context, systemUserID int64) (*ac
 		Order(menu.ByParentID(), menu.ByOrderNum(), menu.ByID()).
 		All(ctx)
 	if err != nil {
-		return nil, routeAccessError(ctx, r.logger, "load_active_route_menus", err)
+		return nil, routeAccessError(ctx, r.logger, "access.load_active_route_menus", err)
 	}
 	menus := make([]*accessentity.Menu, 0, len(pos))
 	for _, po := range pos {
@@ -342,9 +342,13 @@ func accessStoreError(ctx context.Context, logger *slog.Logger, operation string
 // routeAccessError maps a database failure behind route resolution (which
 // feeds the authenticated GetRouters endpoint) onto access's 503 error — the
 // wire-identical twin of authn's AUTH_BACKEND_UNAVAILABLE — so no raw driver
-// error crosses the seam and access depends on no authn type.
+// error crosses the seam and access depends on no authn type. A canceled
+// request is benign and returns the sentinel without logging.
 func routeAccessError(ctx context.Context, logger *slog.Logger, operation string, err error) error {
-	logger.WarnContext(ctx, "route access database operation failed",
+	if errors.Is(err, context.Canceled) {
+		return access.ErrRouteAccessUnavailable
+	}
+	logger.ErrorContext(ctx, "route access database operation failed",
 		slog.String("operation", operation),
 		slog.Any("error", err),
 	)

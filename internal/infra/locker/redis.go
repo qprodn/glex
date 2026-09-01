@@ -72,9 +72,9 @@ func (l *RedisLocker) WithLock(ctx context.Context, key string, fn func(ctx cont
 	defer func() {
 		releaseCtx, releaseCancel := context.WithTimeout(context.WithoutCancel(ctx), opTimeout)
 		defer releaseCancel()
-		if err := lk.Release(releaseCtx); err != nil && !errors.Is(err, redislock.ErrLockNotHeld) {
-			l.logger.Warn("release lock", slog.String("key", key), slog.Any("error", err))
-		}
+			if err := lk.Release(releaseCtx); err != nil && !errors.Is(err, redislock.ErrLockNotHeld) {
+				l.logger.Warn("release lock", slog.String("operation", "lock.release"), slog.String("key", key), slog.Any("error", err))
+			}
 	}()
 
 	err = fn(fctx)
@@ -135,12 +135,14 @@ func (l *RedisLocker) renew(ctx context.Context, lk *redislock.Lock, ttl time.Du
 				continue
 			}
 			if errors.Is(err, redislock.ErrNotObtained) {
-				l.logger.Warn("lock lost during critical section", slog.Any("error", err))
+				// Mutual exclusion is broken and the outcome maps to
+				// ErrLockLost — a system failure, so Error (ADR 0007).
+				l.logger.Error("lock lost during critical section", slog.String("operation", "lock.lock_lost"), slog.Any("error", err))
 				lost.Store(true)
 				cancel()
 				return
 			}
-			l.logger.Warn("renew lock", slog.Any("error", err))
+			l.logger.Warn("renew lock", slog.String("operation", "lock.renew"), slog.Any("error", err))
 		}
 	}
 }

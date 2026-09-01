@@ -76,7 +76,7 @@ func (r *loginCounterRepo) LockRemaining(ctx context.Context, userName, sourceIP
 		r.userNameLimit, r.sourceIPLimit,
 	).Int64()
 	if err != nil {
-		return 0, authRedisBackendError(ctx, r.logger, "check_login_counters", err)
+		return 0, authRedisBackendError(ctx, r.logger, "authn.check_login_counters", err)
 	}
 	return time.Duration(milliseconds) * time.Millisecond, nil
 }
@@ -89,7 +89,7 @@ func (r *loginCounterRepo) RecordFailure(ctx context.Context, userName, sourceIP
 		r.userNameWindow.Milliseconds(), r.sourceIPWindow.Milliseconds(),
 	).Int64()
 	if err != nil {
-		return 0, authRedisBackendError(ctx, r.logger, "record_login_failure", err)
+		return 0, authRedisBackendError(ctx, r.logger, "authn.record_login_failure", err)
 	}
 	return time.Duration(milliseconds) * time.Millisecond, nil
 }
@@ -98,7 +98,7 @@ func (r *loginCounterRepo) ClearUserName(ctx context.Context, userName string) e
 	writeCtx, cancel := context.WithTimeout(ctx, store.BoundedTimeout(r.writeTimeout, store.DefaultAuthWriteTimeout))
 	defer cancel()
 	if err := r.rdb.Del(writeCtx, r.userNameKey(userName)).Err(); err != nil {
-		return authRedisBackendError(ctx, r.logger, "clear_username_login_counter", err)
+		return authRedisBackendError(ctx, r.logger, "authn.clear_username_login_counter", err)
 	}
 	return nil
 }

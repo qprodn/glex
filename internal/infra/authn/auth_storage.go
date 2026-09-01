@@ -106,12 +106,12 @@ func keyClass(key string) string {
 }
 
 // observe is the logging hook every operation funnels through: backend
-// failures surface here as warnings with the operation and key class.
-// Missing keys are a normal state and stay silent. Metrics (when the repo
-// adopts a metrics stack) attach at this same seam.
+// failures surface here at Error with the operation and key class (ADR 0007).
+// Missing keys and canceled requests are normal states and stay silent.
+// Metrics (when the repo adopts a metrics stack) attach at this same seam.
 func (s *authStorage) observe(op, key string, start time.Time, err error) {
-	if err != nil && !errors.Is(err, redis.Nil) && !errors.Is(err, ErrAuthKeyNotFound) {
-		s.logger.Warn("auth storage operation failed",
+	if err != nil && !errors.Is(err, redis.Nil) && !errors.Is(err, ErrAuthKeyNotFound) && !errors.Is(err, context.Canceled) {
+		s.logger.Error("auth storage operation failed",
 			slog.String("operation", op),
 			slog.String("key_class", keyClass(key)),
 			slog.Any("error", err),
@@ -141,7 +141,7 @@ func (s *authStorage) Set(key string, value any, expiration time.Duration) error
 	defer cancel()
 	start := time.Now()
 	err := s.rdb.Set(ctx, s.key(key), marshalValue(value), expiration).Err()
-	s.observe("set", key, start, err)
+	s.observe("authn.storage_set", key, start, err)
 	return s.classify(err)
 }
 
@@ -156,7 +156,7 @@ func (s *authStorage) SetKeepTTL(key string, value any) error {
 		KeepTTL: true,
 		Mode:    "XX",
 	}).Err()
-	s.observe("setkeepttl", key, start, err)
+	s.observe("authn.storage_setkeepttl", key, start, err)
 	if errors.Is(err, redis.Nil) {
 		return fmt.Errorf("%w: %s*", ErrAuthKeyNotFound, keyClass(key))
 	}
@@ -168,7 +168,7 @@ func (s *authStorage) Get(key string) (any, error) {
 	defer cancel()
 	start := time.Now()
 	value, err := s.rdb.Get(ctx, s.key(key)).Result()
-	s.observe("get", key, start, err)
+	s.observe("authn.storage_get", key, start, err)
 	if errors.Is(err, redis.Nil) {
 		return nil, fmt.Errorf("%w: %s*", ErrAuthKeyNotFound, keyClass(key))
 	}
@@ -190,7 +190,7 @@ func (s *authStorage) Delete(keys ...string) error {
 	}
 	start := time.Now()
 	err := s.rdb.Del(ctx, full...).Err()
-	s.observe("delete", keys[0], start, err)
+	s.observe("authn.storage_delete", keys[0], start, err)
 	return s.classify(err)
 }
 
@@ -203,7 +203,7 @@ func (s *authStorage) Exists(key string) bool {
 	defer cancel()
 	start := time.Now()
 	result, err := s.rdb.Exists(ctx, s.key(key)).Result()
-	s.observe("exists", key, start, err)
+	s.observe("authn.storage_exists", key, start, err)
 	return err == nil && result > 0
 }
 
@@ -216,7 +216,7 @@ func (s *authStorage) Keys(pattern string) ([]string, error) {
 	for {
 		keys, next, err := s.rdb.Scan(ctx, cursor, s.key(pattern), authScanCount).Result()
 		if err != nil {
-			s.observe("keys", pattern, start, err)
+			s.observe("authn.storage_keys", pattern, start, err)
 			return nil, s.classify(err)
 		}
 		for _, raw := range keys {
@@ -235,7 +235,7 @@ func (s *authStorage) Expire(key string, expiration time.Duration) error {
 	defer cancel()
 	start := time.Now()
 	err := s.rdb.Expire(ctx, s.key(key), expiration).Err()
-	s.observe("expire", key, start, err)
+	s.observe("authn.storage_expire", key, start, err)
 	return s.classify(err)
 }
 
@@ -244,7 +244,7 @@ func (s *authStorage) TTL(key string) (time.Duration, error) {
 	defer cancel()
 	start := time.Now()
 	ttl, err := s.rdb.TTL(ctx, s.key(key)).Result()
-	s.observe("ttl", key, start, err)
+	s.observe("authn.storage_ttl", key, start, err)
 	if err != nil {
 		return 0, s.classify(err)
 	}
@@ -264,7 +264,7 @@ func (s *authStorage) Clear() error {
 		scanCancel()
 		start := time.Now()
 		if err != nil {
-			s.observe("clear", s.namespace, start, err)
+			s.observe("authn.storage_clear", s.namespace, start, err)
 			return s.classify(err)
 		}
 		for len(keys) > 0 {
@@ -276,7 +276,7 @@ func (s *authStorage) Clear() error {
 			err := s.rdb.Unlink(unlinkCtx, batch...).Err()
 			unlinkCancel()
 			if err != nil {
-				s.observe("clear", s.namespace, start, err)
+				s.observe("authn.storage_clear", s.namespace, start, err)
 				return s.classify(err)
 			}
 			keys = keys[len(batch):]
@@ -293,7 +293,7 @@ func (s *authStorage) Ping() error {
 	defer cancel()
 	start := time.Now()
 	err := s.rdb.Ping(ctx).Err()
-	s.observe("ping", "", start, err)
+	s.observe("authn.storage_ping", "", start, err)
 	return s.classify(err)
 }
 
