@@ -10,6 +10,25 @@ carry them. Redis login-session lifecycle is outside the rule. Join tables
 carry a snowflake surrogate PK plus a partial unique index on the id pair
 `WHERE deleted_at IS NULL`; a re-granted pair inserts a new row.
 
+## Error handling and logging
+
+An error is logged exactly once, where it is handled — the site that maps,
+replaces, swallows, or degrades it instead of returning it (ADR 0007).
+`return err` / `return nil, err` is propagation, not handling: it logs
+nothing, and the transport `logging.Server` middleware records whatever
+reaches the boundary. Infra adapters never let a raw ent/redis error escape —
+log-and-map: unexpected failures log `Error` with the raw error and return
+the module's domain sentinel; expected business conditions
+(`ent.IsNotFound` → `ErrUserNotFound`) map silently. Benign errors are
+exempt: `context.Canceled`, sentinel-mapped not-found rows, `redis.Nil`.
+Every error log carries structured fields `operation` (dotted path, e.g.
+`authn.login_by_password`) and `error` (`slog.Any("error", err)`); never
+printf an error into the message text, never hand-print a stack. An explicit
+`_ = err` needs a justifying comment, or a `Warn` when the failure is worth
+knowing about. Business rejections log `Warn` at most, never `Error`;
+`Error` is reserved for system failures. Enforcement is review-based, no
+lint.
+
 ## Generation and generated files
 
 Regenerate via `make api`, `make config`, `make all`, or the owning generator.
