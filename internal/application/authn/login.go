@@ -147,7 +147,10 @@ func (s *LoginApplication) authenticate(ctx context.Context, req *LoginRequest) 
 		if result != nil {
 			// Every Redis write succeeded, so the failure is the commit:
 			// tear the credential down (best-effort — a leftover token
-			// expires on its own).
+			// expires on its own). DiscardCredential is best-effort by
+			// contract: each failed cleanup step is logged-and-mapped at the
+			// infra exit that owns it (ADR 0007), so ignoring the returned
+			// error here adds no new information.
 			_ = s.login.DiscardCredential(ctx, account.ID, result.AccessToken)
 		}
 		return nil, err

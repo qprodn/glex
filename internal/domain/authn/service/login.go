@@ -72,6 +72,9 @@ func (s *loginImpl) VerifyPassword(ctx context.Context, userName, password, sour
 		if !errors.Is(err, authn.ErrLoginAccountNotFound) && !errors.Is(err, authn.ErrLoginAccountAmbiguous) {
 			return nil, err
 		}
+		// Timing decoy, not an ignored error: VerifyPassword returns a bool,
+		// and only its bcrypt cost matters here — the match result carries no
+		// information (ADR 0007 `_ =` audit).
 		_ = VerifyPassword(DecoyCredentialHash, password)
 		return nil, s.RecordFailure(ctx, userName, sourceIP)
 	}

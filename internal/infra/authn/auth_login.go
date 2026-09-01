@@ -137,6 +137,15 @@ func (r *authLoginRepo) IssueCredential(ctx context.Context, snapshot *authnenti
 // commit: destroys the token, its authoritative Login Session, and the
 // Account Session when it was the last one. Best-effort and idempotent — a
 // leftover credential expires on its own.
+//
+// The ignored errors below are safe to swallow silently (ADR 0007): every
+// call is log-and-mapped, so a backend failure already logs Error at the
+// adapter exit that owns it (authRedisBackendError, the auth storage observe
+// hook) before surfacing here as the availability sentinel. What is left to
+// swallow is that sentinel plus benign conditions — context cancellation,
+// keys already gone (ErrAuthKeyNotFound), a Login Session revoked
+// concurrently (ErrLoginSessionNotOwned) — and a Warn here would double-log
+// each failure.
 func (r *authLoginRepo) DiscardCredential(ctx context.Context, systemUserID int64, bearerToken string) error {
 	if systemUserID <= 0 || bearerToken == "" {
 		return nil
@@ -163,6 +172,9 @@ func loginAndReplaceAuthorizationSnapshot(manager *core.Manager, snapshot *authn
 	}
 	session, err := manager.GetSession(loginID)
 	if err != nil {
+		// Rollback is best-effort: LogoutByToken is log-and-mapped inside the
+		// storage adapter (backend failures log Error there), and the token
+		// being destroyed never left the data wrapper, so its loss is benign.
 		_ = manager.LogoutByToken(token)
 		return "", err
 	}
@@ -176,6 +188,8 @@ func loginAndReplaceAuthorizationSnapshot(manager *core.Manager, snapshot *authn
 		satokenmanager.SessionKeyPermissions: copyStringSet(snapshot.Permissions),
 	}, lifetime)
 	if err != nil {
+		// Same best-effort rollback: log-and-mapped inside the storage
+		// adapter, so silence here double-logs nothing.
 		_ = manager.LogoutByToken(token)
 		return "", err
 	}
@@ -201,6 +215,11 @@ func copyStringSet(values []string) []string {
 	return copied
 }
 
+// cleanupUnregisteredToken destroys a token whose Login Session registration
+// failed. Like DiscardCredential's cleanup, every call is log-and-mapped at
+// its adapter exit, so a backend failure is logged Error there before the
+// sentinel surfaces here, and silence at this swallow site double-logs
+// nothing (ADR 0007).
 func (r *authLoginRepo) cleanupUnregisteredToken(ctx context.Context, token string, systemUserID int64) {
 	_ = r.manager.LogoutByToken(token)
 	remaining, err := r.sessions.ListBySystemUser(ctx, systemUserID)

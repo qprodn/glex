@@ -121,5 +121,8 @@ func parseUploadForm(r *stdhttp.Request) (*fileapp.UploadInput, func(), error) {
 		OriginalName: header.Filename,
 		BizPath:      r.FormValue("path"),
 	}
+	// The part is fully read once cleanup runs, and closing it then cannot
+	// fail actionably — in-memory parts close as a no-op and the temp file is
+	// opened read-only — so the error is discarded (ADR 0007).
 	return in, func() { _ = part.Close() }, nil
 }
