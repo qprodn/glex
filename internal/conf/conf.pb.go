@@ -27,6 +27,7 @@ type Bootstrap struct {
 	Server        *Server                `protobuf:"bytes,1,opt,name=server,proto3" json:"server,omitempty"`
 	Data          *Data                  `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
 	Auth          *Auth                  `protobuf:"bytes,3,opt,name=auth,proto3" json:"auth,omitempty"`
+	File          *File                  `protobuf:"bytes,4,opt,name=file,proto3" json:"file,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -78,6 +79,13 @@ func (x *Bootstrap) GetData() *Data {
 func (x *Bootstrap) GetAuth() *Auth {
 	if x != nil {
 		return x.Auth
+	}
+	return nil
+}
+
+func (x *Bootstrap) GetFile() *File {
+	if x != nil {
+		return x.File
 	}
 	return nil
 }
@@ -283,6 +291,74 @@ func (x *Data) GetRedis() *Data_Redis {
 	return nil
 }
 
+// File configures the file module: one S3-compatible endpoint with static
+// credentials (ADR 0007) plus the upload acceptance policy (size cap and
+// content-type whitelist).
+type File struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	S3    *File_S3               `protobuf:"bytes,1,opt,name=s3,proto3" json:"s3,omitempty"`
+	// Upload size cap in bytes. 0 falls back to the built-in default.
+	MaxSizeBytes uint64 `protobuf:"varint,2,opt,name=max_size_bytes,json=maxSizeBytes,proto3" json:"max_size_bytes,omitempty"`
+	// Accepted content types, sniffed from the upload's bytes — a client's
+	// declared Content-Type never overrides the sniffed value. An entry ending
+	// in "/*" admits the whole type (e.g. "image/*"); any other entry is an
+	// exact match. Empty falls back to the built-in default set.
+	AllowMime     []string `protobuf:"bytes,3,rep,name=allow_mime,json=allowMime,proto3" json:"allow_mime,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *File) Reset() {
+	*x = File{}
+	mi := &file_conf_conf_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *File) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*File) ProtoMessage() {}
+
+func (x *File) ProtoReflect() protoreflect.Message {
+	mi := &file_conf_conf_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use File.ProtoReflect.Descriptor instead.
+func (*File) Descriptor() ([]byte, []int) {
+	return file_conf_conf_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *File) GetS3() *File_S3 {
+	if x != nil {
+		return x.S3
+	}
+	return nil
+}
+
+func (x *File) GetMaxSizeBytes() uint64 {
+	if x != nil {
+		return x.MaxSizeBytes
+	}
+	return 0
+}
+
+func (x *File) GetAllowMime() []string {
+	if x != nil {
+		return x.AllowMime
+	}
+	return nil
+}
+
 type Auth_LoginCounter struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MaxFailures   uint32                 `protobuf:"varint,1,opt,name=max_failures,json=maxFailures,proto3" json:"max_failures,omitempty"`
@@ -293,7 +369,7 @@ type Auth_LoginCounter struct {
 
 func (x *Auth_LoginCounter) Reset() {
 	*x = Auth_LoginCounter{}
-	mi := &file_conf_conf_proto_msgTypes[4]
+	mi := &file_conf_conf_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -305,7 +381,7 @@ func (x *Auth_LoginCounter) String() string {
 func (*Auth_LoginCounter) ProtoMessage() {}
 
 func (x *Auth_LoginCounter) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[4]
+	mi := &file_conf_conf_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -346,7 +422,7 @@ type Server_HTTP struct {
 
 func (x *Server_HTTP) Reset() {
 	*x = Server_HTTP{}
-	mi := &file_conf_conf_proto_msgTypes[5]
+	mi := &file_conf_conf_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -358,7 +434,7 @@ func (x *Server_HTTP) String() string {
 func (*Server_HTTP) ProtoMessage() {}
 
 func (x *Server_HTTP) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[5]
+	mi := &file_conf_conf_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -406,7 +482,7 @@ type Server_GRPC struct {
 
 func (x *Server_GRPC) Reset() {
 	*x = Server_GRPC{}
-	mi := &file_conf_conf_proto_msgTypes[6]
+	mi := &file_conf_conf_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -418,7 +494,7 @@ func (x *Server_GRPC) String() string {
 func (*Server_GRPC) ProtoMessage() {}
 
 func (x *Server_GRPC) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[6]
+	mi := &file_conf_conf_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -465,7 +541,7 @@ type Data_Database struct {
 
 func (x *Data_Database) Reset() {
 	*x = Data_Database{}
-	mi := &file_conf_conf_proto_msgTypes[7]
+	mi := &file_conf_conf_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -477,7 +553,7 @@ func (x *Data_Database) String() string {
 func (*Data_Database) ProtoMessage() {}
 
 func (x *Data_Database) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[7]
+	mi := &file_conf_conf_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -519,7 +595,7 @@ type Data_Redis struct {
 
 func (x *Data_Redis) Reset() {
 	*x = Data_Redis{}
-	mi := &file_conf_conf_proto_msgTypes[8]
+	mi := &file_conf_conf_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -531,7 +607,7 @@ func (x *Data_Redis) String() string {
 func (*Data_Redis) ProtoMessage() {}
 
 func (x *Data_Redis) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[8]
+	mi := &file_conf_conf_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -575,16 +651,112 @@ func (x *Data_Redis) GetWriteTimeout() *durationpb.Duration {
 	return nil
 }
 
+type File_S3 struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Host or host:port of the S3-compatible endpoint; the scheme comes from
+	// use_ssl.
+	Endpoint  string `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	Region    string `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
+	Bucket    string `protobuf:"bytes,3,opt,name=bucket,proto3" json:"bucket,omitempty"`
+	AccessKey string `protobuf:"bytes,4,opt,name=access_key,json=accessKey,proto3" json:"access_key,omitempty"`
+	SecretKey string `protobuf:"bytes,5,opt,name=secret_key,json=secretKey,proto3" json:"secret_key,omitempty"`
+	UseSsl    bool   `protobuf:"varint,6,opt,name=use_ssl,json=useSsl,proto3" json:"use_ssl,omitempty"`
+	// Path-style addressing (true for MinIO and most self-hosted S3).
+	PathStyle     bool `protobuf:"varint,7,opt,name=path_style,json=pathStyle,proto3" json:"path_style,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *File_S3) Reset() {
+	*x = File_S3{}
+	mi := &file_conf_conf_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *File_S3) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*File_S3) ProtoMessage() {}
+
+func (x *File_S3) ProtoReflect() protoreflect.Message {
+	mi := &file_conf_conf_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use File_S3.ProtoReflect.Descriptor instead.
+func (*File_S3) Descriptor() ([]byte, []int) {
+	return file_conf_conf_proto_rawDescGZIP(), []int{4, 0}
+}
+
+func (x *File_S3) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+func (x *File_S3) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
+func (x *File_S3) GetBucket() string {
+	if x != nil {
+		return x.Bucket
+	}
+	return ""
+}
+
+func (x *File_S3) GetAccessKey() string {
+	if x != nil {
+		return x.AccessKey
+	}
+	return ""
+}
+
+func (x *File_S3) GetSecretKey() string {
+	if x != nil {
+		return x.SecretKey
+	}
+	return ""
+}
+
+func (x *File_S3) GetUseSsl() bool {
+	if x != nil {
+		return x.UseSsl
+	}
+	return false
+}
+
+func (x *File_S3) GetPathStyle() bool {
+	if x != nil {
+		return x.PathStyle
+	}
+	return false
+}
+
 var File_conf_conf_proto protoreflect.FileDescriptor
 
 const file_conf_conf_proto_rawDesc = "" +
 	"\n" +
 	"\x0fconf/conf.proto\x12\n" +
-	"kratos.api\x1a\x1egoogle/protobuf/duration.proto\"\x83\x01\n" +
+	"kratos.api\x1a\x1egoogle/protobuf/duration.proto\"\xa9\x01\n" +
 	"\tBootstrap\x12*\n" +
 	"\x06server\x18\x01 \x01(\v2\x12.kratos.api.ServerR\x06server\x12$\n" +
 	"\x04data\x18\x02 \x01(\v2\x10.kratos.api.DataR\x04data\x12$\n" +
-	"\x04auth\x18\x03 \x01(\v2\x10.kratos.api.AuthR\x04auth\"\xc1\x04\n" +
+	"\x04auth\x18\x03 \x01(\v2\x10.kratos.api.AuthR\x04auth\x12$\n" +
+	"\x04file\x18\x04 \x01(\v2\x10.kratos.api.FileR\x04file\"\xc1\x04\n" +
 	"\x04Auth\x12@\n" +
 	"\x0efixed_lifetime\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\rfixedLifetime\x12>\n" +
 	"\ridle_lifetime\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\fidleLifetime\x121\n" +
@@ -617,7 +789,23 @@ const file_conf_conf_proto_rawDesc = "" +
 	"\anetwork\x18\x01 \x01(\tR\anetwork\x12\x12\n" +
 	"\x04addr\x18\x02 \x01(\tR\x04addr\x12<\n" +
 	"\fread_timeout\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\vreadTimeout\x12>\n" +
-	"\rwrite_timeout\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\fwriteTimeoutB\x19Z\x17glex/internal/conf;confb\x06proto3"
+	"\rwrite_timeout\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\fwriteTimeout\"\xb9\x02\n" +
+	"\x04File\x12#\n" +
+	"\x02s3\x18\x01 \x01(\v2\x13.kratos.api.File.S3R\x02s3\x12$\n" +
+	"\x0emax_size_bytes\x18\x02 \x01(\x04R\fmaxSizeBytes\x12\x1d\n" +
+	"\n" +
+	"allow_mime\x18\x03 \x03(\tR\tallowMime\x1a\xc6\x01\n" +
+	"\x02S3\x12\x1a\n" +
+	"\bendpoint\x18\x01 \x01(\tR\bendpoint\x12\x16\n" +
+	"\x06region\x18\x02 \x01(\tR\x06region\x12\x16\n" +
+	"\x06bucket\x18\x03 \x01(\tR\x06bucket\x12\x1d\n" +
+	"\n" +
+	"access_key\x18\x04 \x01(\tR\taccessKey\x12\x1d\n" +
+	"\n" +
+	"secret_key\x18\x05 \x01(\tR\tsecretKey\x12\x17\n" +
+	"\ause_ssl\x18\x06 \x01(\bR\x06useSsl\x12\x1d\n" +
+	"\n" +
+	"path_style\x18\a \x01(\bR\tpathStyleB\x19Z\x17glex/internal/conf;confb\x06proto3"
 
 var (
 	file_conf_conf_proto_rawDescOnce sync.Once
@@ -631,41 +819,45 @@ func file_conf_conf_proto_rawDescGZIP() []byte {
 	return file_conf_conf_proto_rawDescData
 }
 
-var file_conf_conf_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_conf_conf_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_conf_conf_proto_goTypes = []any{
 	(*Bootstrap)(nil),           // 0: kratos.api.Bootstrap
 	(*Auth)(nil),                // 1: kratos.api.Auth
 	(*Server)(nil),              // 2: kratos.api.Server
 	(*Data)(nil),                // 3: kratos.api.Data
-	(*Auth_LoginCounter)(nil),   // 4: kratos.api.Auth.LoginCounter
-	(*Server_HTTP)(nil),         // 5: kratos.api.Server.HTTP
-	(*Server_GRPC)(nil),         // 6: kratos.api.Server.GRPC
-	(*Data_Database)(nil),       // 7: kratos.api.Data.Database
-	(*Data_Redis)(nil),          // 8: kratos.api.Data.Redis
-	(*durationpb.Duration)(nil), // 9: google.protobuf.Duration
+	(*File)(nil),                // 4: kratos.api.File
+	(*Auth_LoginCounter)(nil),   // 5: kratos.api.Auth.LoginCounter
+	(*Server_HTTP)(nil),         // 6: kratos.api.Server.HTTP
+	(*Server_GRPC)(nil),         // 7: kratos.api.Server.GRPC
+	(*Data_Database)(nil),       // 8: kratos.api.Data.Database
+	(*Data_Redis)(nil),          // 9: kratos.api.Data.Redis
+	(*File_S3)(nil),             // 10: kratos.api.File.S3
+	(*durationpb.Duration)(nil), // 11: google.protobuf.Duration
 }
 var file_conf_conf_proto_depIdxs = []int32{
 	2,  // 0: kratos.api.Bootstrap.server:type_name -> kratos.api.Server
 	3,  // 1: kratos.api.Bootstrap.data:type_name -> kratos.api.Data
 	1,  // 2: kratos.api.Bootstrap.auth:type_name -> kratos.api.Auth
-	9,  // 3: kratos.api.Auth.fixed_lifetime:type_name -> google.protobuf.Duration
-	9,  // 4: kratos.api.Auth.idle_lifetime:type_name -> google.protobuf.Duration
-	4,  // 5: kratos.api.Auth.username_login_counter:type_name -> kratos.api.Auth.LoginCounter
-	4,  // 6: kratos.api.Auth.source_ip_login_counter:type_name -> kratos.api.Auth.LoginCounter
-	5,  // 7: kratos.api.Server.http:type_name -> kratos.api.Server.HTTP
-	6,  // 8: kratos.api.Server.grpc:type_name -> kratos.api.Server.GRPC
-	7,  // 9: kratos.api.Data.database:type_name -> kratos.api.Data.Database
-	8,  // 10: kratos.api.Data.redis:type_name -> kratos.api.Data.Redis
-	9,  // 11: kratos.api.Auth.LoginCounter.window:type_name -> google.protobuf.Duration
-	9,  // 12: kratos.api.Server.HTTP.timeout:type_name -> google.protobuf.Duration
-	9,  // 13: kratos.api.Server.GRPC.timeout:type_name -> google.protobuf.Duration
-	9,  // 14: kratos.api.Data.Redis.read_timeout:type_name -> google.protobuf.Duration
-	9,  // 15: kratos.api.Data.Redis.write_timeout:type_name -> google.protobuf.Duration
-	16, // [16:16] is the sub-list for method output_type
-	16, // [16:16] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	4,  // 3: kratos.api.Bootstrap.file:type_name -> kratos.api.File
+	11, // 4: kratos.api.Auth.fixed_lifetime:type_name -> google.protobuf.Duration
+	11, // 5: kratos.api.Auth.idle_lifetime:type_name -> google.protobuf.Duration
+	5,  // 6: kratos.api.Auth.username_login_counter:type_name -> kratos.api.Auth.LoginCounter
+	5,  // 7: kratos.api.Auth.source_ip_login_counter:type_name -> kratos.api.Auth.LoginCounter
+	6,  // 8: kratos.api.Server.http:type_name -> kratos.api.Server.HTTP
+	7,  // 9: kratos.api.Server.grpc:type_name -> kratos.api.Server.GRPC
+	8,  // 10: kratos.api.Data.database:type_name -> kratos.api.Data.Database
+	9,  // 11: kratos.api.Data.redis:type_name -> kratos.api.Data.Redis
+	10, // 12: kratos.api.File.s3:type_name -> kratos.api.File.S3
+	11, // 13: kratos.api.Auth.LoginCounter.window:type_name -> google.protobuf.Duration
+	11, // 14: kratos.api.Server.HTTP.timeout:type_name -> google.protobuf.Duration
+	11, // 15: kratos.api.Server.GRPC.timeout:type_name -> google.protobuf.Duration
+	11, // 16: kratos.api.Data.Redis.read_timeout:type_name -> google.protobuf.Duration
+	11, // 17: kratos.api.Data.Redis.write_timeout:type_name -> google.protobuf.Duration
+	18, // [18:18] is the sub-list for method output_type
+	18, // [18:18] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_conf_conf_proto_init() }
@@ -679,7 +871,7 @@ func file_conf_conf_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_conf_conf_proto_rawDesc), len(file_conf_conf_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"glex/internal/infra/ent/dictdata"
 	"glex/internal/infra/ent/dicttype"
+	"glex/internal/infra/ent/file"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/rolemenu"
@@ -81,6 +82,7 @@ func checkColumn(t, c string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			dictdata.Table: dictdata.ValidColumn,
 			dicttype.Table: dicttype.ValidColumn,
+			file.Table:     file.ValidColumn,
 			menu.Table:     menu.ValidColumn,
 			role.Table:     role.ValidColumn,
 			rolemenu.Table: rolemenu.ValidColumn,

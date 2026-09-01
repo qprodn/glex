@@ -69,6 +69,35 @@ var (
 			},
 		},
 	}
+	// SysFileColumns holds the columns for the "sys_file" table.
+	SysFileColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "original_name", Type: field.TypeString},
+		{Name: "suffix", Type: field.TypeString, Default: ""},
+		{Name: "mime_type", Type: field.TypeString},
+		{Name: "size_bytes", Type: field.TypeInt64},
+		{Name: "bucket", Type: field.TypeString},
+		{Name: "obj_key", Type: field.TypeString},
+		{Name: "content_hash", Type: field.TypeString},
+	}
+	// SysFileTable holds the schema information for the "sys_file" table.
+	SysFileTable = &schema.Table{
+		Name:       "sys_file",
+		Columns:    SysFileColumns,
+		PrimaryKey: []*schema.Column{SysFileColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "file_content_hash",
+				Unique:  false,
+				Columns: []*schema.Column{SysFileColumns[12]},
+			},
+		},
+	}
 	// SysMenuColumns holds the columns for the "sys_menu" table.
 	SysMenuColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -232,6 +261,7 @@ var (
 	Tables = []*schema.Table{
 		SysDictDataTable,
 		SysDictTypeTable,
+		SysFileTable,
 		SysMenuTable,
 		SysRoleTable,
 		SysRoleMenuTable,
@@ -246,6 +276,9 @@ func init() {
 	}
 	SysDictTypeTable.Annotation = &entsql.Annotation{
 		Table: "sys_dict_type",
+	}
+	SysFileTable.Annotation = &entsql.Annotation{
+		Table: "sys_file",
 	}
 	SysMenuTable.Annotation = &entsql.Annotation{
 		Table: "sys_menu",

@@ -1,0 +1,129 @@
+syntax = "proto3";
+
+package file.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "glex/api/file/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.file.v1";
+
+// StoredFile is one file accepted into the system's storage (存储文件):
+// a metadata row paired with the bytes in object storage. There is no public
+// URL — bytes are addressable only through the service (ADR 0008), and
+// withdrawal removes the bytes while the row stays as audit history
+// (ADR 0009).
+message StoredFile {
+  // Snowflake ID. It also appears in the Stored Key, so the row and the
+  // stored bytes correlate.
+  int64 file_id = 1;
+  // Original file name as uploaded.
+  string original_name = 2;
+  // Lowercased extension without the dot ("" when none).
+  string suffix = 3;
+  // Content type sniffed from the bytes at accept time; a client's declared
+  // Content-Type never reaches this field.
+  string mime_type = 4;
+  int64 size_bytes = 5;
+  string bucket = 6;
+  // Stored Key: [<biz>/]yyyy/MM/dd/<snowflake>.<suffix>.
+  string obj_key = 7;
+  // Content Fingerprint: SHA-256 hex digest of the bytes. Recorded for
+  // integrity; identical bytes accepted twice yield two Stored Files.
+  string content_hash = 8;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  int64 create_by = 9;
+  int64 update_by = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// StoredFileSet is a page of stored files.
+message StoredFileSet {
+  repeated StoredFile files = 1;
+  // Opaque token for the next page; empty when on the last page.
+  string next_page_token = 2;
+}
+
+// FileService is the file management service: accept uploads, serve
+// downloads, and withdraw Stored Files. The two transfer operations are
+// HTTP-only and hand-written (ADR 0008) — kratos proto generators cannot
+// express a multipart upload or a streaming byte response — so they carry no
+// google.api.http annotation and their gRPC counterparts intentionally stay
+// Unimplemented: relaying up to 100 MiB through one gRPC message would mean
+// raising the 4 MiB default limit for no benefit.
+service FileService {
+  // UploadFile accepts one multipart upload relayed through the service:
+  // form field "file" carries the bytes, optional form field "path" sets
+  // the business directory prefix (e.g. "avatar"). The content type is
+  // sniffed from the bytes and must pass the configured whitelist; the size
+  // is capped by config (FILE_TOO_LARGE / FILE_MIME_NOT_ALLOWED otherwise).
+  rpc UploadFile(UploadFileRequest) returns (StoredFile);
+  // GetFile retrieves a Stored File's metadata by id.
+  rpc GetFile(GetFileRequest) returns (StoredFile) {
+    option (google.api.http) = {
+      get: "/file/files/{file_id}"
+    };
+  }
+  // ListFiles lists stored files with AIP filter/order/page-token.
+  rpc ListFiles(ListFilesRequest) returns (StoredFileSet) {
+    option (google.api.http) = {
+      get: "/file/files"
+    };
+  }
+  // DownloadFile proxies one Stored File's bytes (HTTP-only, hand-written
+  // route GET /file/files/{file_id}/content): query `disposition` selects
+  // inline|attachment (default attachment) and the standard Range header is
+  // honored (single range).
+  rpc DownloadFile(DownloadFileRequest) returns (google.protobuf.Empty);
+  // WithdrawFile withdraws a Stored File: the row is soft-deleted (audit
+  // stays) and the bytes are removed immediately (ADR 0009). A withdrawn
+  // Stored File can be remembered, never downloaded again.
+  rpc WithdrawFile(WithdrawFileRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/file/files/{file_id}"
+    };
+  }
+}
+
+message UploadFileRequest {
+  // Optional. Business directory prefix for the Stored Key
+  // (e.g. "avatar"); ^[a-z0-9][a-z0-9-]*(/...)*$.
+  string biz_path = 1;
+}
+
+message GetFileRequest {
+  // Required. The id of the Stored File to retrieve.
+  int64 file_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListFilesRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `original_name` (e.g. `original_name="report.pdf"`)
+  //   * `suffix` (e.g. `suffix="pdf"`, exact)
+  //   * `mime_type` (e.g. `mime_type="image/png"`)
+  //   * `create_by` (e.g. `create_by=1000000000000000001`)
+  string filter = 3;
+  // Optional. AIP-132 order on a sys_file column, e.g. `id desc` (the
+  // default), `size_bytes`, `created_at`.
+  string order_by = 4;
+}
+
+message DownloadFileRequest {
+  // Required. The id of the Stored File to download.
+  int64 file_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Optional. inline|attachment; default attachment.
+  string disposition = 2;
+}
+
+message WithdrawFileRequest {
+  // Required. The id of the Stored File to withdraw.
+  int64 file_id = 1 [(google.api.field_behavior) = REQUIRED];
+}

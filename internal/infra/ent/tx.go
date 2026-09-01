@@ -18,6 +18,8 @@ type Tx struct {
 	DictData *DictDataClient
 	// DictType is the client for interacting with the DictType builders.
 	DictType *DictTypeClient
+	// File is the client for interacting with the File builders.
+	File *FileClient
 	// Menu is the client for interacting with the Menu builders.
 	Menu *MenuClient
 	// Role is the client for interacting with the Role builders.
@@ -161,6 +163,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.DictData = NewDictDataClient(tx.config)
 	tx.DictType = NewDictTypeClient(tx.config)
+	tx.File = NewFileClient(tx.config)
 	tx.Menu = NewMenuClient(tx.config)
 	tx.Role = NewRoleClient(tx.config)
 	tx.RoleMenu = NewRoleMenuClient(tx.config)

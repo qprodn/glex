@@ -1,14 +1,16 @@
-# glex — Identity & Access
+# glex — Back-office Administration
 
 The domain concerned with **who can operate the system, the navigation they see,
-how their identity is established, and the controlled vocabularies the back
-office renders choices from**. It is organized as four modules in one service:
-**user** (System User accounts), **access** (authorization — roles, menus,
-grants, and permission resolution), **authn** (authentication — credentials,
-login sessions, and tokens), and **dict** (dictionaries — the labeled option
-vocabularies pages render selects and status tags from), ported from
-RuoYi-Vue-Plus's `sys_user`, `sys_menu`, `sys_role`, `sys_user_role`,
-`sys_dict_type`, and `sys_dict_data`.
+how their identity is established, the controlled vocabularies the back office
+renders choices from, and the files it stores**. It is organized as five modules
+in one service: **user** (System User accounts), **access** (authorization —
+roles, menus, grants, and permission resolution), **authn** (authentication —
+credentials, login sessions, and tokens), **dict** (dictionaries — the labeled
+option vocabularies pages render selects and status tags from), and **file**
+(file storage — accepting uploads, serving downloads, and withdrawing Stored
+Files), ported from RuoYi-Vue-Plus's `sys_user`, `sys_menu`, `sys_role`,
+`sys_user_role`, `sys_dict_type`, and `sys_dict_data`; the file module continues
+that lineage with its own `sys_file` (RuoYi's `sys_oss`, renamed).
 
 ## Language
 
@@ -140,6 +142,29 @@ display label, a sort position, a tag style, and a default flag. The pair
 (Dict Type key, value) is unique among active entries. Pages consume entries
 to render selects and status tags; sorting is by sort position.
 _Avoid_: Dict Data, Option, Enum Value, Dictionary Item.
+
+### file
+
+**Stored File** (存储文件):
+One file accepted into the system's storage: a metadata record — original
+name, type, size, Content Fingerprint, uploader — paired with the stored
+bytes it describes. Withdrawing a Stored File keeps the record as audit
+history but removes the bytes; a withdrawn Stored File can be remembered,
+never downloaded again.
+_Avoid_: OSS File, Attachment, Upload (the act, not the thing), Asset.
+
+**Content Fingerprint** (内容指纹):
+The digest of a Stored File's bytes, computed by the service when it accepts
+the upload. It attests what was stored; it does not unify — accepting
+identical bytes twice yields two Stored Files.
+_Avoid_: checksum, hash, MD5.
+
+**Stored Key** (存储键):
+The address of a Stored File's bytes inside the single bucket: an optional
+business prefix, date directories, and a name carrying the row's identity and
+the original suffix. It locates bytes; it is not a URL — nothing is
+addressable except through the service.
+_Avoid_: object key (S3-speak), path, file path.
 
 ### cross-module
 

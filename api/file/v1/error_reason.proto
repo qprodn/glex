@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package file.v1;
+
+option go_package = "glex/api/file/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.file.v1";
+
+// ErrorReason is the stable vocabulary for the `reason` field of the error
+// body. Values are wire-visible: protojson encodes them as their names, so
+// clients branch on the name (e.g. "FILE_TOO_LARGE") rather than on an HTTP
+// status. The integer tags are internal to the enum; only the names cross
+// the wire.
+enum ErrorReason {
+  // Unset. Never returned; reserved by proto3 for the zero value.
+  ERROR_REASON_UNSPECIFIED = 0;
+
+  // The requested Stored File does not exist (or is soft-deleted), or its
+  // bytes are gone from storage.
+  FILE_NOT_FOUND = 1;
+  // An intake or download parameter is invalid: blank original name,
+  // unsafe business path, non-positive size, malformed disposition or id.
+  FILE_INVALID = 2;
+  // The multipart request carries no "file" part.
+  FILE_NO_UPLOAD = 3;
+  // The upload exceeds the configured size cap (HTTP 413).
+  FILE_TOO_LARGE = 4;
+  // The sniffed content type is outside the configured whitelist.
+  FILE_MIME_NOT_ALLOWED = 5;
+  // The requested byte range is not satisfiable (HTTP 416).
+  FILE_RANGE_NOT_SATISFIABLE = 6;
+  // Object storage rejected the request — connectivity, credentials, or
+  // bucket (HTTP 502).
+  FILE_STORAGE_ERROR = 7;
+}

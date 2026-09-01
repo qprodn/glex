@@ -22,7 +22,9 @@ export const componentRegistry: Record<string, React.ComponentType> = {
   "iam/user/index": lazyPage(() => import("@/pages/iam/user")),
   "iam/role/index": lazyPage(() => import("@/pages/iam/role")),
   "iam/menu/index": lazyPage(() => import("@/pages/iam/menu")),
+  "iam/dict/index": lazyPage(() => import("@/pages/iam/dict")),
   "monitor/online/index": lazyPage(() => import("@/pages/monitor/online")),
+  "file/index": lazyPage(() => import("@/pages/file")),
 };
 
 /** Keys the menu form offers as its component dropdown options. */

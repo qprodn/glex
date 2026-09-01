@@ -41,6 +41,87 @@ paths:
                 "200":
                     description: OK
                     content: {}
+    /file/files:
+        get:
+            tags:
+                - FileService
+            description: ListFiles lists stored files with AIP filter/order/page-token.
+            operationId: FileService_ListFiles
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `original_name` (e.g. `original_name="report.pdf"`)
+                       * `suffix` (e.g. `suffix="pdf"`, exact)
+                       * `mime_type` (e.g. `mime_type="image/png"`)
+                       * `create_by` (e.g. `create_by=1000000000000000001`)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: |-
+                    Optional. AIP-132 order on a sys_file column, e.g. `id desc` (the
+                     default), `size_bytes`, `created_at`.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/file.v1.StoredFileSet'
+    /file/files/{fileId}:
+        get:
+            tags:
+                - FileService
+            description: GetFile retrieves a Stored File's metadata by id.
+            operationId: FileService_GetFile
+            parameters:
+                - name: fileId
+                  in: path
+                  description: Required. The id of the Stored File to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/file.v1.StoredFile'
+        delete:
+            tags:
+                - FileService
+            description: |-
+                WithdrawFile withdraws a Stored File: the row is soft-deleted (audit
+                 stays) and the bytes are removed immediately (ADR 0009). A withdrawn
+                 Stored File can be remembered, never downloaded again.
+            operationId: FileService_WithdrawFile
+            parameters:
+                - name: fileId
+                  in: path
+                  description: Required. The id of the Stored File to withdraw.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
     /iam/dict/entries:
         get:
             tags:
@@ -1416,6 +1497,65 @@ components:
                     type: string
                     description: Opaque token for the next page; empty when on the last page.
             description: DictTypeSet is a page of dict types.
+        file.v1.StoredFile:
+            type: object
+            properties:
+                fileId:
+                    type: string
+                    description: |-
+                        Snowflake ID. It also appears in the Stored Key, so the row and the
+                         stored bytes correlate.
+                originalName:
+                    type: string
+                    description: Original file name as uploaded.
+                suffix:
+                    type: string
+                    description: Lowercased extension without the dot ("" when none).
+                mimeType:
+                    type: string
+                    description: |-
+                        Content type sniffed from the bytes at accept time; a client's declared
+                         Content-Type never reaches this field.
+                sizeBytes:
+                    type: string
+                bucket:
+                    type: string
+                objKey:
+                    type: string
+                    description: 'Stored Key: [<biz>/]yyyy/MM/dd/<snowflake>.<suffix>.'
+                contentHash:
+                    type: string
+                    description: |-
+                        Content Fingerprint: SHA-256 hex digest of the bytes. Recorded for
+                         integrity; identical bytes accepted twice yield two Stored Files.
+                createBy:
+                    type: string
+                    description: 'Audit: who created/updated. Filled from the authenticated identity.'
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                StoredFile is one file accepted into the system's storage (存储文件):
+                 a metadata row paired with the bytes in object storage. There is no public
+                 URL — bytes are addressable only through the service (ADR 0008), and
+                 withdrawal removes the bytes while the row stays as audit history
+                 (ADR 0009).
+        file.v1.StoredFileSet:
+            type: object
+            properties:
+                files:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/file.v1.StoredFile'
+                nextPageToken:
+                    type: string
+                    description: Opaque token for the next page; empty when on the last page.
+            description: StoredFileSet is a page of stored files.
         user.v1.CurrentUser:
             type: object
             properties:
@@ -1549,6 +1689,15 @@ tags:
          CRUD plus the consumption read. v1 has no read cache (reads hit the
          indexed tables directly) and no backend consumer — pages are the only
          client.
+    - name: FileService
+      description: |-
+        FileService is the file management service: accept uploads, serve
+         downloads, and withdraw Stored Files. The two transfer operations are
+         HTTP-only and hand-written (ADR 0008) — kratos proto generators cannot
+         express a multipart upload or a streaming byte response — so they carry no
+         google.api.http annotation and their gRPC counterparts intentionally stay
+         Unimplemented: relaying up to 100 MiB through one gRPC message would mean
+         raising the 4 MiB default limit for no benefit.
     - name: MenuService
       description: MenuService is the system-menu CRUD + tree service.
     - name: OnlineSessionService

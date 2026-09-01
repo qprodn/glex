@@ -248,3 +248,42 @@ comment on column sys_dict_data.update_by is '更新者用户ID';
 comment on column sys_dict_data.created_at is '创建时间';
 comment on column sys_dict_data.updated_at is '更新时间';
 comment on column sys_dict_data.deleted_at is '软删除时间；NULL=未删除';
+
+
+create table if not exists sys_file (
+    id            bigint       not null,
+    original_name varchar(256) not null,               -- original file name as uploaded
+    suffix        varchar(16)  not null default '',    -- lowercased extension without the dot ("" when none); ≤16 chars by the domain invariant
+    mime_type     varchar(128) not null,               -- content type sniffed from the bytes; client declarations never reach it
+    size_bytes    bigint       not null,               -- byte size
+    bucket        varchar(128) not null,               -- object storage bucket (single static config, ADR 0007)
+    obj_key       varchar(512) not null,               -- Stored Key: [<biz>/]yyyy/MM/dd/<snowflake>.<suffix>; no public URL exists (ADR 0008)
+    content_hash  varchar(64)  not null,               -- Content Fingerprint: sha256 hex; integrity record, never dedup
+    create_by     bigint       not null default 0,     -- audit; Application stamps from Principal (ADR 0002)
+    update_by     bigint       not null default 0,
+    created_at    timestamptz  not null default now(),
+    updated_at    timestamptz  not null default now(),
+    deleted_at    timestamptz,                         -- soft delete; NULL = active; withdrawal also removes the bytes (ADR 0009)
+    constraint sys_file_pkey primary key (id)
+);
+
+-- Deliberately NOT unique: no dedup exists — identical bytes accepted twice
+-- yield two Stored Files (CONTEXT.md "Content Fingerprint").
+create index if not exists file_content_hash
+    on sys_file (content_hash);
+
+comment on table sys_file is '存储文件表（RuoYi sys_oss 的改名延续，见 CONTEXT.md）';
+
+comment on column sys_file.id is '主键ID（雪花；同时出现在 Stored Key 中）';
+comment on column sys_file.original_name is '原始文件名';
+comment on column sys_file.suffix is '小写扩展名（不含点；无扩展名为空串）';
+comment on column sys_file.mime_type is '内容类型（按字节嗅探；客户端声明不生效）';
+comment on column sys_file.size_bytes is '字节大小';
+comment on column sys_file.bucket is '对象存储桶（单一静态配置，ADR 0007）';
+comment on column sys_file.obj_key is '存储键：[<biz>/]yyyy/MM/dd/<雪花>.<扩展名>；无公开 URL（ADR 0008）';
+comment on column sys_file.content_hash is '内容指纹（sha256 hex）；仅完整性记录，不做去重';
+comment on column sys_file.create_by is '创建者用户ID';
+comment on column sys_file.update_by is '更新者用户ID';
+comment on column sys_file.created_at is '创建时间';
+comment on column sys_file.updated_at is '更新时间';
+comment on column sys_file.deleted_at is '软删除时间；NULL=未删除；撤回同时删除字节（ADR 0009）';

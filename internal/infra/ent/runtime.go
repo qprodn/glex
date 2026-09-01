@@ -5,6 +5,7 @@ package ent
 import (
 	"glex/internal/infra/ent/dictdata"
 	"glex/internal/infra/ent/dicttype"
+	"glex/internal/infra/ent/file"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/rolemenu"
@@ -84,6 +85,33 @@ func init() {
 	dicttypeDescRemark := dicttypeFields[3].Descriptor()
 	// dicttype.DefaultRemark holds the default value on creation for the remark field.
 	dicttype.DefaultRemark = dicttypeDescRemark.Default.(string)
+	fileMixin := schema.File{}.Mixin()
+	fileMixinFields0 := fileMixin[0].Fields()
+	_ = fileMixinFields0
+	fileFields := schema.File{}.Fields()
+	_ = fileFields
+	// fileDescCreateBy is the schema descriptor for create_by field.
+	fileDescCreateBy := fileMixinFields0[0].Descriptor()
+	// file.DefaultCreateBy holds the default value on creation for the create_by field.
+	file.DefaultCreateBy = fileDescCreateBy.Default.(int64)
+	// fileDescUpdateBy is the schema descriptor for update_by field.
+	fileDescUpdateBy := fileMixinFields0[1].Descriptor()
+	// file.DefaultUpdateBy holds the default value on creation for the update_by field.
+	file.DefaultUpdateBy = fileDescUpdateBy.Default.(int64)
+	// fileDescCreatedAt is the schema descriptor for created_at field.
+	fileDescCreatedAt := fileMixinFields0[2].Descriptor()
+	// file.DefaultCreatedAt holds the default value on creation for the created_at field.
+	file.DefaultCreatedAt = fileDescCreatedAt.Default.(func() time.Time)
+	// fileDescUpdatedAt is the schema descriptor for updated_at field.
+	fileDescUpdatedAt := fileMixinFields0[3].Descriptor()
+	// file.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	file.DefaultUpdatedAt = fileDescUpdatedAt.Default.(func() time.Time)
+	// file.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	file.UpdateDefaultUpdatedAt = fileDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// fileDescSuffix is the schema descriptor for suffix field.
+	fileDescSuffix := fileFields[2].Descriptor()
+	// file.DefaultSuffix holds the default value on creation for the suffix field.
+	file.DefaultSuffix = fileDescSuffix.Default.(string)
 	menuMixin := schema.Menu{}.Mixin()
 	menuMixinFields0 := menuMixin[0].Fields()
 	_ = menuMixinFields0

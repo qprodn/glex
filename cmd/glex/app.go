@@ -4,16 +4,19 @@ import (
 	accessapp "glex/internal/application/access"
 	authnapp "glex/internal/application/authn"
 	dictapp "glex/internal/application/dict"
+	fileapp "glex/internal/application/file"
 	userapp "glex/internal/application/user"
 	accessimpl "glex/internal/crossdomain/access/impl"
 	authnimpl "glex/internal/crossdomain/authn/impl"
 	accessservice "glex/internal/domain/access/service"
 	authnservice "glex/internal/domain/authn/service"
 	dictservice "glex/internal/domain/dict/service"
+	fileservice "glex/internal/domain/file/service"
 	userservice "glex/internal/domain/user/service"
 	accessinfra "glex/internal/infra/access"
 	authninfra "glex/internal/infra/authn"
 	dictinfra "glex/internal/infra/dict"
+	fileinfra "glex/internal/infra/file"
 	lockerinfra "glex/internal/infra/locker"
 	"glex/internal/infra/store"
 	userinfra "glex/internal/infra/user"
@@ -27,7 +30,8 @@ import (
 // application use cases consume the domain services). The Transaction
 // adapters keep the dependency rule: each application module consumes its own
 // interface, and only the composition root knows that *store.TxManager
-// satisfies all three.
+// satisfies all of them (the file module declares no Transaction — its
+// writes are single-row statements and its byte leg is non-transactional).
 var appModule = fx.Options(
 	// infrastructure
 	store.Module,
@@ -35,12 +39,14 @@ var appModule = fx.Options(
 	accessinfra.Module,
 	authninfra.Module,
 	dictinfra.Module,
+	fileinfra.Module,
 	lockerinfra.Module,
 	// domain services
 	userservice.Module,
 	accessservice.Module,
 	authnservice.Module,
 	dictservice.Module,
+	fileservice.Module,
 	// crossdomain contract adapters
 	accessimpl.Module,
 	authnimpl.Module,
@@ -49,6 +55,7 @@ var appModule = fx.Options(
 	accessapp.Module,
 	authnapp.Module,
 	dictapp.Module,
+	fileapp.Module,
 	// transport
 	server.Module,
 	fx.Provide(newApp),

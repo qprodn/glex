@@ -89,6 +89,11 @@ func (db *Database) DictType(ctx context.Context) *DictTypeClient {
 	return db.loadClient(ctx).DictType
 }
 
+// File is the client for interacting with the File builders.
+func (db *Database) File(ctx context.Context) *FileClient {
+	return db.loadClient(ctx).File
+}
+
 // Menu is the client for interacting with the Menu builders.
 func (db *Database) Menu(ctx context.Context) *MenuClient {
 	return db.loadClient(ctx).Menu

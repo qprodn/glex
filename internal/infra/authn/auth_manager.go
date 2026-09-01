@@ -31,7 +31,8 @@ func NewAuthManager(storage adapter.Storage, c *conf.Auth) (*core.Manager, func(
 		return nil, nil, fmt.Errorf("invalid auth config: %w", err)
 	}
 	cfg := core.DefaultConfig()
-	// Opaque random bearer tokens (ADR-0007).
+	// Opaque random bearer tokens (unlike JWT, nothing is encoded in the
+	// token itself; the Redis session is the source of truth).
 	cfg.TokenStyle = core.TokenStyleSimple
 	// Concurrent Login Sessions, each with its own token.
 	cfg.IsConcurrent = true
