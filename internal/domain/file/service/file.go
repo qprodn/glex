@@ -11,6 +11,7 @@ import (
 	"glex/internal/domain/file/entity"
 	"glex/internal/domain/file/repository"
 	"glex/internal/domain/file/storage"
+	"glex/pkg/logx"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
@@ -21,7 +22,8 @@ import (
 // carries the bytes (ADR 0007); every transfer flows through the service
 // (ADR 0008); withdrawal keeps the row and removes the bytes (ADR 0009).
 // The module has no multi-statement write, so no ambient transaction is
-// needed — each write is a single-row statement.
+// needed — each write is a single-row statement. Every error a method
+// returns to its caller first logs its Warn breadcrumb (ADR 0011).
 type File interface {
 	Get(ctx context.Context, id int64) (*entity.StoredFile, error)
 	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.StoredFile, error)
@@ -52,25 +54,36 @@ func NewFileService(files repository.FileRepo, store storage.ObjectStorage, logg
 	return &fileImpl{
 		files:  files,
 		store:  store,
-		logger: logger.With(slog.String("component", "domain.file")),
+		logger: logger.With(slog.String("component", "domain.file.svc")),
 	}
 }
 
 func (s *fileImpl) Get(ctx context.Context, id int64) (*entity.StoredFile, error) {
-	return s.files.FindByID(ctx, id)
+	f, err := s.files.FindByID(ctx, id)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.svc.get", err)
+		return nil, err
+	}
+	return f, nil
 }
 
 func (s *fileImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.StoredFile, error) {
-	return s.files.List(ctx,
+	fs, err := s.files.List(ctx,
 		repository.ListFilter(filter),
 		repository.ListOrderBy(orderBy),
 		repository.ListLimit(limit),
 		repository.ListOffset(offset),
 	)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.svc.list", err)
+		return nil, err
+	}
+	return fs, nil
 }
 
 func (s *fileImpl) Accept(ctx context.Context, up *entity.Upload, content io.Reader, actorID int64) (*entity.StoredFile, error) {
 	if err := up.Validate(); err != nil {
+		logx.Propagate(ctx, s.logger, "file.svc.accept", err)
 		return nil, err
 	}
 	// One snowflake serves both the row ID and the Stored Key so they
@@ -80,6 +93,7 @@ func (s *fileImpl) Accept(ctx context.Context, up *entity.Upload, content io.Rea
 	key := storedKey(id, up.BizPath, suffix, time.Now())
 	digest, err := s.store.Put(ctx, key, content, up.SizeBytes, up.MIMEType)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.svc.accept", err)
 		return nil, err
 	}
 	f := &entity.StoredFile{
@@ -101,6 +115,7 @@ func (s *fileImpl) Accept(ctx context.Context, up *entity.Upload, content io.Rea
 			slog.String("obj_key", f.ObjKey),
 			slog.Any("error", err),
 		)
+		logx.Propagate(ctx, s.logger, "file.svc.accept", err)
 		return nil, err
 	}
 	return created, nil
@@ -109,9 +124,11 @@ func (s *fileImpl) Accept(ctx context.Context, up *entity.Upload, content io.Rea
 func (s *fileImpl) Withdraw(ctx context.Context, id, actorID int64) error {
 	f, err := s.files.FindByID(ctx, id)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.svc.withdraw", err)
 		return err
 	}
 	if err := s.files.Delete(ctx, id, actorID); err != nil {
+		logx.Propagate(ctx, s.logger, "file.svc.withdraw", err)
 		return err
 	}
 	// Row first, bytes best-effort (ADR 0009): the withdrawal stands; a
@@ -130,10 +147,12 @@ func (s *fileImpl) Withdraw(ctx context.Context, id, actorID int64) error {
 func (s *fileImpl) Open(ctx context.Context, id int64, rng *storage.ByteRange) (*storage.Object, *entity.StoredFile, error) {
 	f, err := s.files.FindByID(ctx, id)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.svc.open", err)
 		return nil, nil, err
 	}
 	obj, err := s.store.Get(ctx, f.ObjKey, rng)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.svc.open", err)
 		return nil, nil, err
 	}
 	return obj, f, nil

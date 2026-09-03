@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
 	"glex/internal/domain/access/entity"
 	"glex/internal/domain/access/repository"
+	"glex/pkg/logx"
 )
 
 // Authorization is the access domain service that computes Authorization
@@ -17,14 +19,23 @@ type Authorization interface {
 
 type authorizationImpl struct {
 	resolver repository.AuthorizationResolver
+	logger   *slog.Logger
 }
 
 // NewAuthorizationService creates the Authorization Resolution domain service
 // over the module's resolution capability.
-func NewAuthorizationService(resolver repository.AuthorizationResolver) Authorization {
-	return &authorizationImpl{resolver: resolver}
+func NewAuthorizationService(resolver repository.AuthorizationResolver, logger *slog.Logger) Authorization {
+	return &authorizationImpl{
+		resolver: resolver,
+		logger:   logger.With(slog.String("component", "domain.access.svc")),
+	}
 }
 
 func (s *authorizationImpl) ResolveAuthorization(ctx context.Context, systemUserID int64) (*entity.AuthorizationResolution, error) {
-	return s.resolver.ResolveAuthorization(ctx, systemUserID)
+	resolution, err := s.resolver.ResolveAuthorization(ctx, systemUserID)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.svc.resolve_authorization", err)
+		return nil, err
+	}
+	return resolution, nil
 }

@@ -9,10 +9,12 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"glex/internal/domain/user"
 	"glex/internal/domain/user/entity"
 	"glex/internal/domain/user/repository"
+	"glex/pkg/logx"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
@@ -34,49 +36,81 @@ type User interface {
 }
 
 type userImpl struct {
-	users repository.UserRepo
+	users  repository.UserRepo
+	logger *slog.Logger
 }
 
 // NewUserService creates the System User domain service.
-func NewUserService(users repository.UserRepo) User {
-	return &userImpl{users: users}
+func NewUserService(users repository.UserRepo, logger *slog.Logger) User {
+	return &userImpl{
+		users:  users,
+		logger: logger.With(slog.String("component", "domain.user.svc")),
+	}
 }
 
 func (s *userImpl) Get(ctx context.Context, id int64) (*entity.User, error) {
-	return s.users.FindByID(ctx, id)
+	u, err := s.users.FindByID(ctx, id)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "user.svc.get", err)
+		return nil, err
+	}
+	return u, nil
 }
 
 func (s *userImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.User, error) {
-	return s.users.ListUsers(ctx,
+	users, err := s.users.ListUsers(ctx,
 		repository.ListFilter(filter),
 		repository.ListOrderBy(orderBy),
 		repository.ListLimit(limit),
 		repository.ListOffset(offset),
 	)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "user.svc.list", err)
+		return nil, err
+	}
+	return users, nil
 }
 
 func (s *userImpl) Create(ctx context.Context, u *entity.User) (*entity.User, error) {
 	if err := AssertUnique(ctx, s.users, u, 0); err != nil {
+		logx.Propagate(ctx, s.logger, "user.svc.create", err)
 		return nil, err
 	}
-	return s.users.CreateUser(ctx, u)
+	created, err := s.users.CreateUser(ctx, u)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "user.svc.create", err)
+		return nil, err
+	}
+	return created, nil
 }
 
 func (s *userImpl) Update(ctx context.Context, u *entity.User) (*entity.UserUpdate, error) {
 	if err := AssertUnique(ctx, s.users, u, u.ID); err != nil {
+		logx.Propagate(ctx, s.logger, "user.svc.update", err)
 		return nil, err
 	}
-	return s.users.UpdateUser(ctx, u)
+	updated, err := s.users.UpdateUser(ctx, u)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "user.svc.update", err)
+		return nil, err
+	}
+	return updated, nil
 }
 
 func (s *userImpl) Delete(ctx context.Context, id, actorID int64) ([]int64, error) {
-	return s.users.DeleteUser(ctx, id, actorID)
+	revoked, err := s.users.DeleteUser(ctx, id, actorID)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "user.svc.delete", err)
+		return nil, err
+	}
+	return revoked, nil
 }
 
 // AssertUnique checks user_name (always) and email/phone_number (when set) are
 // not already taken, ignoring the record with excludeID (0 = none). A
 // not-found from the repo is the expected "available" case. Checks run against
-// active rows only, so soft-deleted values are reusable.
+// active rows only, so soft-deleted values are reusable. Its caller's method
+// boundary owns the breadcrumb (ADR 0011).
 func AssertUnique(ctx context.Context, repo repository.UserRepo, u *entity.User, excludeID int64) error {
 	if existing, err := repo.FindByUserName(ctx, u.UserName); err != nil {
 		if !errors.Is(err, user.ErrUserNotFound) {

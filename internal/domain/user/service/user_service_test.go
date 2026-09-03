@@ -104,7 +104,7 @@ func (r *fakeUserRepo) DeleteUser(_ context.Context, id int64, actorID int64) ([
 func TestCreate_UserNameConflict(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byName["bob"] = &entity.User{ID: 7, UserName: "bob"}
-	svc := NewUserService(repo)
+	svc := NewUserService(repo, testLogger())
 
 	_, err := svc.Create(context.Background(), &entity.User{UserName: "bob"})
 	if !errors.Is(err, user.ErrUserNameConflict) {
@@ -118,7 +118,7 @@ func TestCreate_UserNameConflict(t *testing.T) {
 func TestCreate_EmailConflict(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byEmail["a@b.com"] = &entity.User{ID: 7, UserName: "someone", Email: "a@b.com"}
-	svc := NewUserService(repo)
+	svc := NewUserService(repo, testLogger())
 
 	_, err := svc.Create(context.Background(), &entity.User{UserName: "bob", Email: "a@b.com"})
 	if !errors.Is(err, user.ErrEmailConflict) {
@@ -129,7 +129,7 @@ func TestCreate_EmailConflict(t *testing.T) {
 func TestCreate_PhoneConflict(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byPhone["13800000000"] = &entity.User{ID: 7, UserName: "someone", PhoneNumber: "13800000000"}
-	svc := NewUserService(repo)
+	svc := NewUserService(repo, testLogger())
 
 	_, err := svc.Create(context.Background(), &entity.User{UserName: "bob", PhoneNumber: "13800000000"})
 	if !errors.Is(err, user.ErrPhoneConflict) {
@@ -139,7 +139,7 @@ func TestCreate_PhoneConflict(t *testing.T) {
 
 func TestCreate_EmptyEmailAndPhoneNotChecked(t *testing.T) {
 	// A user with no email/phone must not trip those uniqueness checks.
-	svc := NewUserService(newFakeUserRepo())
+	svc := NewUserService(newFakeUserRepo(), testLogger())
 
 	if _, err := svc.Create(context.Background(), &entity.User{UserName: "bob"}); err != nil {
 		t.Fatalf("create without email and phone: %v", err)
@@ -148,7 +148,7 @@ func TestCreate_EmptyEmailAndPhoneNotChecked(t *testing.T) {
 
 func TestCreate_PersistsAndReturnsCreatedUser(t *testing.T) {
 	repo := newFakeUserRepo()
-	svc := NewUserService(repo)
+	svc := NewUserService(repo, testLogger())
 
 	created, err := svc.Create(context.Background(), &entity.User{UserName: "bob", Email: "a@b.com", PhoneNumber: "13800000000"})
 	if err != nil {
@@ -166,7 +166,7 @@ func TestUpdate_UserNameConflict(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byID[2] = &entity.User{ID: 2, UserName: "old"}
 	repo.byName["bob"] = &entity.User{ID: 7, UserName: "bob"}
-	svc := NewUserService(repo)
+	svc := NewUserService(repo, testLogger())
 
 	_, err := svc.Update(context.Background(), &entity.User{ID: 2, UserName: "bob"})
 	if !errors.Is(err, user.ErrUserNameConflict) {
@@ -178,7 +178,7 @@ func TestUpdate_EmailConflict(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byID[2] = &entity.User{ID: 2, UserName: "bob"}
 	repo.byEmail["a@b.com"] = &entity.User{ID: 7, UserName: "someone", Email: "a@b.com"}
-	svc := NewUserService(repo)
+	svc := NewUserService(repo, testLogger())
 
 	_, err := svc.Update(context.Background(), &entity.User{ID: 2, UserName: "bob", Email: "a@b.com"})
 	if !errors.Is(err, user.ErrEmailConflict) {
@@ -194,7 +194,7 @@ func TestUpdate_SameValuesPass(t *testing.T) {
 	repo.byName["alice"] = repo.byID[5]
 	repo.byEmail["a@b.com"] = repo.byID[5]
 	repo.byPhone["13800000000"] = repo.byID[5]
-	svc := NewUserService(repo)
+	svc := NewUserService(repo, testLogger())
 
 	if _, err := svc.Update(context.Background(), &entity.User{ID: 5, UserName: "alice", Email: "a@b.com", PhoneNumber: "13800000000", NickName: "renamed"}); err != nil {
 		t.Fatalf("update keeping own values: %v", err)
@@ -204,7 +204,7 @@ func TestUpdate_SameValuesPass(t *testing.T) {
 func TestUpdate_EmptyEmailNotChecked(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byID[1] = &entity.User{ID: 1, UserName: "bob"}
-	svc := NewUserService(repo)
+	svc := NewUserService(repo, testLogger())
 
 	if _, err := svc.Update(context.Background(), &entity.User{ID: 1, UserName: "bob"}); err != nil {
 		t.Fatalf("update without email: %v", err)
@@ -214,7 +214,7 @@ func TestUpdate_EmptyEmailNotChecked(t *testing.T) {
 func TestUpdate_ReturnsWriteWithPreImage(t *testing.T) {
 	repo := newFakeUserRepo()
 	repo.byID[1] = &entity.User{ID: 1, UserName: "bob", NickName: "old"}
-	svc := NewUserService(repo)
+	svc := NewUserService(repo, testLogger())
 
 	result, err := svc.Update(context.Background(), &entity.User{ID: 1, UserName: "bob", NickName: "new"})
 	if err != nil {
@@ -227,7 +227,7 @@ func TestUpdate_ReturnsWriteWithPreImage(t *testing.T) {
 
 func TestDelete_DelegatesWithActorAndReturnsAffectedIDs(t *testing.T) {
 	repo := newFakeUserRepo()
-	svc := NewUserService(repo)
+	svc := NewUserService(repo, testLogger())
 
 	affected, err := svc.Delete(context.Background(), 42, 7)
 	if err != nil {

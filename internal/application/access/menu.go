@@ -8,11 +8,13 @@ import (
 	"unicode"
 
 	accessv1 "glex/api/access/v1"
+	"glex/internal/bizpkg"
 	"glex/internal/crossdomain/authn"
 	accessentity "glex/internal/domain/access/entity"
 	accessservice "glex/internal/domain/access/service"
 	authndomain "glex/internal/domain/authn"
 	authnservice "glex/internal/domain/authn/service"
+	"glex/pkg/logx"
 
 	"go.einride.tech/aip/fieldmask"
 	"go.einride.tech/aip/filtering"
@@ -150,7 +152,7 @@ func NewMenuApplication(svc accessservice.Menu, tx Transaction, revoker authn.Se
 // layer; there is no DB unique constraint on (parent_id, menu_name).
 func (s *MenuApplication) CreateMenu(ctx context.Context, req *accessv1.CreateMenuRequest) (*accessv1.Menu, error) {
 	in := req.GetMenu()
-	actor := auditActor(ctx)
+	actor := bizpkg.AuditActor(ctx)
 	m := &accessentity.Menu{
 		MenuName:   in.GetMenuName(),
 		ParentID:   in.GetParentId(),
@@ -176,6 +178,7 @@ func (s *MenuApplication) CreateMenu(ctx context.Context, req *accessv1.CreateMe
 		created, err = s.svc.Create(ctx, m)
 		return err
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "access.create_menu", err)
 		return nil, err
 	}
 	return convertMenu(created), nil
@@ -185,6 +188,7 @@ func (s *MenuApplication) CreateMenu(ctx context.Context, req *accessv1.CreateMe
 func (s *MenuApplication) GetMenu(ctx context.Context, req *accessv1.GetMenuRequest) (*accessv1.Menu, error) {
 	m, err := s.svc.Get(ctx, req.GetMenuId())
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.get_menu", err)
 		return nil, err
 	}
 	return convertMenu(m), nil
@@ -202,18 +206,22 @@ func (s *MenuApplication) ListMenus(ctx context.Context, req *accessv1.ListMenus
 		filtering.DeclareIdent("parent_id", filtering.TypeInt),
 	)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_menus", err)
 		return nil, err
 	}
 	filter, err := filtering.ParseFilter(req, declarations)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_menus", err)
 		return nil, err
 	}
 	orderBy, err := ordering.ParseOrderBy(req)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_menus", err)
 		return nil, err
 	}
 	menus, err := s.svc.List(ctx, filter, orderBy)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_menus", err)
 		return nil, err
 	}
 	roots := accessservice.BuildMenuTree(menus)
@@ -228,10 +236,13 @@ func (s *MenuApplication) ListMenus(ctx context.Context, req *accessv1.ListMenus
 func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*accessv1.RouterTree, error) {
 	principal, ok := authnservice.PrincipalFromContext(ctx)
 	if !ok {
-		return nil, authndomain.ErrCredentialMissing
+		err := authndomain.ErrCredentialMissing
+		logx.Propagate(ctx, s.logger, "access.get_routers", err)
+		return nil, err
 	}
 	routeAccess, err := s.svc.LoadRouteAccess(ctx, principal.SystemUserID())
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.get_routers", err)
 		return nil, err
 	}
 	roots := accessservice.SelectUserRouteTree(routeAccess)
@@ -306,6 +317,7 @@ func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*ac
 func (s *MenuApplication) UpdateMenu(ctx context.Context, req *accessv1.UpdateMenuRequest) (*accessv1.Menu, error) {
 	current, err := s.GetMenu(ctx, &accessv1.GetMenuRequest{MenuId: req.GetMenu().GetMenuId()})
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.update_menu", err)
 		return nil, err
 	}
 	fieldmask.Update(req.GetUpdateMask(), current, req.GetMenu())
@@ -326,7 +338,7 @@ func (s *MenuApplication) UpdateMenu(ctx context.Context, req *accessv1.UpdateMe
 		Icon:       current.GetIcon(),
 		ActiveMenu: current.GetActiveMenu(),
 		Ext:        current.GetExt(),
-		UpdateBy:   auditActor(ctx),
+		UpdateBy:   bizpkg.AuditActor(ctx),
 	}
 	var updated *accessentity.Menu
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
@@ -340,6 +352,7 @@ func (s *MenuApplication) UpdateMenu(ctx context.Context, req *accessv1.UpdateMe
 		}
 		return nil
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "access.update_menu", err)
 		return nil, err
 	}
 	return convertMenu(updated), nil
@@ -350,12 +363,13 @@ func (s *MenuApplication) UpdateMenu(ctx context.Context, req *accessv1.UpdateMe
 // Sessions in one transaction.
 func (s *MenuApplication) DeleteMenu(ctx context.Context, req *accessv1.DeleteMenuRequest) (*emptypb.Empty, error) {
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.svc.Delete(ctx, req.GetMenuId(), auditActor(ctx))
+		affected, err := s.svc.Delete(ctx, req.GetMenuId(), bizpkg.AuditActor(ctx))
 		if err != nil {
 			return err
 		}
 		return revokeAllSystemUsers(ctx, s.revoker, affected...)
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "access.delete_menu", err)
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

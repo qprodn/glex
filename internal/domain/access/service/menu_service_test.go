@@ -107,7 +107,7 @@ func newFakeMenuRepoForRole(menus map[int64]*entity.Menu) *fakeMenuRepo {
 
 // newMenuSvc wires the real menu domain service over the fake repo.
 func newMenuSvc(menus *fakeMenuRepo) Menu {
-	return NewMenuService(menus)
+	return NewMenuService(menus, testLogger())
 }
 
 // treeIDs flattens a forest into the set of node ids it contains.

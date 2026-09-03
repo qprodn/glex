@@ -148,7 +148,7 @@ func (r *fakeEntryRepo) Delete(_ context.Context, id, _ int64) error {
 }
 
 func newDictSvc(types *fakeTypeRepo, entries *fakeEntryRepo) Dict {
-	return NewDictService(types, entries)
+	return NewDictService(types, entries, testLogger())
 }
 
 // --- Dict Type (字典类型) ---

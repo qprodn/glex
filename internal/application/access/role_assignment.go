@@ -6,9 +6,11 @@ import (
 
 	accessv1 "glex/api/access/v1"
 	userv1 "glex/api/user/v1"
+	"glex/internal/bizpkg"
 	"glex/internal/crossdomain/authn"
 	accessentity "glex/internal/domain/access/entity"
 	accessservice "glex/internal/domain/access/service"
+	"glex/pkg/logx"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
@@ -93,6 +95,7 @@ func NewRoleAssignmentApplication(svc accessservice.RoleAssignment, revoker auth
 func (s *RoleAssignmentApplication) ListUserRoles(ctx context.Context, req *accessv1.ListUserRolesRequest) (*accessv1.UserRoles, error) {
 	assignments, err := s.svc.ListForUser(ctx, req.GetUserId())
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_user_roles", err)
 		return nil, err
 	}
 	return toUserRoles(assignments), nil
@@ -107,13 +110,14 @@ func (s *RoleAssignmentApplication) ListUserRoles(ctx context.Context, req *acce
 func (s *RoleAssignmentApplication) UpdateUserRoles(ctx context.Context, req *accessv1.UpdateUserRolesRequest) (*accessv1.UserRoles, error) {
 	var assignments []*accessentity.RoleAssignment
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		result, err := s.svc.ReplaceForUser(ctx, req.GetUserId(), req.GetRoleIds(), auditActor(ctx))
+		result, err := s.svc.ReplaceForUser(ctx, req.GetUserId(), req.GetRoleIds(), bizpkg.AuditActor(ctx))
 		if err != nil {
 			return err
 		}
 		assignments = result.Assignments
 		return revokeAllSystemUsers(ctx, s.revoker, result.AffectedUserIDs...)
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "access.update_user_roles", err)
 		return nil, err
 	}
 	return toUserRoles(assignments), nil
@@ -129,18 +133,22 @@ func (s *RoleAssignmentApplication) ListRoleUsers(ctx context.Context, req *acce
 		filtering.DeclareIdent("status", filtering.TypeInt),
 	)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_role_users", err)
 		return nil, err
 	}
 	filter, err := filtering.ParseFilter(req, declarations)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_role_users", err)
 		return nil, err
 	}
 	pageToken, err := pagination.ParsePageToken(req)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_role_users", err)
 		return nil, err
 	}
 	orderBy, err := ordering.ParseOrderBy(req)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_role_users", err)
 		return nil, err
 	}
 	if len(orderBy.Fields) == 0 {
@@ -152,6 +160,7 @@ func (s *RoleAssignmentApplication) ListRoleUsers(ctx context.Context, req *acce
 	}
 	users, err := s.svc.ListRoleUsers(ctx, req.GetRoleId(), filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_role_users", err)
 		return nil, err
 	}
 	set := &userv1.UserSet{Users: make([]*userv1.User, 0, len(users))}

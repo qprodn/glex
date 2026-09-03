@@ -12,22 +12,38 @@ carry a snowflake surrogate PK plus a partial unique index on the id pair
 
 ## Error handling and logging
 
-An error is logged exactly once, where it is handled — the site that maps,
-replaces, swallows, or degrades it instead of returning it (ADR 0007).
-`return err` / `return nil, err` is propagation, not handling: it logs
-nothing, and the transport `logging.Server` middleware records whatever
-reaches the boundary. Infra adapters never let a raw ent/redis error escape —
-log-and-map: unexpected failures log `Error` with the raw error and return
-the module's domain sentinel; expected business conditions
-(`ent.IsNotFound` → `ErrUserNotFound`) map silently. Benign errors are
-exempt: `context.Canceled`, sentinel-mapped not-found rows, `redis.Nil`.
-Every error log carries structured fields `operation` (dotted path, e.g.
-`authn.login_by_password`) and `error` (`slog.Any("error", err)`); never
-printf an error into the message text, never hand-print a stack. An explicit
-`_ = err` needs a justifying comment, or a `Warn` when the failure is worth
-knowing about. Business rejections log `Warn` at most, never `Error`;
-`Error` is reserved for system failures. Enforcement is review-based, no
+An error is logged at `Error` exactly once, where it is handled — the site
+that maps, replaces, swallows, or degrades it instead of returning it (ADR
+0007). Infra adapters never let a raw ent/redis error escape — log-and-map:
+unexpected failures log `Error` with the raw error and return the module's
+domain sentinel; expected business conditions (`ent.IsNotFound` →
+`ErrUserNotFound`) map silently. Benign errors are exempt:
+`context.Canceled`, sentinel-mapped not-found rows, `redis.Nil`.
+
+Domain and application propagation sites log-and-return: every `err != nil`
+that a domain service or application service returns to its caller first
+logs one `Warn` breadcrumb via `logx.Propagate` (`pkg/logx`), then returns
+the error unchanged (ADR 0011). Wrap-and-return (`fmt.Errorf("…: %w", err)`)
+is propagation and logs too; `context.Canceled` is exempt at every layer.
+The transport boundary middleware (`pkg/middleware/logging.Server`) records
+whatever reaches it, demoting kratos 4xx to `Warn`, `context.Canceled` to
+`Info`, and keeping 5xx/unknown at `Error`. Every error log carries
+structured fields `operation` (dotted path of the site: use cases
+`authn.login`, domain steps `authn.svc.verify_password`, repo exits
+`user.find_by_id`) and `error` (`slog.Any("error", err)`); never printf an
+error into the message text, never hand-print a stack. An explicit `_ = err`
+needs a justifying comment, or a `Warn` when the failure is worth knowing
+about. `Error` is reserved for system failures — business rejections appear
+only as `Warn` (breadcrumbs and boundary). Enforcement is review-based, no
 lint.
+
+## Shared application helpers
+
+Cross-module application helpers live in `internal/bizpkg`, a flat package:
+stateless, derived only from the request context, never a capability call —
+module-to-module capabilities still go through crossdomain contracts (ADR
+0005). bizpkg may import domain services and `pkg/`; only application
+services import bizpkg (ADR 0010).
 
 ## Generation and generated files
 

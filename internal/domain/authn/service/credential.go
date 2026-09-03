@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"glex/internal/domain/authn/repository"
+	"glex/pkg/logx"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -21,19 +23,29 @@ type Credential interface {
 
 type credentialImpl struct {
 	credentials repository.CredentialRepo
+	logger      *slog.Logger
 }
 
 // NewCredentialService creates the credential domain service.
-func NewCredentialService(credentials repository.CredentialRepo) Credential {
-	return &credentialImpl{credentials: credentials}
+func NewCredentialService(credentials repository.CredentialRepo, logger *slog.Logger) Credential {
+	return &credentialImpl{
+		credentials: credentials,
+		logger:      logger.With(slog.String("component", "domain.authn.svc")),
+	}
 }
 
 func (s *credentialImpl) Store(ctx context.Context, systemUserID int64, password string) error {
 	hash, err := HashPassword(password)
 	if err != nil {
-		return fmt.Errorf("write system user credential: hash password: %w", err)
+		err = fmt.Errorf("write system user credential: hash password: %w", err)
+		logx.Propagate(ctx, s.logger, "authn.svc.store_credential", err)
+		return err
 	}
-	return s.credentials.StoreCredential(ctx, systemUserID, hash)
+	if err := s.credentials.StoreCredential(ctx, systemUserID, hash); err != nil {
+		logx.Propagate(ctx, s.logger, "authn.svc.store_credential", err)
+		return err
+	}
+	return nil
 }
 
 // HashPassword hashes a plaintext password with the project's bcrypt policy.

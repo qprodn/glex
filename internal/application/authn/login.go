@@ -12,6 +12,7 @@ import (
 	authndomain "glex/internal/domain/authn"
 	authnentity "glex/internal/domain/authn/entity"
 	authnservice "glex/internal/domain/authn/service"
+	"glex/pkg/logx"
 
 	"github.com/go-kratos/kratos/v3/transport"
 	"github.com/mileusna/useragent"
@@ -74,6 +75,7 @@ func (s *LoginApplication) Login(ctx context.Context, req *authnv1.LoginRequest)
 		UserAgent: userAgent,
 	})
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "authn.login", err)
 		return nil, err
 	}
 	return &authnv1.LoginReply{
@@ -90,6 +92,7 @@ func (s *LoginApplication) Logout(ctx context.Context, _ *emptypb.Empty) (*empty
 		return &emptypb.Empty{}, nil
 	}
 	if err := s.login.Logout(ctx, principal.SessionID()); err != nil {
+		logx.Propagate(ctx, s.logger, "authn.logout", err)
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

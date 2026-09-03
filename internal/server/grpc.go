@@ -12,10 +12,10 @@ import (
 	fileapp "glex/internal/application/file"
 	userapp "glex/internal/application/user"
 	"glex/internal/conf"
+	"glex/pkg/middleware/logging"
 	"glex/pkg/middleware/requestid"
 	"glex/pkg/validate"
 
-	"github.com/go-kratos/kratos/v3/middleware/logging"
 	"github.com/go-kratos/kratos/v3/middleware/recovery"
 	"github.com/go-kratos/kratos/v3/transport/grpc"
 )

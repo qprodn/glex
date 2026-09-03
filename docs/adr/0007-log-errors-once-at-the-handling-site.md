@@ -59,3 +59,6 @@ review-based only; no lint gate was added.
 - ADR 0004's errnormalize middleware remains desirable as a dumb, outermost
   safety net (panics, application-layer slips), but most of its workload
   moves to the source; it stays a separate work item.
+- Amended 2026-09-03 by ADR 0011: domain and application propagation sites
+  no longer stay silent — they log a `Warn` breadcrumb and return; `Error`
+  remains reserved exactly as decided here.

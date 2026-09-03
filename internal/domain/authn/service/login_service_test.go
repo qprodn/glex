@@ -86,7 +86,7 @@ func (r *fakeSessionRepo) Logout(_ context.Context, sessionID string) error {
 }
 
 func newLoginServiceForTest(backend repository.AuthLoginBackend, counters repository.LoginCounterRepo) Login {
-	return NewLoginService(backend, counters, &fakeSessionRepo{})
+	return NewLoginService(backend, counters, &fakeSessionRepo{}, testLogger())
 }
 
 func accountWithPassword(userName, password string) *entity.LoginAccount {
@@ -214,7 +214,7 @@ func TestVerifyPasswordSuccessReturnsThePreTransactionAccount(t *testing.T) {
 func TestRecordFailureReportsTheRemainingLockWhenThresholdReached(t *testing.T) {
 	counters := &fakeCounterRepo{failRemaining: 10 * time.Minute}
 
-	err := NewLoginService(&fakeLoginBackend{}, counters, &fakeSessionRepo{}).RecordFailure(t.Context(), "alice", "192.0.2.10")
+	err := NewLoginService(&fakeLoginBackend{}, counters, &fakeSessionRepo{}, testLogger()).RecordFailure(t.Context(), "alice", "192.0.2.10")
 	if kratoserrors.Reason(err) != "LOGIN_LOCKED" {
 		t.Fatalf("reason = %q, want LOGIN_LOCKED", kratoserrors.Reason(err))
 	}
@@ -226,7 +226,7 @@ func TestRecordFailureReportsTheRemainingLockWhenThresholdReached(t *testing.T) 
 func TestRecordFailureReturnsGenericReasonBelowThreshold(t *testing.T) {
 	counters := &fakeCounterRepo{}
 
-	err := NewLoginService(&fakeLoginBackend{}, counters, &fakeSessionRepo{}).RecordFailure(t.Context(), "alice", "192.0.2.10")
+	err := NewLoginService(&fakeLoginBackend{}, counters, &fakeSessionRepo{}, testLogger()).RecordFailure(t.Context(), "alice", "192.0.2.10")
 	if !errors.Is(err, authn.ErrInvalidCredentials) {
 		t.Fatalf("RecordFailure error = %v, want ErrInvalidCredentials", err)
 	}
@@ -238,7 +238,7 @@ func TestRecordFailureReturnsGenericReasonBelowThreshold(t *testing.T) {
 func TestClearFailuresClearsTheUserNameCounter(t *testing.T) {
 	counters := &fakeCounterRepo{}
 
-	if err := NewLoginService(&fakeLoginBackend{}, counters, &fakeSessionRepo{}).ClearFailures(t.Context(), "alice"); err != nil {
+	if err := NewLoginService(&fakeLoginBackend{}, counters, &fakeSessionRepo{}, testLogger()).ClearFailures(t.Context(), "alice"); err != nil {
 		t.Fatalf("ClearFailures: %v", err)
 	}
 	if len(counters.cleared) != 1 || counters.cleared[0] != "alice" {
@@ -249,7 +249,7 @@ func TestClearFailuresClearsTheUserNameCounter(t *testing.T) {
 func TestLogoutRevokesThroughTheSessionStore(t *testing.T) {
 	sessions := &fakeSessionRepo{}
 
-	if err := NewLoginService(&fakeLoginBackend{}, &fakeCounterRepo{}, sessions).Logout(t.Context(), "current-session"); err != nil {
+	if err := NewLoginService(&fakeLoginBackend{}, &fakeCounterRepo{}, sessions, testLogger()).Logout(t.Context(), "current-session"); err != nil {
 		t.Fatalf("Logout: %v", err)
 	}
 	if len(sessions.logoutIDs) != 1 || sessions.logoutIDs[0] != "current-session" {

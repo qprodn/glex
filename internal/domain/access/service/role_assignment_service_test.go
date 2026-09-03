@@ -80,7 +80,7 @@ func userExists(link *fakeUserRoleRepo, userIDs ...int64) *fakeUserRoleRepo {
 // newRoleAssignmentSvc wires the real role-assignment domain service over the
 // fake repos.
 func newRoleAssignmentSvc(roles *fakeRoleRepo, userRoles *fakeUserRoleRepo) RoleAssignment {
-	return NewRoleAssignmentService(roles, userRoles)
+	return NewRoleAssignmentService(roles, userRoles, testLogger())
 }
 
 // --- Role Assignment (角色分配) — auth dialog ---

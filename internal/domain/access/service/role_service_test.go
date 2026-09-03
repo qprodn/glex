@@ -124,7 +124,7 @@ func (r *fakeRoleRepo) ReplaceRoleMenus(_ context.Context, roleID int64, menuIDs
 
 // newRoleSvc wires the real role domain service over the fake repos.
 func newRoleSvc(roles *fakeRoleRepo, menus *fakeMenuRepo, userRoles *fakeUserRoleRepo) Role {
-	return NewRoleService(roles, menus, userRoles)
+	return NewRoleService(roles, menus, userRoles, testLogger())
 }
 
 func TestCreateRole_PersistsValidatedRole(t *testing.T) {

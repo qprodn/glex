@@ -8,10 +8,12 @@ import (
 	"strings"
 
 	filev1 "glex/api/file/v1"
+	"glex/internal/bizpkg"
 	"glex/internal/domain/file"
 	fileentity "glex/internal/domain/file/entity"
 	fileservice "glex/internal/domain/file/service"
 	"glex/internal/domain/file/storage"
+	"glex/pkg/logx"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
@@ -102,7 +104,9 @@ func NewFileApplication(svc fileservice.File, logger *slog.Logger) *FileApplicat
 func (s *FileApplication) Upload(ctx context.Context, in *UploadInput) (*filev1.StoredFile, error) {
 	mimeType, err := sniffContentType(in.Content)
 	if err != nil {
-		return nil, file.ErrFileInvalid.WithCause(err)
+		err = file.ErrFileInvalid.WithCause(err)
+		logx.Propagate(ctx, s.logger, "file.upload", err)
+		return nil, err
 	}
 	up := &fileentity.Upload{
 		OriginalName: in.OriginalName,
@@ -110,8 +114,9 @@ func (s *FileApplication) Upload(ctx context.Context, in *UploadInput) (*filev1.
 		MIMEType:     mimeType,
 		SizeBytes:    in.Size,
 	}
-	created, err := s.svc.Accept(ctx, up, in.Content, auditActor(ctx))
+	created, err := s.svc.Accept(ctx, up, in.Content, bizpkg.AuditActor(ctx))
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.upload", err)
 		return nil, err
 	}
 	return convertStoredFile(created), nil
@@ -127,7 +132,9 @@ func (s *FileApplication) Download(ctx context.Context, fileID int64, dispositio
 		disp = DispositionAttachment
 	}
 	if disp != DispositionAttachment && disp != DispositionInline {
-		return nil, file.ErrFileInvalid
+		err := file.ErrFileInvalid
+		logx.Propagate(ctx, s.logger, "file.download", err)
+		return nil, err
 	}
 	var rng *storage.ByteRange
 	if rangeHeader != "" {
@@ -135,6 +142,7 @@ func (s *FileApplication) Download(ctx context.Context, fileID int64, dispositio
 	}
 	obj, f, err := s.svc.Open(ctx, fileID, rng)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.download", err)
 		return nil, err
 	}
 	contentType := obj.ContentType
@@ -155,6 +163,7 @@ func (s *FileApplication) Download(ctx context.Context, fileID int64, dispositio
 func (s *FileApplication) GetFile(ctx context.Context, req *filev1.GetFileRequest) (*filev1.StoredFile, error) {
 	f, err := s.svc.Get(ctx, req.GetFileId())
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.get_file", err)
 		return nil, err
 	}
 	return convertStoredFile(f), nil
@@ -171,18 +180,22 @@ func (s *FileApplication) ListFiles(ctx context.Context, req *filev1.ListFilesRe
 		filtering.DeclareIdent("create_by", filtering.TypeInt),
 	)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.list_files", err)
 		return nil, err
 	}
 	filter, err := filtering.ParseFilter(req, declarations)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.list_files", err)
 		return nil, err
 	}
 	pageToken, err := pagination.ParsePageToken(req)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.list_files", err)
 		return nil, err
 	}
 	orderBy, err := ordering.ParseOrderBy(req)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.list_files", err)
 		return nil, err
 	}
 	if len(orderBy.Fields) == 0 {
@@ -194,6 +207,7 @@ func (s *FileApplication) ListFiles(ctx context.Context, req *filev1.ListFilesRe
 	}
 	files, err := s.svc.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.list_files", err)
 		return nil, err
 	}
 	set := &filev1.StoredFileSet{Files: make([]*filev1.StoredFile, 0, len(files))}
@@ -209,7 +223,8 @@ func (s *FileApplication) ListFiles(ctx context.Context, req *filev1.ListFilesRe
 // WithdrawFile withdraws a Stored File: row soft-deleted, bytes removed
 // (ADR 0009).
 func (s *FileApplication) WithdrawFile(ctx context.Context, req *filev1.WithdrawFileRequest) (*emptypb.Empty, error) {
-	if err := s.svc.Withdraw(ctx, req.GetFileId(), auditActor(ctx)); err != nil {
+	if err := s.svc.Withdraw(ctx, req.GetFileId(), bizpkg.AuditActor(ctx)); err != nil {
+		logx.Propagate(ctx, s.logger, "file.withdraw_file", err)
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

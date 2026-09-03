@@ -10,11 +10,13 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sort"
 
 	"glex/internal/domain/access"
 	"glex/internal/domain/access/entity"
 	"glex/internal/domain/access/repository"
+	"glex/pkg/logx"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
@@ -23,7 +25,8 @@ import (
 // Menu is the access domain service behind the menu endpoints: the only path
 // to the Menu reads and writes (ADR 0005). Methods join the caller's ambient
 // transaction; the Application service owns the transaction boundary and the
-// cross-domain revocation.
+// cross-domain revocation. Every error a method returns to its caller first
+// logs its Warn breadcrumb (ADR 0011).
 type Menu interface {
 	Get(ctx context.Context, id int64) (*entity.Menu, error)
 	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy) ([]*entity.Menu, error)
@@ -43,61 +46,104 @@ type Menu interface {
 }
 
 type menuImpl struct {
-	menus repository.MenuRepo
+	menus  repository.MenuRepo
+	logger *slog.Logger
 }
 
 // NewMenuService creates the menu domain service.
-func NewMenuService(menus repository.MenuRepo) Menu {
-	return &menuImpl{menus: menus}
+func NewMenuService(menus repository.MenuRepo, logger *slog.Logger) Menu {
+	return &menuImpl{
+		menus:  menus,
+		logger: logger.With(slog.String("component", "domain.access.svc")),
+	}
 }
 
 func (s *menuImpl) Get(ctx context.Context, id int64) (*entity.Menu, error) {
-	return s.menus.FindByID(ctx, id)
+	m, err := s.menus.FindByID(ctx, id)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.svc.get_menu", err)
+		return nil, err
+	}
+	return m, nil
 }
 
 func (s *menuImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy) ([]*entity.Menu, error) {
-	return s.menus.ListMenus(ctx,
+	ms, err := s.menus.ListMenus(ctx,
 		repository.ListFilter(filter),
 		repository.ListOrderBy(orderBy),
 	)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.svc.list_menus", err)
+		return nil, err
+	}
+	return ms, nil
 }
 
 func (s *menuImpl) LoadRouteAccess(ctx context.Context, systemUserID int64) (*entity.MenuRouteAccess, error) {
-	return s.menus.LoadRouteAccess(ctx, systemUserID)
+	ra, err := s.menus.LoadRouteAccess(ctx, systemUserID)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.svc.load_route_access", err)
+		return nil, err
+	}
+	return ra, nil
 }
 
 func (s *menuImpl) Create(ctx context.Context, m *entity.Menu) (*entity.Menu, error) {
 	if err := ValidateMenuType(m.MenuType); err != nil {
+		logx.Propagate(ctx, s.logger, "access.svc.create_menu", err)
 		return nil, err
 	}
 	if err := AssertSiblingNameUnique(ctx, s.menus, m, false); err != nil {
+		logx.Propagate(ctx, s.logger, "access.svc.create_menu", err)
 		return nil, err
 	}
-	return s.menus.CreateMenu(ctx, m)
+	created, err := s.menus.CreateMenu(ctx, m)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.svc.create_menu", err)
+		return nil, err
+	}
+	return created, nil
 }
 
 func (s *menuImpl) Update(ctx context.Context, m *entity.Menu) (*entity.MenuUpdate, error) {
 	if m.ParentID == m.ID {
-		return nil, access.ErrMenuParentInvalid
+		err := access.ErrMenuParentInvalid
+		logx.Propagate(ctx, s.logger, "access.svc.update_menu", err)
+		return nil, err
 	}
 	if err := ValidateMenuType(m.MenuType); err != nil {
+		logx.Propagate(ctx, s.logger, "access.svc.update_menu", err)
 		return nil, err
 	}
 	if err := AssertSiblingNameUnique(ctx, s.menus, m, true); err != nil {
+		logx.Propagate(ctx, s.logger, "access.svc.update_menu", err)
 		return nil, err
 	}
-	return s.menus.UpdateMenu(ctx, m)
+	updated, err := s.menus.UpdateMenu(ctx, m)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.svc.update_menu", err)
+		return nil, err
+	}
+	return updated, nil
 }
 
 func (s *menuImpl) Delete(ctx context.Context, id, actorID int64) ([]int64, error) {
 	has, err := s.menus.HasChildren(ctx, id)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.svc.delete_menu", err)
 		return nil, err
 	}
 	if has {
-		return nil, access.ErrMenuHasChildren
+		err := access.ErrMenuHasChildren
+		logx.Propagate(ctx, s.logger, "access.svc.delete_menu", err)
+		return nil, err
 	}
-	return s.menus.DeleteMenu(ctx, id, actorID)
+	revoked, err := s.menus.DeleteMenu(ctx, id, actorID)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.svc.delete_menu", err)
+		return nil, err
+	}
+	return revoked, nil
 }
 
 // ValidateMenuType rejects anything outside the MenuType enum range.
@@ -110,7 +156,8 @@ func ValidateMenuType(t int32) error {
 
 // AssertSiblingNameUnique checks no other menu shares (parent_id, menu_name).
 // When excludeSelf is set (update), a match bearing the same id is allowed. A
-// not-found from the repo is the expected "available" case.
+// not-found from the repo is the expected "available" case. Its caller's
+// method boundary owns the breadcrumb (ADR 0011).
 func AssertSiblingNameUnique(ctx context.Context, repo repository.MenuRepo, m *entity.Menu, excludeSelf bool) error {
 	existing, err := repo.FindByParentAndName(ctx, m.ParentID, m.MenuName)
 	if err != nil {

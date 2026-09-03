@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	userv1 "glex/api/user/v1"
+	"glex/internal/bizpkg"
 	"glex/internal/crossdomain/authn"
 	authnmodel "glex/internal/crossdomain/authn/model"
 	authndomain "glex/internal/domain/authn"
@@ -12,6 +13,7 @@ import (
 	userdomain "glex/internal/domain/user"
 	userentity "glex/internal/domain/user/entity"
 	userservice "glex/internal/domain/user/service"
+	"glex/pkg/logx"
 
 	"go.einride.tech/aip/fieldmask"
 	"go.einride.tech/aip/filtering"
@@ -86,7 +88,7 @@ func NewUserApplication(svc userservice.User, credentials authn.CredentialWriter
 // concurrent creates, accepted.
 func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUserRequest) (*userv1.User, error) {
 	in := req.GetUser()
-	actor := auditActor(ctx)
+	actor := bizpkg.AuditActor(ctx)
 	u := &userentity.User{
 		UserName:    in.GetUserName(),
 		NickName:    in.GetNickName(),
@@ -101,7 +103,9 @@ func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUser
 		UpdateBy:    actor,
 	}
 	if u.Password == "" {
-		return nil, userdomain.ErrPasswordRequired
+		err := userdomain.ErrPasswordRequired
+		logx.Propagate(ctx, s.logger, "user.create_user", err)
+		return nil, err
 	}
 	var created *userentity.User
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
@@ -112,6 +116,7 @@ func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUser
 		}
 		return s.writeCredential(ctx, created.ID, u.Password)
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "user.create_user", err)
 		return nil, err
 	}
 	return convertUser(created), nil
@@ -121,6 +126,7 @@ func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUser
 func (s *UserApplication) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*userv1.User, error) {
 	u, err := s.svc.Get(ctx, req.GetUserId())
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "user.get_user", err)
 		return nil, err
 	}
 	return convertUser(u), nil
@@ -131,10 +137,13 @@ func (s *UserApplication) GetUser(ctx context.Context, req *userv1.GetUserReques
 func (s *UserApplication) GetInfo(ctx context.Context, _ *emptypb.Empty) (*userv1.CurrentUserInfo, error) {
 	principal, ok := authnservice.PrincipalFromContext(ctx)
 	if !ok {
-		return nil, authndomain.ErrCredentialMissing
+		err := authndomain.ErrCredentialMissing
+		logx.Propagate(ctx, s.logger, "user.get_info", err)
+		return nil, err
 	}
 	u, err := s.svc.Get(ctx, principal.SystemUserID())
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "user.get_info", err)
 		return nil, err
 	}
 	current := &userv1.CurrentUser{
@@ -175,18 +184,22 @@ func (s *UserApplication) ListUsers(ctx context.Context, req *userv1.ListUsersRe
 		filtering.DeclareIdent("created_at", filtering.TypeTimestamp),
 	)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "user.list_users", err)
 		return nil, err
 	}
 	filter, err := filtering.ParseFilter(req, declarations)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "user.list_users", err)
 		return nil, err
 	}
 	pageToken, err := pagination.ParsePageToken(req)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "user.list_users", err)
 		return nil, err
 	}
 	orderBy, err := ordering.ParseOrderBy(req)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "user.list_users", err)
 		return nil, err
 	}
 	if req.GetPageSize() <= 0 {
@@ -194,6 +207,7 @@ func (s *UserApplication) ListUsers(ctx context.Context, req *userv1.ListUsersRe
 	}
 	users, err := s.svc.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "user.list_users", err)
 		return nil, err
 	}
 	set := &userv1.UserSet{Users: make([]*userv1.User, 0, len(users))}
@@ -217,6 +231,7 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 	// write path treats it as "unchanged".
 	current, err := s.GetUser(ctx, &userv1.GetUserRequest{UserId: req.GetUser().GetUserId()})
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "user.update_user", err)
 		return nil, err
 	}
 	fieldmask.Update(req.GetUpdateMask(), current, req.GetUser())
@@ -231,7 +246,7 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 		Status:      current.GetStatus(),
 		Avatar:      current.GetAvatar(),
 		Remark:      current.GetRemark(),
-		UpdateBy:    auditActor(ctx),
+		UpdateBy:    bizpkg.AuditActor(ctx),
 	}
 	passwordPolicy := userentity.RevokeAllLoginSessions()
 	if u.Password != "" {
@@ -257,6 +272,7 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 		policy := u.SessionRevocationFrom(result.Previous, passwordPolicy)
 		return revokeSystemUsers(ctx, s.revoker, userentity.SystemUserSessionRevocation{SystemUserID: u.ID, Policy: policy})
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "user.update_user", err)
 		return nil, err
 	}
 	return convertUser(updated), nil
@@ -266,12 +282,13 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 // Sessions in the same transaction.
 func (s *UserApplication) DeleteUser(ctx context.Context, req *userv1.DeleteUserRequest) (*emptypb.Empty, error) {
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.svc.Delete(ctx, req.GetUserId(), auditActor(ctx))
+		affected, err := s.svc.Delete(ctx, req.GetUserId(), bizpkg.AuditActor(ctx))
 		if err != nil {
 			return err
 		}
 		return revokeAllSystemUsers(ctx, s.revoker, affected...)
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "user.delete_user", err)
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

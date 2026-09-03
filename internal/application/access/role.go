@@ -5,9 +5,11 @@ import (
 	"log/slog"
 
 	accessv1 "glex/api/access/v1"
+	"glex/internal/bizpkg"
 	"glex/internal/crossdomain/authn"
 	accessentity "glex/internal/domain/access/entity"
 	accessservice "glex/internal/domain/access/service"
+	"glex/pkg/logx"
 
 	"go.einride.tech/aip/fieldmask"
 	"go.einride.tech/aip/filtering"
@@ -81,7 +83,7 @@ func (s *RoleApplication) CreateRole(ctx context.Context, req *accessv1.CreateRo
 		MenuCheckStrictly: strict,
 		Remark:            in.GetRemark(),
 	}
-	actor := auditActor(ctx)
+	actor := bizpkg.AuditActor(ctx)
 	r.CreateBy, r.UpdateBy = actor, actor
 	var created *accessentity.Role
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
@@ -89,6 +91,7 @@ func (s *RoleApplication) CreateRole(ctx context.Context, req *accessv1.CreateRo
 		created, err = s.svc.Create(ctx, r, req.GetMenuIds())
 		return err
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "access.create_role", err)
 		return nil, err
 	}
 	return convertRole(created), nil
@@ -98,6 +101,7 @@ func (s *RoleApplication) CreateRole(ctx context.Context, req *accessv1.CreateRo
 func (s *RoleApplication) GetRole(ctx context.Context, req *accessv1.GetRoleRequest) (*accessv1.Role, error) {
 	r, err := s.svc.Get(ctx, req.GetRoleId())
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.get_role", err)
 		return nil, err
 	}
 	return convertRole(r), nil
@@ -113,18 +117,22 @@ func (s *RoleApplication) ListRoles(ctx context.Context, req *accessv1.ListRoles
 		filtering.DeclareIdent("status", filtering.TypeInt),
 	)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_roles", err)
 		return nil, err
 	}
 	filter, err := filtering.ParseFilter(req, declarations)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_roles", err)
 		return nil, err
 	}
 	pageToken, err := pagination.ParsePageToken(req)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_roles", err)
 		return nil, err
 	}
 	orderBy, err := ordering.ParseOrderBy(req)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_roles", err)
 		return nil, err
 	}
 	if len(orderBy.Fields) == 0 {
@@ -137,6 +145,7 @@ func (s *RoleApplication) ListRoles(ctx context.Context, req *accessv1.ListRoles
 	}
 	roles, err := s.svc.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_roles", err)
 		return nil, err
 	}
 	set := &accessv1.RoleSet{Roles: make([]*accessv1.Role, 0, len(roles))}
@@ -160,6 +169,7 @@ func (s *RoleApplication) ListRoles(ctx context.Context, req *accessv1.ListRoles
 func (s *RoleApplication) UpdateRole(ctx context.Context, req *accessv1.UpdateRoleRequest) (*accessv1.Role, error) {
 	current, err := s.GetRole(ctx, &accessv1.GetRoleRequest{RoleId: req.GetRole().GetRoleId()})
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.update_role", err)
 		return nil, err
 	}
 	fieldmask.Update(req.GetUpdateMask(), current, req.GetRole())
@@ -170,7 +180,7 @@ func (s *RoleApplication) UpdateRole(ctx context.Context, req *accessv1.UpdateRo
 		RoleSort: int(current.GetRoleSort()),
 		Status:   current.GetStatus(),
 		Remark:   current.GetRemark(),
-		UpdateBy: auditActor(ctx),
+		UpdateBy: bizpkg.AuditActor(ctx),
 	}
 	var updated *accessentity.Role
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
@@ -184,6 +194,7 @@ func (s *RoleApplication) UpdateRole(ctx context.Context, req *accessv1.UpdateRo
 		}
 		return nil
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "access.update_role", err)
 		return nil, err
 	}
 	return convertRole(updated), nil
@@ -194,12 +205,13 @@ func (s *RoleApplication) UpdateRole(ctx context.Context, req *accessv1.UpdateRo
 // revokes the assigned users' Login Sessions in one transaction.
 func (s *RoleApplication) DeleteRole(ctx context.Context, req *accessv1.DeleteRoleRequest) (*emptypb.Empty, error) {
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.svc.Delete(ctx, req.GetRoleId(), auditActor(ctx))
+		affected, err := s.svc.Delete(ctx, req.GetRoleId(), bizpkg.AuditActor(ctx))
 		if err != nil {
 			return err
 		}
 		return revokeAllSystemUsers(ctx, s.revoker, affected...)
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "access.delete_role", err)
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -214,6 +226,7 @@ func (s *RoleApplication) DeleteRole(ctx context.Context, req *accessv1.DeleteRo
 func (s *RoleApplication) ListRoleMenus(ctx context.Context, req *accessv1.ListRoleMenusRequest) (*accessv1.RoleMenus, error) {
 	menuIDs, err := s.svc.CheckedMenuIDs(ctx, req.GetRoleId())
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "access.list_role_menus", err)
 		return nil, err
 	}
 	return &accessv1.RoleMenus{MenuIds: menuIDs}, nil
@@ -233,13 +246,14 @@ func (s *RoleApplication) UpdateRoleMenus(ctx context.Context, req *accessv1.Upd
 	}
 	var granted []int64
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		unique, affected, err := s.svc.ReplaceMenus(ctx, req.GetRoleId(), req.GetMenuIds(), strict, auditActor(ctx))
+		unique, affected, err := s.svc.ReplaceMenus(ctx, req.GetRoleId(), req.GetMenuIds(), strict, bizpkg.AuditActor(ctx))
 		if err != nil {
 			return err
 		}
 		granted = unique
 		return revokeAllSystemUsers(ctx, s.revoker, affected...)
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "access.update_role_menus", err)
 		return nil, err
 	}
 	return &accessv1.RoleMenus{MenuIds: granted}, nil

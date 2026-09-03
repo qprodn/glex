@@ -19,9 +19,9 @@ import (
 	"glex/pkg/middleware/requestid"
 	"glex/pkg/validate"
 
-	"github.com/go-kratos/kratos/v3/middleware/logging"
 	"github.com/go-kratos/kratos/v3/middleware/recovery"
 	"github.com/go-kratos/kratos/v3/transport/http"
+	logging "glex/pkg/middleware/logging"
 )
 
 // NewHTTPServer new an HTTP server.

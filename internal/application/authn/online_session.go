@@ -7,6 +7,7 @@ import (
 	authnv1 "glex/api/authn/v1"
 	authndomain "glex/internal/domain/authn"
 	authnservice "glex/internal/domain/authn/service"
+	"glex/pkg/logx"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
@@ -43,18 +44,22 @@ func (s *OnlineSessionApplication) ListOnlineSessions(ctx context.Context, req *
 		filtering.DeclareIdent("ipaddr", filtering.TypeString),
 	)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "authn.list_online_sessions", err)
 		return nil, err
 	}
 	filter, err := filtering.ParseFilter(req, declarations)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "authn.list_online_sessions", err)
 		return nil, err
 	}
 	pageToken, err := pagination.ParsePageToken(req)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "authn.list_online_sessions", err)
 		return nil, err
 	}
 	orderBy, err := ordering.ParseOrderBy(req)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "authn.list_online_sessions", err)
 		return nil, err
 	}
 	if len(orderBy.Fields) == 0 {
@@ -65,6 +70,7 @@ func (s *OnlineSessionApplication) ListOnlineSessions(ctx context.Context, req *
 	}
 	sessions, err := s.svc.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "authn.list_online_sessions", err)
 		return nil, err
 	}
 	set := &authnv1.OnlineSessionSet{Sessions: make([]*authnv1.OnlineSession, 0, len(sessions))}
@@ -88,6 +94,7 @@ func (s *OnlineSessionApplication) ListOnlineSessions(ctx context.Context, req *
 // KickoutOnlineSession revokes one Session ID for an administrator.
 func (s *OnlineSessionApplication) KickoutOnlineSession(ctx context.Context, req *authnv1.OnlineSessionRequest) (*emptypb.Empty, error) {
 	if err := s.svc.Kickout(ctx, req.GetTokenId()); err != nil {
+		logx.Propagate(ctx, s.logger, "authn.kickout_online_session", err)
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -97,10 +104,13 @@ func (s *OnlineSessionApplication) KickoutOnlineSession(ctx context.Context, req
 func (s *OnlineSessionApplication) ListMyOnlineSessions(ctx context.Context, _ *emptypb.Empty) (*authnv1.OnlineSessionSet, error) {
 	principal, ok := authnservice.PrincipalFromContext(ctx)
 	if !ok {
-		return nil, authndomain.ErrCredentialMissing
+		err := authndomain.ErrCredentialMissing
+		logx.Propagate(ctx, s.logger, "authn.list_my_online_sessions", err)
+		return nil, err
 	}
 	sessions, err := s.svc.ListBySystemUser(ctx, principal.SystemUserID())
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "authn.list_my_online_sessions", err)
 		return nil, err
 	}
 	set := &authnv1.OnlineSessionSet{Sessions: make([]*authnv1.OnlineSession, 0, len(sessions))}
@@ -123,9 +133,12 @@ func (s *OnlineSessionApplication) ListMyOnlineSessions(ctx context.Context, _ *
 func (s *OnlineSessionApplication) DeleteMyOnlineSession(ctx context.Context, req *authnv1.OnlineSessionRequest) (*emptypb.Empty, error) {
 	principal, ok := authnservice.PrincipalFromContext(ctx)
 	if !ok {
-		return nil, authndomain.ErrCredentialMissing
+		err := authndomain.ErrCredentialMissing
+		logx.Propagate(ctx, s.logger, "authn.delete_my_online_session", err)
+		return nil, err
 	}
 	if err := s.svc.LogoutOwned(ctx, principal.SystemUserID(), req.GetTokenId()); err != nil {
+		logx.Propagate(ctx, s.logger, "authn.delete_my_online_session", err)
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

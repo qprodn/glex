@@ -24,7 +24,7 @@ func (r *fakeCredentialRepo) StoreCredential(_ context.Context, systemUserID int
 func TestCredentialStoreHashesThePlaintext(t *testing.T) {
 	credentials := &fakeCredentialRepo{}
 
-	if err := NewCredentialService(credentials).Store(t.Context(), 42, "secret"); err != nil {
+	if err := NewCredentialService(credentials, testLogger()).Store(t.Context(), 42, "secret"); err != nil {
 		t.Fatalf("Store: %v", err)
 	}
 	stored, ok := credentials.stored[42]
@@ -43,7 +43,7 @@ func TestCredentialStorePropagatesBackendFailure(t *testing.T) {
 	failure := errors.New("store credential: boom")
 	credentials := &fakeCredentialRepo{err: failure}
 
-	if err := NewCredentialService(credentials).Store(t.Context(), 42, "secret"); !errors.Is(err, failure) {
+	if err := NewCredentialService(credentials, testLogger()).Store(t.Context(), 42, "secret"); !errors.Is(err, failure) {
 		t.Fatalf("Store error = %v, want the backend failure surfaced", err)
 	}
 }

@@ -5,8 +5,10 @@ import (
 	"log/slog"
 
 	dictv1 "glex/api/dict/v1"
+	"glex/internal/bizpkg"
 	dictentity "glex/internal/domain/dict/entity"
 	dictservice "glex/internal/domain/dict/service"
+	"glex/pkg/logx"
 
 	"go.einride.tech/aip/fieldmask"
 	"go.einride.tech/aip/filtering"
@@ -33,18 +35,18 @@ func convertDictType(t *dictentity.DictType) *dictv1.DictType {
 // convertDictEntry maps a dictentity.DictEntry DO to the proto DictEntry DTO.
 func convertDictEntry(e *dictentity.DictEntry) *dictv1.DictEntry {
 	return &dictv1.DictEntry{
-		EntryId:    e.ID,
-		DictType:   e.DictType,
-		DictLabel:  e.DictLabel,
-		DictValue:  e.DictValue,
-		DictSort:   int32(e.DictSort),
-		TagStyle:   tagStyleToProto(e.TagStyle),
-		IsDefault:  e.IsDefault,
-		Remark:     e.Remark,
-		CreateBy:   e.CreateBy,
-		UpdateBy:   e.UpdateBy,
-		CreatedAt:  timestamppb.New(e.CreatedAt),
-		UpdatedAt:  timestamppb.New(e.UpdatedAt),
+		EntryId:   e.ID,
+		DictType:  e.DictType,
+		DictLabel: e.DictLabel,
+		DictValue: e.DictValue,
+		DictSort:  int32(e.DictSort),
+		TagStyle:  tagStyleToProto(e.TagStyle),
+		IsDefault: e.IsDefault,
+		Remark:    e.Remark,
+		CreateBy:  e.CreateBy,
+		UpdateBy:  e.UpdateBy,
+		CreatedAt: timestamppb.New(e.CreatedAt),
+		UpdatedAt: timestamppb.New(e.UpdatedAt),
 	}
 }
 
@@ -118,7 +120,7 @@ func (s *DictApplication) CreateDictType(ctx context.Context, req *dictv1.Create
 		DictType: in.GetDictType(),
 		Remark:   in.GetRemark(),
 	}
-	actor := auditActor(ctx)
+	actor := bizpkg.AuditActor(ctx)
 	t.CreateBy, t.UpdateBy = actor, actor
 	var created *dictentity.DictType
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
@@ -126,6 +128,7 @@ func (s *DictApplication) CreateDictType(ctx context.Context, req *dictv1.Create
 		created, err = s.svc.CreateType(ctx, t)
 		return err
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "dict.create_dict_type", err)
 		return nil, err
 	}
 	return convertDictType(created), nil
@@ -135,6 +138,7 @@ func (s *DictApplication) CreateDictType(ctx context.Context, req *dictv1.Create
 func (s *DictApplication) GetDictType(ctx context.Context, req *dictv1.GetDictTypeRequest) (*dictv1.DictType, error) {
 	t, err := s.svc.GetType(ctx, req.GetDictTypeId())
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "dict.get_dict_type", err)
 		return nil, err
 	}
 	return convertDictType(t), nil
@@ -149,18 +153,22 @@ func (s *DictApplication) ListDictTypes(ctx context.Context, req *dictv1.ListDic
 		filtering.DeclareIdent("dict_type", filtering.TypeString),
 	)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "dict.list_dict_types", err)
 		return nil, err
 	}
 	filter, err := filtering.ParseFilter(req, declarations)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "dict.list_dict_types", err)
 		return nil, err
 	}
 	pageToken, err := pagination.ParsePageToken(req)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "dict.list_dict_types", err)
 		return nil, err
 	}
 	orderBy, err := ordering.ParseOrderBy(req)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "dict.list_dict_types", err)
 		return nil, err
 	}
 	if len(orderBy.Fields) == 0 {
@@ -172,6 +180,7 @@ func (s *DictApplication) ListDictTypes(ctx context.Context, req *dictv1.ListDic
 	}
 	types, err := s.svc.ListTypes(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "dict.list_dict_types", err)
 		return nil, err
 	}
 	set := &dictv1.DictTypeSet{DictTypes: make([]*dictv1.DictType, 0, len(types))}
@@ -191,6 +200,7 @@ func (s *DictApplication) ListDictTypes(ctx context.Context, req *dictv1.ListDic
 func (s *DictApplication) UpdateDictType(ctx context.Context, req *dictv1.UpdateDictTypeRequest) (*dictv1.DictType, error) {
 	current, err := s.GetDictType(ctx, &dictv1.GetDictTypeRequest{DictTypeId: req.GetDictType().GetDictTypeId()})
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "dict.update_dict_type", err)
 		return nil, err
 	}
 	fieldmask.Update(req.GetUpdateMask(), current, req.GetDictType())
@@ -198,7 +208,7 @@ func (s *DictApplication) UpdateDictType(ctx context.Context, req *dictv1.Update
 		ID:       current.GetDictTypeId(),
 		DictName: current.GetDictName(),
 		Remark:   current.GetRemark(),
-		UpdateBy: auditActor(ctx),
+		UpdateBy: bizpkg.AuditActor(ctx),
 	}
 	var updated *dictentity.DictType
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
@@ -206,6 +216,7 @@ func (s *DictApplication) UpdateDictType(ctx context.Context, req *dictv1.Update
 		updated, err = s.svc.UpdateType(ctx, t)
 		return err
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "dict.update_dict_type", err)
 		return nil, err
 	}
 	return convertDictType(updated), nil
@@ -215,8 +226,9 @@ func (s *DictApplication) UpdateDictType(ctx context.Context, req *dictv1.Update
 // still active under its key (RuoYi: 已分配，不能删除).
 func (s *DictApplication) DeleteDictType(ctx context.Context, req *dictv1.DeleteDictTypeRequest) (*emptypb.Empty, error) {
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		return s.svc.DeleteType(ctx, req.GetDictTypeId(), auditActor(ctx))
+		return s.svc.DeleteType(ctx, req.GetDictTypeId(), bizpkg.AuditActor(ctx))
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "dict.delete_dict_type", err)
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -236,7 +248,7 @@ func (s *DictApplication) CreateDictEntry(ctx context.Context, req *dictv1.Creat
 		IsDefault: in.GetIsDefault(),
 		Remark:    in.GetRemark(),
 	}
-	actor := auditActor(ctx)
+	actor := bizpkg.AuditActor(ctx)
 	e.CreateBy, e.UpdateBy = actor, actor
 	var created *dictentity.DictEntry
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
@@ -244,6 +256,7 @@ func (s *DictApplication) CreateDictEntry(ctx context.Context, req *dictv1.Creat
 		created, err = s.svc.CreateEntry(ctx, e)
 		return err
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "dict.create_dict_entry", err)
 		return nil, err
 	}
 	return convertDictEntry(created), nil
@@ -253,6 +266,7 @@ func (s *DictApplication) CreateDictEntry(ctx context.Context, req *dictv1.Creat
 func (s *DictApplication) GetDictEntry(ctx context.Context, req *dictv1.GetDictEntryRequest) (*dictv1.DictEntry, error) {
 	e, err := s.svc.GetEntry(ctx, req.GetEntryId())
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "dict.get_dict_entry", err)
 		return nil, err
 	}
 	return convertDictEntry(e), nil
@@ -269,18 +283,22 @@ func (s *DictApplication) ListDictEntries(ctx context.Context, req *dictv1.ListD
 		filtering.DeclareIdent("dict_value", filtering.TypeString),
 	)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "dict.list_dict_entries", err)
 		return nil, err
 	}
 	filter, err := filtering.ParseFilter(req, declarations)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "dict.list_dict_entries", err)
 		return nil, err
 	}
 	pageToken, err := pagination.ParsePageToken(req)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "dict.list_dict_entries", err)
 		return nil, err
 	}
 	orderBy, err := ordering.ParseOrderBy(req)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "dict.list_dict_entries", err)
 		return nil, err
 	}
 	if len(orderBy.Fields) == 0 {
@@ -293,6 +311,7 @@ func (s *DictApplication) ListDictEntries(ctx context.Context, req *dictv1.ListD
 	}
 	entries, err := s.svc.ListEntries(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "dict.list_dict_entries", err)
 		return nil, err
 	}
 	set := &dictv1.DictEntrySet{Entries: make([]*dictv1.DictEntry, 0, len(entries))}
@@ -311,6 +330,7 @@ func (s *DictApplication) ListDictEntries(ctx context.Context, req *dictv1.ListD
 func (s *DictApplication) UpdateDictEntry(ctx context.Context, req *dictv1.UpdateDictEntryRequest) (*dictv1.DictEntry, error) {
 	current, err := s.GetDictEntry(ctx, &dictv1.GetDictEntryRequest{EntryId: req.GetEntry().GetEntryId()})
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "dict.update_dict_entry", err)
 		return nil, err
 	}
 	fieldmask.Update(req.GetUpdateMask(), current, req.GetEntry())
@@ -322,7 +342,7 @@ func (s *DictApplication) UpdateDictEntry(ctx context.Context, req *dictv1.Updat
 		TagStyle:  tagStyleFromProto(current.GetTagStyle()),
 		IsDefault: current.GetIsDefault(),
 		Remark:    current.GetRemark(),
-		UpdateBy:  auditActor(ctx),
+		UpdateBy:  bizpkg.AuditActor(ctx),
 	}
 	var updated *dictentity.DictEntry
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
@@ -330,6 +350,7 @@ func (s *DictApplication) UpdateDictEntry(ctx context.Context, req *dictv1.Updat
 		updated, err = s.svc.UpdateEntry(ctx, e)
 		return err
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "dict.update_dict_entry", err)
 		return nil, err
 	}
 	return convertDictEntry(updated), nil
@@ -338,8 +359,9 @@ func (s *DictApplication) UpdateDictEntry(ctx context.Context, req *dictv1.Updat
 // DeleteDictEntry soft-deletes an entry by id.
 func (s *DictApplication) DeleteDictEntry(ctx context.Context, req *dictv1.DeleteDictEntryRequest) (*emptypb.Empty, error) {
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		return s.svc.DeleteEntry(ctx, req.GetEntryId(), auditActor(ctx))
+		return s.svc.DeleteEntry(ctx, req.GetEntryId(), bizpkg.AuditActor(ctx))
 	}); err != nil {
+		logx.Propagate(ctx, s.logger, "dict.delete_dict_entry", err)
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -352,6 +374,7 @@ func (s *DictApplication) DeleteDictEntry(ctx context.Context, req *dictv1.Delet
 func (s *DictApplication) ListDictEntriesByType(ctx context.Context, req *dictv1.ListDictEntriesByTypeRequest) (*dictv1.DictEntryOptionSet, error) {
 	entries, err := s.svc.OptionsByType(ctx, req.GetDictType())
 	if err != nil {
+		logx.Propagate(ctx, s.logger, "dict.list_dict_entries_by_type", err)
 		return nil, err
 	}
 	set := &dictv1.DictEntryOptionSet{Options: make([]*dictv1.DictEntryOption, 0, len(entries))}
