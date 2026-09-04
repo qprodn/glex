@@ -164,6 +164,7 @@ func (s *UserApplication) GetInfo(ctx context.Context, _ *emptypb.Empty) (*userv
 		Status:      u.Status,
 		Avatar:      u.Avatar,
 		Remark:      u.Remark,
+		DeptId:      u.DeptID,
 		CreateBy:    u.CreateBy,
 		UpdateBy:    u.UpdateBy,
 		LoginIp:     u.LoginIP,

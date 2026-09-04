@@ -78,6 +78,8 @@ export type CurrentUser = {
   status: number | undefined;
   avatar: string | undefined;
   remark: string | undefined;
+  // The user's department; 0 = none (read-only, same as User.dept_id).
+  deptId: number | undefined;
   createBy: number | undefined;
   updateBy: number | undefined;
   loginIp: string | undefined;

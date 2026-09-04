@@ -76,4 +76,4 @@ var (
 // tree grows from and the fixed home for users that predate the org module.
 // Withdrawal-protected (RuoYi's DEFAULT_DEPT_ID guard); the seed
 // (docs/db/seed.sql) pins the id.
-const RootDeptID int64 = 1000000000000000301
+const RootDeptID int64 = 1000000000000000801

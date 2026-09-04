@@ -2339,6 +2339,9 @@ components:
                     type: string
                 remark:
                     type: string
+                deptId:
+                    type: string
+                    description: The user's department; 0 = none (read-only, same as User.dept_id).
                 createBy:
                     type: string
                 updateBy:

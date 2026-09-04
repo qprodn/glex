@@ -1,3 +1,4 @@
+import type { DeptTreeOption } from "@/services/org/v1";
 import type { User } from "@/services/user/v1";
 import { DictTag } from "@/components";
 import { useDict, valueEnumOf } from "@/hooks/useDict";
@@ -12,7 +13,8 @@ import {
   ProTable,
 } from "@ant-design/pro-components";
 import { Access, useAccess, useIntl } from "@umijs/max";
-import { App, Button, Modal, Typography } from "antd";
+import { App, Button, Card, Modal, Tree, Typography } from "antd";
+import type { DataNode } from "antd/es/tree";
 import React, { useRef, useState } from "react";
 import RoleAssignDrawer from "./RoleAssignDrawer";
 import UserFormModal from "./UserFormModal";
@@ -28,9 +30,29 @@ const UserList: React.FC = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<User | undefined>();
   const [assignUser, setAssignUser] = useState<User | undefined>();
+  const [deptTree, setDeptTree] = useState<DeptTreeOption[]>([]);
+  const [selectedDept, setSelectedDept] = useState<number | undefined>();
+
+  React.useEffect(() => {
+    services.dept.ListDeptTree({}).then((tree) => setDeptTree(tree.options ?? []));
+  }, []);
+
+  // id → name across the whole tree: the deptName column renders locally
+  // (the API never joins across the module boundary, ADR 0013).
+  const deptNames = React.useMemo(() => {
+    const names = new Map<number, string>();
+    const walk = (nodes: DeptTreeOption[] | undefined) =>
+      (nodes ?? []).forEach((node) => {
+        names.set(node.deptId ?? 0, node.label ?? "");
+        walk(node.children);
+      });
+    walk(deptTree);
+    return names;
+  }, [deptTree]);
 
   // proto ListUsersRequest documents the supported AIP-160 fields; the search
-  // form offers exactly those.
+  // form offers exactly those. dept_id is the separate subtree parameter —
+  // clicking the left tree filters by that department and every descendant.
   const pager = React.useMemo(
     () =>
       createTokenPagedRequest<User>(async (pageSize, pageToken, params) => {
@@ -48,10 +70,11 @@ const UserList: React.FC = () => {
           },
         ]),
         orderBy: "created_at desc",
+        deptId: selectedDept ?? 0,
       });
       return { items: set.users ?? [], nextPageToken: set.nextPageToken };
     }),
-    [],
+    [selectedDept],
   );
 
   const onDelete = (record: User) => {
@@ -76,6 +99,12 @@ const UserList: React.FC = () => {
     { title: "ID", dataIndex: "userId", width: 90, search: false },
     { title: intl.formatMessage({ id: "pages.user.userName", defaultMessage: "用户名" }), dataIndex: "userName" },
     { title: intl.formatMessage({ id: "pages.user.nickName", defaultMessage: "昵称" }), dataIndex: "nickName", search: false },
+    {
+      title: intl.formatMessage({ id: "pages.dept.deptName", defaultMessage: "所属部门" }),
+      dataIndex: "deptId",
+      search: false,
+      render: (_, record) => (record.deptId ? deptNames.get(record.deptId) ?? record.deptId : "-"),
+    },
     { title: intl.formatMessage({ id: "pages.user.email", defaultMessage: "邮箱" }), dataIndex: "email", search: false, ellipsis: true },
     { title: intl.formatMessage({ id: "pages.user.phoneNumber", defaultMessage: "手机号" }), dataIndex: "phoneNumber" },
     {
@@ -133,35 +162,62 @@ const UserList: React.FC = () => {
     },
   ];
 
+  const treeData = (nodes: DeptTreeOption[] | undefined): DataNode[] =>
+    (nodes ?? []).map((node) => ({
+      title: node.label ?? "",
+      key: node.deptId ?? 0,
+      children: node.children?.length ? treeData(node.children) : undefined,
+    }));
+
   return (
     <PageContainer>
-      <ProTable<User>
-        headerTitle={intl.formatMessage({ id: "menu.iam.user", defaultMessage: "用户管理" })}
-        rowKey="userId"
-        actionRef={actionRef}
-        search={{ labelWidth: "auto" }}
-        columns={columns}
-        request={pager}
-        toolBarRender={() => [
-          <Access key="add" accessible={access.perm("system:user:add")}>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                setEditing(undefined);
-                setFormOpen(true);
-              }}
-            >
-              {intl.formatMessage({ id: "common.new", defaultMessage: "新建" })}
-            </Button>
-          </Access>,
-        ]}
-      />
+      <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+        <Card
+          size="small"
+          style={{ width: 240, flexShrink: 0 }}
+          title={intl.formatMessage({ id: "pages.dept.tree", defaultMessage: "部门" })}
+        >
+          <Tree
+            blockNode
+            defaultExpandAll
+            treeData={treeData(deptTree)}
+            selectedKeys={selectedDept === undefined ? [] : [selectedDept]}
+            onSelect={(keys) => {
+              setSelectedDept(keys.length ? Number(keys[0]) : undefined);
+              actionRef.current?.reload();
+            }}
+          />
+        </Card>
+        <ProTable<User>
+          headerTitle={intl.formatMessage({ id: "menu.iam.user", defaultMessage: "用户管理" })}
+          rowKey="userId"
+          actionRef={actionRef}
+          search={{ labelWidth: "auto" }}
+          columns={columns}
+          request={pager}
+          toolBarRender={() => [
+            <Access key="add" accessible={access.perm("system:user:add")}>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setEditing(undefined);
+                  setFormOpen(true);
+                }}
+              >
+                {intl.formatMessage({ id: "common.new", defaultMessage: "新建" })}
+              </Button>
+            </Access>,
+          ]}
+        />
+      </div>
       <UserFormModal
         open={formOpen}
         record={editing}
+        deptTree={deptTree}
         onClose={(changed) => {
           setFormOpen(false);
+          setEditing(undefined);
           if (changed) {
             actionRef.current?.reload();
           }

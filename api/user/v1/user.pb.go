@@ -269,16 +269,18 @@ func (x *UserSet) GetNextPageToken() string {
 // CurrentUser is the read-only, password-free System User shape returned by
 // GetInfo. A distinct DTO makes it impossible to expose the stored hash.
 type CurrentUser struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	UserName      string                 `protobuf:"bytes,2,opt,name=user_name,json=userName,proto3" json:"user_name,omitempty"`
-	NickName      string                 `protobuf:"bytes,3,opt,name=nick_name,json=nickName,proto3" json:"nick_name,omitempty"`
-	Email         string                 `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
-	PhoneNumber   string                 `protobuf:"bytes,5,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
-	Gender        int32                  `protobuf:"varint,6,opt,name=gender,proto3" json:"gender,omitempty"`
-	Status        int32                  `protobuf:"varint,7,opt,name=status,proto3" json:"status,omitempty"`
-	Avatar        string                 `protobuf:"bytes,8,opt,name=avatar,proto3" json:"avatar,omitempty"`
-	Remark        string                 `protobuf:"bytes,9,opt,name=remark,proto3" json:"remark,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	UserId      int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserName    string                 `protobuf:"bytes,2,opt,name=user_name,json=userName,proto3" json:"user_name,omitempty"`
+	NickName    string                 `protobuf:"bytes,3,opt,name=nick_name,json=nickName,proto3" json:"nick_name,omitempty"`
+	Email       string                 `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
+	PhoneNumber string                 `protobuf:"bytes,5,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
+	Gender      int32                  `protobuf:"varint,6,opt,name=gender,proto3" json:"gender,omitempty"`
+	Status      int32                  `protobuf:"varint,7,opt,name=status,proto3" json:"status,omitempty"`
+	Avatar      string                 `protobuf:"bytes,8,opt,name=avatar,proto3" json:"avatar,omitempty"`
+	Remark      string                 `protobuf:"bytes,9,opt,name=remark,proto3" json:"remark,omitempty"`
+	// The user's department; 0 = none (read-only, same as User.dept_id).
+	DeptId        int64                  `protobuf:"varint,16,opt,name=dept_id,json=deptId,proto3" json:"dept_id,omitempty"`
 	CreateBy      int64                  `protobuf:"varint,10,opt,name=create_by,json=createBy,proto3" json:"create_by,omitempty"`
 	UpdateBy      int64                  `protobuf:"varint,11,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
 	LoginIp       string                 `protobuf:"bytes,12,opt,name=login_ip,json=loginIp,proto3" json:"login_ip,omitempty"`
@@ -380,6 +382,13 @@ func (x *CurrentUser) GetRemark() string {
 		return x.Remark
 	}
 	return ""
+}
+
+func (x *CurrentUser) GetDeptId() int64 {
+	if x != nil {
+		return x.DeptId
+	}
+	return 0
 }
 
 func (x *CurrentUser) GetCreateBy() int64 {
@@ -793,7 +802,7 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"updated_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"V\n" +
 	"\aUserSet\x12#\n" +
 	"\x05users\x18\x01 \x03(\v2\r.user.v1.UserR\x05users\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xff\x03\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\x98\x04\n" +
 	"\vCurrentUser\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
 	"\tuser_name\x18\x02 \x01(\tR\buserName\x12\x1b\n" +
@@ -803,7 +812,8 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\x06gender\x18\x06 \x01(\x05R\x06gender\x12\x16\n" +
 	"\x06status\x18\a \x01(\x05R\x06status\x12\x16\n" +
 	"\x06avatar\x18\b \x01(\tR\x06avatar\x12\x16\n" +
-	"\x06remark\x18\t \x01(\tR\x06remark\x12\x1b\n" +
+	"\x06remark\x18\t \x01(\tR\x06remark\x12\x17\n" +
+	"\adept_id\x18\x10 \x01(\x03R\x06deptId\x12\x1b\n" +
 	"\tcreate_by\x18\n" +
 	" \x01(\x03R\bcreateBy\x12\x1b\n" +
 	"\tupdate_by\x18\v \x01(\x03R\bupdateBy\x12\x19\n" +

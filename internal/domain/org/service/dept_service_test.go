@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"sort"
 	"testing"
 
 	"glex/internal/domain/org"
@@ -184,6 +185,12 @@ func (r *fakePostRepo) ListActiveByDept(_ context.Context, deptID int64) ([]*ent
 			out = append(out, p)
 		}
 	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].PostSort != out[j].PostSort {
+			return out[i].PostSort < out[j].PostSort
+		}
+		return out[i].ID < out[j].ID
+	})
 	return out, nil
 }
 

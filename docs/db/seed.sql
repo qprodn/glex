@@ -93,7 +93,7 @@ on conflict do nothing;
 
 -- 字典管理（菜单 + 按钮）；icon 走 @ant-design/icons 运行时解析，book = BookOutlined
 insert into sys_menu (id, menu_name, parent_id, order_num, path, component, menu_type, perms, icon, create_by, update_by)
-values (1000000000000000240, '字典管理', 1000000000000000201, 4, 'dict', 'iam/dict/index', 2, 'system:dict:list', 'book', 0, 0)
+values (1000000000000000240, '字典管理', 1000000000000000201, 6, 'dict', 'iam/dict/index', 2, 'system:dict:list', 'book', 0, 0)
 on conflict do nothing;
 
 insert into sys_menu (id, menu_name, parent_id, order_num, menu_type, perms, create_by, update_by)
@@ -105,7 +105,7 @@ on conflict do nothing;
 
 -- 文件管理（菜单 + 按钮）；perms 与 auth_routes.go 的五个 handle 一一对应
 insert into sys_menu (id, menu_name, parent_id, order_num, path, component, menu_type, perms, icon, create_by, update_by)
-values (1000000000000000250, '文件管理', 1000000000000000201, 5, 'file', 'file/index', 2, 'system:file:list', 'upload', 0, 0)
+values (1000000000000000250, '文件管理', 1000000000000000201, 7, 'file', 'file/index', 2, 'system:file:list', 'upload', 0, 0)
 on conflict do nothing;
 
 insert into sys_menu (id, menu_name, parent_id, order_num, menu_type, perms, create_by, update_by)
@@ -255,6 +255,65 @@ values (1000000000000000701, 1, '男', '0', 'sys_user_gender', 'default', true, 
        (1000000000000000707, 2, '隐藏', '1', 'sys_show_hide', 'info', false, '', 0, 0),
        (1000000000000000708, 1, '是', 'Y', 'sys_yes_no', 'primary', true, '', 0, 0),
        (1000000000000000709, 2, '否', 'N', 'sys_yes_no', 'danger', false, '', 0, 0)
+on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- 组织结构（ADR 0013/0014/0015）：部门 sys_dept、岗位 sys_post。
+-- 根部门 id 固定于 internal/domain/org.RootDeptID（删除守卫锚点）。
+-- ---------------------------------------------------------------------------
+
+insert into sys_dept (id, parent_id, dept_name, order_num, leader, phone, email, status, create_by, update_by)
+values (1000000000000000801, 0, 'glex科技', 0, 0, '', '', 0, 0, 0),
+       (1000000000000000802, 1000000000000000801, '研发部门', 1, 0, '', '', 0, 0, 0),
+       (1000000000000000803, 1000000000000000801, '市场部门', 2, 0, '', '', 0, 0, 0)
+on conflict do nothing;
+
+insert into sys_post (id, dept_id, post_code, post_name, post_sort, status, remark, create_by, update_by)
+values (1000000000000000901, 1000000000000000802, 'fe-dev', '前端开发', 1, 0, '', 0, 0),
+       (1000000000000000902, 1000000000000000802, 'be-dev', '后端开发', 2, 0, '', 0, 0),
+       (1000000000000000903, 1000000000000000803, 'mkt', '市场专员', 1, 0, '', 0, 0)
+on conflict do nothing;
+
+-- 种子用户挂研发部门；幂等：只填空（dept_id=0），不覆盖手工调整。
+-- 已有库的字典/文件排序（4/5 → 6/7）同理只对新装库生效。
+update sys_user set dept_id = 1000000000000000802, update_by = 0
+where id in (1000000000000000001, 1000000000000000002) and dept_id = 0;
+
+-- 部门管理（若依排序：用户1 角色2 菜单3 部门4 岗位5 字典6 文件7）
+insert into sys_menu (id, menu_name, parent_id, order_num, path, component, menu_type, perms, icon, create_by, update_by)
+values (1000000000000000270, '部门管理', 1000000000000000201, 4, 'dept', 'iam/dept/index', 2, 'system:dept:list', 'apartment', 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, menu_type, perms, create_by, update_by)
+values (1000000000000000271, '部门查询', 1000000000000000270, 1, 3, 'system:dept:query', 0, 0),
+       (1000000000000000272, '部门新增', 1000000000000000270, 2, 3, 'system:dept:add', 0, 0),
+       (1000000000000000273, '部门修改', 1000000000000000270, 3, 3, 'system:dept:edit', 0, 0),
+       (1000000000000000274, '部门删除', 1000000000000000270, 4, 3, 'system:dept:remove', 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, path, component, menu_type, perms, icon, create_by, update_by)
+values (1000000000000000280, '岗位管理', 1000000000000000201, 5, 'post', 'iam/post/index', 2, 'system:post:list', 'idcard', 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, menu_type, perms, create_by, update_by)
+values (1000000000000000281, '岗位查询', 1000000000000000280, 1, 3, 'system:post:query', 0, 0),
+       (1000000000000000282, '岗位新增', 1000000000000000280, 2, 3, 'system:post:add', 0, 0),
+       (1000000000000000283, '岗位修改', 1000000000000000280, 3, 3, 'system:post:edit', 0, 0),
+       (1000000000000000284, '岗位删除', 1000000000000000280, 4, 3, 'system:post:remove', 0, 0)
+on conflict do nothing;
+
+-- superadmin 追加部门/岗位管理全部菜单
+insert into sys_role_menu (id, role_id, menu_id, create_by, update_by)
+values (1000000000000000327, 1000000000000000101, 1000000000000000270, 0, 0),
+       (1000000000000000328, 1000000000000000101, 1000000000000000271, 0, 0),
+       (1000000000000000329, 1000000000000000101, 1000000000000000272, 0, 0),
+       (1000000000000000330, 1000000000000000101, 1000000000000000273, 0, 0),
+       (1000000000000000331, 1000000000000000101, 1000000000000000274, 0, 0),
+       (1000000000000000332, 1000000000000000101, 1000000000000000280, 0, 0),
+       (1000000000000000333, 1000000000000000101, 1000000000000000281, 0, 0),
+       (1000000000000000334, 1000000000000000101, 1000000000000000282, 0, 0),
+       (1000000000000000335, 1000000000000000101, 1000000000000000283, 0, 0),
+       (1000000000000000336, 1000000000000000101, 1000000000000000284, 0, 0)
 on conflict do nothing;
 
 commit;

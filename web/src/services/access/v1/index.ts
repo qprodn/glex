@@ -815,6 +815,9 @@ export type userv1_User = {
   // Avatar URL. OSS upload is deferred; the column is a placeholder.
   avatar: string | undefined;
   remark: string | undefined;
+  // The user's department (部门); 0 = none. Validated through the org
+  // module's contract on save: the department must exist and be enabled.
+  deptId: number | undefined;
   // Audit: who created/updated. Filled from the authenticated identity.
   createBy: number | undefined;
   updateBy: number | undefined;
