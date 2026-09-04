@@ -9,7 +9,9 @@ import (
 	"glex/internal/infra/ent/dictdata"
 	"glex/internal/infra/ent/dicttype"
 	"glex/internal/infra/ent/file"
+	"glex/internal/infra/ent/loginlog"
 	"glex/internal/infra/ent/menu"
+	"glex/internal/infra/ent/operlog"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/rolemenu"
 	"glex/internal/infra/ent/user"
@@ -83,7 +85,9 @@ func checkColumn(t, c string) error {
 			dictdata.Table: dictdata.ValidColumn,
 			dicttype.Table: dicttype.ValidColumn,
 			file.Table:     file.ValidColumn,
+			loginlog.Table: loginlog.ValidColumn,
 			menu.Table:     menu.ValidColumn,
+			operlog.Table:  operlog.ValidColumn,
 			role.Table:     role.ValidColumn,
 			rolemenu.Table: rolemenu.ValidColumn,
 			user.Table:     user.ValidColumn,

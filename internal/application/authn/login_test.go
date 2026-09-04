@@ -1,9 +1,6 @@
 package authn
 
 import (
-	authndomain "glex/internal/domain/authn"
-	authnentity "glex/internal/domain/authn/entity"
-
 	"context"
 	"errors"
 	"testing"
@@ -12,7 +9,28 @@ import (
 	authnv1 "glex/api/authn/v1"
 	"glex/internal/crossdomain/access"
 	accessmodel "glex/internal/crossdomain/access/model"
+	auditcontract "glex/internal/crossdomain/audit"
+	auditmodel "glex/internal/crossdomain/audit/model"
+	authndomain "glex/internal/domain/authn"
+	authnentity "glex/internal/domain/authn/entity"
 )
+
+// fakeLoginLogWriter stands in for the audit crossdomain contract: it
+// records every login-log write so tests can assert the recorded outcomes,
+// and can fail on demand to pin the best-effort behavior (ADR 0012).
+type fakeLoginLogWriter struct {
+	auditcontract.LoginLogWriter
+	logs []*auditmodel.LoginLog
+	err  error
+}
+
+func (w *fakeLoginLogWriter) RecordLoginLog(_ context.Context, request *auditmodel.LoginLog) error {
+	if w.err != nil {
+		return w.err
+	}
+	w.logs = append(w.logs, request)
+	return nil
+}
 
 // fakeLoginService stands in for the login domain service: it records every
 // orchestration step in order (verify → clear → lock → snapshot → record →
@@ -137,15 +155,23 @@ func newLoginApp(login *fakeLoginService) *LoginApplication {
 }
 
 func newLoginAppWithTx(login *fakeLoginService, tx *fakeTransaction) *LoginApplication {
-	app := NewLoginApplication(login, &fakeAuthorizer{steps: &login.steps}, tx, testLogger())
-	app.now = func() time.Time { return time.Unix(1_700_000_000, 0) }
+	app, _ := newLoginAppWithWriter(login, tx)
 	return app
+}
+
+// newLoginAppWithWriter also hands back the login-log fake so a test can
+// assert the recorded rows (ADR 0012).
+func newLoginAppWithWriter(login *fakeLoginService, tx *fakeTransaction) (*LoginApplication, *fakeLoginLogWriter) {
+	writer := &fakeLoginLogWriter{}
+	app := NewLoginApplication(login, &fakeAuthorizer{steps: &login.steps}, writer, tx, testLogger())
+	app.now = func() time.Time { return time.Unix(1_700_000_000, 0) }
+	return app, writer
 }
 
 // newLoginAppWithAuthorizer lets a test inject its own access contract fake
 // (step sharing, resolution content, or failure).
 func newLoginAppWithAuthorizer(login *fakeLoginService, authorizer access.AuthorizationResolver) *LoginApplication {
-	app := NewLoginApplication(login, authorizer, newFakeTransaction(), testLogger())
+	app := NewLoginApplication(login, authorizer, &fakeLoginLogWriter{}, newFakeTransaction(), testLogger())
 	app.now = func() time.Time { return time.Unix(1_700_000_000, 0) }
 	return app
 }

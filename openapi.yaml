@@ -980,6 +980,66 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/access.v1.UserRoles'
+    /monitor/login_logs:
+        get:
+            tags:
+                - LoginLogService
+            description: ListLoginLogs lists recorded sign-ins with AIP filter/order/page-token.
+            operationId: LoginLogService_ListLoginLogs
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `user_name` (e.g. user_name="admin")
+                       * `ipaddr` (e.g. ipaddr="127.0.0.1")
+                       * `status` (e.g. status=2)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: |-
+                    Optional. AIP-132 order, e.g. `created_at desc`. Defaults to
+                     `created_at desc, login_log_id desc` (newest first — a monitor read).
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/audit.v1.LoginLogSet'
+    /monitor/login_logs/{loginLogId}:
+        delete:
+            tags:
+                - LoginLogService
+            description: |-
+                DeleteLoginLog withdraws one recorded sign-in by id (ADR 0002 soft
+                 delete — the row stays as history; RuoYi's 清空 has no equivalent).
+            operationId: LoginLogService_DeleteLoginLog
+            parameters:
+                - name: loginLogId
+                  in: path
+                  description: Required. The id of the login log to withdraw.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
     /monitor/online:
         get:
             tags:
@@ -1055,6 +1115,86 @@ paths:
                 - name: tokenId
                   in: path
                   description: Required. Non-secret Session ID serialized as tokenId in JSON.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /monitor/oper_logs:
+        get:
+            tags:
+                - OperLogService
+            description: ListOperLogs lists recorded operations with AIP filter/order/page-token.
+            operationId: OperLogService_ListOperLogs
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `operation` (e.g. operation="iam.v1.UserService")
+                       * `oper_user_name` (e.g. oper_user_name="admin")
+                       * `ipaddr` (e.g. ipaddr="127.0.0.1")
+                       * `status` (e.g. status=2)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: |-
+                    Optional. AIP-132 order, e.g. `created_at desc`. Defaults to
+                     `created_at desc, oper_log_id desc` (newest first — a monitor read).
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/audit.v1.OperLogSet'
+    /monitor/oper_logs/{operLogId}:
+        get:
+            tags:
+                - OperLogService
+            description: GetOperLog retrieves one recorded operation by id.
+            operationId: OperLogService_GetOperLog
+            parameters:
+                - name: operLogId
+                  in: path
+                  description: Required. The id of the oper log to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/audit.v1.OperLog'
+        delete:
+            tags:
+                - OperLogService
+            description: |-
+                DeleteOperLog withdraws one recorded operation by id (ADR 0002 soft
+                 delete — the row stays as history; RuoYi's 清空 has no equivalent).
+            operationId: OperLogService_DeleteOperLog
+            parameters:
+                - name: operLogId
+                  in: path
+                  description: Required. The id of the oper log to withdraw.
                   required: true
                   schema:
                     type: string
@@ -1311,6 +1451,107 @@ components:
                 UserRoles is a user's Role Assignment (角色分配): every active role with its
                  assigned flag, ordered by (role_sort, role_id). Not paginated — roles are a
                  small flat set.
+        audit.v1.LoginLog:
+            type: object
+            properties:
+                loginLogId:
+                    type: string
+                    description: Snowflake ID. Server-assigned on record.
+                userId:
+                    type: string
+                    description: |-
+                        The account the event is about; 0 when the attempt never resolved to an
+                         account (wrong name, withdrawn user).
+                userName:
+                    type: string
+                ipaddr:
+                    type: string
+                browser:
+                    type: string
+                os:
+                    type: string
+                status:
+                    type: integer
+                    format: enum
+                msg:
+                    type: string
+                    description: Human-readable outcome ("登录成功", "密码错误", "强制退出").
+                createdAt:
+                    type: string
+                    format: date-time
+            description: |-
+                LoginLog is one recorded sign-in or session end (登录日志), ported from
+                 RuoYi sys_logininfor (renamed sys_login_log). authn writes the row at the
+                 moment the outcome is known (ADR 0012); rows are write-once and only ever
+                 withdrawn. The account is denormalized (id + name) so a failed attempt for
+                 a nonexistent account still records the attempted name.
+        audit.v1.LoginLogSet:
+            type: object
+            properties:
+                loginLogs:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/audit.v1.LoginLog'
+                nextPageToken:
+                    type: string
+                    description: Opaque token for the next page; empty when on the last page.
+            description: LoginLogSet is a page of login logs.
+        audit.v1.OperLog:
+            type: object
+            properties:
+                operLogId:
+                    type: string
+                    description: Snowflake ID. Server-assigned on record.
+                operation:
+                    type: string
+                    description: Kratos operation name (e.g. "/iam.v1.UserService/CreateUser").
+                httpMethod:
+                    type: string
+                operUserId:
+                    type: string
+                    description: Operator; 0 = an unauthenticated actor.
+                operUserName:
+                    type: string
+                    description: Denormalized operator account name.
+                ipaddr:
+                    type: string
+                request:
+                    type: string
+                    description: Redacted request payload as protojson.
+                status:
+                    type: integer
+                    format: enum
+                reason:
+                    type: string
+                    description: Kratos error reason; empty on success.
+                errorMsg:
+                    type: string
+                latencyMs:
+                    type: string
+                requestId:
+                    type: string
+                    description: Correlates with the structured request log.
+                createdAt:
+                    type: string
+                    format: date-time
+            description: |-
+                OperLog is the monitoring record of one mutating operation (操作日志),
+                 ported from RuoYi sys_oper_log. The transport middleware mints one row per
+                 recorded request after the handler returns (ADR 0012); rows are write-once
+                 and only ever withdrawn. RuoYi's title/method/oper_url collapse into the
+                 kratos operation name; the operator is denormalized so history survives
+                 account withdrawal. Request payloads carry no secrets (scrubbed, ADR 0012).
+        audit.v1.OperLogSet:
+            type: object
+            properties:
+                operLogs:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/audit.v1.OperLog'
+                nextPageToken:
+                    type: string
+                    description: Opaque token for the next page; empty when on the last page.
+            description: OperLogSet is a page of oper logs.
         authn.v1.LoginReply:
             type: object
             properties:
@@ -1698,12 +1939,22 @@ tags:
          google.api.http annotation and their gRPC counterparts intentionally stay
          Unimplemented: relaying up to 100 MiB through one gRPC message would mean
          raising the 4 MiB default limit for no benefit.
+    - name: LoginLogService
+      description: |-
+        LoginLogService is the read/withdraw view over recorded sign-ins and
+         session ends. Rows arrive through authn (ADR 0012); no endpoint creates or
+         updates them.
     - name: MenuService
       description: MenuService is the system-menu CRUD + tree service.
     - name: OnlineSessionService
       description: |-
         OnlineSessionService exposes the four RuoYi-compatible Login Session
          management operations. It deliberately has no bulk logout operation.
+    - name: OperLogService
+      description: |-
+        OperLogService is the read/withdraw view over recorded operations. Rows
+         arrive through the operlog middleware (ADR 0012); no endpoint creates or
+         updates them.
     - name: RoleAssignmentService
       description: |-
         RoleAssignmentService owns the user↔role link (**Role Assignment**): the

@@ -37,6 +37,19 @@ about. `Error` is reserved for system failures — business rejections appear
 only as `Warn` (breadcrumbs and boundary). Enforcement is review-based, no
 lint.
 
+## Audit logs
+
+Audit rows are write-once: no endpoint creates or updates them, and the only
+change a row ever takes is withdrawal (ADR 0012). Oper Logs
+(`sys_oper_log`, 操作日志) are minted by the transport middleware
+(`pkg/middleware/operlog`) after every mutating operation except the skip
+set; Login Logs (`sys_login_log`, 登录日志) are minted by authn at the
+moment the outcome is known, through the `crossdomain/audit.LoginLogWriter`
+contract. Both streams record best-effort: a failed write logs `Warn` at its
+handling site and never fails the operation being recorded, and the insert
+runs on a detached, timeout-bounded context. Request payloads are persisted
+only after secret keys (`password`, tokens) are scrubbed.
+
 ## Shared application helpers
 
 Cross-module application helpers live in `internal/bizpkg`, a flat package:

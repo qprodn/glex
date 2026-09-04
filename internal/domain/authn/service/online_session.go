@@ -18,6 +18,10 @@ import (
 // (ADR 0005). Every error a method returns to its caller first logs its Warn
 // breadcrumb (ADR 0011).
 type OnlineSession interface {
+	// Get returns one Login Session by its non-secret Session ID — the
+	// metadata read behind the revocation endpoints' login-log records
+	// (ADR 0012).
+	Get(ctx context.Context, sessionID string) (*entity.LoginSession, error)
 	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.LoginSession, error)
 	ListBySystemUser(ctx context.Context, systemUserID int64) ([]*entity.LoginSession, error)
 	// Kickout force-revokes one Session ID for an administrator.
@@ -41,6 +45,17 @@ func NewOnlineSessionService(sessions repository.LoginSessionRepo, logger *slog.
 		sessions: sessions,
 		logger:   logger.With(slog.String("component", "domain.authn.svc")),
 	}
+}
+
+// Get returns one Login Session by Session ID. A missing session is an
+// expected business condition — the caller decides whether it is an error.
+func (s *onlineSessionImpl) Get(ctx context.Context, sessionID string) (*entity.LoginSession, error) {
+	session, err := s.sessions.FindByID(ctx, sessionID)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "authn.svc.get_online_session", err)
+		return nil, err
+	}
+	return session, nil
 }
 
 func (s *onlineSessionImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.LoginSession, error) {

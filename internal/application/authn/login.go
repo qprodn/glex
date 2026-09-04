@@ -9,6 +9,8 @@ import (
 
 	authnv1 "glex/api/authn/v1"
 	"glex/internal/crossdomain/access"
+	auditcontract "glex/internal/crossdomain/audit"
+	auditmodel "glex/internal/crossdomain/audit/model"
 	authndomain "glex/internal/domain/authn"
 	authnentity "glex/internal/domain/authn/entity"
 	authnservice "glex/internal/domain/authn/service"
@@ -39,6 +41,7 @@ type LoginApplication struct {
 
 	login      authnservice.Login
 	authorizer access.AuthorizationResolver
+	loginLogs  auditcontract.LoginLogWriter
 	tx         Transaction
 	logger     *slog.Logger
 	now        func() time.Time
@@ -48,11 +51,14 @@ type LoginApplication struct {
 // service — the module's only repository holder (account protocol, failure
 // counters, session store); authorizer fills the Authorization Snapshot
 // through the access crossdomain contract (login never derives permissions
-// itself, ADR 0005); tx owns the login transaction boundary.
-func NewLoginApplication(login authnservice.Login, authorizer access.AuthorizationResolver, tx Transaction, logger *slog.Logger) *LoginApplication {
+// itself, ADR 0005); loginLogs records the Login Log through the audit
+// crossdomain contract, best-effort (ADR 0012); tx owns the login
+// transaction boundary.
+func NewLoginApplication(login authnservice.Login, authorizer access.AuthorizationResolver, loginLogs auditcontract.LoginLogWriter, tx Transaction, logger *slog.Logger) *LoginApplication {
 	return &LoginApplication{
 		login:      login,
 		authorizer: authorizer,
+		loginLogs:  loginLogs,
 		tx:         tx,
 		logger:     logger.With(slog.String("component", "application.authn.login")),
 		now:        time.Now,
@@ -61,13 +67,10 @@ func NewLoginApplication(login authnservice.Login, authorizer access.Authorizati
 
 // Login creates one Login Session and returns its bearer credential exactly
 // once. Request metadata is read at this transport boundary; the credentials
-// and the orchestration live in login below.
+// and the orchestration live in login below. Both outcomes record a Login
+// Log row, best-effort (ADR 0012).
 func (s *LoginApplication) Login(ctx context.Context, req *authnv1.LoginRequest) (*authnv1.LoginReply, error) {
-	sourceIP, userAgent := "", ""
-	if transporter, ok := transport.FromServerContext(ctx); ok && transporter.RequestHeader() != nil {
-		sourceIP = strings.TrimSpace(transporter.RequestHeader().Get("X-Forwarded-For"))
-		userAgent = transporter.RequestHeader().Get("User-Agent")
-	}
+	sourceIP, userAgent := requestMetadata(ctx)
 	result, err := s.authenticate(ctx, &LoginRequest{
 		UserName:  req.GetUsername(),
 		Password:  req.GetPassword(),
@@ -84,17 +87,40 @@ func (s *LoginApplication) Login(ctx context.Context, req *authnv1.LoginRequest)
 	}, nil
 }
 
+// requestMetadata reads the authoritative client metadata (forwarded source
+// IP and User-Agent) at the transport boundary.
+func requestMetadata(ctx context.Context) (sourceIP, userAgent string) {
+	if transporter, ok := transport.FromServerContext(ctx); ok && transporter.RequestHeader() != nil {
+		sourceIP = strings.TrimSpace(transporter.RequestHeader().Get("X-Forwarded-For"))
+		userAgent = transporter.RequestHeader().Get("User-Agent")
+	}
+	return sourceIP, userAgent
+}
+
 // Logout succeeds anonymously and otherwise revokes only the current Login
-// Session attached by OPTIONAL authentication.
+// Session attached by OPTIONAL authentication. A successful logout records
+// its Login Log row best-effort (ADR 0012).
 func (s *LoginApplication) Logout(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	principal, _ := authnservice.PrincipalFromContext(ctx)
 	if principal == nil {
 		return &emptypb.Empty{}, nil
 	}
+	sourceIP, userAgent := requestMetadata(ctx)
 	if err := s.login.Logout(ctx, principal.SessionID()); err != nil {
 		logx.Propagate(ctx, s.logger, "authn.logout", err)
 		return nil, err
 	}
+	_, browser, os := loginClientMetadata(userAgent)
+	s.recordLoginLog(ctx, &auditmodel.LoginLog{
+		UserID:   principal.SystemUserID(),
+		UserName: principal.UserName(),
+		IPAddr:   sourceIP,
+		Browser:  browser,
+		OS:       os,
+		Success:  true,
+		Msg:      "退出登录",
+		ActorID:  principal.SystemUserID(),
+	})
 	return &emptypb.Empty{}, nil
 }
 
@@ -107,6 +133,7 @@ func (s *LoginApplication) authenticate(ctx context.Context, req *LoginRequest) 
 	userName := strings.TrimSpace(req.UserName)
 	account, err := s.login.VerifyPassword(ctx, userName, req.Password, req.SourceIP)
 	if err != nil {
+		s.recordLoginFailure(ctx, req, 0, err)
 		return nil, err
 	}
 	// Clear before issuing a bearer credential: a Redis failure cannot leave an
@@ -145,7 +172,9 @@ func (s *LoginApplication) authenticate(ctx context.Context, req *LoginRequest) 
 	})
 	if err != nil {
 		if errors.Is(err, authndomain.ErrInvalidCredentials) {
-			return nil, s.login.RecordFailure(ctx, userName, req.SourceIP)
+			mapped := s.login.RecordFailure(ctx, userName, req.SourceIP)
+			s.recordLoginFailure(ctx, req, 0, mapped)
+			return nil, mapped
 		}
 		if result != nil {
 			// Every Redis write succeeded, so the failure is the commit:
@@ -156,9 +185,68 @@ func (s *LoginApplication) authenticate(ctx context.Context, req *LoginRequest) 
 			// error here adds no new information.
 			_ = s.login.DiscardCredential(ctx, account.ID, result.AccessToken)
 		}
+		s.recordLoginFailure(ctx, req, account.ID, err)
 		return nil, err
 	}
+	s.recordLoginSuccess(ctx, req, account.ID, account.UserName)
 	return result, nil
+}
+
+// recordLoginSuccess persists the success row of one sign-in, best-effort
+// (ADR 0012): a recording failure logs Warn at this handling site and never
+// changes the login result.
+func (s *LoginApplication) recordLoginSuccess(ctx context.Context, req *LoginRequest, userID int64, userName string) {
+	_, browser, os := loginClientMetadata(req.UserAgent)
+	s.recordLoginLog(ctx, &auditmodel.LoginLog{
+		UserID:   userID,
+		UserName: userName,
+		IPAddr:   req.SourceIP,
+		Browser:  browser,
+		OS:       os,
+		Success:  true,
+		Msg:      "登录成功",
+		ActorID:  userID,
+	})
+}
+
+// recordLoginFailure persists the failure row of one sign-in attempt. The
+// attempted name is always carried; the account id stays 0 — the failure
+// deliberately reveals no account existence (anti-enumeration), and neither
+// does the log.
+func (s *LoginApplication) recordLoginFailure(ctx context.Context, req *LoginRequest, userID int64, cause error) {
+	_, browser, os := loginClientMetadata(req.UserAgent)
+	s.recordLoginLog(ctx, &auditmodel.LoginLog{
+		UserID:   userID,
+		UserName: strings.TrimSpace(req.UserName),
+		IPAddr:   req.SourceIP,
+		Browser:  browser,
+		OS:       os,
+		Success:  false,
+		Msg:      truncate(cause.Error(), 256),
+	})
+}
+
+// recordLoginLog writes one Login Log row through the audit crossdomain
+// contract. It is the handling site for recording failures (ADR 0007): the
+// write is best-effort (ADR 0012) — the contract's adapter detaches the
+// context and bounds it, so a recording problem can only ever log.
+func (s *LoginApplication) recordLoginLog(ctx context.Context, l *auditmodel.LoginLog) {
+	if err := s.loginLogs.RecordLoginLog(ctx, l); err != nil {
+		s.logger.WarnContext(ctx, "login log record failed",
+			slog.String("operation", "authn.record_login_log"),
+			slog.Any("error", err),
+		)
+	}
+}
+
+// truncate caps a string at n runes so a cause text can never overflow the
+// msg column.
+func truncate(s string, n int) string {
+	runes := []rune(s)
+	if len(runes) <= n {
+		return s
+	}
+	return string(runes[:n])
 }
 
 // loadAuthorization fills the Authorization Snapshot's authorization content

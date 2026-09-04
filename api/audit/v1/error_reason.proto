@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package audit.v1;
+
+option go_package = "glex/api/audit/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.audit.v1";
+
+// ErrorReason is the stable vocabulary for the `reason` field of the error
+// body. Values are wire-visible: protojson encodes them as their names, so
+// clients branch on the name (e.g. "OPER_LOG_NOT_FOUND") rather than on an
+// HTTP status. Surfaced in `biz` as `ErrOperLog<Cause>` / `ErrLoginLog<Cause>`.
+enum ErrorReason {
+  // Unset. Never returned; reserved by proto3 for the zero value.
+  ERROR_REASON_UNSPECIFIED = 0;
+  // The requested oper log does not exist.
+  OPER_LOG_NOT_FOUND = 1;
+  // The requested login log does not exist.
+  LOGIN_LOG_NOT_FOUND = 2;
+}

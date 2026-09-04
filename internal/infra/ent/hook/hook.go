@@ -44,6 +44,18 @@ func (f FileFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FileMutation", m)
 }
 
+// The LoginLogFunc type is an adapter to allow the use of ordinary
+// function as LoginLog mutator.
+type LoginLogFunc func(context.Context, *ent.LoginLogMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f LoginLogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.LoginLogMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LoginLogMutation", m)
+}
+
 // The MenuFunc type is an adapter to allow the use of ordinary
 // function as Menu mutator.
 type MenuFunc func(context.Context, *ent.MenuMutation) (ent.Value, error)
@@ -54,6 +66,18 @@ func (f MenuFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MenuMutation", m)
+}
+
+// The OperLogFunc type is an adapter to allow the use of ordinary
+// function as OperLog mutator.
+type OperLogFunc func(context.Context, *ent.OperLogMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f OperLogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.OperLogMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OperLogMutation", m)
 }
 
 // The RoleFunc type is an adapter to allow the use of ordinary

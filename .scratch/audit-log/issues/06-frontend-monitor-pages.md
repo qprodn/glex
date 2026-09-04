@@ -1,6 +1,6 @@
 # 06 — web: monitor 日志 pages, registry, locales
 
-Status: claimed
+Status: resolved
 
 - `web/src/router/registry.tsx`: `monitor/operlog/index`,
   `monitor/loginlog/index` entries.
@@ -15,3 +15,7 @@ Status: claimed
 ## Accept
 
 - `pnpm build` (or tsc) passes; pages reachable via the seeded 监控 menus.
+
+## Comments
+
+- 2026-09-04: Implemented: registry entries monitor/operlog/index + monitor/loginlog/index; services.audit/loginlog clients; web/src/pages/monitor/operlog (status/operation/user/ip search, detail drawer with pretty-printed redacted request JSON, request-id copy) and monitor/loginlog (user/ip/status search) pages; zh-CN/en-US menu + pages locale entries. Note: v1 ships row delete only — the batch selection UI was dropped to stay consistent with the dict page's single-delete pattern. tsc, biome, jest (33/33), and max build all pass.

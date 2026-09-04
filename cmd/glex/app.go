@@ -1,25 +1,29 @@
 package main
 
 import (
+	userapp "glex/internal/application/user"
+	auditapp "glex/internal/application/audit"
 	accessapp "glex/internal/application/access"
 	authnapp "glex/internal/application/authn"
 	dictapp "glex/internal/application/dict"
 	fileapp "glex/internal/application/file"
-	userapp "glex/internal/application/user"
+	auditimpl "glex/internal/crossdomain/audit/impl"
 	accessimpl "glex/internal/crossdomain/access/impl"
 	authnimpl "glex/internal/crossdomain/authn/impl"
+	userservice "glex/internal/domain/user/service"
+	auditservice "glex/internal/domain/audit/service"
 	accessservice "glex/internal/domain/access/service"
 	authnservice "glex/internal/domain/authn/service"
 	dictservice "glex/internal/domain/dict/service"
 	fileservice "glex/internal/domain/file/service"
-	userservice "glex/internal/domain/user/service"
+	userinfra "glex/internal/infra/user"
+	auditinfra "glex/internal/infra/audit"
 	accessinfra "glex/internal/infra/access"
 	authninfra "glex/internal/infra/authn"
 	dictinfra "glex/internal/infra/dict"
 	fileinfra "glex/internal/infra/file"
 	lockerinfra "glex/internal/infra/locker"
 	"glex/internal/infra/store"
-	userinfra "glex/internal/infra/user"
 	"glex/internal/server"
 
 	"go.uber.org/fx"
@@ -31,11 +35,14 @@ import (
 // adapters keep the dependency rule: each application module consumes its own
 // interface, and only the composition root knows that *store.TxManager
 // satisfies all of them (the file module declares no Transaction — its
-// writes are single-row statements and its byte leg is non-transactional).
+// writes are single-row statements and its byte leg is non-transactional;
+// audit joins none either — its rows are single-row records minted outside
+// any business transaction, ADR 0012).
 var appModule = fx.Options(
 	// infrastructure
 	store.Module,
 	userinfra.Module,
+	auditinfra.Module,
 	accessinfra.Module,
 	authninfra.Module,
 	dictinfra.Module,
@@ -43,15 +50,18 @@ var appModule = fx.Options(
 	lockerinfra.Module,
 	// domain services
 	userservice.Module,
+	auditservice.Module,
 	accessservice.Module,
 	authnservice.Module,
 	dictservice.Module,
 	fileservice.Module,
 	// crossdomain contract adapters
+	auditimpl.Module,
 	accessimpl.Module,
 	authnimpl.Module,
 	// application
 	userapp.Module,
+	auditapp.Module,
 	accessapp.Module,
 	authnapp.Module,
 	dictapp.Module,

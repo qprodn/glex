@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package audit.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "glex/api/audit/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.audit.v1";
+
+// LoginStatus is the recorded outcome of one sign-in or session end
+// (RuoYi status 0/1).
+enum LoginStatus {
+  // Unset. Never returned; reserved by proto3 for the zero value.
+  LOGIN_STATUS_UNSPECIFIED = 0;
+  // The sign-in succeeded; a session-end record is always a success row.
+  LOGIN_STATUS_SUCCESS = 1;
+  // The sign-in failed.
+  LOGIN_STATUS_FAILURE = 2;
+}
+
+// LoginLog is one recorded sign-in or session end (登录日志), ported from
+// RuoYi sys_logininfor (renamed sys_login_log). authn writes the row at the
+// moment the outcome is known (ADR 0012); rows are write-once and only ever
+// withdrawn. The account is denormalized (id + name) so a failed attempt for
+// a nonexistent account still records the attempted name.
+message LoginLog {
+  // Snowflake ID. Server-assigned on record.
+  int64 login_log_id = 1;
+  // The account the event is about; 0 when the attempt never resolved to an
+  // account (wrong name, withdrawn user).
+  int64 user_id = 2;
+  string user_name = 3;
+  string ipaddr = 4;
+  string browser = 5;
+  string os = 6;
+  LoginStatus status = 7;
+  // Human-readable outcome ("登录成功", "密码错误", "强制退出").
+  string msg = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+// LoginLogSet is a page of login logs.
+message LoginLogSet {
+  repeated LoginLog login_logs = 1;
+  // Opaque token for the next page; empty when on the last page.
+  string next_page_token = 2;
+}
+
+// LoginLogService is the read/withdraw view over recorded sign-ins and
+// session ends. Rows arrive through authn (ADR 0012); no endpoint creates or
+// updates them.
+service LoginLogService {
+  // ListLoginLogs lists recorded sign-ins with AIP filter/order/page-token.
+  rpc ListLoginLogs(ListLoginLogsRequest) returns (LoginLogSet) {
+    option (google.api.http) = {
+      get: "/monitor/login_logs"
+    };
+  }
+  // DeleteLoginLog withdraws one recorded sign-in by id (ADR 0002 soft
+  // delete — the row stays as history; RuoYi's 清空 has no equivalent).
+  rpc DeleteLoginLog(DeleteLoginLogRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/monitor/login_logs/{login_log_id}"
+    };
+  }
+}
+
+message ListLoginLogsRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `user_name` (e.g. user_name="admin")
+  //   * `ipaddr` (e.g. ipaddr="127.0.0.1")
+  //   * `status` (e.g. status=2)
+  string filter = 3;
+  // Optional. AIP-132 order, e.g. `created_at desc`. Defaults to
+  // `created_at desc, login_log_id desc` (newest first — a monitor read).
+  string order_by = 4;
+}
+
+message DeleteLoginLogRequest {
+  // Required. The id of the login log to withdraw.
+  int64 login_log_id = 1 [(google.api.field_behavior) = REQUIRED];
+}

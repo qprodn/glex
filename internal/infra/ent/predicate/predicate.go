@@ -15,8 +15,14 @@ type DictType func(*sql.Selector)
 // File is the predicate function for file builders.
 type File func(*sql.Selector)
 
+// LoginLog is the predicate function for loginlog builders.
+type LoginLog func(*sql.Selector)
+
 // Menu is the predicate function for menu builders.
 type Menu func(*sql.Selector)
+
+// OperLog is the predicate function for operlog builders.
+type OperLog func(*sql.Selector)
 
 // Role is the predicate function for role builders.
 type Role func(*sql.Selector)

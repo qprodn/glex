@@ -4,12 +4,17 @@ import (
 	"context"
 
 	accessv1 "glex/api/access/v1"
+	auditv1 "glex/api/audit/v1"
 	authnv1 "glex/api/authn/v1"
 	dictv1 "glex/api/dict/v1"
 	filev1 "glex/api/file/v1"
 	userv1 "glex/api/user/v1"
+	domainaudit "glex/internal/domain/audit"
+	auditentity "glex/internal/domain/audit/entity"
+	auditservice "glex/internal/domain/audit/service"
 	authnrepo "glex/internal/domain/authn/repository"
 	authmw "glex/pkg/middleware/auth"
+	operlog "glex/pkg/middleware/operlog"
 )
 
 // authRoutes is the single declaration of the operations the auth middleware
@@ -66,7 +71,44 @@ func authRoutes() map[string]authmw.Route {
 		authnv1.OperationOnlineSessionServiceKickoutOnlineSession:  {Permission: "monitor:online:forceLogout"},
 		authnv1.OperationOnlineSessionServiceListMyOnlineSessions:  {Login: true},
 		authnv1.OperationOnlineSessionServiceDeleteMyOnlineSession: {Login: true},
+
+		auditv1.OperationOperLogServiceListOperLogs:    {Permission: "monitor:operlog:list"},
+		auditv1.OperationOperLogServiceGetOperLog:      {Permission: "monitor:operlog:query"},
+		auditv1.OperationOperLogServiceDeleteOperLog:   {Permission: "monitor:operlog:remove"},
+		auditv1.OperationLoginLogServiceListLoginLogs:  {Permission: "monitor:loginlog:list"},
+		auditv1.OperationLoginLogServiceDeleteLoginLog: {Permission: "monitor:loginlog:remove"},
 	}
+}
+
+// operLogRecorder adapts the audit domain service to the operlog
+// middleware's Recorder port (ADR 0012): the composition root performs the
+// adaptation, so the middleware never imports internal/ types.
+type operLogRecorder struct {
+	audit auditservice.Audit
+}
+
+// Record persists one operation record. Recording failures return to the
+// middleware, which owns the best-effort handling (Warn, drop).
+func (r operLogRecorder) Record(ctx context.Context, entry *operlog.Entry) error {
+	o := &auditentity.OperLog{
+		Operation:    entry.Operation,
+		HTTPMethod:   entry.HTTPMethod,
+		OperUserID:   entry.OperUserID,
+		OperUserName: entry.OperUserName,
+		IPAddr:       entry.IPAddr,
+		Request:      entry.Request,
+		Reason:       entry.Reason,
+		ErrMsg:       entry.ErrMsg,
+		LatencyMS:    entry.LatencyMS,
+		RequestID:    entry.RequestID,
+	}
+	if entry.Success {
+		o.Status = domainaudit.StatusSuccess
+	} else {
+		o.Status = domainaudit.StatusFailure
+	}
+	_, err := r.audit.CreateOperLog(ctx, o)
+	return err
 }
 
 // authenticatorAdapter adapts authnrepo.Authenticator to the middleware's

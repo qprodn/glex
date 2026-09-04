@@ -20,8 +20,12 @@ type Tx struct {
 	DictType *DictTypeClient
 	// File is the client for interacting with the File builders.
 	File *FileClient
+	// LoginLog is the client for interacting with the LoginLog builders.
+	LoginLog *LoginLogClient
 	// Menu is the client for interacting with the Menu builders.
 	Menu *MenuClient
+	// OperLog is the client for interacting with the OperLog builders.
+	OperLog *OperLogClient
 	// Role is the client for interacting with the Role builders.
 	Role *RoleClient
 	// RoleMenu is the client for interacting with the RoleMenu builders.
@@ -164,7 +168,9 @@ func (tx *Tx) init() {
 	tx.DictData = NewDictDataClient(tx.config)
 	tx.DictType = NewDictTypeClient(tx.config)
 	tx.File = NewFileClient(tx.config)
+	tx.LoginLog = NewLoginLogClient(tx.config)
 	tx.Menu = NewMenuClient(tx.config)
+	tx.OperLog = NewOperLogClient(tx.config)
 	tx.Role = NewRoleClient(tx.config)
 	tx.RoleMenu = NewRoleMenuClient(tx.config)
 	tx.User = NewUserClient(tx.config)

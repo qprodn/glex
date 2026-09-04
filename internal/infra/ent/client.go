@@ -14,7 +14,9 @@ import (
 	"glex/internal/infra/ent/dictdata"
 	"glex/internal/infra/ent/dicttype"
 	"glex/internal/infra/ent/file"
+	"glex/internal/infra/ent/loginlog"
 	"glex/internal/infra/ent/menu"
+	"glex/internal/infra/ent/operlog"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/rolemenu"
 	"glex/internal/infra/ent/user"
@@ -39,8 +41,12 @@ type Client struct {
 	DictType *DictTypeClient
 	// File is the client for interacting with the File builders.
 	File *FileClient
+	// LoginLog is the client for interacting with the LoginLog builders.
+	LoginLog *LoginLogClient
 	// Menu is the client for interacting with the Menu builders.
 	Menu *MenuClient
+	// OperLog is the client for interacting with the OperLog builders.
+	OperLog *OperLogClient
 	// Role is the client for interacting with the Role builders.
 	Role *RoleClient
 	// RoleMenu is the client for interacting with the RoleMenu builders.
@@ -63,7 +69,9 @@ func (c *Client) init() {
 	c.DictData = NewDictDataClient(c.config)
 	c.DictType = NewDictTypeClient(c.config)
 	c.File = NewFileClient(c.config)
+	c.LoginLog = NewLoginLogClient(c.config)
 	c.Menu = NewMenuClient(c.config)
+	c.OperLog = NewOperLogClient(c.config)
 	c.Role = NewRoleClient(c.config)
 	c.RoleMenu = NewRoleMenuClient(c.config)
 	c.User = NewUserClient(c.config)
@@ -163,7 +171,9 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		DictData: NewDictDataClient(cfg),
 		DictType: NewDictTypeClient(cfg),
 		File:     NewFileClient(cfg),
+		LoginLog: NewLoginLogClient(cfg),
 		Menu:     NewMenuClient(cfg),
+		OperLog:  NewOperLogClient(cfg),
 		Role:     NewRoleClient(cfg),
 		RoleMenu: NewRoleMenuClient(cfg),
 		User:     NewUserClient(cfg),
@@ -190,7 +200,9 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		DictData: NewDictDataClient(cfg),
 		DictType: NewDictTypeClient(cfg),
 		File:     NewFileClient(cfg),
+		LoginLog: NewLoginLogClient(cfg),
 		Menu:     NewMenuClient(cfg),
+		OperLog:  NewOperLogClient(cfg),
 		Role:     NewRoleClient(cfg),
 		RoleMenu: NewRoleMenuClient(cfg),
 		User:     NewUserClient(cfg),
@@ -224,7 +236,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.DictData, c.DictType, c.File, c.Menu, c.Role, c.RoleMenu, c.User, c.UserRole,
+		c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog, c.Role,
+		c.RoleMenu, c.User, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -234,7 +247,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.DictData, c.DictType, c.File, c.Menu, c.Role, c.RoleMenu, c.User, c.UserRole,
+		c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog, c.Role,
+		c.RoleMenu, c.User, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -249,8 +263,12 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.DictType.mutate(ctx, m)
 	case *FileMutation:
 		return c.File.mutate(ctx, m)
+	case *LoginLogMutation:
+		return c.LoginLog.mutate(ctx, m)
 	case *MenuMutation:
 		return c.Menu.mutate(ctx, m)
+	case *OperLogMutation:
+		return c.OperLog.mutate(ctx, m)
 	case *RoleMutation:
 		return c.Role.mutate(ctx, m)
 	case *RoleMenuMutation:
@@ -663,6 +681,139 @@ func (c *FileClient) mutate(ctx context.Context, m *FileMutation) (Value, error)
 	}
 }
 
+// LoginLogClient is a client for the LoginLog schema.
+type LoginLogClient struct {
+	config
+}
+
+// NewLoginLogClient returns a client for the LoginLog from the given config.
+func NewLoginLogClient(c config) *LoginLogClient {
+	return &LoginLogClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `loginlog.Hooks(f(g(h())))`.
+func (c *LoginLogClient) Use(hooks ...Hook) {
+	c.hooks.LoginLog = append(c.hooks.LoginLog, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `loginlog.Intercept(f(g(h())))`.
+func (c *LoginLogClient) Intercept(interceptors ...Interceptor) {
+	c.inters.LoginLog = append(c.inters.LoginLog, interceptors...)
+}
+
+// Create returns a builder for creating a LoginLog entity.
+func (c *LoginLogClient) Create() *LoginLogCreate {
+	mutation := newLoginLogMutation(c.config, OpCreate)
+	return &LoginLogCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of LoginLog entities.
+func (c *LoginLogClient) CreateBulk(builders ...*LoginLogCreate) *LoginLogCreateBulk {
+	return &LoginLogCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *LoginLogClient) MapCreateBulk(slice any, setFunc func(*LoginLogCreate, int)) *LoginLogCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &LoginLogCreateBulk{err: fmt.Errorf("calling to LoginLogClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*LoginLogCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &LoginLogCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for LoginLog.
+func (c *LoginLogClient) Update() *LoginLogUpdate {
+	mutation := newLoginLogMutation(c.config, OpUpdate)
+	return &LoginLogUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *LoginLogClient) UpdateOne(_m *LoginLog) *LoginLogUpdateOne {
+	mutation := newLoginLogMutation(c.config, OpUpdateOne, withLoginLog(_m))
+	return &LoginLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *LoginLogClient) UpdateOneID(id int64) *LoginLogUpdateOne {
+	mutation := newLoginLogMutation(c.config, OpUpdateOne, withLoginLogID(id))
+	return &LoginLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for LoginLog.
+func (c *LoginLogClient) Delete() *LoginLogDelete {
+	mutation := newLoginLogMutation(c.config, OpDelete)
+	return &LoginLogDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *LoginLogClient) DeleteOne(_m *LoginLog) *LoginLogDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *LoginLogClient) DeleteOneID(id int64) *LoginLogDeleteOne {
+	builder := c.Delete().Where(loginlog.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &LoginLogDeleteOne{builder}
+}
+
+// Query returns a query builder for LoginLog.
+func (c *LoginLogClient) Query() *LoginLogQuery {
+	return &LoginLogQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeLoginLog},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a LoginLog entity by its id.
+func (c *LoginLogClient) Get(ctx context.Context, id int64) (*LoginLog, error) {
+	return c.Query().Where(loginlog.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *LoginLogClient) GetX(ctx context.Context, id int64) *LoginLog {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *LoginLogClient) Hooks() []Hook {
+	return c.hooks.LoginLog
+}
+
+// Interceptors returns the client interceptors.
+func (c *LoginLogClient) Interceptors() []Interceptor {
+	return c.inters.LoginLog
+}
+
+func (c *LoginLogClient) mutate(ctx context.Context, m *LoginLogMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&LoginLogCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&LoginLogUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&LoginLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&LoginLogDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown LoginLog mutation op: %q", m.Op())
+	}
+}
+
 // MenuClient is a client for the Menu schema.
 type MenuClient struct {
 	config
@@ -809,6 +960,139 @@ func (c *MenuClient) mutate(ctx context.Context, m *MenuMutation) (Value, error)
 		return (&MenuDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Menu mutation op: %q", m.Op())
+	}
+}
+
+// OperLogClient is a client for the OperLog schema.
+type OperLogClient struct {
+	config
+}
+
+// NewOperLogClient returns a client for the OperLog from the given config.
+func NewOperLogClient(c config) *OperLogClient {
+	return &OperLogClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `operlog.Hooks(f(g(h())))`.
+func (c *OperLogClient) Use(hooks ...Hook) {
+	c.hooks.OperLog = append(c.hooks.OperLog, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `operlog.Intercept(f(g(h())))`.
+func (c *OperLogClient) Intercept(interceptors ...Interceptor) {
+	c.inters.OperLog = append(c.inters.OperLog, interceptors...)
+}
+
+// Create returns a builder for creating a OperLog entity.
+func (c *OperLogClient) Create() *OperLogCreate {
+	mutation := newOperLogMutation(c.config, OpCreate)
+	return &OperLogCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of OperLog entities.
+func (c *OperLogClient) CreateBulk(builders ...*OperLogCreate) *OperLogCreateBulk {
+	return &OperLogCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *OperLogClient) MapCreateBulk(slice any, setFunc func(*OperLogCreate, int)) *OperLogCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &OperLogCreateBulk{err: fmt.Errorf("calling to OperLogClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*OperLogCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &OperLogCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for OperLog.
+func (c *OperLogClient) Update() *OperLogUpdate {
+	mutation := newOperLogMutation(c.config, OpUpdate)
+	return &OperLogUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *OperLogClient) UpdateOne(_m *OperLog) *OperLogUpdateOne {
+	mutation := newOperLogMutation(c.config, OpUpdateOne, withOperLog(_m))
+	return &OperLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *OperLogClient) UpdateOneID(id int64) *OperLogUpdateOne {
+	mutation := newOperLogMutation(c.config, OpUpdateOne, withOperLogID(id))
+	return &OperLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for OperLog.
+func (c *OperLogClient) Delete() *OperLogDelete {
+	mutation := newOperLogMutation(c.config, OpDelete)
+	return &OperLogDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *OperLogClient) DeleteOne(_m *OperLog) *OperLogDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *OperLogClient) DeleteOneID(id int64) *OperLogDeleteOne {
+	builder := c.Delete().Where(operlog.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &OperLogDeleteOne{builder}
+}
+
+// Query returns a query builder for OperLog.
+func (c *OperLogClient) Query() *OperLogQuery {
+	return &OperLogQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeOperLog},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a OperLog entity by its id.
+func (c *OperLogClient) Get(ctx context.Context, id int64) (*OperLog, error) {
+	return c.Query().Where(operlog.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *OperLogClient) GetX(ctx context.Context, id int64) *OperLog {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *OperLogClient) Hooks() []Hook {
+	return c.hooks.OperLog
+}
+
+// Interceptors returns the client interceptors.
+func (c *OperLogClient) Interceptors() []Interceptor {
+	return c.inters.OperLog
+}
+
+func (c *OperLogClient) mutate(ctx context.Context, m *OperLogMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&OperLogCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&OperLogUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&OperLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&OperLogDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown OperLog mutation op: %q", m.Op())
 	}
 }
 
@@ -1459,10 +1743,12 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		DictData, DictType, File, Menu, Role, RoleMenu, User, UserRole []ent.Hook
+		DictData, DictType, File, LoginLog, Menu, OperLog, Role, RoleMenu, User,
+		UserRole []ent.Hook
 	}
 	inters struct {
-		DictData, DictType, File, Menu, Role, RoleMenu, User, UserRole []ent.Interceptor
+		DictData, DictType, File, LoginLog, Menu, OperLog, Role, RoleMenu, User,
+		UserRole []ent.Interceptor
 	}
 )
 

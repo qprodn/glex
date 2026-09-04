@@ -6,7 +6,9 @@ import (
 	"glex/internal/infra/ent/dictdata"
 	"glex/internal/infra/ent/dicttype"
 	"glex/internal/infra/ent/file"
+	"glex/internal/infra/ent/loginlog"
 	"glex/internal/infra/ent/menu"
+	"glex/internal/infra/ent/operlog"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/rolemenu"
 	"glex/internal/infra/ent/schema"
@@ -112,6 +114,57 @@ func init() {
 	fileDescSuffix := fileFields[2].Descriptor()
 	// file.DefaultSuffix holds the default value on creation for the suffix field.
 	file.DefaultSuffix = fileDescSuffix.Default.(string)
+	loginlogMixin := schema.LoginLog{}.Mixin()
+	loginlogMixinFields0 := loginlogMixin[0].Fields()
+	_ = loginlogMixinFields0
+	loginlogFields := schema.LoginLog{}.Fields()
+	_ = loginlogFields
+	// loginlogDescCreateBy is the schema descriptor for create_by field.
+	loginlogDescCreateBy := loginlogMixinFields0[0].Descriptor()
+	// loginlog.DefaultCreateBy holds the default value on creation for the create_by field.
+	loginlog.DefaultCreateBy = loginlogDescCreateBy.Default.(int64)
+	// loginlogDescUpdateBy is the schema descriptor for update_by field.
+	loginlogDescUpdateBy := loginlogMixinFields0[1].Descriptor()
+	// loginlog.DefaultUpdateBy holds the default value on creation for the update_by field.
+	loginlog.DefaultUpdateBy = loginlogDescUpdateBy.Default.(int64)
+	// loginlogDescCreatedAt is the schema descriptor for created_at field.
+	loginlogDescCreatedAt := loginlogMixinFields0[2].Descriptor()
+	// loginlog.DefaultCreatedAt holds the default value on creation for the created_at field.
+	loginlog.DefaultCreatedAt = loginlogDescCreatedAt.Default.(func() time.Time)
+	// loginlogDescUpdatedAt is the schema descriptor for updated_at field.
+	loginlogDescUpdatedAt := loginlogMixinFields0[3].Descriptor()
+	// loginlog.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	loginlog.DefaultUpdatedAt = loginlogDescUpdatedAt.Default.(func() time.Time)
+	// loginlog.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	loginlog.UpdateDefaultUpdatedAt = loginlogDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// loginlogDescUserID is the schema descriptor for user_id field.
+	loginlogDescUserID := loginlogFields[1].Descriptor()
+	// loginlog.DefaultUserID holds the default value on creation for the user_id field.
+	loginlog.DefaultUserID = loginlogDescUserID.Default.(int64)
+	// loginlogDescUserName is the schema descriptor for user_name field.
+	loginlogDescUserName := loginlogFields[2].Descriptor()
+	// loginlog.DefaultUserName holds the default value on creation for the user_name field.
+	loginlog.DefaultUserName = loginlogDescUserName.Default.(string)
+	// loginlogDescIpaddr is the schema descriptor for ipaddr field.
+	loginlogDescIpaddr := loginlogFields[3].Descriptor()
+	// loginlog.DefaultIpaddr holds the default value on creation for the ipaddr field.
+	loginlog.DefaultIpaddr = loginlogDescIpaddr.Default.(string)
+	// loginlogDescBrowser is the schema descriptor for browser field.
+	loginlogDescBrowser := loginlogFields[4].Descriptor()
+	// loginlog.DefaultBrowser holds the default value on creation for the browser field.
+	loginlog.DefaultBrowser = loginlogDescBrowser.Default.(string)
+	// loginlogDescOs is the schema descriptor for os field.
+	loginlogDescOs := loginlogFields[5].Descriptor()
+	// loginlog.DefaultOs holds the default value on creation for the os field.
+	loginlog.DefaultOs = loginlogDescOs.Default.(string)
+	// loginlogDescStatus is the schema descriptor for status field.
+	loginlogDescStatus := loginlogFields[6].Descriptor()
+	// loginlog.DefaultStatus holds the default value on creation for the status field.
+	loginlog.DefaultStatus = loginlogDescStatus.Default.(int8)
+	// loginlogDescMsg is the schema descriptor for msg field.
+	loginlogDescMsg := loginlogFields[7].Descriptor()
+	// loginlog.DefaultMsg holds the default value on creation for the msg field.
+	loginlog.DefaultMsg = loginlogDescMsg.Default.(string)
 	menuMixin := schema.Menu{}.Mixin()
 	menuMixinFields0 := menuMixin[0].Fields()
 	_ = menuMixinFields0
@@ -187,6 +240,69 @@ func init() {
 	menuDescExt := menuFields[15].Descriptor()
 	// menu.DefaultExt holds the default value on creation for the ext field.
 	menu.DefaultExt = menuDescExt.Default.(string)
+	operlogMixin := schema.OperLog{}.Mixin()
+	operlogMixinFields0 := operlogMixin[0].Fields()
+	_ = operlogMixinFields0
+	operlogFields := schema.OperLog{}.Fields()
+	_ = operlogFields
+	// operlogDescCreateBy is the schema descriptor for create_by field.
+	operlogDescCreateBy := operlogMixinFields0[0].Descriptor()
+	// operlog.DefaultCreateBy holds the default value on creation for the create_by field.
+	operlog.DefaultCreateBy = operlogDescCreateBy.Default.(int64)
+	// operlogDescUpdateBy is the schema descriptor for update_by field.
+	operlogDescUpdateBy := operlogMixinFields0[1].Descriptor()
+	// operlog.DefaultUpdateBy holds the default value on creation for the update_by field.
+	operlog.DefaultUpdateBy = operlogDescUpdateBy.Default.(int64)
+	// operlogDescCreatedAt is the schema descriptor for created_at field.
+	operlogDescCreatedAt := operlogMixinFields0[2].Descriptor()
+	// operlog.DefaultCreatedAt holds the default value on creation for the created_at field.
+	operlog.DefaultCreatedAt = operlogDescCreatedAt.Default.(func() time.Time)
+	// operlogDescUpdatedAt is the schema descriptor for updated_at field.
+	operlogDescUpdatedAt := operlogMixinFields0[3].Descriptor()
+	// operlog.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	operlog.DefaultUpdatedAt = operlogDescUpdatedAt.Default.(func() time.Time)
+	// operlog.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	operlog.UpdateDefaultUpdatedAt = operlogDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// operlogDescHTTPMethod is the schema descriptor for http_method field.
+	operlogDescHTTPMethod := operlogFields[2].Descriptor()
+	// operlog.DefaultHTTPMethod holds the default value on creation for the http_method field.
+	operlog.DefaultHTTPMethod = operlogDescHTTPMethod.Default.(string)
+	// operlogDescOperUserID is the schema descriptor for oper_user_id field.
+	operlogDescOperUserID := operlogFields[3].Descriptor()
+	// operlog.DefaultOperUserID holds the default value on creation for the oper_user_id field.
+	operlog.DefaultOperUserID = operlogDescOperUserID.Default.(int64)
+	// operlogDescOperUserName is the schema descriptor for oper_user_name field.
+	operlogDescOperUserName := operlogFields[4].Descriptor()
+	// operlog.DefaultOperUserName holds the default value on creation for the oper_user_name field.
+	operlog.DefaultOperUserName = operlogDescOperUserName.Default.(string)
+	// operlogDescIpaddr is the schema descriptor for ipaddr field.
+	operlogDescIpaddr := operlogFields[5].Descriptor()
+	// operlog.DefaultIpaddr holds the default value on creation for the ipaddr field.
+	operlog.DefaultIpaddr = operlogDescIpaddr.Default.(string)
+	// operlogDescRequest is the schema descriptor for request field.
+	operlogDescRequest := operlogFields[6].Descriptor()
+	// operlog.DefaultRequest holds the default value on creation for the request field.
+	operlog.DefaultRequest = operlogDescRequest.Default.(string)
+	// operlogDescStatus is the schema descriptor for status field.
+	operlogDescStatus := operlogFields[7].Descriptor()
+	// operlog.DefaultStatus holds the default value on creation for the status field.
+	operlog.DefaultStatus = operlogDescStatus.Default.(int8)
+	// operlogDescReason is the schema descriptor for reason field.
+	operlogDescReason := operlogFields[8].Descriptor()
+	// operlog.DefaultReason holds the default value on creation for the reason field.
+	operlog.DefaultReason = operlogDescReason.Default.(string)
+	// operlogDescErrorMsg is the schema descriptor for error_msg field.
+	operlogDescErrorMsg := operlogFields[9].Descriptor()
+	// operlog.DefaultErrorMsg holds the default value on creation for the error_msg field.
+	operlog.DefaultErrorMsg = operlogDescErrorMsg.Default.(string)
+	// operlogDescLatencyMs is the schema descriptor for latency_ms field.
+	operlogDescLatencyMs := operlogFields[10].Descriptor()
+	// operlog.DefaultLatencyMs holds the default value on creation for the latency_ms field.
+	operlog.DefaultLatencyMs = operlogDescLatencyMs.Default.(int64)
+	// operlogDescRequestID is the schema descriptor for request_id field.
+	operlogDescRequestID := operlogFields[11].Descriptor()
+	// operlog.DefaultRequestID holds the default value on creation for the request_id field.
+	operlog.DefaultRequestID = operlogDescRequestID.Default.(string)
 	roleMixin := schema.Role{}.Mixin()
 	roleMixinFields0 := roleMixin[0].Fields()
 	_ = roleMixinFields0

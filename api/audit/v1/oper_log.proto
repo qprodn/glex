@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package audit.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "glex/api/audit/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.audit.v1";
+
+// OperStatus is the recorded outcome of one operation (RuoYi status 0/1).
+enum OperStatus {
+  // Unset. Never returned; reserved by proto3 for the zero value.
+  OPER_STATUS_UNSPECIFIED = 0;
+  // The operation completed successfully.
+  OPER_STATUS_SUCCESS = 1;
+  // The operation failed (business rejection or system failure).
+  OPER_STATUS_FAILURE = 2;
+}
+
+// OperLog is the monitoring record of one mutating operation (操作日志),
+// ported from RuoYi sys_oper_log. The transport middleware mints one row per
+// recorded request after the handler returns (ADR 0012); rows are write-once
+// and only ever withdrawn. RuoYi's title/method/oper_url collapse into the
+// kratos operation name; the operator is denormalized so history survives
+// account withdrawal. Request payloads carry no secrets (scrubbed, ADR 0012).
+message OperLog {
+  // Snowflake ID. Server-assigned on record.
+  int64 oper_log_id = 1;
+  // Kratos operation name (e.g. "/iam.v1.UserService/CreateUser").
+  string operation = 2;
+  string http_method = 3;
+  // Operator; 0 = an unauthenticated actor.
+  int64 oper_user_id = 4;
+  // Denormalized operator account name.
+  string oper_user_name = 5;
+  string ipaddr = 6;
+  // Redacted request payload as protojson.
+  string request = 7;
+  OperStatus status = 8;
+  // Kratos error reason; empty on success.
+  string reason = 9;
+  string error_msg = 10;
+  int64 latency_ms = 11;
+  // Correlates with the structured request log.
+  string request_id = 12;
+  google.protobuf.Timestamp created_at = 13;
+}
+
+// OperLogSet is a page of oper logs.
+message OperLogSet {
+  repeated OperLog oper_logs = 1;
+  // Opaque token for the next page; empty when on the last page.
+  string next_page_token = 2;
+}
+
+// OperLogService is the read/withdraw view over recorded operations. Rows
+// arrive through the operlog middleware (ADR 0012); no endpoint creates or
+// updates them.
+service OperLogService {
+  // ListOperLogs lists recorded operations with AIP filter/order/page-token.
+  rpc ListOperLogs(ListOperLogsRequest) returns (OperLogSet) {
+    option (google.api.http) = {
+      get: "/monitor/oper_logs"
+    };
+  }
+  // GetOperLog retrieves one recorded operation by id.
+  rpc GetOperLog(GetOperLogRequest) returns (OperLog) {
+    option (google.api.http) = {
+      get: "/monitor/oper_logs/{oper_log_id}"
+    };
+  }
+  // DeleteOperLog withdraws one recorded operation by id (ADR 0002 soft
+  // delete — the row stays as history; RuoYi's 清空 has no equivalent).
+  rpc DeleteOperLog(DeleteOperLogRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/monitor/oper_logs/{oper_log_id}"
+    };
+  }
+}
+
+message ListOperLogsRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `operation` (e.g. operation="iam.v1.UserService")
+  //   * `oper_user_name` (e.g. oper_user_name="admin")
+  //   * `ipaddr` (e.g. ipaddr="127.0.0.1")
+  //   * `status` (e.g. status=2)
+  string filter = 3;
+  // Optional. AIP-132 order, e.g. `created_at desc`. Defaults to
+  // `created_at desc, oper_log_id desc` (newest first — a monitor read).
+  string order_by = 4;
+}
+
+message GetOperLogRequest {
+  // Required. The id of the oper log to retrieve.
+  int64 oper_log_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteOperLogRequest {
+  // Required. The id of the oper log to withdraw.
+  int64 oper_log_id = 1 [(google.api.field_behavior) = REQUIRED];
+}

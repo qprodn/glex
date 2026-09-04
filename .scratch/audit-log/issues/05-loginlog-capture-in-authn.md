@@ -1,6 +1,6 @@
 # 05 — Login Log capture in authn (crossdomain contract)
 
-Status: claimed
+Status: resolved
 
 `internal/crossdomain/audit`: `LoginLogWriter` contract
 (`RecordLoginLog(ctx, *model.LoginLog) error`), impl over the audit domain
@@ -20,3 +20,7 @@ login flow already does (fallback X-Forwarded-For read where absent).
 
 - authnmock gains the writer; login/online-session tests pin the
   recorded events and the best-effort behavior.
+
+## Comments
+
+- 2026-09-04: Implemented: crossdomain/audit LoginLogWriter (mockgen mock, model snapshot, impl detaches context + 3s timeout per ADR 0012). authn records: login success/failure (authenticate), logout, admin 强退 (KickoutOnlineSession — now reads the session first, so kicking an unknown id fails instead of silently succeeding), self-revoke (DeleteMyOnlineSession). OnlineSession domain service gained Get(ctx, sessionID) for the metadata read. authn tests pin the rows and the best-effort behavior.

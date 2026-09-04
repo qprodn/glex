@@ -4,15 +4,19 @@ import (
 	"log/slog"
 
 	accessv1 "glex/api/access/v1"
+	auditv1 "glex/api/audit/v1"
 	dictv1 "glex/api/dict/v1"
 	filev1 "glex/api/file/v1"
 	userv1 "glex/api/user/v1"
 	accessapp "glex/internal/application/access"
+	auditapp "glex/internal/application/audit"
 	dictapp "glex/internal/application/dict"
 	fileapp "glex/internal/application/file"
 	userapp "glex/internal/application/user"
 	"glex/internal/conf"
+	auditservice "glex/internal/domain/audit/service"
 	"glex/pkg/middleware/logging"
+	"glex/pkg/middleware/operlog"
 	"glex/pkg/middleware/requestid"
 	"glex/pkg/validate"
 
@@ -21,13 +25,14 @@ import (
 )
 
 // NewGRPCServer new a gRPC server.
-func NewGRPCServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, logger *slog.Logger) *grpc.Server {
+func NewGRPCServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, audit *auditapp.AuditApplication, auditDomain auditservice.Audit, logger *slog.Logger) *grpc.Server {
 	var opts = []grpc.ServerOption{
 		grpc.Middleware(
 			requestid.Server(requestid.WithLogger(logger)),
 			logging.Server(logger),
 			recovery.Recovery(recovery.WithLogger(logger)),
 			validate.Middleware(),
+			operlog.Server(operLogRecorder{audit: auditDomain}, operlog.WithLogger(logger)),
 		),
 	}
 	if c.Grpc.Network != "" {
@@ -45,5 +50,7 @@ func NewGRPCServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 	accessv1.RegisterRoleServiceServer(srv, role)
 	dictv1.RegisterDictServiceServer(srv, dict)
 	filev1.RegisterFileServiceServer(srv, file)
+	auditv1.RegisterOperLogServiceServer(srv, audit)
+	auditv1.RegisterLoginLogServiceServer(srv, audit)
 	return srv
 }

@@ -32,6 +32,15 @@ type fakeOnlineSessionService struct {
 	err        error
 }
 
+func (s *fakeOnlineSessionService) Get(_ context.Context, sessionID string) (*authnentity.LoginSession, error) {
+	for _, session := range s.sessions {
+		if session.ID == sessionID {
+			return session, nil
+		}
+	}
+	return nil, authndomain.ErrLoginSessionNotFound
+}
+
 func (s *fakeOnlineSessionService) List(context.Context, filtering.Filter, ordering.OrderBy, int, int) ([]*authnentity.LoginSession, error) {
 	return s.sessions, s.err
 }
@@ -59,7 +68,7 @@ func principalCtx(t *testing.T, systemUserID int64, sessionID string) context.Co
 
 func TestLoginSessionLogoutAnonymousAndCurrentSession(t *testing.T) {
 	login := &fakeLoginService{}
-	app := NewLoginApplication(login, nil, nil, testLogger())
+	app := NewLoginApplication(login, nil, &fakeLoginLogWriter{}, nil, testLogger())
 	if _, err := app.Logout(context.Background(), &emptypb.Empty{}); err != nil {
 		t.Fatalf("anonymous Logout: %v", err)
 	}
@@ -76,7 +85,7 @@ func TestLoginSessionLogoutAnonymousAndCurrentSession(t *testing.T) {
 
 func TestLoginSessionLogoutPropagatesServiceFailure(t *testing.T) {
 	login := &fakeLoginService{logoutErr: authndomain.ErrAuthBackendUnavailable}
-	app := NewLoginApplication(login, nil, nil, testLogger())
+	app := NewLoginApplication(login, nil, &fakeLoginLogWriter{}, nil, testLogger())
 	_, err := app.Logout(principalCtx(t, 42, "session-id"), &emptypb.Empty{})
 	if !errors.Is(err, authndomain.ErrAuthBackendUnavailable) {
 		t.Fatalf("Logout error = %v, want ErrAuthBackendUnavailable", err)
@@ -95,7 +104,7 @@ func TestOnlineSessionManagementUsesTargetedServiceOperations(t *testing.T) {
 		OS:           "iOS",
 		LoginTime:    loginTime,
 	}}}
-	app := NewOnlineSessionApplication(svc, testLogger())
+	app := NewOnlineSessionApplication(svc, &fakeLoginLogWriter{}, testLogger())
 
 	set, err := app.ListOnlineSessions(t.Context(), &authnv1.ListOnlineSessionsRequest{})
 	if err != nil {
@@ -138,7 +147,7 @@ func TestOnlineSessionManagementUsesTargetedServiceOperations(t *testing.T) {
 
 func TestDeleteMyOnlineSessionRejectsForeignSession(t *testing.T) {
 	svc := &fakeOnlineSessionService{err: authndomain.ErrLoginSessionNotOwned}
-	app := NewOnlineSessionApplication(svc, testLogger())
+	app := NewOnlineSessionApplication(svc, &fakeLoginLogWriter{}, testLogger())
 	_, err := app.DeleteMyOnlineSession(principalCtx(t, 42, "foreign-session"), &authnv1.OnlineSessionRequest{TokenId: "foreign-session"})
 	if !errors.Is(err, authndomain.ErrLoginSessionNotOwned) {
 		t.Fatalf("DeleteMyOnlineSession error = %v, want ErrLoginSessionNotOwned", err)

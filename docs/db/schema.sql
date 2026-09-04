@@ -287,3 +287,85 @@ comment on column sys_file.update_by is '更新者用户ID';
 comment on column sys_file.created_at is '创建时间';
 comment on column sys_file.updated_at is '更新时间';
 comment on column sys_file.deleted_at is '软删除时间；NULL=未删除；撤回同时删除字节（ADR 0009）';
+
+
+create table if not exists sys_oper_log (
+    id             bigint       not null,
+    operation      varchar(256) not null,               -- kratos operation name, e.g. /iam.v1.UserService/CreateUser
+    http_method    varchar(16)  not null default '',
+    oper_user_id   bigint       not null default 0,     -- 0 = unauthenticated actor
+    oper_user_name varchar(256) not null default '',    -- denormalized; survives account withdrawal
+    ipaddr         varchar(256) not null default '',
+    request        varchar(2048) not null default '',   -- redacted protojson (secret keys scrubbed, ADR 0012)
+    status         smallint     not null default 0,     -- 0成功 1失败
+    reason         varchar(256) not null default '',    -- kratos error reason; empty on success
+    error_msg      varchar(512) not null default '',
+    latency_ms     bigint       not null default 0,
+    request_id     varchar(64)  not null default '',    -- correlates with the structured request log
+    create_by      bigint       not null default 0,     -- audit; Application stamps from Principal (ADR 0002)
+    update_by      bigint       not null default 0,
+    created_at     timestamptz  not null default now(),
+    updated_at     timestamptz  not null default now(),
+    deleted_at     timestamptz,                         -- soft delete; NULL = active
+    constraint sys_oper_log_pkey primary key (id)
+);
+
+create index if not exists operlog_created_at on sys_oper_log (created_at);
+create index if not exists operlog_oper_user_id on sys_oper_log (oper_user_id);
+
+comment on table sys_oper_log is '操作日志表（RuoYi sys_oper_log）';
+
+comment on column sys_oper_log.id is '主键ID（雪花）';
+comment on column sys_oper_log.operation is 'kratos 操作名（如 /iam.v1.UserService/CreateUser）';
+comment on column sys_oper_log.http_method is 'HTTP 方法';
+comment on column sys_oper_log.oper_user_id is '操作者用户ID；0=未认证操作';
+comment on column sys_oper_log.oper_user_name is '操作者账号（冗余；账号撤回后历史可读）';
+comment on column sys_oper_log.ipaddr is '操作IP';
+comment on column sys_oper_log.request is '请求载荷（脱敏 protojson；ADR 0012）';
+comment on column sys_oper_log.status is '操作状态：0成功 1失败';
+comment on column sys_oper_log.reason is '错误原因（kratos reason）；成功为空';
+comment on column sys_oper_log.error_msg is '错误信息；成功为空';
+comment on column sys_oper_log.latency_ms is '耗时（毫秒）';
+comment on column sys_oper_log.request_id is '请求ID（与结构化请求日志关联）';
+comment on column sys_oper_log.create_by is '创建者用户ID';
+comment on column sys_oper_log.update_by is '更新者用户ID';
+comment on column sys_oper_log.created_at is '创建时间';
+comment on column sys_oper_log.updated_at is '更新时间';
+comment on column sys_oper_log.deleted_at is '软删除时间；NULL=未删除；日志只写一次，撤回是唯一变更（ADR 0012）';
+
+
+create table if not exists sys_login_log (
+    id         bigint       not null,
+    user_id    bigint       not null default 0,       -- 0 = attempt never resolved to an account
+    user_name  varchar(256) not null default '',      -- denormalized; failed attempts still record the name
+    ipaddr     varchar(256) not null default '',
+    browser    varchar(256) not null default '',
+    os         varchar(256) not null default '',
+    status     smallint     not null default 0,       -- 0成功 1失败
+    msg        varchar(256) not null default '',      -- outcome ("登录成功" / "密码错误" / "强制退出")
+    create_by  bigint       not null default 0,       -- the principal that caused the row (ADR 0002); 强退 = the admin
+    update_by  bigint       not null default 0,
+    created_at timestamptz  not null default now(),
+    updated_at timestamptz  not null default now(),
+    deleted_at timestamptz,                           -- soft delete; NULL = active
+    constraint sys_login_log_pkey primary key (id)
+);
+
+create index if not exists loginlog_created_at on sys_login_log (created_at);
+create index if not exists loginlog_user_id on sys_login_log (user_id);
+
+comment on table sys_login_log is '登录日志表（RuoYi sys_logininfor 的改名延续）';
+
+comment on column sys_login_log.id is '主键ID（雪花）';
+comment on column sys_login_log.user_id is '用户ID；0=尝试未对应到任何账号';
+comment on column sys_login_log.user_name is '账号（冗余；失败尝试也记录账号名）';
+comment on column sys_login_log.ipaddr is '登录IP';
+comment on column sys_login_log.browser is '浏览器（User-Agent 解析）';
+comment on column sys_login_log.os is '操作系统（User-Agent 解析）';
+comment on column sys_login_log.status is '结果：0成功 1失败';
+comment on column sys_login_log.msg is '结果描述（登录成功/密码错误/强制退出等）';
+comment on column sys_login_log.create_by is '创建者用户ID；强退记录为执行强退的管理员';
+comment on column sys_login_log.update_by is '更新者用户ID';
+comment on column sys_login_log.created_at is '创建时间';
+comment on column sys_login_log.updated_at is '更新时间';
+comment on column sys_login_log.deleted_at is '软删除时间；NULL=未删除；日志只写一次，撤回是唯一变更（ADR 0012）';

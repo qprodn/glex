@@ -94,9 +94,19 @@ func (db *Database) File(ctx context.Context) *FileClient {
 	return db.loadClient(ctx).File
 }
 
+// LoginLog is the client for interacting with the LoginLog builders.
+func (db *Database) LoginLog(ctx context.Context) *LoginLogClient {
+	return db.loadClient(ctx).LoginLog
+}
+
 // Menu is the client for interacting with the Menu builders.
 func (db *Database) Menu(ctx context.Context) *MenuClient {
 	return db.loadClient(ctx).Menu
+}
+
+// OperLog is the client for interacting with the OperLog builders.
+func (db *Database) OperLog(ctx context.Context) *OperLogClient {
+	return db.loadClient(ctx).OperLog
 }
 
 // Role is the client for interacting with the Role builders.

@@ -183,6 +183,51 @@ values (1000000000000000501, 1000000000000000001, 1000000000000000101, 0, 0),
 on conflict do nothing;
 
 -- ---------------------------------------------------------------------------
+-- 监控（目录 + 在线用户/操作日志/登录日志 页面 + 按钮）
+-- 在线用户此前只存在于前端（seed 缺失），随本次一并补齐；
+-- perms 与 auth_routes.go 的 handle 一一对应；icon 走 @ant-design/icons
+-- 运行时解析（desktop/form = DesktopOutlined/FormOutlined）。
+-- ---------------------------------------------------------------------------
+
+insert into sys_menu (id, menu_name, parent_id, order_num, path, menu_type, icon, create_by, update_by)
+values (1000000000000000260, '监控', 0, 2, 'monitor', 1, 'desktop', 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, path, component, menu_type, perms, icon, create_by, update_by)
+values (1000000000000000261, '在线用户', 1000000000000000260, 1, 'online', 'monitor/online/index', 2, 'monitor:online:list', 'online', 0, 0),
+       (1000000000000000263, '操作日志', 1000000000000000260, 2, 'operlog', 'monitor/operlog/index', 2, 'monitor:operlog:list', 'form', 0, 0),
+       (1000000000000000266, '登录日志', 1000000000000000260, 3, 'loginlog', 'monitor/loginlog/index', 2, 'monitor:loginlog:list', 'log', 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, menu_type, perms, create_by, update_by)
+values (1000000000000000262, '在线强退', 1000000000000000261, 1, 3, 'monitor:online:forceLogout', 0, 0),
+       (1000000000000000264, '日志查询', 1000000000000000263, 1, 3, 'monitor:operlog:query', 0, 0),
+       (1000000000000000265, '日志删除', 1000000000000000263, 2, 3, 'monitor:operlog:remove', 0, 0),
+       (1000000000000000267, '日志删除', 1000000000000000266, 1, 3, 'monitor:loginlog:remove', 0, 0)
+on conflict do nothing;
+
+-- superadmin 追加监控全部菜单
+insert into sys_role_menu (id, role_id, menu_id, create_by, update_by)
+values (1000000000000000327, 1000000000000000101, 1000000000000000260, 0, 0),
+       (1000000000000000328, 1000000000000000101, 1000000000000000261, 0, 0),
+       (1000000000000000329, 1000000000000000101, 1000000000000000262, 0, 0),
+       (1000000000000000330, 1000000000000000101, 1000000000000000263, 0, 0),
+       (1000000000000000331, 1000000000000000101, 1000000000000000264, 0, 0),
+       (1000000000000000332, 1000000000000000101, 1000000000000000265, 0, 0),
+       (1000000000000000333, 1000000000000000101, 1000000000000000266, 0, 0),
+       (1000000000000000334, 1000000000000000101, 1000000000000000267, 0, 0)
+on conflict do nothing;
+
+-- common：监控目录 + 三个页面（含 list）+ 操作日志查询按钮
+insert into sys_role_menu (id, role_id, menu_id, create_by, update_by)
+values (1000000000000000412, 1000000000000000102, 1000000000000000260, 0, 0),
+       (1000000000000000413, 1000000000000000102, 1000000000000000261, 0, 0),
+       (1000000000000000414, 1000000000000000102, 1000000000000000263, 0, 0),
+       (1000000000000000415, 1000000000000000102, 1000000000000000264, 0, 0),
+       (1000000000000000416, 1000000000000000102, 1000000000000000266, 0, 0)
+on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
 -- 字典类型（sys_dict_type）
 -- 前端选项渲染的首批消费方：role/user 状态（sys_normal_disable）与
 -- user 性别（sys_user_gender）；键创建后不可变（ADR 0006），勿改。
