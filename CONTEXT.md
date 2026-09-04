@@ -2,15 +2,18 @@
 
 The domain concerned with **who can operate the system, the navigation they see,
 how their identity is established, the controlled vocabularies the back office
-renders choices from, and the files it stores**. It is organized as five modules
-in one service: **user** (System User accounts), **access** (authorization —
-roles, menus, grants, and permission resolution), **authn** (authentication —
-credentials, login sessions, and tokens), **dict** (dictionaries — the labeled
-option vocabularies pages render selects and status tags from), and **file**
-(file storage — accepting uploads, serving downloads, and withdrawing Stored
-Files), ported from RuoYi-Vue-Plus's `sys_user`, `sys_menu`, `sys_role`,
-`sys_user_role`, `sys_dict_type`, and `sys_dict_data`; the file module continues
-that lineage with its own `sys_file` (RuoYi's `sys_oss`, renamed).
+renders choices from, the organization structure it groups people by, and the
+files it stores**. It is organized as six modules in one service: **user**
+(System User accounts), **org** (organization structure — departments, posts,
+and post assignments), **access** (authorization — roles, menus, grants, and
+permission resolution), **authn** (authentication — credentials, login
+sessions, and tokens), **dict** (dictionaries — the labeled option vocabularies
+pages render selects and status tags from), and **file** (file storage —
+accepting uploads, serving downloads, and withdrawing Stored Files), ported from
+RuoYi-Vue-Plus's `sys_user`, `sys_dept`, `sys_post`, `sys_menu`, `sys_role`,
+`sys_user_role`, `sys_user_post`, `sys_dict_type`, and `sys_dict_data`; the
+file module continues that lineage with its own `sys_file` (RuoYi's `sys_oss`,
+renamed).
 
 ## Language
 
@@ -23,6 +26,37 @@ users are told apart by the roles assigned to them, not by a tier flag on the
 record itself. The user module owns the operator's profile; Credentials and
 Login Sessions belong to authn.
 _Avoid_: User (ambiguous on its own), Account, Member, Admin.
+
+### org
+
+**Department** (部门):
+A node in the organization tree that places System Users and Posts in the
+structure, ported from RuoYi's `sys_dept`. Departments nest through their
+parent (0 = root); the tree shape is derived when read, never stored as a path.
+A System User references at most one Department as their place in the
+structure; a Post belongs to exactly one. A Department that is the seeded root,
+has children, is referenced by System Users, or still carries Posts cannot be
+withdrawn; one with users or enabled children cannot be disabled; enabling a
+Department enables its ancestors with it. Its optional leader is a System User
+id recorded for display.
+_Avoid_: Org Unit, Team, Unit, Branch, Section.
+
+**Post** (岗位):
+A position within exactly one Department, ported from RuoYi's `sys_post`
+following its 6.0 shape: posts are department-scoped, the name is unique within
+its Department, and the code is unique across all Posts. A Post that still has
+System Users assigned cannot be withdrawn or disabled.
+_Avoid_: Position, Job, Title, Role (a Role bundles permissions; a Post names a
+position in a Department).
+
+**Post Assignment** (岗位分配):
+The set of Posts a System User carries, stored as user↔post links
+(`sys_user_post`). Assigning is **full-replacement** with the same semantics as
+a Role Assignment: saving a user's posts replaces the whole set (empty set =
+no posts), never a diff. The link table and both of its endpoints — queried by
+user and by post — belong to the org module. Withdrawing a System User
+soft-deletes its links with it.
+_Avoid_: User-Post Link, User Post, Post Grant.
 
 ### access
 

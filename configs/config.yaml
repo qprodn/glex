@@ -19,7 +19,7 @@ file:
   s3:
     # Local dev example (MinIO). Supply real credentials through a
     # deployment-specific config source; never commit them here.
-    endpoint: 127.0.0.1:9000
+    endpoint: 127.0.0.1:9002
     region: us-east-1
     bucket: glex
     access_key: minioadmin
