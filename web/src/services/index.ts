@@ -4,6 +4,7 @@ import {
   createRoleAssignmentServiceClient,
   createRoleServiceClient,
 } from "@/services/access/v1";
+import { createLoginLogServiceClient, createOperLogServiceClient } from "@/services/audit/v1";
 import { createDictServiceClient } from "@/services/dict/v1";
 import { createFileServiceClient } from "@/services/file/v1";
 import { createUserServiceClient } from "@/services/user/v1";
@@ -50,6 +51,8 @@ export const services = {
   menu: createMenuServiceClient(requestHandler),
   dict: createDictServiceClient(requestHandler),
   file: createFileServiceClient(requestHandler),
+  audit: createOperLogServiceClient(requestHandler),
+  loginlog: createLoginLogServiceClient(requestHandler),
 };
 
 /**

@@ -24,6 +24,8 @@ export const componentRegistry: Record<string, React.ComponentType> = {
   "iam/menu/index": lazyPage(() => import("@/pages/iam/menu")),
   "iam/dict/index": lazyPage(() => import("@/pages/iam/dict")),
   "monitor/online/index": lazyPage(() => import("@/pages/monitor/online")),
+  "monitor/operlog/index": lazyPage(() => import("@/pages/monitor/operlog")),
+  "monitor/loginlog/index": lazyPage(() => import("@/pages/monitor/loginlog")),
   "file/index": lazyPage(() => import("@/pages/file")),
 };
 

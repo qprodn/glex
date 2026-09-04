@@ -125,6 +125,21 @@ export default {
   "pages.monitor.kickout.confirm": "Force logout {user}'s session?",
   "pages.monitor.kickout.hint":
     "The Login Session is revoked immediately; that browser lands on the login page on its next request.",
+  "pages.monitor.status.success": "Success",
+  "pages.monitor.status.failure": "Failure",
+  "pages.monitor.operlog.operation": "Operation",
+  "pages.monitor.operlog.status": "Status",
+  "pages.monitor.operlog.errorMsg": "Error",
+  "pages.monitor.operlog.latency": "Latency",
+  "pages.monitor.operlog.request": "Request Payload",
+  "pages.monitor.operlog.detail": "Detail",
+  "pages.monitor.operlog.delete.confirm": "Delete this oper log?",
+  "pages.monitor.operlog.delete.hint":
+    "Deletion is a soft delete: the row stays as withdrawal history and leaves the list.",
+  "pages.monitor.loginlog.msg": "Outcome",
+  "pages.monitor.loginlog.delete.confirm": "Delete this login log?",
+  "pages.monitor.loginlog.delete.hint":
+    "Deletion is a soft delete: the row stays as withdrawal history and leaves the list.",
 
   "pages.profile.tab.profile": "Profile",
   "pages.profile.tab.password": "Change Password",

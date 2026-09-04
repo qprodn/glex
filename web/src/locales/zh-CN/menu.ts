@@ -7,4 +7,6 @@ export default {
   "menu.iam.menu": "菜单管理",
   "menu.iam.dict": "字典管理",
   "menu.monitor.online": "在线会话",
+  "menu.monitor.operlog": "操作日志",
+  "menu.monitor.loginlog": "登录日志",
 };
