@@ -3,6 +3,7 @@ import type { User } from "@/services/user/v1";
 import { numericOptions, useDict } from "@/hooks/useDict";
 import { services } from "@/services";
 import { buildFilter } from "@/utils/aipFilter";
+import { toDeptSelectData } from "@/utils/deptTree";
 import { collectUpdateMask } from "@/utils/fieldMask";
 import {
   ModalForm,
@@ -34,18 +35,6 @@ const EDITABLE_FIELDS = [
   "password",
   "deptId",
 ] as const;
-
-type DeptOption = { title: string; value: number; disabled?: boolean; children?: DeptOption[] };
-
-// Disabled departments show greyed-out but stay visible (RuoYi's
-// buildDeptTreeSelect).
-const toDeptTreeData = (nodes: DeptTreeOption[] | undefined): DeptOption[] =>
-  (nodes ?? []).map((node) => ({
-    title: node.label ?? "",
-    value: node.deptId ?? 0,
-    disabled: node.disabled,
-    children: node.children?.length ? toDeptTreeData(node.children) : undefined,
-  }));
 
 type PostOption = { label: string; value: number };
 
@@ -264,14 +253,14 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ open, record, deptTree, o
       />
       <ProFormTreeSelect
         name="deptId"
-        label={intl.formatMessage({ id: "pages.dept.deptName", defaultMessage: "所属部门" })}
+        label={intl.formatMessage({ id: "pages.dept.belong", defaultMessage: "所属部门" })}
         placeholder={intl.formatMessage({
           id: "pages.user.dept.none",
           defaultMessage: "不选 = 无部门",
         })}
         fieldProps={{
           treeDefaultExpandAll: true,
-          treeData: toDeptTreeData(deptTree),
+          treeData: toDeptSelectData(deptTree),
           onChange: (value) => onDeptChange(value as number | undefined),
         }}
       />

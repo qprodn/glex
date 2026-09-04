@@ -2,6 +2,7 @@ import type { DeptTreeOption, Post } from "@/services/org/v1";
 import { DictTag } from "@/components";
 import { services } from "@/services";
 import { buildFilter } from "@/utils/aipFilter";
+import { buildDeptNames, toDeptTreeData } from "@/utils/deptTree";
 import { createTokenPagedRequest } from "@/utils/pager";
 import { PlusOutlined } from "@ant-design/icons";
 import {
@@ -12,7 +13,6 @@ import {
 } from "@ant-design/pro-components";
 import { Access, useAccess, useIntl } from "@umijs/max";
 import { App, Button, Card, Modal, Tree, Typography } from "antd";
-import type { DataNode } from "antd/es/tree";
 import React, { useRef, useState } from "react";
 import PostFormModal from "./PostFormModal";
 
@@ -36,18 +36,7 @@ const PostList: React.FC = () => {
     services.dept.ListDeptTree({}).then((tree) => setDeptTree(tree.options ?? []));
   }, []);
 
-  // id → name across the whole tree (the deptName column renders locally —
-  // the API never joins across the module boundary, ADR 0013).
-  const deptNames = React.useMemo(() => {
-    const names = new Map<number, string>();
-    const walk = (nodes: DeptTreeOption[] | undefined) =>
-      (nodes ?? []).forEach((node) => {
-        names.set(node.deptId ?? 0, node.label ?? "");
-        walk(node.children);
-      });
-    walk(deptTree);
-    return names;
-  }, [deptTree]);
+  const deptNames = React.useMemo(() => buildDeptNames(deptTree), [deptTree]);
 
   const pager = React.useMemo(
     () =>
@@ -104,7 +93,7 @@ const PostList: React.FC = () => {
       dataIndex: "postName",
     },
     {
-      title: intl.formatMessage({ id: "pages.dept.deptName", defaultMessage: "所属部门" }),
+      title: intl.formatMessage({ id: "pages.dept.belong", defaultMessage: "所属部门" }),
       dataIndex: "deptId",
       search: false,
       render: (_, record) => (record.deptId ? deptNames.get(record.deptId) ?? record.deptId : "-"),
@@ -156,13 +145,6 @@ const PostList: React.FC = () => {
     },
   ];
 
-  const treeData = (nodes: DeptTreeOption[] | undefined): DataNode[] =>
-    (nodes ?? []).map((node) => ({
-      title: node.label ?? "",
-      key: node.deptId ?? 0,
-      children: node.children?.length ? treeData(node.children) : undefined,
-    }));
-
   return (
     <PageContainer>
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
@@ -174,7 +156,7 @@ const PostList: React.FC = () => {
           <Tree
             blockNode
             defaultExpandAll
-            treeData={treeData(deptTree)}
+            treeData={toDeptTreeData(deptTree)}
             selectedKeys={selectedDept === undefined ? [] : [selectedDept]}
             onSelect={(keys) => {
               setSelectedDept(keys.length ? Number(keys[0]) : undefined);

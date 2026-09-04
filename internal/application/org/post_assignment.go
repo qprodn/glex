@@ -43,14 +43,7 @@ func (s *PostAssignmentApplication) ListUserPosts(ctx context.Context, req *orgv
 		logx.Propagate(ctx, s.logger, "org.list_user_posts", err)
 		return nil, err
 	}
-	out := &orgv1.UserPosts{Items: make([]*orgv1.PostAssignment, 0, len(items))}
-	for _, item := range items {
-		out.Items = append(out.Items, &orgv1.PostAssignment{
-			Post:     convertPost(item.Post),
-			Assigned: item.Assigned,
-		})
-	}
-	return out, nil
+	return convertUserPosts(items), nil
 }
 
 // UpdateUserPosts replaces the user's Post Assignment in one transaction
@@ -67,6 +60,11 @@ func (s *PostAssignmentApplication) UpdateUserPosts(ctx context.Context, req *or
 		logx.Propagate(ctx, s.logger, "org.update_user_posts", err)
 		return nil, err
 	}
+	return convertUserPosts(items), nil
+}
+
+// convertUserPosts maps the entity assignment list to the proto response.
+func convertUserPosts(items []*orgentity.PostAssignment) *orgv1.UserPosts {
 	out := &orgv1.UserPosts{Items: make([]*orgv1.PostAssignment, 0, len(items))}
 	for _, item := range items {
 		out.Items = append(out.Items, &orgv1.PostAssignment{
@@ -74,5 +72,5 @@ func (s *PostAssignmentApplication) UpdateUserPosts(ctx context.Context, req *or
 			Assigned: item.Assigned,
 		})
 	}
-	return out, nil
+	return out
 }

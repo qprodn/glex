@@ -32,6 +32,7 @@ comment on column sys_user.status is '账号状态：0正常 1停用';
 comment on column sys_user.password is '密码（bcrypt 哈希）';
 comment on column sys_user.avatar is '头像地址';
 comment on column sys_user.remark is '备注';
+comment on column sys_user.dept_id is '部门ID（ADR 0013）；0=未设置；org 模块经 crossdomain 契约校验';
 comment on column sys_user.create_by is '创建者用户ID';
 comment on column sys_user.update_by is '更新者用户ID';
 comment on column sys_user.login_ip is '最后登录IP；认证模块写入，其余模块只读';
@@ -470,11 +471,3 @@ comment on column sys_user_post.update_by is '更新者用户ID';
 comment on column sys_user_post.created_at is '创建时间';
 comment on column sys_user_post.updated_at is '更新时间';
 comment on column sys_user_post.deleted_at is '软删除时间；NULL=未删除';
-
--- org module (ADR 0013): the user's department reference. Fresh installs get
--- it from the sys_user definition above; existing installs add it here.
-comment on column sys_user.dept_id is '部门ID（ADR 0013）；0=未设置；org 模块经 crossdomain 契约校验';
-
--- org module (ADR 0013): the user's department reference. Fresh installs get
--- it from the sys_user definition above; existing installs add it here.
-comment on column sys_user.dept_id is '部门ID（ADR 0013）；0=未设置；org 模块经 crossdomain 契约校验';

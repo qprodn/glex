@@ -1,6 +1,7 @@
 import type { DeptTreeOption, Post } from "@/services/org/v1";
 import { numericOptions, useDict } from "@/hooks/useDict";
 import { services } from "@/services";
+import { toDeptSelectData } from "@/utils/deptTree";
 import { collectUpdateMask } from "@/utils/fieldMask";
 import {
   ModalForm,
@@ -22,18 +23,6 @@ type PostFormModalProps = {
 };
 
 const EDITABLE_FIELDS = ["deptId", "postCode", "postName", "postSort", "status", "remark"] as const;
-
-type DeptOption = { title: string; value: number; disabled?: boolean; children?: DeptOption[] };
-
-// Disabled departments show greyed-out but stay visible (RuoYi's
-// buildDeptTreeSelect): a disabled parent can still be read, just not chosen.
-const toDeptTreeData = (nodes: DeptTreeOption[] | undefined): DeptOption[] =>
-  (nodes ?? []).map((node) => ({
-    title: node.label ?? "",
-    value: node.deptId ?? 0,
-    disabled: node.disabled,
-    children: node.children?.length ? toDeptTreeData(node.children) : undefined,
-  }));
 
 /**
  * 岗位编辑器. Posts are department-scoped (ADR 0015): the department is
@@ -90,10 +79,10 @@ const PostFormModal: React.FC<PostFormModalProps> = ({ open, record, deptTree, o
     >
       <ProFormTreeSelect
         name="deptId"
-        label={intl.formatMessage({ id: "pages.dept.deptName", defaultMessage: "所属部门" })}
+        label={intl.formatMessage({ id: "pages.dept.belong", defaultMessage: "所属部门" })}
         fieldProps={{
           treeDefaultExpandAll: true,
-          treeData: toDeptTreeData(deptTree),
+          treeData: toDeptSelectData(deptTree),
         }}
         rules={[{ required: true }]}
       />

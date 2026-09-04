@@ -4,6 +4,7 @@ import { DictTag } from "@/components";
 import { useDict, valueEnumOf } from "@/hooks/useDict";
 import { services } from "@/services";
 import { buildFilter } from "@/utils/aipFilter";
+import { buildDeptNames, toDeptTreeData } from "@/utils/deptTree";
 import { createTokenPagedRequest } from "@/utils/pager";
 import { PlusOutlined } from "@ant-design/icons";
 import {
@@ -14,7 +15,6 @@ import {
 } from "@ant-design/pro-components";
 import { Access, useAccess, useIntl } from "@umijs/max";
 import { App, Button, Card, Modal, Tree, Typography } from "antd";
-import type { DataNode } from "antd/es/tree";
 import React, { useRef, useState } from "react";
 import RoleAssignDrawer from "./RoleAssignDrawer";
 import UserFormModal from "./UserFormModal";
@@ -37,18 +37,7 @@ const UserList: React.FC = () => {
     services.dept.ListDeptTree({}).then((tree) => setDeptTree(tree.options ?? []));
   }, []);
 
-  // id → name across the whole tree: the deptName column renders locally
-  // (the API never joins across the module boundary, ADR 0013).
-  const deptNames = React.useMemo(() => {
-    const names = new Map<number, string>();
-    const walk = (nodes: DeptTreeOption[] | undefined) =>
-      (nodes ?? []).forEach((node) => {
-        names.set(node.deptId ?? 0, node.label ?? "");
-        walk(node.children);
-      });
-    walk(deptTree);
-    return names;
-  }, [deptTree]);
+  const deptNames = React.useMemo(() => buildDeptNames(deptTree), [deptTree]);
 
   // proto ListUsersRequest documents the supported AIP-160 fields; the search
   // form offers exactly those. dept_id is the separate subtree parameter —
@@ -100,7 +89,7 @@ const UserList: React.FC = () => {
     { title: intl.formatMessage({ id: "pages.user.userName", defaultMessage: "用户名" }), dataIndex: "userName" },
     { title: intl.formatMessage({ id: "pages.user.nickName", defaultMessage: "昵称" }), dataIndex: "nickName", search: false },
     {
-      title: intl.formatMessage({ id: "pages.dept.deptName", defaultMessage: "所属部门" }),
+      title: intl.formatMessage({ id: "pages.dept.belong", defaultMessage: "所属部门" }),
       dataIndex: "deptId",
       search: false,
       render: (_, record) => (record.deptId ? deptNames.get(record.deptId) ?? record.deptId : "-"),
@@ -162,13 +151,6 @@ const UserList: React.FC = () => {
     },
   ];
 
-  const treeData = (nodes: DeptTreeOption[] | undefined): DataNode[] =>
-    (nodes ?? []).map((node) => ({
-      title: node.label ?? "",
-      key: node.deptId ?? 0,
-      children: node.children?.length ? treeData(node.children) : undefined,
-    }));
-
   return (
     <PageContainer>
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
@@ -180,7 +162,7 @@ const UserList: React.FC = () => {
           <Tree
             blockNode
             defaultExpandAll
-            treeData={treeData(deptTree)}
+            treeData={toDeptTreeData(deptTree)}
             selectedKeys={selectedDept === undefined ? [] : [selectedDept]}
             onSelect={(keys) => {
               setSelectedDept(keys.length ? Number(keys[0]) : undefined);

@@ -110,11 +110,12 @@ func (s *postImpl) Update(ctx context.Context, p *entity.Post) (*entity.Post, er
 		logx.Propagate(ctx, s.logger, "org.svc.update_post", err)
 		return nil, err
 	}
-	if p.DeptID != current.DeptID {
-		if _, err := s.depts.FindByID(ctx, p.DeptID); err != nil {
-			logx.Propagate(ctx, s.logger, "org.svc.update_post", err)
-			return nil, err
-		}
+	// The department reference is validated on every update, not only on a
+	// move: a pre-existing dangling dept_id (from a manual write) heals here
+	// instead of surviving re-saves.
+	if _, err := s.depts.FindByID(ctx, p.DeptID); err != nil {
+		logx.Propagate(ctx, s.logger, "org.svc.update_post", err)
+		return nil, err
 	}
 	if err := AssertPostUnique(ctx, s.posts, p, p.ID); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.update_post", err)

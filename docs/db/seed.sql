@@ -275,9 +275,13 @@ values (1000000000000000901, 1000000000000000802, 'fe-dev', '前端开发', 1, 0
 on conflict do nothing;
 
 -- 种子用户挂研发部门；幂等：只填空（dept_id=0），不覆盖手工调整。
--- 已有库的字典/文件排序（4/5 → 6/7）同理只对新装库生效。
 update sys_user set dept_id = 1000000000000000802, update_by = 0
 where id in (1000000000000000001, 1000000000000000002) and dept_id = 0;
+
+-- 升级库的字典/文件排序让位（4/5 → 6/7），给部门/岗位腾出 4/5；新装库
+-- 的建表行本身已是 6/7，条件不成立即空跑。
+update sys_menu set order_num = 6 where id = 1000000000000000240 and order_num = 4;
+update sys_menu set order_num = 7 where id = 1000000000000000250 and order_num = 5;
 
 -- 部门管理（若依排序：用户1 角色2 菜单3 部门4 岗位5 字典6 文件7）
 insert into sys_menu (id, menu_name, parent_id, order_num, path, component, menu_type, perms, icon, create_by, update_by)
