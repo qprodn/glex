@@ -14,6 +14,7 @@ import (
 	userrepo "glex/internal/domain/user/repository"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
 )
 
@@ -212,12 +213,21 @@ func (r *userRepo) UpdateUser(ctx context.Context, u *userentity.User) (*userent
 	return result, nil
 }
 
-// DeleteUser soft-deletes the user and its Role Assignment (sys_user_role
-// rows stamped with actorID — ADR 0002, nothing is hard-deleted). The caller
-// owns the transaction and session-revocation ordering.
+// DeleteUser soft-deletes the user and its Role Assignment (sys_user_role)
+// and Post Assignment (sys_user_post) links — link tables owned by the
+// access and org modules, soft-deleted here in the same write, the
+// established sys_user_role precedent (ADR 0002). The caller owns the
+// transaction and session-revocation ordering.
 func (r *userRepo) DeleteUser(ctx context.Context, id int64, actorID int64) ([]int64, error) {
 	if _, err := r.data.DB.UserRole(ctx).Update().
 		Where(userrole.UserIDEQ(id), userrole.DeletedAtIsNil()).
+		SetDeletedAt(time.Now()).
+		SetUpdateBy(actorID).
+		Save(ctx); err != nil {
+		return nil, userStoreError(ctx, r.logger, "user.delete", err)
+	}
+	if _, err := r.data.DB.UserPost(ctx).Update().
+		Where(userpost.UserIDEQ(id), userpost.DeletedAtIsNil()).
 		SetDeletedAt(time.Now()).
 		SetUpdateBy(actorID).
 		Save(ctx); err != nil {
@@ -234,4 +244,16 @@ func (r *userRepo) DeleteUser(ctx context.Context, id int64, actorID int64) ([]i
 		return nil, userStoreError(ctx, r.logger, "user.delete", err)
 	}
 	return []int64{id}, nil
+}
+
+// CountByDeptID counts active users whose department reference points at
+// deptID — the read behind the org module's department guards (ADR 0013).
+func (r *userRepo) CountByDeptID(ctx context.Context, deptID int64) (int, error) {
+	n, err := r.data.DB.User(ctx).Query().
+		Where(user.DeptIDEQ(deptID), user.DeletedAtIsNil()).
+		Count(ctx)
+	if err != nil {
+		return 0, userStoreError(ctx, r.logger, "user.count_by_dept_id", err)
+	}
+	return n, nil
 }

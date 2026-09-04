@@ -6,6 +6,8 @@ import (
 
 	orgv1 "glex/api/org/v1"
 	"glex/internal/bizpkg"
+	"glex/internal/crossdomain/user"
+	orgdomain "glex/internal/domain/org"
 	orgentity "glex/internal/domain/org/entity"
 	orgservice "glex/internal/domain/org/service"
 	"glex/pkg/logx"
@@ -69,16 +71,21 @@ type DeptApplication struct {
 
 	svc    orgservice.Dept
 	tx     Transaction
+	usage  user.DeptUsageReader
 	logger *slog.Logger
 }
 
 // NewDeptApplication creates a DeptApplication. svc is the department domain
 // service — the module's only repository holder; tx wraps writes that span
-// more than one statement (the enable cascade, the guards' reads).
-func NewDeptApplication(svc orgservice.Dept, tx Transaction, logger *slog.Logger) *DeptApplication {
+// more than one statement (the enable cascade, the guards' reads); usage
+// asks the user module, through the crossdomain contract, whether a
+// department is still referenced by users — the guard the org module cannot
+// check on its own tables (ADR 0013).
+func NewDeptApplication(svc orgservice.Dept, tx Transaction, usage user.DeptUsageReader, logger *slog.Logger) *DeptApplication {
 	return &DeptApplication{
 		svc:    svc,
 		tx:     tx,
+		usage:  usage,
 		logger: logger.With(slog.String("component", "application.org.dept")),
 	}
 }
@@ -149,7 +156,11 @@ func (s *DeptApplication) UpdateDept(ctx context.Context, req *orgv1.UpdateDeptR
 		logx.Propagate(ctx, s.logger, "org.update_dept", err)
 		return nil, err
 	}
+	// Capture the pre-mask state first: fieldmask.Update mutates `current`
+	// in place, so afterwards it no longer testifies what the record was.
+	wasEnabled := current.GetStatus() == 0
 	fieldmask.Update(req.GetUpdateMask(), current, req.GetDept())
+	disabling := wasEnabled && current.GetStatus() == 1
 	d := &orgentity.Dept{
 		ID:       current.GetDeptId(),
 		ParentID: current.GetParentId(),
@@ -163,6 +174,16 @@ func (s *DeptApplication) UpdateDept(ctx context.Context, req *orgv1.UpdateDeptR
 	}
 	var updated *orgentity.Dept
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
+		// Disabling is refused while users still sit in the department
+		// (RuoYi: 该部门下存在已分配用户，不能禁用) — asked through the
+		// crossdomain user contract inside the transaction.
+		if disabling {
+			if has, err := s.usage.HasUsersInDept(ctx, d.ID); err != nil {
+				return err
+			} else if has {
+				return orgdomain.ErrDeptHasUsers
+			}
+		}
 		var err error
 		updated, err = s.svc.Update(ctx, d)
 		return err
@@ -174,9 +195,17 @@ func (s *DeptApplication) UpdateDept(ctx context.Context, req *orgv1.UpdateDeptR
 }
 
 // DeleteDept soft-deletes a department by id; refused for the seeded root,
-// while children exist, or while the department still has users or posts.
+// while children, users, or posts still exist.
 func (s *DeptApplication) DeleteDept(ctx context.Context, req *orgv1.DeleteDeptRequest) (*emptypb.Empty, error) {
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
+		// The user guard runs first, through the crossdomain user contract
+		// inside the transaction (RuoYi: 部门存在用户,不允许删除); the
+		// children/posts guards live in the domain service.
+		if has, err := s.usage.HasUsersInDept(ctx, req.GetDeptId()); err != nil {
+			return err
+		} else if has {
+			return orgdomain.ErrDeptHasUsers
+		}
 		return s.svc.Delete(ctx, req.GetDeptId(), bizpkg.AuditActor(ctx))
 	}); err != nil {
 		logx.Propagate(ctx, s.logger, "org.delete_dept", err)

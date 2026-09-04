@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"glex/internal/infra/ent/predicate"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
 	"time"
 
@@ -273,6 +274,27 @@ func (_u *UserUpdate) ClearRemark() *UserUpdate {
 	return _u
 }
 
+// SetDeptID sets the "dept_id" field.
+func (_u *UserUpdate) SetDeptID(v int64) *UserUpdate {
+	_u.mutation.ResetDeptID()
+	_u.mutation.SetDeptID(v)
+	return _u
+}
+
+// SetNillableDeptID sets the "dept_id" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableDeptID(v *int64) *UserUpdate {
+	if v != nil {
+		_u.SetDeptID(*v)
+	}
+	return _u
+}
+
+// AddDeptID adds value to the "dept_id" field.
+func (_u *UserUpdate) AddDeptID(v int64) *UserUpdate {
+	_u.mutation.AddDeptID(v)
+	return _u
+}
+
 // SetLoginIP sets the "login_ip" field.
 func (_u *UserUpdate) SetLoginIP(v string) *UserUpdate {
 	_u.mutation.SetLoginIP(v)
@@ -328,6 +350,21 @@ func (_u *UserUpdate) AddRoleAssignments(v ...*UserRole) *UserUpdate {
 	return _u.AddRoleAssignmentIDs(ids...)
 }
 
+// AddPostAssignmentIDs adds the "post_assignments" edge to the UserPost entity by IDs.
+func (_u *UserUpdate) AddPostAssignmentIDs(ids ...int64) *UserUpdate {
+	_u.mutation.AddPostAssignmentIDs(ids...)
+	return _u
+}
+
+// AddPostAssignments adds the "post_assignments" edges to the UserPost entity.
+func (_u *UserUpdate) AddPostAssignments(v ...*UserPost) *UserUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddPostAssignmentIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
@@ -352,6 +389,27 @@ func (_u *UserUpdate) RemoveRoleAssignments(v ...*UserRole) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveRoleAssignmentIDs(ids...)
+}
+
+// ClearPostAssignments clears all "post_assignments" edges to the UserPost entity.
+func (_u *UserUpdate) ClearPostAssignments() *UserUpdate {
+	_u.mutation.ClearPostAssignments()
+	return _u
+}
+
+// RemovePostAssignmentIDs removes the "post_assignments" edge to UserPost entities by IDs.
+func (_u *UserUpdate) RemovePostAssignmentIDs(ids ...int64) *UserUpdate {
+	_u.mutation.RemovePostAssignmentIDs(ids...)
+	return _u
+}
+
+// RemovePostAssignments removes "post_assignments" edges to UserPost entities.
+func (_u *UserUpdate) RemovePostAssignments(v ...*UserPost) *UserUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemovePostAssignmentIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -484,6 +542,12 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.RemarkCleared() {
 		_spec.ClearField(user.FieldRemark, field.TypeString)
 	}
+	if value, ok := _u.mutation.DeptID(); ok {
+		_spec.SetField(user.FieldDeptID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedDeptID(); ok {
+		_spec.AddField(user.FieldDeptID, field.TypeInt64, value)
+	}
 	if value, ok := _u.mutation.LoginIP(); ok {
 		_spec.SetField(user.FieldLoginIP, field.TypeString, value)
 	}
@@ -534,6 +598,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.PostAssignmentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.PostAssignmentsTable,
+			Columns: []string{user.PostAssignmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userpost.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedPostAssignmentsIDs(); len(nodes) > 0 && !_u.mutation.PostAssignmentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.PostAssignmentsTable,
+			Columns: []string{user.PostAssignmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userpost.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.PostAssignmentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.PostAssignmentsTable,
+			Columns: []string{user.PostAssignmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userpost.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -805,6 +914,27 @@ func (_u *UserUpdateOne) ClearRemark() *UserUpdateOne {
 	return _u
 }
 
+// SetDeptID sets the "dept_id" field.
+func (_u *UserUpdateOne) SetDeptID(v int64) *UserUpdateOne {
+	_u.mutation.ResetDeptID()
+	_u.mutation.SetDeptID(v)
+	return _u
+}
+
+// SetNillableDeptID sets the "dept_id" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableDeptID(v *int64) *UserUpdateOne {
+	if v != nil {
+		_u.SetDeptID(*v)
+	}
+	return _u
+}
+
+// AddDeptID adds value to the "dept_id" field.
+func (_u *UserUpdateOne) AddDeptID(v int64) *UserUpdateOne {
+	_u.mutation.AddDeptID(v)
+	return _u
+}
+
 // SetLoginIP sets the "login_ip" field.
 func (_u *UserUpdateOne) SetLoginIP(v string) *UserUpdateOne {
 	_u.mutation.SetLoginIP(v)
@@ -860,6 +990,21 @@ func (_u *UserUpdateOne) AddRoleAssignments(v ...*UserRole) *UserUpdateOne {
 	return _u.AddRoleAssignmentIDs(ids...)
 }
 
+// AddPostAssignmentIDs adds the "post_assignments" edge to the UserPost entity by IDs.
+func (_u *UserUpdateOne) AddPostAssignmentIDs(ids ...int64) *UserUpdateOne {
+	_u.mutation.AddPostAssignmentIDs(ids...)
+	return _u
+}
+
+// AddPostAssignments adds the "post_assignments" edges to the UserPost entity.
+func (_u *UserUpdateOne) AddPostAssignments(v ...*UserPost) *UserUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddPostAssignmentIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
@@ -884,6 +1029,27 @@ func (_u *UserUpdateOne) RemoveRoleAssignments(v ...*UserRole) *UserUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveRoleAssignmentIDs(ids...)
+}
+
+// ClearPostAssignments clears all "post_assignments" edges to the UserPost entity.
+func (_u *UserUpdateOne) ClearPostAssignments() *UserUpdateOne {
+	_u.mutation.ClearPostAssignments()
+	return _u
+}
+
+// RemovePostAssignmentIDs removes the "post_assignments" edge to UserPost entities by IDs.
+func (_u *UserUpdateOne) RemovePostAssignmentIDs(ids ...int64) *UserUpdateOne {
+	_u.mutation.RemovePostAssignmentIDs(ids...)
+	return _u
+}
+
+// RemovePostAssignments removes "post_assignments" edges to UserPost entities.
+func (_u *UserUpdateOne) RemovePostAssignments(v ...*UserPost) *UserUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemovePostAssignmentIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -1046,6 +1212,12 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	if _u.mutation.RemarkCleared() {
 		_spec.ClearField(user.FieldRemark, field.TypeString)
 	}
+	if value, ok := _u.mutation.DeptID(); ok {
+		_spec.SetField(user.FieldDeptID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedDeptID(); ok {
+		_spec.AddField(user.FieldDeptID, field.TypeInt64, value)
+	}
 	if value, ok := _u.mutation.LoginIP(); ok {
 		_spec.SetField(user.FieldLoginIP, field.TypeString, value)
 	}
@@ -1096,6 +1268,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.PostAssignmentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.PostAssignmentsTable,
+			Columns: []string{user.PostAssignmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userpost.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedPostAssignmentsIDs(); len(nodes) > 0 && !_u.mutation.PostAssignmentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.PostAssignmentsTable,
+			Columns: []string{user.PostAssignmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userpost.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.PostAssignmentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.PostAssignmentsTable,
+			Columns: []string{user.PostAssignmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userpost.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

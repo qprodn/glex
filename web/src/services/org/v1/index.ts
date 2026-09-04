@@ -323,5 +323,329 @@ export type ErrorReason =
   // One or more post ids in a Post Assignment do not exist (or are
   // soft-deleted/disabled).
   | "POST_NOT_ASSIGNABLE";
+// Post is a position within one department (岗位), ported from RuoYi 6.0
+// sys_post — posts are department-scoped: the name is unique within its
+// department, the code is unique across all posts (ADR 0015).
+export type Post = {
+  // Snowflake ID. Server-assigned on create.
+  postId: number | undefined;
+  // The owning department. Required; validated to exist on save.
+  deptId: number | undefined;
+  // Post code (e.g. "fe-dev"). Required, non-blank; globally unique among
+  // active posts. No charset rule.
+  postCode: string | undefined;
+  // Post name (e.g. 前端开发). Required, non-blank; unique within its
+  // department among active posts.
+  postName: string | undefined;
+  // Display order. Defaults to 0; not required (0 is legal).
+  postSort: number | undefined;
+  // 0正常 1停用 (per RuoYi). Ordinary updatable field.
+  status: number | undefined;
+  remark: string | undefined;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  createBy: number | undefined;
+  updateBy: number | undefined;
+  createdAt: wellKnownTimestamp | undefined;
+  updatedAt: wellKnownTimestamp | undefined;
+};
+
+// PostSet is a page of posts.
+export type PostSet = {
+  posts: Post[] | undefined;
+  // Opaque token for the next page; empty when on the last page.
+  nextPageToken: string | undefined;
+};
+
+export type ListPostsRequest = {
+  // Optional. Page size.
+  pageSize: number | undefined;
+  // Optional. Page token from a previous response.
+  pageToken: string | undefined;
+  // Optional. AIP-160 filter. Supported fields:
+  // * `post_code` (e.g. `post_code="fe-dev"`)
+  // * `post_name` (e.g. `post_name="前端"`)
+  // * `status` (e.g. `status=0`)
+  // * `dept_id` (e.g. `dept_id=1` — exact, one department)
+  filter: string | undefined;
+  // Optional. AIP-132 order, e.g. `post_sort` or `post_sort, post_id`.
+  orderBy: string | undefined;
+  // Optional. Restrict the listing to this department's subtree (the
+  // department itself and every descendant). Distinct from the filter's
+  // exact dept_id: 0 = no restriction.
+  deptId: number | undefined;
+};
+
+export type GetPostRequest = {
+  // Required. The id of the post to retrieve.
+  //
+  // Behaviors: REQUIRED
+  postId: number | undefined;
+};
+
+export type CreatePostRequest = {
+  // Required. The post to create.
+  //
+  // Behaviors: REQUIRED
+  post: Post | undefined;
+};
+
+export type UpdatePostRequest = {
+  // Required. The post to update. post_id identifies the record.
+  //
+  // Behaviors: REQUIRED
+  post: Post | undefined;
+  // Required. Mask of fields to update.
+  //
+  // Behaviors: REQUIRED
+  updateMask: wellKnownFieldMask | undefined;
+};
+
+export type DeletePostRequest = {
+  // Required. The id of the post to delete.
+  //
+  // Behaviors: REQUIRED
+  postId: number | undefined;
+};
+
+// PostService is the post CRUD service.
+export interface PostService {
+  // ListPosts lists posts with AIP filter/order/page-token. The optional
+  // dept_id parameter filters by the department's subtree (the department
+  // itself and every descendant), matching the post page's left tree.
+  ListPosts(request: ListPostsRequest): Promise<PostSet>;
+  // GetPost retrieves a post by id.
+  GetPost(request: GetPostRequest): Promise<Post>;
+  // CreatePost creates a post under an existing department.
+  CreatePost(request: CreatePostRequest): Promise<Post>;
+  // UpdatePost partially updates a post via field-mask. Disabling a post
+  // that still has users assigned is refused.
+  UpdatePost(request: UpdatePostRequest): Promise<Post>;
+  // DeletePost soft-deletes a post by id; refused while users are still
+  // assigned.
+  DeletePost(request: DeletePostRequest): Promise<wellKnownEmpty>;
+}
+
+export function createPostServiceClient(
+  handler: RequestHandler
+): PostService {
+  return {
+    ListPosts(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `iam/post`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      if (request.pageSize) {
+        queryParams.push(`pageSize=${encodeURIComponent(request.pageSize.toString())}`)
+      }
+      if (request.pageToken) {
+        queryParams.push(`pageToken=${encodeURIComponent(request.pageToken.toString())}`)
+      }
+      if (request.filter) {
+        queryParams.push(`filter=${encodeURIComponent(request.filter.toString())}`)
+      }
+      if (request.orderBy) {
+        queryParams.push(`orderBy=${encodeURIComponent(request.orderBy.toString())}`)
+      }
+      if (request.deptId) {
+        queryParams.push(`deptId=${encodeURIComponent(request.deptId.toString())}`)
+      }
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "PostService",
+        method: "ListPosts",
+      }) as Promise<PostSet>;
+    },
+    GetPost(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.postId) {
+        throw new Error("missing required field request.post_id");
+      }
+      const path = `iam/post/${request.postId}`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "PostService",
+        method: "GetPost",
+      }) as Promise<Post>;
+    },
+    CreatePost(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `iam/post`; // eslint-disable-line quotes
+      const body = JSON.stringify(request?.post ?? {});
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "PostService",
+        method: "CreatePost",
+      }) as Promise<Post>;
+    },
+    UpdatePost(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.post?.postId) {
+        throw new Error("missing required field request.post.post_id");
+      }
+      const path = `iam/post/${request.post.postId}`; // eslint-disable-line quotes
+      const body = JSON.stringify(request?.post ?? {});
+      const queryParams: string[] = [];
+      if (request.updateMask) {
+        queryParams.push(`updateMask=${encodeURIComponent(request.updateMask.toString())}`)
+      }
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "PATCH",
+        body,
+      }, {
+        service: "PostService",
+        method: "UpdatePost",
+      }) as Promise<Post>;
+    },
+    DeletePost(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.postId) {
+        throw new Error("missing required field request.post_id");
+      }
+      const path = `iam/post/${request.postId}`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "DELETE",
+        body,
+      }, {
+        service: "PostService",
+        method: "DeletePost",
+      }) as Promise<wellKnownEmpty>;
+    },
+  };
+}
+// PostAssignment is one post with whether the user is assigned it — the
+// user editor's post dialog data: the candidate posts of the effective
+// department plus a checked flag.
+export type PostAssignment = {
+  // The post itself.
+  post: Post | undefined;
+  // Whether the user currently holds this post.
+  assigned: boolean | undefined;
+};
+
+// UserPosts is a user's Post Assignment (岗位分配): the effective
+// department's active posts with their assigned flags, ordered by
+// (post_sort, post_id). Not paginated — a department's posts are a small
+// flat set.
+export type UserPosts = {
+  items: PostAssignment[] | undefined;
+};
+
+export type ListUserPostsRequest = {
+  // Required. The id of the user whose posts are read.
+  //
+  // Behaviors: REQUIRED
+  userId: number | undefined;
+  // Optional. The department the form is targeting — the candidate set
+  // follows a not-yet-saved department change. Absent = the user's stored
+  // department.
+  deptId: number | undefined;
+};
+
+export type UpdateUserPostsRequest = {
+  // Required. The id of the user whose assignment is replaced.
+  //
+  // Behaviors: REQUIRED
+  userId: number | undefined;
+  // The complete desired assignment; full replacement (empty = clear all).
+  postIds: number[] | undefined;
+};
+
+// PostAssignmentService owns the user↔post link (**Post Assignment**):
+// the two endpoints behind the user editor's post dialog.
+export interface PostAssignmentService {
+  // ListUserPosts returns the effective department's active posts with
+  // whether the user is assigned each. The effective department is the
+  // optional dept_id override (the form's not-yet-saved choice) or, absent
+  // it, the user's stored department.
+  ListUserPosts(request: ListUserPostsRequest): Promise<UserPosts>;
+  // UpdateUserPosts replaces the user's Post Assignment (full replacement;
+  // empty post_ids clears all). Unknown, soft-deleted, or disabled post ids
+  // are rejected with POST_NOT_ASSIGNABLE; duplicates are silently deduped.
+  // Posts are validated to exist and be enabled — which department they
+  // belong to is not checked (RuoYi parity: the dialog's options restrict
+  // the choices, the save does not re-derive the department).
+  UpdateUserPosts(request: UpdateUserPostsRequest): Promise<UserPosts>;
+}
+
+export function createPostAssignmentServiceClient(
+  handler: RequestHandler
+): PostAssignmentService {
+  return {
+    ListUserPosts(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.userId) {
+        throw new Error("missing required field request.user_id");
+      }
+      const path = `iam/user/${request.userId}/posts`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      if (request.deptId) {
+        queryParams.push(`deptId=${encodeURIComponent(request.deptId.toString())}`)
+      }
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "PostAssignmentService",
+        method: "ListUserPosts",
+      }) as Promise<UserPosts>;
+    },
+    UpdateUserPosts(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.userId) {
+        throw new Error("missing required field request.user_id");
+      }
+      const path = `iam/user/${request.userId}/posts`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "PUT",
+        body,
+      }, {
+        service: "PostAssignmentService",
+        method: "UpdateUserPosts",
+      }) as Promise<UserPosts>;
+    },
+  };
+}
 
 // @@protoc_insertion_point(typescript-http-eof)

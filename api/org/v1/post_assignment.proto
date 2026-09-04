@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package org.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "org/v1/post.proto";
+
+option go_package = "glex/api/org/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.org.v1";
+
+// PostAssignment is one post with whether the user is assigned it — the
+// user editor's post dialog data: the candidate posts of the effective
+// department plus a checked flag.
+message PostAssignment {
+  // The post itself.
+  Post post = 1;
+  // Whether the user currently holds this post.
+  bool assigned = 2;
+}
+
+// UserPosts is a user's Post Assignment (岗位分配): the effective
+// department's active posts with their assigned flags, ordered by
+// (post_sort, post_id). Not paginated — a department's posts are a small
+// flat set.
+message UserPosts {
+  repeated PostAssignment items = 1;
+}
+
+// PostAssignmentService owns the user↔post link (**Post Assignment**):
+// the two endpoints behind the user editor's post dialog.
+service PostAssignmentService {
+  // ListUserPosts returns the effective department's active posts with
+  // whether the user is assigned each. The effective department is the
+  // optional dept_id override (the form's not-yet-saved choice) or, absent
+  // it, the user's stored department.
+  rpc ListUserPosts(ListUserPostsRequest) returns (UserPosts) {
+    option (google.api.http) = {
+      get: "/iam/user/{user_id}/posts"
+    };
+  }
+  // UpdateUserPosts replaces the user's Post Assignment (full replacement;
+  // empty post_ids clears all). Unknown, soft-deleted, or disabled post ids
+  // are rejected with POST_NOT_ASSIGNABLE; duplicates are silently deduped.
+  // Posts are validated to exist and be enabled — which department they
+  // belong to is not checked (RuoYi parity: the dialog's options restrict
+  // the choices, the save does not re-derive the department).
+  rpc UpdateUserPosts(UpdateUserPostsRequest) returns (UserPosts) {
+    option (google.api.http) = {
+      put: "/iam/user/{user_id}/posts"
+      body: "*"
+    };
+  }
+}
+
+message ListUserPostsRequest {
+  // Required. The id of the user whose posts are read.
+  int64 user_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Optional. The department the form is targeting — the candidate set
+  // follows a not-yet-saved department change. Absent = the user's stored
+  // department.
+  int64 dept_id = 2;
+}
+
+message UpdateUserPostsRequest {
+  // Required. The id of the user whose assignment is replaced.
+  int64 user_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // The complete desired assignment; full replacement (empty = clear all).
+  repeated int64 post_ids = 2;
+}

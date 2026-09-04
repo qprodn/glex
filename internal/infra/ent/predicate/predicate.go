@@ -27,6 +27,9 @@ type Menu func(*sql.Selector)
 // OperLog is the predicate function for operlog builders.
 type OperLog func(*sql.Selector)
 
+// Post is the predicate function for post builders.
+type Post func(*sql.Selector)
+
 // Role is the predicate function for role builders.
 type Role func(*sql.Selector)
 
@@ -35,6 +38,9 @@ type RoleMenu func(*sql.Selector)
 
 // User is the predicate function for user builders.
 type User func(*sql.Selector)
+
+// UserPost is the predicate function for userpost builders.
+type UserPost func(*sql.Selector)
 
 // UserRole is the predicate function for userrole builders.
 type UserRole func(*sql.Selector)

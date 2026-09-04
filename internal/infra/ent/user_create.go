@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
 	"time"
 
@@ -211,6 +212,20 @@ func (_c *UserCreate) SetNillableRemark(v *string) *UserCreate {
 	return _c
 }
 
+// SetDeptID sets the "dept_id" field.
+func (_c *UserCreate) SetDeptID(v int64) *UserCreate {
+	_c.mutation.SetDeptID(v)
+	return _c
+}
+
+// SetNillableDeptID sets the "dept_id" field if the given value is not nil.
+func (_c *UserCreate) SetNillableDeptID(v *int64) *UserCreate {
+	if v != nil {
+		_c.SetDeptID(*v)
+	}
+	return _c
+}
+
 // SetLoginIP sets the "login_ip" field.
 func (_c *UserCreate) SetLoginIP(v string) *UserCreate {
 	_c.mutation.SetLoginIP(v)
@@ -258,6 +273,21 @@ func (_c *UserCreate) AddRoleAssignments(v ...*UserRole) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddRoleAssignmentIDs(ids...)
+}
+
+// AddPostAssignmentIDs adds the "post_assignments" edge to the UserPost entity by IDs.
+func (_c *UserCreate) AddPostAssignmentIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddPostAssignmentIDs(ids...)
+	return _c
+}
+
+// AddPostAssignments adds the "post_assignments" edges to the UserPost entity.
+func (_c *UserCreate) AddPostAssignments(v ...*UserPost) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddPostAssignmentIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -335,6 +365,10 @@ func (_c *UserCreate) defaults() {
 		v := user.DefaultRemark
 		_c.mutation.SetRemark(v)
 	}
+	if _, ok := _c.mutation.DeptID(); !ok {
+		v := user.DefaultDeptID
+		_c.mutation.SetDeptID(v)
+	}
 	if _, ok := _c.mutation.LoginIP(); !ok {
 		v := user.DefaultLoginIP
 		_c.mutation.SetLoginIP(v)
@@ -368,6 +402,9 @@ func (_c *UserCreate) check() error {
 		if err := user.AvatarValidator(v); err != nil {
 			return &ValidationError{Name: "avatar", err: fmt.Errorf(`ent: validator failed for field "User.avatar": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.DeptID(); !ok {
+		return &ValidationError{Name: "dept_id", err: errors.New(`ent: missing required field "User.dept_id"`)}
 	}
 	return nil
 }
@@ -458,6 +495,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_spec.SetField(user.FieldRemark, field.TypeString, value)
 		_node.Remark = value
 	}
+	if value, ok := _c.mutation.DeptID(); ok {
+		_spec.SetField(user.FieldDeptID, field.TypeInt64, value)
+		_node.DeptID = value
+	}
 	if value, ok := _c.mutation.LoginIP(); ok {
 		_spec.SetField(user.FieldLoginIP, field.TypeString, value)
 		_node.LoginIP = value
@@ -475,6 +516,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.PostAssignmentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.PostAssignmentsTable,
+			Columns: []string{user.PostAssignmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userpost.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -753,6 +810,24 @@ func (u *UserUpsert) UpdateRemark() *UserUpsert {
 // ClearRemark clears the value of the "remark" field.
 func (u *UserUpsert) ClearRemark() *UserUpsert {
 	u.SetNull(user.FieldRemark)
+	return u
+}
+
+// SetDeptID sets the "dept_id" field.
+func (u *UserUpsert) SetDeptID(v int64) *UserUpsert {
+	u.Set(user.FieldDeptID, v)
+	return u
+}
+
+// UpdateDeptID sets the "dept_id" field to the value that was provided on create.
+func (u *UserUpsert) UpdateDeptID() *UserUpsert {
+	u.SetExcluded(user.FieldDeptID)
+	return u
+}
+
+// AddDeptID adds v to the "dept_id" field.
+func (u *UserUpsert) AddDeptID(v int64) *UserUpsert {
+	u.Add(user.FieldDeptID, v)
 	return u
 }
 
@@ -1099,6 +1174,27 @@ func (u *UserUpsertOne) UpdateRemark() *UserUpsertOne {
 func (u *UserUpsertOne) ClearRemark() *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
 		s.ClearRemark()
+	})
+}
+
+// SetDeptID sets the "dept_id" field.
+func (u *UserUpsertOne) SetDeptID(v int64) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetDeptID(v)
+	})
+}
+
+// AddDeptID adds v to the "dept_id" field.
+func (u *UserUpsertOne) AddDeptID(v int64) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.AddDeptID(v)
+	})
+}
+
+// UpdateDeptID sets the "dept_id" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateDeptID() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateDeptID()
 	})
 }
 
@@ -1617,6 +1713,27 @@ func (u *UserUpsertBulk) UpdateRemark() *UserUpsertBulk {
 func (u *UserUpsertBulk) ClearRemark() *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
 		s.ClearRemark()
+	})
+}
+
+// SetDeptID sets the "dept_id" field.
+func (u *UserUpsertBulk) SetDeptID(v int64) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetDeptID(v)
+	})
+}
+
+// AddDeptID adds v to the "dept_id" field.
+func (u *UserUpsertBulk) AddDeptID(v int64) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.AddDeptID(v)
+	})
+}
+
+// UpdateDeptID sets the "dept_id" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateDeptID() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateDeptID()
 	})
 }
 

@@ -10,10 +10,12 @@ import (
 	"glex/internal/infra/ent/loginlog"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/operlog"
+	"glex/internal/infra/ent/post"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/rolemenu"
 	"glex/internal/infra/ent/schema"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
 	"time"
 )
@@ -351,6 +353,41 @@ func init() {
 	operlogDescRequestID := operlogFields[11].Descriptor()
 	// operlog.DefaultRequestID holds the default value on creation for the request_id field.
 	operlog.DefaultRequestID = operlogDescRequestID.Default.(string)
+	postMixin := schema.Post{}.Mixin()
+	postMixinFields0 := postMixin[0].Fields()
+	_ = postMixinFields0
+	postFields := schema.Post{}.Fields()
+	_ = postFields
+	// postDescCreateBy is the schema descriptor for create_by field.
+	postDescCreateBy := postMixinFields0[0].Descriptor()
+	// post.DefaultCreateBy holds the default value on creation for the create_by field.
+	post.DefaultCreateBy = postDescCreateBy.Default.(int64)
+	// postDescUpdateBy is the schema descriptor for update_by field.
+	postDescUpdateBy := postMixinFields0[1].Descriptor()
+	// post.DefaultUpdateBy holds the default value on creation for the update_by field.
+	post.DefaultUpdateBy = postDescUpdateBy.Default.(int64)
+	// postDescCreatedAt is the schema descriptor for created_at field.
+	postDescCreatedAt := postMixinFields0[2].Descriptor()
+	// post.DefaultCreatedAt holds the default value on creation for the created_at field.
+	post.DefaultCreatedAt = postDescCreatedAt.Default.(func() time.Time)
+	// postDescUpdatedAt is the schema descriptor for updated_at field.
+	postDescUpdatedAt := postMixinFields0[3].Descriptor()
+	// post.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	post.DefaultUpdatedAt = postDescUpdatedAt.Default.(func() time.Time)
+	// post.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	post.UpdateDefaultUpdatedAt = postDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// postDescPostSort is the schema descriptor for post_sort field.
+	postDescPostSort := postFields[4].Descriptor()
+	// post.DefaultPostSort holds the default value on creation for the post_sort field.
+	post.DefaultPostSort = postDescPostSort.Default.(int)
+	// postDescStatus is the schema descriptor for status field.
+	postDescStatus := postFields[5].Descriptor()
+	// post.DefaultStatus holds the default value on creation for the status field.
+	post.DefaultStatus = postDescStatus.Default.(int8)
+	// postDescRemark is the schema descriptor for remark field.
+	postDescRemark := postFields[6].Descriptor()
+	// post.DefaultRemark holds the default value on creation for the remark field.
+	post.DefaultRemark = postDescRemark.Default.(string)
 	roleMixin := schema.Role{}.Mixin()
 	roleMixinFields0 := roleMixin[0].Fields()
 	_ = roleMixinFields0
@@ -462,10 +499,37 @@ func init() {
 	userDescRemark := userFields[9].Descriptor()
 	// user.DefaultRemark holds the default value on creation for the remark field.
 	user.DefaultRemark = userDescRemark.Default.(string)
+	// userDescDeptID is the schema descriptor for dept_id field.
+	userDescDeptID := userFields[10].Descriptor()
+	// user.DefaultDeptID holds the default value on creation for the dept_id field.
+	user.DefaultDeptID = userDescDeptID.Default.(int64)
 	// userDescLoginIP is the schema descriptor for login_ip field.
-	userDescLoginIP := userFields[10].Descriptor()
+	userDescLoginIP := userFields[11].Descriptor()
 	// user.DefaultLoginIP holds the default value on creation for the login_ip field.
 	user.DefaultLoginIP = userDescLoginIP.Default.(string)
+	userpostMixin := schema.UserPost{}.Mixin()
+	userpostMixinFields0 := userpostMixin[0].Fields()
+	_ = userpostMixinFields0
+	userpostFields := schema.UserPost{}.Fields()
+	_ = userpostFields
+	// userpostDescCreateBy is the schema descriptor for create_by field.
+	userpostDescCreateBy := userpostMixinFields0[0].Descriptor()
+	// userpost.DefaultCreateBy holds the default value on creation for the create_by field.
+	userpost.DefaultCreateBy = userpostDescCreateBy.Default.(int64)
+	// userpostDescUpdateBy is the schema descriptor for update_by field.
+	userpostDescUpdateBy := userpostMixinFields0[1].Descriptor()
+	// userpost.DefaultUpdateBy holds the default value on creation for the update_by field.
+	userpost.DefaultUpdateBy = userpostDescUpdateBy.Default.(int64)
+	// userpostDescCreatedAt is the schema descriptor for created_at field.
+	userpostDescCreatedAt := userpostMixinFields0[2].Descriptor()
+	// userpost.DefaultCreatedAt holds the default value on creation for the created_at field.
+	userpost.DefaultCreatedAt = userpostDescCreatedAt.Default.(func() time.Time)
+	// userpostDescUpdatedAt is the schema descriptor for updated_at field.
+	userpostDescUpdatedAt := userpostMixinFields0[3].Descriptor()
+	// userpost.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	userpost.DefaultUpdatedAt = userpostDescUpdatedAt.Default.(func() time.Time)
+	// userpost.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	userpost.UpdateDefaultUpdatedAt = userpostDescUpdatedAt.UpdateDefault.(func() time.Time)
 	userroleMixin := schema.UserRole{}.Mixin()
 	userroleMixinFields0 := userroleMixin[0].Fields()
 	_ = userroleMixinFields0

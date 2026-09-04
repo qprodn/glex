@@ -46,6 +46,10 @@ func (User) Fields() []ent.Field {
 		field.String("password").Default(""),
 		field.String("avatar").Optional().Default("").MaxLen(256),
 		field.String("remark").Optional().Default(""),
+		// The user's place in the org structure (ADR 0013): a plain column
+		// referencing sys_dept, 0 = none. The org module validates it via the
+		// crossdomain org contract; no ent edge and no FK across modules.
+		field.Int64("dept_id").Default(0),
 		// Last-login fields; written by the authn module, read-only here.
 		field.String("login_ip").Optional().Default(""),
 		field.Time("login_date").Optional().Nillable(),
@@ -63,9 +67,11 @@ func (User) Annotations() []entschema.Annotation {
 // Edges of the User. The Role Assignment (角色分配) lives in sys_user_role as
 // explicit UserRole link rows — one per assignment, audit columns and soft
 // delete included (ADR 0002) — owned by the access module, not the user
-// module's concern.
+// module's concern. The Post Assignment (岗位分配) is the same shape in
+// sys_user_post, owned by the org module.
 func (User) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("role_assignments", UserRole.Type),
+		edge.To("post_assignments", UserPost.Type),
 	}
 }

@@ -45,6 +45,8 @@ type User struct {
 	Avatar string `json:"avatar,omitempty"`
 	// Remark holds the value of the "remark" field.
 	Remark string `json:"remark,omitempty"`
+	// DeptID holds the value of the "dept_id" field.
+	DeptID int64 `json:"dept_id,omitempty"`
 	// LoginIP holds the value of the "login_ip" field.
 	LoginIP string `json:"login_ip,omitempty"`
 	// LoginDate holds the value of the "login_date" field.
@@ -59,9 +61,11 @@ type User struct {
 type UserEdges struct {
 	// RoleAssignments holds the value of the role_assignments edge.
 	RoleAssignments []*UserRole `json:"role_assignments,omitempty"`
+	// PostAssignments holds the value of the post_assignments edge.
+	PostAssignments []*UserPost `json:"post_assignments,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // RoleAssignmentsOrErr returns the RoleAssignments value or an error if the edge
@@ -73,12 +77,21 @@ func (e UserEdges) RoleAssignmentsOrErr() ([]*UserRole, error) {
 	return nil, &NotLoadedError{edge: "role_assignments"}
 }
 
+// PostAssignmentsOrErr returns the PostAssignments value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) PostAssignmentsOrErr() ([]*UserPost, error) {
+	if e.loadedTypes[1] {
+		return e.PostAssignments, nil
+	}
+	return nil, &NotLoadedError{edge: "post_assignments"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case user.FieldID, user.FieldCreateBy, user.FieldUpdateBy, user.FieldGender, user.FieldStatus:
+		case user.FieldID, user.FieldCreateBy, user.FieldUpdateBy, user.FieldGender, user.FieldStatus, user.FieldDeptID:
 			values[i] = new(sql.NullInt64)
 		case user.FieldUserName, user.FieldNickName, user.FieldEmail, user.FieldPhoneNumber, user.FieldPassword, user.FieldAvatar, user.FieldRemark, user.FieldLoginIP:
 			values[i] = new(sql.NullString)
@@ -192,6 +205,12 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Remark = value.String
 			}
+		case user.FieldDeptID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field dept_id", values[i])
+			} else if value.Valid {
+				_m.DeptID = value.Int64
+			}
 		case user.FieldLoginIP:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field login_ip", values[i])
@@ -221,6 +240,11 @@ func (_m *User) Value(name string) (ent.Value, error) {
 // QueryRoleAssignments queries the "role_assignments" edge of the User entity.
 func (_m *User) QueryRoleAssignments() *UserRoleQuery {
 	return NewUserClient(_m.config).QueryRoleAssignments(_m)
+}
+
+// QueryPostAssignments queries the "post_assignments" edge of the User entity.
+func (_m *User) QueryPostAssignments() *UserPostQuery {
+	return NewUserClient(_m.config).QueryPostAssignments(_m)
 }
 
 // Update returns a builder for updating this User.
@@ -293,6 +317,9 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("remark=")
 	builder.WriteString(_m.Remark)
+	builder.WriteString(", ")
+	builder.WriteString("dept_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.DeptID))
 	builder.WriteString(", ")
 	builder.WriteString("login_ip=")
 	builder.WriteString(_m.LoginIP)

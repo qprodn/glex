@@ -1,0 +1,127 @@
+syntax = "proto3";
+
+package org.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/field_mask.proto";
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "glex/api/org/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.org.v1";
+
+// Post is a position within one department (岗位), ported from RuoYi 6.0
+// sys_post — posts are department-scoped: the name is unique within its
+// department, the code is unique across all posts (ADR 0015).
+message Post {
+  // Snowflake ID. Server-assigned on create.
+  int64 post_id = 1;
+  // The owning department. Required; validated to exist on save.
+  int64 dept_id = 2;
+  // Post code (e.g. "fe-dev"). Required, non-blank; globally unique among
+  // active posts. No charset rule.
+  string post_code = 3;
+  // Post name (e.g. 前端开发). Required, non-blank; unique within its
+  // department among active posts.
+  string post_name = 4;
+  // Display order. Defaults to 0; not required (0 is legal).
+  int32 post_sort = 5;
+  // 0正常 1停用 (per RuoYi). Ordinary updatable field.
+  int32 status = 6;
+  string remark = 7;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  int64 create_by = 8;
+  int64 update_by = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// PostSet is a page of posts.
+message PostSet {
+  repeated Post posts = 1;
+  // Opaque token for the next page; empty when on the last page.
+  string next_page_token = 2;
+}
+
+// PostService is the post CRUD service.
+service PostService {
+  // ListPosts lists posts with AIP filter/order/page-token. The optional
+  // dept_id parameter filters by the department's subtree (the department
+  // itself and every descendant), matching the post page's left tree.
+  rpc ListPosts(ListPostsRequest) returns (PostSet) {
+    option (google.api.http) = {
+      get: "/iam/post"
+    };
+  }
+  // GetPost retrieves a post by id.
+  rpc GetPost(GetPostRequest) returns (Post) {
+    option (google.api.http) = {
+      get: "/iam/post/{post_id}"
+    };
+  }
+  // CreatePost creates a post under an existing department.
+  rpc CreatePost(CreatePostRequest) returns (Post) {
+    option (google.api.http) = {
+      post: "/iam/post"
+      body: "post"
+    };
+  }
+  // UpdatePost partially updates a post via field-mask. Disabling a post
+  // that still has users assigned is refused.
+  rpc UpdatePost(UpdatePostRequest) returns (Post) {
+    option (google.api.http) = {
+      patch: "/iam/post/{post.post_id}"
+      body: "post"
+    };
+  }
+  // DeletePost soft-deletes a post by id; refused while users are still
+  // assigned.
+  rpc DeletePost(DeletePostRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/iam/post/{post_id}"
+    };
+  }
+}
+
+message ListPostsRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `post_code` (e.g. `post_code="fe-dev"`)
+  //   * `post_name` (e.g. `post_name="前端"`)
+  //   * `status` (e.g. `status=0`)
+  //   * `dept_id` (e.g. `dept_id=1` — exact, one department)
+  string filter = 3;
+  // Optional. AIP-132 order, e.g. `post_sort` or `post_sort, post_id`.
+  string order_by = 4;
+  // Optional. Restrict the listing to this department's subtree (the
+  // department itself and every descendant). Distinct from the filter's
+  // exact dept_id: 0 = no restriction.
+  int64 dept_id = 5;
+}
+
+message GetPostRequest {
+  // Required. The id of the post to retrieve.
+  int64 post_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message CreatePostRequest {
+  // Required. The post to create.
+  Post post = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdatePostRequest {
+  // Required. The post to update. post_id identifies the record.
+  Post post = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. Mask of fields to update.
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeletePostRequest {
+  // Required. The id of the post to delete.
+  int64 post_id = 1 [(google.api.field_behavior) = REQUIRED];
+}

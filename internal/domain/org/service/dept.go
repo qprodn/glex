@@ -32,8 +32,7 @@ type Dept interface {
 	Update(ctx context.Context, d *entity.Dept) (*entity.Dept, error)
 	// Delete soft-deletes the department, refusing the seeded root and
 	// departments with children or posts.
-	Delete(ctx context.Context, id, actorID int64) error
-	// SubtreeIDs resolves deptID plus every descendant id — the
+	Delete(ctx context.Context, id, actorID int64) error // SubtreeIDs resolves deptID plus every descendant id — the
 	// department-subtree filter behind the org contract. Disabled
 	// departments are included: disabling hides a department from selects,
 	// not from its users.
@@ -45,13 +44,16 @@ type Dept interface {
 
 type deptImpl struct {
 	depts  repository.DeptRepo
+	posts  repository.PostRepo
 	logger *slog.Logger
 }
 
-// NewDeptService creates the department domain service.
-func NewDeptService(depts repository.DeptRepo, logger *slog.Logger) Dept {
+// NewDeptService creates the department domain service. posts backs the
+// "a department with posts cannot be deleted" guard.
+func NewDeptService(depts repository.DeptRepo, posts repository.PostRepo, logger *slog.Logger) Dept {
 	return &deptImpl{
 		depts:  depts,
+		posts:  posts,
 		logger: logger.With(slog.String("component", "domain.org.svc")),
 	}
 }
@@ -178,6 +180,16 @@ func (s *deptImpl) Delete(ctx context.Context, id, actorID int64) error {
 	}
 	if n > 0 {
 		err := org.ErrDeptHasChildren
+		logx.Propagate(ctx, s.logger, "org.svc.delete_dept", err)
+		return err
+	}
+	// A department that still carries posts is not withdrawable (RuoYi 6.0:
+	// 部门存在岗位) — withdrawing it would strand the posts.
+	if n, err := s.posts.CountByDept(ctx, id); err != nil {
+		logx.Propagate(ctx, s.logger, "org.svc.delete_dept", err)
+		return err
+	} else if n > 0 {
+		err := org.ErrDeptHasPosts
 		logx.Propagate(ctx, s.logger, "org.svc.delete_dept", err)
 		return err
 	}

@@ -33,6 +33,10 @@ type User interface {
 	// Delete soft-deletes the user and its Role Assignment, returning the
 	// identities whose sessions must be revoked (always {id}).
 	Delete(ctx context.Context, id, actorID int64) ([]int64, error)
+	// HasUsersInDept reports whether any active user's department reference
+	// points at deptID — the org module's department guards behind the
+	// crossdomain user contract (ADR 0013).
+	HasUsersInDept(ctx context.Context, deptID int64) (bool, error)
 }
 
 type userImpl struct {
@@ -104,6 +108,15 @@ func (s *userImpl) Delete(ctx context.Context, id, actorID int64) ([]int64, erro
 		return nil, err
 	}
 	return revoked, nil
+}
+
+func (s *userImpl) HasUsersInDept(ctx context.Context, deptID int64) (bool, error) {
+	n, err := s.users.CountByDeptID(ctx, deptID)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "user.svc.has_users_in_dept", err)
+		return false, err
+	}
+	return n > 0, nil
 }
 
 // AssertUnique checks user_name (always) and email/phone_number (when set) are

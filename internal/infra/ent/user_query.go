@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"glex/internal/infra/ent/predicate"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
 	"math"
 
@@ -25,6 +26,7 @@ type UserQuery struct {
 	inters              []Interceptor
 	predicates          []predicate.User
 	withRoleAssignments *UserRoleQuery
+	withPostAssignments *UserPostQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -76,6 +78,28 @@ func (_q *UserQuery) QueryRoleAssignments() *UserRoleQuery {
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(userrole.Table, userrole.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.RoleAssignmentsTable, user.RoleAssignmentsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryPostAssignments chains the current query on the "post_assignments" edge.
+func (_q *UserQuery) QueryPostAssignments() *UserPostQuery {
+	query := (&UserPostClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(userpost.Table, userpost.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.PostAssignmentsTable, user.PostAssignmentsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -276,6 +300,7 @@ func (_q *UserQuery) Clone() *UserQuery {
 		inters:              append([]Interceptor{}, _q.inters...),
 		predicates:          append([]predicate.User{}, _q.predicates...),
 		withRoleAssignments: _q.withRoleAssignments.Clone(),
+		withPostAssignments: _q.withPostAssignments.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -290,6 +315,17 @@ func (_q *UserQuery) WithRoleAssignments(opts ...func(*UserRoleQuery)) *UserQuer
 		opt(query)
 	}
 	_q.withRoleAssignments = query
+	return _q
+}
+
+// WithPostAssignments tells the query-builder to eager-load the nodes that are connected to
+// the "post_assignments" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithPostAssignments(opts ...func(*UserPostQuery)) *UserQuery {
+	query := (&UserPostClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withPostAssignments = query
 	return _q
 }
 
@@ -371,8 +407,9 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			_q.withRoleAssignments != nil,
+			_q.withPostAssignments != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -400,6 +437,13 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			return nil, err
 		}
 	}
+	if query := _q.withPostAssignments; query != nil {
+		if err := _q.loadPostAssignments(ctx, query, nodes,
+			func(n *User) { n.Edges.PostAssignments = []*UserPost{} },
+			func(n *User, e *UserPost) { n.Edges.PostAssignments = append(n.Edges.PostAssignments, e) }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
 }
 
@@ -418,6 +462,36 @@ func (_q *UserQuery) loadRoleAssignments(ctx context.Context, query *UserRoleQue
 	}
 	query.Where(predicate.UserRole(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(user.RoleAssignmentsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadPostAssignments(ctx context.Context, query *UserPostQuery, nodes []*User, init func(*User), assign func(*User, *UserPost)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int64]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(userpost.FieldUserID)
+	}
+	query.Where(predicate.UserPost(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.PostAssignmentsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

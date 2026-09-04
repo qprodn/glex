@@ -28,12 +28,16 @@ type Tx struct {
 	Menu *MenuClient
 	// OperLog is the client for interacting with the OperLog builders.
 	OperLog *OperLogClient
+	// Post is the client for interacting with the Post builders.
+	Post *PostClient
 	// Role is the client for interacting with the Role builders.
 	Role *RoleClient
 	// RoleMenu is the client for interacting with the RoleMenu builders.
 	RoleMenu *RoleMenuClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
+	// UserPost is the client for interacting with the UserPost builders.
+	UserPost *UserPostClient
 	// UserRole is the client for interacting with the UserRole builders.
 	UserRole *UserRoleClient
 
@@ -174,9 +178,11 @@ func (tx *Tx) init() {
 	tx.LoginLog = NewLoginLogClient(tx.config)
 	tx.Menu = NewMenuClient(tx.config)
 	tx.OperLog = NewOperLogClient(tx.config)
+	tx.Post = NewPostClient(tx.config)
 	tx.Role = NewRoleClient(tx.config)
 	tx.RoleMenu = NewRoleMenuClient(tx.config)
 	tx.User = NewUserClient(tx.config)
+	tx.UserPost = NewUserPostClient(tx.config)
 	tx.UserRole = NewUserRoleClient(tx.config)
 }
 

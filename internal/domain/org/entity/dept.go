@@ -10,10 +10,10 @@ import (
 // tree shape is parent_id only (ADR 0014): Children is populated by
 // BuildDeptTree on read paths and never persisted.
 type Dept struct {
-	ID        int64
-	ParentID  int64
-	DeptName  string
-	OrderNum  int
+	ID       int64
+	ParentID int64
+	DeptName string
+	OrderNum int
 	// Leader as a System User id; 0 = none. Display-only: never validated
 	// against sys_user (RuoYi parity — the editor restricts the choices).
 	Leader    int64

@@ -114,6 +114,11 @@ func (db *Database) OperLog(ctx context.Context) *OperLogClient {
 	return db.loadClient(ctx).OperLog
 }
 
+// Post is the client for interacting with the Post builders.
+func (db *Database) Post(ctx context.Context) *PostClient {
+	return db.loadClient(ctx).Post
+}
+
 // Role is the client for interacting with the Role builders.
 func (db *Database) Role(ctx context.Context) *RoleClient {
 	return db.loadClient(ctx).Role
@@ -127,6 +132,11 @@ func (db *Database) RoleMenu(ctx context.Context) *RoleMenuClient {
 // User is the client for interacting with the User builders.
 func (db *Database) User(ctx context.Context) *UserClient {
 	return db.loadClient(ctx).User
+}
+
+// UserPost is the client for interacting with the UserPost builders.
+func (db *Database) UserPost(ctx context.Context) *UserPostClient {
+	return db.loadClient(ctx).UserPost
 }
 
 // UserRole is the client for interacting with the UserRole builders.

@@ -9,6 +9,7 @@ create table if not exists sys_user (
     password     varchar(256) not null,              -- bcrypt hash
     avatar       varchar(256),
     remark       varchar(256),
+    dept_id      bigint       not null default 0,    -- org structure reference (ADR 0013); 0 = none
     create_by    bigint       not null default 0,    -- audit; Application stamps from Principal (ADR 0002)
     update_by    bigint       not null default 0,
     login_ip     varchar(256),                       -- auth module writes
@@ -406,3 +407,74 @@ comment on column sys_dept.update_by is '更新者用户ID';
 comment on column sys_dept.created_at is '创建时间';
 comment on column sys_dept.updated_at is '更新时间';
 comment on column sys_dept.deleted_at is '软删除时间；NULL=未删除';
+
+
+create table if not exists sys_post (
+    id         bigint       not null,
+    dept_id    bigint       not null,               -- owning department; posts are dept-scoped (ADR 0015)
+    post_code  varchar(64)  not null,
+    post_name  varchar(50)  not null,
+    post_sort  integer      not null default 0,
+    status     smallint     not null default 0,     -- 0正常 1停用
+    remark     varchar(500) not null default '',
+    create_by  bigint       not null default 0,     -- audit; Application stamps from Principal (ADR 0002)
+    update_by  bigint       not null default 0,
+    created_at timestamptz  not null default now(),
+    updated_at timestamptz  not null default now(),
+    deleted_at timestamptz,                         -- soft delete; NULL = active
+    constraint sys_post_pkey primary key (id)
+);
+
+create index if not exists post_dept_id on sys_post (dept_id);
+-- No unique constraints on (dept_id, post_name) / post_code: enforced by soft biz checks.
+
+
+create table if not exists sys_user_post (
+    id         bigint       not null,               -- snowflake surrogate; a re-assigned pair is a new row (ADR 0002)
+    user_id    bigint       not null,
+    post_id    bigint       not null,
+    create_by  bigint       not null default 0,     -- audit; Application stamps from Principal (ADR 0002)
+    update_by  bigint       not null default 0,
+    created_at timestamptz  not null default now(),
+    updated_at timestamptz  not null default now(),
+    deleted_at timestamptz,                         -- soft delete; NULL = active
+    constraint sys_user_post_pkey primary key (id)
+);
+
+create unique index if not exists userpost_user_id_post_id
+    on sys_user_post (user_id, post_id)
+    where deleted_at is null;
+
+comment on table sys_post is '岗位信息表（部门范围，ADR 0015）';
+
+comment on column sys_post.id is '岗位ID（雪花）';
+comment on column sys_post.dept_id is '部门ID；岗位挂靠部门（若依 6.0 形态）';
+comment on column sys_post.post_code is '岗位编码；全局唯一（领域软检查）';
+comment on column sys_post.post_name is '岗位名称；部门内唯一（领域软检查）';
+comment on column sys_post.post_sort is '显示顺序';
+comment on column sys_post.status is '岗位状态：0正常 1停用';
+comment on column sys_post.remark is '备注';
+comment on column sys_post.create_by is '创建者用户ID';
+comment on column sys_post.update_by is '更新者用户ID';
+comment on column sys_post.created_at is '创建时间';
+comment on column sys_post.updated_at is '更新时间';
+comment on column sys_post.deleted_at is '软删除时间；NULL=未删除';
+
+comment on table sys_user_post is '用户与岗位关联表（岗位分配）';
+
+comment on column sys_user_post.id is '主键ID（雪花代理键；重新分配同一对是新一行的）';
+comment on column sys_user_post.user_id is '用户ID';
+comment on column sys_user_post.post_id is '岗位ID';
+comment on column sys_user_post.create_by is '创建者用户ID';
+comment on column sys_user_post.update_by is '更新者用户ID';
+comment on column sys_user_post.created_at is '创建时间';
+comment on column sys_user_post.updated_at is '更新时间';
+comment on column sys_user_post.deleted_at is '软删除时间；NULL=未删除';
+
+-- org module (ADR 0013): the user's department reference. Fresh installs get
+-- it from the sys_user definition above; existing installs add it here.
+comment on column sys_user.dept_id is '部门ID（ADR 0013）；0=未设置；org 模块经 crossdomain 契约校验';
+
+-- org module (ADR 0013): the user's department reference. Fresh installs get
+-- it from the sys_user definition above; existing installs add it here.
+comment on column sys_user.dept_id is '部门ID（ADR 0013）；0=未设置；org 模块经 crossdomain 契约校验';

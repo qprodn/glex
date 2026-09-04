@@ -27,7 +27,7 @@ import (
 )
 
 // NewGRPCServer new a gRPC server.
-func NewGRPCServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, audit *auditapp.AuditApplication, dept *orgapp.DeptApplication, auditDomain auditservice.Audit, logger *slog.Logger) *grpc.Server {
+func NewGRPCServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, audit *auditapp.AuditApplication, dept *orgapp.DeptApplication, post *orgapp.PostApplication, postAssignment *orgapp.PostAssignmentApplication, auditDomain auditservice.Audit, logger *slog.Logger) *grpc.Server {
 	var opts = []grpc.ServerOption{
 		grpc.Middleware(
 			requestid.Server(requestid.WithLogger(logger)),
@@ -51,6 +51,8 @@ func NewGRPCServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 	accessv1.RegisterMenuServiceServer(srv, menu)
 	accessv1.RegisterRoleServiceServer(srv, role)
 	orgv1.RegisterDeptServiceServer(srv, dept)
+	orgv1.RegisterPostServiceServer(srv, post)
+	orgv1.RegisterPostAssignmentServiceServer(srv, postAssignment)
 	dictv1.RegisterDictServiceServer(srv, dict)
 	filev1.RegisterFileServiceServer(srv, file)
 	auditv1.RegisterOperLogServiceServer(srv, audit)

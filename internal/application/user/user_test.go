@@ -423,3 +423,7 @@ func TestConvertUserOmitsPasswordAndMapsFields(t *testing.T) {
 		t.Fatalf("timestamp mapping = %#v", dto)
 	}
 }
+
+func (f *fakeUserService) HasUsersInDept(_ context.Context, _ int64) (bool, error) {
+	return false, nil
+}

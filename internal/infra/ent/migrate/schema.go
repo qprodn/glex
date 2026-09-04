@@ -229,6 +229,34 @@ var (
 			},
 		},
 	}
+	// SysPostColumns holds the columns for the "sys_post" table.
+	SysPostColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "dept_id", Type: field.TypeInt64},
+		{Name: "post_code", Type: field.TypeString},
+		{Name: "post_name", Type: field.TypeString},
+		{Name: "post_sort", Type: field.TypeInt, Default: 0, SchemaType: map[string]string{"postgres": "integer"}},
+		{Name: "status", Type: field.TypeInt8, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
+		{Name: "remark", Type: field.TypeString, Default: ""},
+	}
+	// SysPostTable holds the schema information for the "sys_post" table.
+	SysPostTable = &schema.Table{
+		Name:       "sys_post",
+		Columns:    SysPostColumns,
+		PrimaryKey: []*schema.Column{SysPostColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "post_dept_id",
+				Unique:  false,
+				Columns: []*schema.Column{SysPostColumns[6]},
+			},
+		},
+	}
 	// SysRoleColumns holds the columns for the "sys_role" table.
 	SysRoleColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -308,6 +336,7 @@ var (
 		{Name: "password", Type: field.TypeString, Default: ""},
 		{Name: "avatar", Type: field.TypeString, Nullable: true, Size: 256, Default: ""},
 		{Name: "remark", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "dept_id", Type: field.TypeInt64, Default: 0},
 		{Name: "login_ip", Type: field.TypeString, Nullable: true, Default: ""},
 		{Name: "login_date", Type: field.TypeTime, Nullable: true},
 	}
@@ -316,6 +345,47 @@ var (
 		Name:       "sys_user",
 		Columns:    SysUserColumns,
 		PrimaryKey: []*schema.Column{SysUserColumns[0]},
+	}
+	// SysUserPostColumns holds the columns for the "sys_user_post" table.
+	SysUserPostColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "post_id", Type: field.TypeInt64},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// SysUserPostTable holds the schema information for the "sys_user_post" table.
+	SysUserPostTable = &schema.Table{
+		Name:       "sys_user_post",
+		Columns:    SysUserPostColumns,
+		PrimaryKey: []*schema.Column{SysUserPostColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "sys_user_post_sys_post_user_links",
+				Columns:    []*schema.Column{SysUserPostColumns[6]},
+				RefColumns: []*schema.Column{SysPostColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "sys_user_post_sys_user_post_assignments",
+				Columns:    []*schema.Column{SysUserPostColumns[7]},
+				RefColumns: []*schema.Column{SysUserColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "userpost_user_id_post_id",
+				Unique:  true,
+				Columns: []*schema.Column{SysUserPostColumns[7], SysUserPostColumns[6]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+		},
 	}
 	// SysUserRoleColumns holds the columns for the "sys_user_role" table.
 	SysUserRoleColumns = []*schema.Column{
@@ -367,9 +437,11 @@ var (
 		SysLoginLogTable,
 		SysMenuTable,
 		SysOperLogTable,
+		SysPostTable,
 		SysRoleTable,
 		SysRoleMenuTable,
 		SysUserTable,
+		SysUserPostTable,
 		SysUserRoleTable,
 	}
 )
@@ -396,6 +468,9 @@ func init() {
 	SysOperLogTable.Annotation = &entsql.Annotation{
 		Table: "sys_oper_log",
 	}
+	SysPostTable.Annotation = &entsql.Annotation{
+		Table: "sys_post",
+	}
 	SysRoleTable.Annotation = &entsql.Annotation{
 		Table: "sys_role",
 	}
@@ -406,6 +481,11 @@ func init() {
 	}
 	SysUserTable.Annotation = &entsql.Annotation{
 		Table: "sys_user",
+	}
+	SysUserPostTable.ForeignKeys[0].RefTable = SysPostTable
+	SysUserPostTable.ForeignKeys[1].RefTable = SysUserTable
+	SysUserPostTable.Annotation = &entsql.Annotation{
+		Table: "sys_user_post",
 	}
 	SysUserRoleTable.ForeignKeys[0].RefTable = SysRoleTable
 	SysUserRoleTable.ForeignKeys[1].RefTable = SysUserTable

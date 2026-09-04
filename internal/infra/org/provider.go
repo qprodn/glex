@@ -6,5 +6,7 @@ import "go.uber.org/fx"
 var Module = fx.Module("org-infra",
 	fx.Provide(
 		NewDeptRepo,
+		NewPostRepo,
+		NewUserPostRepo,
 	),
 )

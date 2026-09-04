@@ -13,9 +13,11 @@ import (
 	"glex/internal/infra/ent/loginlog"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/operlog"
+	"glex/internal/infra/ent/post"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/rolemenu"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
 	"reflect"
 	"sync"
@@ -90,9 +92,11 @@ func checkColumn(t, c string) error {
 			loginlog.Table: loginlog.ValidColumn,
 			menu.Table:     menu.ValidColumn,
 			operlog.Table:  operlog.ValidColumn,
+			post.Table:     post.ValidColumn,
 			role.Table:     role.ValidColumn,
 			rolemenu.Table: rolemenu.ValidColumn,
 			user.Table:     user.ValidColumn,
+			userpost.Table: userpost.ValidColumn,
 			userrole.Table: userrole.ValidColumn,
 		})
 	})

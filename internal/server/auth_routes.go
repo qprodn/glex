@@ -56,6 +56,15 @@ func authRoutes() map[string]authmw.Route {
 		// pattern).
 		orgv1.OperationDeptServiceListDeptTree: {Login: true},
 
+		orgv1.OperationPostServiceCreatePost: {Permission: "system:post:add"},
+		orgv1.OperationPostServiceGetPost:    {Permission: "system:post:query"},
+		orgv1.OperationPostServiceListPosts:  {Permission: "system:post:list"},
+		orgv1.OperationPostServiceUpdatePost: {Permission: "system:post:edit"},
+		orgv1.OperationPostServiceDeletePost: {Permission: "system:post:remove"},
+
+		orgv1.OperationPostAssignmentServiceListUserPosts:   {Permission: "system:user:query"},
+		orgv1.OperationPostAssignmentServiceUpdateUserPosts: {Permission: "system:user:edit"},
+
 		dictv1.OperationDictServiceCreateDictType:  {Permission: "system:dict:add"},
 		dictv1.OperationDictServiceGetDictType:     {Permission: "system:dict:query"},
 		dictv1.OperationDictServiceListDictTypes:   {Permission: "system:dict:list"},

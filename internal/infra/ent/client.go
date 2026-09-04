@@ -18,9 +18,11 @@ import (
 	"glex/internal/infra/ent/loginlog"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/operlog"
+	"glex/internal/infra/ent/post"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/rolemenu"
 	"glex/internal/infra/ent/user"
+	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
 
 	"entgo.io/ent"
@@ -50,12 +52,16 @@ type Client struct {
 	Menu *MenuClient
 	// OperLog is the client for interacting with the OperLog builders.
 	OperLog *OperLogClient
+	// Post is the client for interacting with the Post builders.
+	Post *PostClient
 	// Role is the client for interacting with the Role builders.
 	Role *RoleClient
 	// RoleMenu is the client for interacting with the RoleMenu builders.
 	RoleMenu *RoleMenuClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
+	// UserPost is the client for interacting with the UserPost builders.
+	UserPost *UserPostClient
 	// UserRole is the client for interacting with the UserRole builders.
 	UserRole *UserRoleClient
 }
@@ -76,9 +82,11 @@ func (c *Client) init() {
 	c.LoginLog = NewLoginLogClient(c.config)
 	c.Menu = NewMenuClient(c.config)
 	c.OperLog = NewOperLogClient(c.config)
+	c.Post = NewPostClient(c.config)
 	c.Role = NewRoleClient(c.config)
 	c.RoleMenu = NewRoleMenuClient(c.config)
 	c.User = NewUserClient(c.config)
+	c.UserPost = NewUserPostClient(c.config)
 	c.UserRole = NewUserRoleClient(c.config)
 }
 
@@ -179,9 +187,11 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		LoginLog: NewLoginLogClient(cfg),
 		Menu:     NewMenuClient(cfg),
 		OperLog:  NewOperLogClient(cfg),
+		Post:     NewPostClient(cfg),
 		Role:     NewRoleClient(cfg),
 		RoleMenu: NewRoleMenuClient(cfg),
 		User:     NewUserClient(cfg),
+		UserPost: NewUserPostClient(cfg),
 		UserRole: NewUserRoleClient(cfg),
 	}, nil
 }
@@ -209,9 +219,11 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		LoginLog: NewLoginLogClient(cfg),
 		Menu:     NewMenuClient(cfg),
 		OperLog:  NewOperLogClient(cfg),
+		Post:     NewPostClient(cfg),
 		Role:     NewRoleClient(cfg),
 		RoleMenu: NewRoleMenuClient(cfg),
 		User:     NewUserClient(cfg),
+		UserPost: NewUserPostClient(cfg),
 		UserRole: NewUserRoleClient(cfg),
 	}, nil
 }
@@ -242,8 +254,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Dept, c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog, c.Role,
-		c.RoleMenu, c.User, c.UserRole,
+		c.Dept, c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog, c.Post,
+		c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -253,8 +265,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Dept, c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog, c.Role,
-		c.RoleMenu, c.User, c.UserRole,
+		c.Dept, c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog, c.Post,
+		c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -277,12 +289,16 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Menu.mutate(ctx, m)
 	case *OperLogMutation:
 		return c.OperLog.mutate(ctx, m)
+	case *PostMutation:
+		return c.Post.mutate(ctx, m)
 	case *RoleMutation:
 		return c.Role.mutate(ctx, m)
 	case *RoleMenuMutation:
 		return c.RoleMenu.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
+	case *UserPostMutation:
+		return c.UserPost.mutate(ctx, m)
 	case *UserRoleMutation:
 		return c.UserRole.mutate(ctx, m)
 	default:
@@ -1237,6 +1253,155 @@ func (c *OperLogClient) mutate(ctx context.Context, m *OperLogMutation) (Value, 
 	}
 }
 
+// PostClient is a client for the Post schema.
+type PostClient struct {
+	config
+}
+
+// NewPostClient returns a client for the Post from the given config.
+func NewPostClient(c config) *PostClient {
+	return &PostClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `post.Hooks(f(g(h())))`.
+func (c *PostClient) Use(hooks ...Hook) {
+	c.hooks.Post = append(c.hooks.Post, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `post.Intercept(f(g(h())))`.
+func (c *PostClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Post = append(c.inters.Post, interceptors...)
+}
+
+// Create returns a builder for creating a Post entity.
+func (c *PostClient) Create() *PostCreate {
+	mutation := newPostMutation(c.config, OpCreate)
+	return &PostCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Post entities.
+func (c *PostClient) CreateBulk(builders ...*PostCreate) *PostCreateBulk {
+	return &PostCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PostClient) MapCreateBulk(slice any, setFunc func(*PostCreate, int)) *PostCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PostCreateBulk{err: fmt.Errorf("calling to PostClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PostCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PostCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Post.
+func (c *PostClient) Update() *PostUpdate {
+	mutation := newPostMutation(c.config, OpUpdate)
+	return &PostUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PostClient) UpdateOne(_m *Post) *PostUpdateOne {
+	mutation := newPostMutation(c.config, OpUpdateOne, withPost(_m))
+	return &PostUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PostClient) UpdateOneID(id int64) *PostUpdateOne {
+	mutation := newPostMutation(c.config, OpUpdateOne, withPostID(id))
+	return &PostUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Post.
+func (c *PostClient) Delete() *PostDelete {
+	mutation := newPostMutation(c.config, OpDelete)
+	return &PostDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PostClient) DeleteOne(_m *Post) *PostDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PostClient) DeleteOneID(id int64) *PostDeleteOne {
+	builder := c.Delete().Where(post.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PostDeleteOne{builder}
+}
+
+// Query returns a query builder for Post.
+func (c *PostClient) Query() *PostQuery {
+	return &PostQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePost},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Post entity by its id.
+func (c *PostClient) Get(ctx context.Context, id int64) (*Post, error) {
+	return c.Query().Where(post.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PostClient) GetX(ctx context.Context, id int64) *Post {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUserLinks queries the user_links edge of a Post.
+func (c *PostClient) QueryUserLinks(_m *Post) *UserPostQuery {
+	query := (&UserPostClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(post.Table, post.FieldID, id),
+			sqlgraph.To(userpost.Table, userpost.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, post.UserLinksTable, post.UserLinksColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *PostClient) Hooks() []Hook {
+	return c.hooks.Post
+}
+
+// Interceptors returns the client interceptors.
+func (c *PostClient) Interceptors() []Interceptor {
+	return c.inters.Post
+}
+
+func (c *PostClient) mutate(ctx context.Context, m *PostMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PostCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PostUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PostUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PostDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Post mutation op: %q", m.Op())
+	}
+}
+
 // RoleClient is a client for the Role schema.
 type RoleClient struct {
 	config
@@ -1691,6 +1856,22 @@ func (c *UserClient) QueryRoleAssignments(_m *User) *UserRoleQuery {
 	return query
 }
 
+// QueryPostAssignments queries the post_assignments edge of a User.
+func (c *UserClient) QueryPostAssignments(_m *User) *UserPostQuery {
+	query := (&UserPostClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(userpost.Table, userpost.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.PostAssignmentsTable, user.PostAssignmentsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	return c.hooks.User
@@ -1713,6 +1894,171 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 		return (&UserDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown User mutation op: %q", m.Op())
+	}
+}
+
+// UserPostClient is a client for the UserPost schema.
+type UserPostClient struct {
+	config
+}
+
+// NewUserPostClient returns a client for the UserPost from the given config.
+func NewUserPostClient(c config) *UserPostClient {
+	return &UserPostClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `userpost.Hooks(f(g(h())))`.
+func (c *UserPostClient) Use(hooks ...Hook) {
+	c.hooks.UserPost = append(c.hooks.UserPost, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `userpost.Intercept(f(g(h())))`.
+func (c *UserPostClient) Intercept(interceptors ...Interceptor) {
+	c.inters.UserPost = append(c.inters.UserPost, interceptors...)
+}
+
+// Create returns a builder for creating a UserPost entity.
+func (c *UserPostClient) Create() *UserPostCreate {
+	mutation := newUserPostMutation(c.config, OpCreate)
+	return &UserPostCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of UserPost entities.
+func (c *UserPostClient) CreateBulk(builders ...*UserPostCreate) *UserPostCreateBulk {
+	return &UserPostCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *UserPostClient) MapCreateBulk(slice any, setFunc func(*UserPostCreate, int)) *UserPostCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &UserPostCreateBulk{err: fmt.Errorf("calling to UserPostClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*UserPostCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &UserPostCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for UserPost.
+func (c *UserPostClient) Update() *UserPostUpdate {
+	mutation := newUserPostMutation(c.config, OpUpdate)
+	return &UserPostUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *UserPostClient) UpdateOne(_m *UserPost) *UserPostUpdateOne {
+	mutation := newUserPostMutation(c.config, OpUpdateOne, withUserPost(_m))
+	return &UserPostUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *UserPostClient) UpdateOneID(id int64) *UserPostUpdateOne {
+	mutation := newUserPostMutation(c.config, OpUpdateOne, withUserPostID(id))
+	return &UserPostUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for UserPost.
+func (c *UserPostClient) Delete() *UserPostDelete {
+	mutation := newUserPostMutation(c.config, OpDelete)
+	return &UserPostDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *UserPostClient) DeleteOne(_m *UserPost) *UserPostDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *UserPostClient) DeleteOneID(id int64) *UserPostDeleteOne {
+	builder := c.Delete().Where(userpost.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &UserPostDeleteOne{builder}
+}
+
+// Query returns a query builder for UserPost.
+func (c *UserPostClient) Query() *UserPostQuery {
+	return &UserPostQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeUserPost},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a UserPost entity by its id.
+func (c *UserPostClient) Get(ctx context.Context, id int64) (*UserPost, error) {
+	return c.Query().Where(userpost.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *UserPostClient) GetX(ctx context.Context, id int64) *UserPost {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a UserPost.
+func (c *UserPostClient) QueryUser(_m *UserPost) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(userpost.Table, userpost.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, userpost.UserTable, userpost.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryPost queries the post edge of a UserPost.
+func (c *UserPostClient) QueryPost(_m *UserPost) *PostQuery {
+	query := (&PostClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(userpost.Table, userpost.FieldID, id),
+			sqlgraph.To(post.Table, post.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, userpost.PostTable, userpost.PostColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *UserPostClient) Hooks() []Hook {
+	return c.hooks.UserPost
+}
+
+// Interceptors returns the client interceptors.
+func (c *UserPostClient) Interceptors() []Interceptor {
+	return c.inters.UserPost
+}
+
+func (c *UserPostClient) mutate(ctx context.Context, m *UserPostMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&UserPostCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&UserPostUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&UserPostUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&UserPostDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown UserPost mutation op: %q", m.Op())
 	}
 }
 
@@ -1884,12 +2230,12 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Dept, DictData, DictType, File, LoginLog, Menu, OperLog, Role, RoleMenu, User,
-		UserRole []ent.Hook
+		Dept, DictData, DictType, File, LoginLog, Menu, OperLog, Post, Role, RoleMenu,
+		User, UserPost, UserRole []ent.Hook
 	}
 	inters struct {
-		Dept, DictData, DictType, File, LoginLog, Menu, OperLog, Role, RoleMenu, User,
-		UserRole []ent.Interceptor
+		Dept, DictData, DictType, File, LoginLog, Menu, OperLog, Post, Role, RoleMenu,
+		User, UserPost, UserRole []ent.Interceptor
 	}
 )
 

@@ -25,4 +25,8 @@ type UserRepo interface {
 	// the audit fields, and returns the System User identities whose sessions
 	// must be revoked (always {id}).
 	DeleteUser(ctx context.Context, id int64, actorID int64) ([]int64, error)
+	// CountByDeptID counts active users whose department reference points at
+	// deptID — the read behind the org module's "a department with users
+	// cannot be deleted or disabled" guards (ADR 0013).
+	CountByDeptID(ctx context.Context, deptID int64) (int, error)
 }

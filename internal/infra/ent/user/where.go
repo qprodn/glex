@@ -125,6 +125,11 @@ func Remark(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldRemark, v))
 }
 
+// DeptID applies equality check predicate on the "dept_id" field. It's identical to DeptIDEQ.
+func DeptID(v int64) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldDeptID, v))
+}
+
 // LoginIP applies equality check predicate on the "login_ip" field. It's identical to LoginIPEQ.
 func LoginIP(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldLoginIP, v))
@@ -940,6 +945,46 @@ func RemarkContainsFold(v string) predicate.User {
 	return predicate.User(sql.FieldContainsFold(FieldRemark, v))
 }
 
+// DeptIDEQ applies the EQ predicate on the "dept_id" field.
+func DeptIDEQ(v int64) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldDeptID, v))
+}
+
+// DeptIDNEQ applies the NEQ predicate on the "dept_id" field.
+func DeptIDNEQ(v int64) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldDeptID, v))
+}
+
+// DeptIDIn applies the In predicate on the "dept_id" field.
+func DeptIDIn(vs ...int64) predicate.User {
+	return predicate.User(sql.FieldIn(FieldDeptID, vs...))
+}
+
+// DeptIDNotIn applies the NotIn predicate on the "dept_id" field.
+func DeptIDNotIn(vs ...int64) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldDeptID, vs...))
+}
+
+// DeptIDGT applies the GT predicate on the "dept_id" field.
+func DeptIDGT(v int64) predicate.User {
+	return predicate.User(sql.FieldGT(FieldDeptID, v))
+}
+
+// DeptIDGTE applies the GTE predicate on the "dept_id" field.
+func DeptIDGTE(v int64) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldDeptID, v))
+}
+
+// DeptIDLT applies the LT predicate on the "dept_id" field.
+func DeptIDLT(v int64) predicate.User {
+	return predicate.User(sql.FieldLT(FieldDeptID, v))
+}
+
+// DeptIDLTE applies the LTE predicate on the "dept_id" field.
+func DeptIDLTE(v int64) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldDeptID, v))
+}
+
 // LoginIPEQ applies the EQ predicate on the "login_ip" field.
 func LoginIPEQ(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldLoginIP, v))
@@ -1080,6 +1125,29 @@ func HasRoleAssignments() predicate.User {
 func HasRoleAssignmentsWith(preds ...predicate.UserRole) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
 		step := newRoleAssignmentsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasPostAssignments applies the HasEdge predicate on the "post_assignments" edge.
+func HasPostAssignments() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, PostAssignmentsTable, PostAssignmentsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasPostAssignmentsWith applies the HasEdge predicate on the "post_assignments" edge with a given conditions (other predicates).
+func HasPostAssignmentsWith(preds ...predicate.UserPost) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newPostAssignmentsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

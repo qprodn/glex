@@ -12,6 +12,7 @@ import (
 
 	authnentity "glex/internal/domain/authn/entity"
 	authnservice "glex/internal/domain/authn/service"
+	orgdomain "glex/internal/domain/org"
 	orgentity "glex/internal/domain/org/entity"
 )
 
@@ -101,14 +102,27 @@ func actorContext(userID int64) context.Context {
 	return authnservice.WithPrincipal(context.Background(), authnentity.NewPrincipal(userID, "alice", "session-id", nil, nil))
 }
 
-func newDeptApp(svc *fakeDeptService) (*DeptApplication, *fakeTransaction) {
+// fakeDeptUsage records the crossdomain user-contract asks: whether a
+// department is still referenced by users.
+type fakeDeptUsage struct {
+	calls []int64
+	has   bool
+	err   error
+}
+
+func (f *fakeDeptUsage) HasUsersInDept(_ context.Context, deptID int64) (bool, error) {
+	f.calls = append(f.calls, deptID)
+	return f.has, f.err
+}
+
+func newDeptApp(svc *fakeDeptService, usage *fakeDeptUsage) (*DeptApplication, *fakeTransaction) {
 	tx := newFakeTransaction()
-	return NewDeptApplication(svc, tx, testLogger()), tx
+	return NewDeptApplication(svc, tx, usage, testLogger()), tx
 }
 
 func TestCreateDept_StampsActorAndRunsInTx(t *testing.T) {
 	svc := &fakeDeptService{create: &orgentity.Dept{ID: 11, DeptName: "研发部"}}
-	app, tx := newDeptApp(svc)
+	app, tx := newDeptApp(svc, new(fakeDeptUsage))
 
 	got, err := app.CreateDept(actorContext(42), &orgv1.CreateDeptRequest{
 		Dept: &orgv1.Dept{ParentId: 1, DeptName: "研发部", OrderNum: 3},
@@ -135,7 +149,7 @@ func TestCreateDept_StampsActorAndRunsInTx(t *testing.T) {
 
 func TestCreateDept_PropagatesServiceError(t *testing.T) {
 	svc := &fakeDeptService{createErr: errServiceFailed}
-	app, _ := newDeptApp(svc)
+	app, _ := newDeptApp(svc, new(fakeDeptUsage))
 	if _, err := app.CreateDept(actorContext(1), &orgv1.CreateDeptRequest{Dept: &orgv1.Dept{DeptName: "x"}}); !errors.Is(err, errServiceFailed) {
 		t.Fatalf("err = %v, want errServiceFailed", err)
 	}
@@ -143,7 +157,7 @@ func TestCreateDept_PropagatesServiceError(t *testing.T) {
 
 func TestGetDept(t *testing.T) {
 	svc := &fakeDeptService{get: &orgentity.Dept{ID: 5, DeptName: "市场部", Phone: "13800000000", CreatedAt: time.Unix(0, 0)}}
-	app, _ := newDeptApp(svc)
+	app, _ := newDeptApp(svc, new(fakeDeptUsage))
 	got, err := app.GetDept(context.Background(), &orgv1.GetDeptRequest{DeptId: 5})
 	if err != nil {
 		t.Fatalf("GetDept: %v", err)
@@ -160,7 +174,7 @@ func TestListDepts_BuildsTreeFromFlatList(t *testing.T) {
 		{ID: 2, ParentID: 1, DeptName: "a", OrderNum: 1},
 		{ID: 4, ParentID: 3, DeptName: "b1", OrderNum: 1},
 	}}
-	app, _ := newDeptApp(svc)
+	app, _ := newDeptApp(svc, new(fakeDeptUsage))
 
 	tree, err := app.ListDepts(context.Background(), nil)
 	if err != nil {
@@ -183,7 +197,7 @@ func TestListDeptTree_MapsSelectShape(t *testing.T) {
 		{ID: 1, ParentID: 0, DeptName: "root", OrderNum: 1},
 		{ID: 2, ParentID: 1, DeptName: "a", Status: 1},
 	}}
-	app, _ := newDeptApp(svc)
+	app, _ := newDeptApp(svc, new(fakeDeptUsage))
 
 	tree, err := app.ListDeptTree(context.Background(), nil)
 	if err != nil {
@@ -203,7 +217,7 @@ func TestUpdateDept_AppliesMaskOntoCurrent(t *testing.T) {
 		get:    &orgentity.Dept{ID: 2, ParentID: 1, DeptName: "a", OrderNum: 1, Phone: "138", Status: 0},
 		update: &orgentity.Dept{ID: 2, DeptName: "a2"},
 	}
-	app, tx := newDeptApp(svc)
+	app, tx := newDeptApp(svc, new(fakeDeptUsage))
 
 	got, err := app.UpdateDept(actorContext(9), &orgv1.UpdateDeptRequest{
 		Dept:       &orgv1.Dept{DeptId: 2, DeptName: "a2"},
@@ -238,7 +252,7 @@ func TestUpdateDept_PropagatesServiceError(t *testing.T) {
 		get:       &orgentity.Dept{ID: 2, DeptName: "a"},
 		updateErr: errServiceFailed,
 	}
-	app, _ := newDeptApp(svc)
+	app, _ := newDeptApp(svc, new(fakeDeptUsage))
 	_, err := app.UpdateDept(actorContext(1), &orgv1.UpdateDeptRequest{
 		Dept:       &orgv1.Dept{DeptId: 2, DeptName: "x"},
 		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"dept_name"}},
@@ -250,7 +264,7 @@ func TestUpdateDept_PropagatesServiceError(t *testing.T) {
 
 func TestDeleteDept_PassesIDActorAndTx(t *testing.T) {
 	svc := &fakeDeptService{}
-	app, tx := newDeptApp(svc)
+	app, tx := newDeptApp(svc, new(fakeDeptUsage))
 
 	if _, err := app.DeleteDept(actorContext(7), &orgv1.DeleteDeptRequest{DeptId: 3}); err != nil {
 		t.Fatalf("DeleteDept: %v", err)
@@ -268,8 +282,73 @@ func TestDeleteDept_PassesIDActorAndTx(t *testing.T) {
 
 func TestDeleteDept_PropagatesServiceError(t *testing.T) {
 	svc := &fakeDeptService{deleteErr: errServiceFailed}
-	app, _ := newDeptApp(svc)
+	app, _ := newDeptApp(svc, new(fakeDeptUsage))
 	if _, err := app.DeleteDept(actorContext(1), &orgv1.DeleteDeptRequest{DeptId: 3}); !errors.Is(err, errServiceFailed) {
 		t.Fatalf("err = %v, want errServiceFailed", err)
+	}
+}
+
+func TestDeleteDept_UserGuardRefusesFirst(t *testing.T) {
+	svc := &fakeDeptService{}
+	usage := &fakeDeptUsage{has: true}
+	app, tx := newDeptApp(svc, usage)
+
+	_, err := app.DeleteDept(actorContext(1), &orgv1.DeleteDeptRequest{DeptId: 3})
+	if !errors.Is(err, orgdomain.ErrDeptHasUsers) {
+		t.Fatalf("err = %v, want ErrDeptHasUsers", err)
+	}
+	if svc.deleteCalled != 0 || tx.began != 1 {
+		t.Fatalf("delete called %d, tx began %d, want 0/1 (guard ran, delete did not)", svc.deleteCalled, tx.began)
+	}
+	if len(usage.calls) != 1 || usage.calls[0] != 3 {
+		t.Fatalf("usage calls = %v, want [3]", usage.calls)
+	}
+}
+
+func TestDeleteDept_UserGuardErrorPropagates(t *testing.T) {
+	svc := &fakeDeptService{}
+	usage := &fakeDeptUsage{err: errServiceFailed}
+	app, _ := newDeptApp(svc, usage)
+	if _, err := app.DeleteDept(actorContext(1), &orgv1.DeleteDeptRequest{DeptId: 3}); !errors.Is(err, errServiceFailed) {
+		t.Fatalf("err = %v, want errServiceFailed", err)
+	}
+}
+
+func TestUpdateDept_DisablingWithUsersRefused(t *testing.T) {
+	svc := &fakeDeptService{
+		get:    &orgentity.Dept{ID: 2, ParentID: 1, DeptName: "a", Status: 0},
+		update: &orgentity.Dept{ID: 2, DeptName: "a", Status: 1},
+	}
+	usage := &fakeDeptUsage{has: true}
+	app, _ := newDeptApp(svc, usage)
+
+	_, err := app.UpdateDept(actorContext(1), &orgv1.UpdateDeptRequest{
+		Dept:       &orgv1.Dept{DeptId: 2, Status: 1},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"status"}},
+	})
+	if !errors.Is(err, orgdomain.ErrDeptHasUsers) {
+		t.Fatalf("err = %v, want ErrDeptHasUsers", err)
+	}
+	if svc.updateCalled != 0 {
+		t.Fatal("update ran despite the user guard")
+	}
+}
+
+func TestUpdateDept_NotDisablingSkipsUserGuard(t *testing.T) {
+	svc := &fakeDeptService{
+		get:    &orgentity.Dept{ID: 2, ParentID: 1, DeptName: "a", Status: 0},
+		update: &orgentity.Dept{ID: 2, DeptName: "a2", Status: 0},
+	}
+	usage := &fakeDeptUsage{has: true} // would refuse — must not be asked
+	app, _ := newDeptApp(svc, usage)
+
+	if _, err := app.UpdateDept(actorContext(1), &orgv1.UpdateDeptRequest{
+		Dept:       &orgv1.Dept{DeptId: 2, DeptName: "a2"},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"dept_name"}},
+	}); err != nil {
+		t.Fatalf("UpdateDept: %v", err)
+	}
+	if len(usage.calls) != 0 {
+		t.Fatalf("usage calls = %v, want none", usage.calls)
 	}
 }

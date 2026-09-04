@@ -20,6 +20,7 @@ type fakeUserRepo struct {
 	byName  map[string]*entity.User
 	byEmail map[string]*entity.User
 	byPhone map[string]*entity.User
+	byDept  map[int64][]*entity.User
 	nextID  int64
 	created []*entity.User
 	deleted []int64
@@ -32,6 +33,7 @@ func newFakeUserRepo() *fakeUserRepo {
 		byName:  make(map[string]*entity.User),
 		byEmail: make(map[string]*entity.User),
 		byPhone: make(map[string]*entity.User),
+		byDept:  make(map[int64][]*entity.User),
 		nextID:  1,
 	}
 }
@@ -239,4 +241,8 @@ func TestDelete_DelegatesWithActorAndReturnsAffectedIDs(t *testing.T) {
 	if len(affected) != 1 || affected[0] != 42 {
 		t.Fatalf("affected ids = %v, want [42] (sessions to revoke)", affected)
 	}
+}
+
+func (r *fakeUserRepo) CountByDeptID(_ context.Context, deptID int64) (int, error) {
+	return len(r.byDept[deptID]), nil
 }

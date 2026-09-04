@@ -31,7 +31,7 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, audit *auditapp.AuditApplication, dept *orgapp.DeptApplication, authenticator authnrepo.Authenticator, auditDomain auditservice.Audit, logger *slog.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, audit *auditapp.AuditApplication, dept *orgapp.DeptApplication, post *orgapp.PostApplication, postAssignment *orgapp.PostAssignmentApplication, authenticator authnrepo.Authenticator, auditDomain auditservice.Audit, logger *slog.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Filter(
 			requestid.HTTP(requestid.WithLogger(logger)),
@@ -62,6 +62,8 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 	accessv1.RegisterRoleServiceHTTPServer(srv, role)
 	accessv1.RegisterRoleAssignmentServiceHTTPServer(srv, assignment)
 	orgv1.RegisterDeptServiceHTTPServer(srv, dept)
+	orgv1.RegisterPostServiceHTTPServer(srv, post)
+	orgv1.RegisterPostAssignmentServiceHTTPServer(srv, postAssignment)
 	authnv1.RegisterAuthServiceHTTPServer(srv, login)
 	authnv1.RegisterOnlineSessionServiceHTTPServer(srv, online)
 	dictv1.RegisterDictServiceHTTPServer(srv, dict)

@@ -42,12 +42,16 @@ const (
 	FieldAvatar = "avatar"
 	// FieldRemark holds the string denoting the remark field in the database.
 	FieldRemark = "remark"
+	// FieldDeptID holds the string denoting the dept_id field in the database.
+	FieldDeptID = "dept_id"
 	// FieldLoginIP holds the string denoting the login_ip field in the database.
 	FieldLoginIP = "login_ip"
 	// FieldLoginDate holds the string denoting the login_date field in the database.
 	FieldLoginDate = "login_date"
 	// EdgeRoleAssignments holds the string denoting the role_assignments edge name in mutations.
 	EdgeRoleAssignments = "role_assignments"
+	// EdgePostAssignments holds the string denoting the post_assignments edge name in mutations.
+	EdgePostAssignments = "post_assignments"
 	// Table holds the table name of the user in the database.
 	Table = "sys_user"
 	// RoleAssignmentsTable is the table that holds the role_assignments relation/edge.
@@ -57,6 +61,13 @@ const (
 	RoleAssignmentsInverseTable = "sys_user_role"
 	// RoleAssignmentsColumn is the table column denoting the role_assignments relation/edge.
 	RoleAssignmentsColumn = "user_id"
+	// PostAssignmentsTable is the table that holds the post_assignments relation/edge.
+	PostAssignmentsTable = "sys_user_post"
+	// PostAssignmentsInverseTable is the table name for the UserPost entity.
+	// It exists in this package in order to avoid circular dependency with the "userpost" package.
+	PostAssignmentsInverseTable = "sys_user_post"
+	// PostAssignmentsColumn is the table column denoting the post_assignments relation/edge.
+	PostAssignmentsColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -76,6 +87,7 @@ var Columns = []string{
 	FieldPassword,
 	FieldAvatar,
 	FieldRemark,
+	FieldDeptID,
 	FieldLoginIP,
 	FieldLoginDate,
 }
@@ -115,6 +127,8 @@ var (
 	AvatarValidator func(string) error
 	// DefaultRemark holds the default value on creation for the "remark" field.
 	DefaultRemark string
+	// DefaultDeptID holds the default value on creation for the "dept_id" field.
+	DefaultDeptID int64
 	// DefaultLoginIP holds the default value on creation for the "login_ip" field.
 	DefaultLoginIP string
 )
@@ -197,6 +211,11 @@ func ByRemark(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRemark, opts...).ToFunc()
 }
 
+// ByDeptID orders the results by the dept_id field.
+func ByDeptID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDeptID, opts...).ToFunc()
+}
+
 // ByLoginIP orders the results by the login_ip field.
 func ByLoginIP(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLoginIP, opts...).ToFunc()
@@ -220,10 +239,31 @@ func ByRoleAssignments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newRoleAssignmentsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByPostAssignmentsCount orders the results by post_assignments count.
+func ByPostAssignmentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newPostAssignmentsStep(), opts...)
+	}
+}
+
+// ByPostAssignments orders the results by post_assignments terms.
+func ByPostAssignments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newPostAssignmentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newRoleAssignmentsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(RoleAssignmentsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, RoleAssignmentsTable, RoleAssignmentsColumn),
+	)
+}
+func newPostAssignmentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(PostAssignmentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, PostAssignmentsTable, PostAssignmentsColumn),
 	)
 }

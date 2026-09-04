@@ -11,6 +11,8 @@ import (
 	auditimpl "glex/internal/crossdomain/audit/impl"
 	accessimpl "glex/internal/crossdomain/access/impl"
 	authnimpl "glex/internal/crossdomain/authn/impl"
+	orgimpl "glex/internal/crossdomain/org/impl"
+	userimpl "glex/internal/crossdomain/user/impl"
 	userservice "glex/internal/domain/user/service"
 	auditservice "glex/internal/domain/audit/service"
 	accessservice "glex/internal/domain/access/service"
@@ -64,6 +66,8 @@ var appModule = fx.Options(
 	auditimpl.Module,
 	accessimpl.Module,
 	authnimpl.Module,
+	orgimpl.Module,
+	userimpl.Module,
 	// application
 	userapp.Module,
 	auditapp.Module,

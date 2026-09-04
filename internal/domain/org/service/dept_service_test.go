@@ -118,8 +118,114 @@ func seedTree() []*entity.Dept {
 	}
 }
 
+// fakePostRepo is an in-memory repository.PostRepo shared by the dept and
+// post service tests. rows holds every non-withdrawn post by id; byDept
+// backs the dept delete guard; the recorded slices capture the writes.
+type fakePostRepo struct {
+	rows    map[int64]*entity.Post
+	nextID  int64
+	created []*entity.Post
+	updated []*entity.Post
+	deleted []int64
+}
+
+func newFakePostRepo(posts ...*entity.Post) *fakePostRepo {
+	r := &fakePostRepo{rows: make(map[int64]*entity.Post, len(posts)), nextID: 500}
+	for _, p := range posts {
+		r.rows[p.ID] = p
+	}
+	return r
+}
+
+func (r *fakePostRepo) FindByID(_ context.Context, id int64) (*entity.Post, error) {
+	p, ok := r.rows[id]
+	if !ok {
+		return nil, org.ErrPostNotFound
+	}
+	return p, nil
+}
+
+func (r *fakePostRepo) FindByDeptAndName(_ context.Context, deptID int64, name string) (*entity.Post, error) {
+	for _, p := range r.rows {
+		if p.DeptID == deptID && p.PostName == name {
+			return p, nil
+		}
+	}
+	return nil, org.ErrPostNotFound
+}
+
+func (r *fakePostRepo) FindByPostCode(_ context.Context, code string) (*entity.Post, error) {
+	for _, p := range r.rows {
+		if p.PostCode == code {
+			return p, nil
+		}
+	}
+	return nil, org.ErrPostNotFound
+}
+
+func (r *fakePostRepo) ListPosts(context.Context, ...repository.ListOption) ([]*entity.Post, error) {
+	return nil, nil
+}
+
+func (r *fakePostRepo) ListByIDs(_ context.Context, ids []int64) ([]*entity.Post, error) {
+	out := make([]*entity.Post, 0, len(ids))
+	for _, id := range ids {
+		if p, ok := r.rows[id]; ok {
+			out = append(out, p)
+		}
+	}
+	return out, nil
+}
+
+func (r *fakePostRepo) ListActiveByDept(_ context.Context, deptID int64) ([]*entity.Post, error) {
+	var out []*entity.Post
+	for _, p := range r.rows {
+		if p.DeptID == deptID && p.Enabled() {
+			out = append(out, p)
+		}
+	}
+	return out, nil
+}
+
+func (r *fakePostRepo) CreatePost(_ context.Context, p *entity.Post) (*entity.Post, error) {
+	p.ID = r.nextID
+	r.nextID++
+	r.rows[p.ID] = p
+	r.created = append(r.created, p)
+	return p, nil
+}
+
+func (r *fakePostRepo) UpdatePost(_ context.Context, p *entity.Post) (*entity.Post, *entity.Post, error) {
+	previous, ok := r.rows[p.ID]
+	if !ok {
+		return nil, nil, org.ErrPostNotFound
+	}
+	r.rows[p.ID] = p
+	r.updated = append(r.updated, p)
+	return p, previous, nil
+}
+
+func (r *fakePostRepo) DeletePost(_ context.Context, id int64, _ int64) error {
+	if _, ok := r.rows[id]; !ok {
+		return org.ErrPostNotFound
+	}
+	delete(r.rows, id)
+	r.deleted = append(r.deleted, id)
+	return nil
+}
+
+func (r *fakePostRepo) CountByDept(_ context.Context, deptID int64) (int, error) {
+	n := 0
+	for _, p := range r.rows {
+		if p.DeptID == deptID {
+			n++
+		}
+	}
+	return n, nil
+}
+
 func newDeptSvc(repo repository.DeptRepo) Dept {
-	return NewDeptService(repo, testLogger())
+	return NewDeptService(repo, newFakePostRepo(), testLogger())
 }
 
 func TestCreateDept(t *testing.T) {
@@ -425,5 +531,18 @@ func TestHasEnabledDescendant(t *testing.T) {
 	}
 	if HasEnabledDescendant(depts, 1) {
 		t.Fatal("all descendants disabled")
+	}
+}
+
+func TestDeleteDept_HasPostsRejected(t *testing.T) {
+	repo := newFakeDeptRepo(seedTree()...)
+	posts := newFakePostRepo(&entity.Post{ID: 21, DeptID: 3, PostCode: "x", PostName: "开发"})
+	svc := NewDeptService(repo, posts, testLogger())
+	err := svc.Delete(context.Background(), 3, 1)
+	if !errors.Is(err, org.ErrDeptHasPosts) {
+		t.Fatalf("err = %v, want ErrDeptHasPosts", err)
+	}
+	if len(posts.deleted) != 0 {
+		t.Fatalf("deleted = %v, want none", posts.deleted)
 	}
 }
