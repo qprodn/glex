@@ -8,6 +8,7 @@ import (
 	authnv1 "glex/api/authn/v1"
 	dictv1 "glex/api/dict/v1"
 	filev1 "glex/api/file/v1"
+	orgv1 "glex/api/org/v1"
 	userv1 "glex/api/user/v1"
 	domainaudit "glex/internal/domain/audit"
 	auditentity "glex/internal/domain/audit/entity"
@@ -44,6 +45,16 @@ func authRoutes() map[string]authmw.Route {
 		accessv1.OperationRoleAssignmentServiceListUserRoles:   {Permission: "system:user:query"},
 		accessv1.OperationRoleAssignmentServiceUpdateUserRoles: {Permission: "system:user:edit"},
 		accessv1.OperationRoleAssignmentServiceListRoleUsers:   {Permission: "system:role:list"},
+
+		orgv1.OperationDeptServiceCreateDept:  {Permission: "system:dept:add"},
+		orgv1.OperationDeptServiceGetDept:     {Permission: "system:dept:query"},
+		orgv1.OperationDeptServiceListDepts:   {Permission: "system:dept:list"},
+		orgv1.OperationDeptServiceUpdateDept:  {Permission: "system:dept:edit"},
+		orgv1.OperationDeptServiceDeleteDept:  {Permission: "system:dept:remove"},
+		// The consumption read every form's department select uses: login
+		// required, no Functional Permission (ListDictEntriesByType's
+		// pattern).
+		orgv1.OperationDeptServiceListDeptTree: {Login: true},
 
 		dictv1.OperationDictServiceCreateDictType:  {Permission: "system:dict:add"},
 		dictv1.OperationDictServiceGetDictType:     {Permission: "system:dict:query"},

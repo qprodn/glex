@@ -122,6 +122,131 @@ paths:
                 "200":
                     description: OK
                     content: {}
+    /iam/dept:
+        get:
+            tags:
+                - DeptService
+            description: |-
+                ListDepts returns the full department tree. Not paginated (departments
+                 are small and tree-shaped); the whole non-withdrawn set is returned so
+                 the client can build selects, map ids to names, and filter.
+            operationId: DeptService_ListDepts
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/org.v1.DeptTree'
+        post:
+            tags:
+                - DeptService
+            description: |-
+                CreateDept creates a department under an existing, enabled parent
+                 (RuoYi: 部门停用，不允许新增). parent_id 0 creates another root.
+            operationId: DeptService_CreateDept
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/org.v1.Dept'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/org.v1.Dept'
+    /iam/dept/tree:
+        get:
+            tags:
+                - DeptService
+            description: |-
+                ListDeptTree returns the lightweight department tree the selects render
+                 from. The consumption read every form uses: login required, no
+                 Functional Permission (ListDictEntriesByType's pattern).
+            operationId: DeptService_ListDeptTree
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/org.v1.DeptTreeSelect'
+    /iam/dept/{dept.dept_id}:
+        patch:
+            tags:
+                - DeptService
+            description: |-
+                UpdateDept partially updates a department via field-mask; moving one is
+                 an ordinary parent_id update (no separate move endpoint, no ancestors
+                 rewrite — ADR 0014). Enabling a department enables its ancestors;
+                 disabling one with enabled descendants or users is refused.
+            operationId: DeptService_UpdateDept
+            parameters:
+                - name: dept.dept_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: updateMask
+                  in: query
+                  description: Required. Mask of fields to update.
+                  schema:
+                    type: string
+                    format: field-mask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/org.v1.Dept'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/org.v1.Dept'
+    /iam/dept/{deptId}:
+        get:
+            tags:
+                - DeptService
+            description: GetDept retrieves a department by id.
+            operationId: DeptService_GetDept
+            parameters:
+                - name: deptId
+                  in: path
+                  description: Required. The id of the department to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/org.v1.Dept'
+        delete:
+            tags:
+                - DeptService
+            description: |-
+                DeleteDept soft-deletes a department by id; refused for the seeded root,
+                 while children exist, or while the department still has users or posts.
+            operationId: DeptService_DeleteDept
+            parameters:
+                - name: deptId
+                  in: path
+                  description: Required. The id of the department to delete.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
     /iam/dict/entries:
         get:
             tags:
@@ -1797,6 +1922,94 @@ components:
                     type: string
                     description: Opaque token for the next page; empty when on the last page.
             description: StoredFileSet is a page of stored files.
+        org.v1.Dept:
+            type: object
+            properties:
+                deptId:
+                    type: string
+                    description: Snowflake ID. Server-assigned on create.
+                parentId:
+                    type: string
+                    description: Parent department id; 0 = root.
+                deptName:
+                    type: string
+                    description: Department name. Required, non-blank; unique among siblings.
+                orderNum:
+                    type: integer
+                    description: Display order. Defaults to 0; not required (0 is legal).
+                    format: int32
+                leader:
+                    type: string
+                    description: |-
+                        Leader as a System User id; 0 = none. Display-only: never validated
+                         against sys_user (the editor restricts the choices).
+                phone:
+                    type: string
+                email:
+                    type: string
+                status:
+                    type: integer
+                    description: 0正常 1停用 (per RuoYi). Ordinary updatable field.
+                    format: int32
+                createBy:
+                    type: string
+                    description: 'Audit: who created/updated. Filled from the authenticated identity.'
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+                children:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/org.v1.Dept'
+                    description: |-
+                        Read-only: populated by ListDepts (the tree), ignored on Create/Update.
+                         Ordered by order_num.
+            description: |-
+                Dept is a department (部门), ported from RuoYi sys_dept. The tree shape is
+                 parent_id only (ADR 0014 — no materialized ancestors path); ListDepts
+                 returns a server-built forest.
+        org.v1.DeptTree:
+            type: object
+            properties:
+                depts:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/org.v1.Dept'
+            description: DeptTree is a forest of root departments, each nesting its descendants.
+        org.v1.DeptTreeOption:
+            type: object
+            properties:
+                deptId:
+                    type: string
+                    description: The department id (the select's value).
+                parentId:
+                    type: string
+                label:
+                    type: string
+                    description: The department name (the select's label).
+                disabled:
+                    type: boolean
+                    description: True when the department is disabled (0正常 1停用 → selectable=false).
+                children:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/org.v1.DeptTreeOption'
+            description: |-
+                DeptTreeOption is one node of the lightweight department tree the selects
+                 render (user form, post page). It carries no audit or contact data.
+        org.v1.DeptTreeSelect:
+            type: object
+            properties:
+                options:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/org.v1.DeptTreeOption'
+            description: DeptTreeSelect is the forest of DeptTreeOption nodes.
         user.v1.CurrentUser:
             type: object
             properties:
@@ -1924,6 +2137,8 @@ tags:
       description: |-
         AuthService owns login/logout for Login Sessions. The user↔role link it
          once hosted moved to access.v1.RoleAssignmentService.
+    - name: DeptService
+      description: DeptService is the department CRUD + tree service.
     - name: DictService
       description: |-
         DictService is the dictionary management service: Dict Type and Dict Entry

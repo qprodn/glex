@@ -8,6 +8,18 @@ import (
 	"glex/internal/infra/ent"
 )
 
+// The DeptFunc type is an adapter to allow the use of ordinary
+// function as Dept mutator.
+type DeptFunc func(context.Context, *ent.DeptMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DeptFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DeptMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DeptMutation", m)
+}
+
 // The DictDataFunc type is an adapter to allow the use of ordinary
 // function as DictData mutator.
 type DictDataFunc func(context.Context, *ent.DictDataMutation) (ent.Value, error)

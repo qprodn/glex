@@ -11,6 +11,7 @@ import (
 
 	"glex/internal/infra/ent/migrate"
 
+	"glex/internal/infra/ent/dept"
 	"glex/internal/infra/ent/dictdata"
 	"glex/internal/infra/ent/dicttype"
 	"glex/internal/infra/ent/file"
@@ -35,6 +36,8 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// Dept is the client for interacting with the Dept builders.
+	Dept *DeptClient
 	// DictData is the client for interacting with the DictData builders.
 	DictData *DictDataClient
 	// DictType is the client for interacting with the DictType builders.
@@ -66,6 +69,7 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.Dept = NewDeptClient(c.config)
 	c.DictData = NewDictDataClient(c.config)
 	c.DictType = NewDictTypeClient(c.config)
 	c.File = NewFileClient(c.config)
@@ -168,6 +172,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	return &Tx{
 		ctx:      ctx,
 		config:   cfg,
+		Dept:     NewDeptClient(cfg),
 		DictData: NewDictDataClient(cfg),
 		DictType: NewDictTypeClient(cfg),
 		File:     NewFileClient(cfg),
@@ -197,6 +202,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	return &Tx{
 		ctx:      ctx,
 		config:   cfg,
+		Dept:     NewDeptClient(cfg),
 		DictData: NewDictDataClient(cfg),
 		DictType: NewDictTypeClient(cfg),
 		File:     NewFileClient(cfg),
@@ -213,7 +219,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		DictData.
+//		Dept.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -236,7 +242,7 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog, c.Role,
+		c.Dept, c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog, c.Role,
 		c.RoleMenu, c.User, c.UserRole,
 	} {
 		n.Use(hooks...)
@@ -247,7 +253,7 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog, c.Role,
+		c.Dept, c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog, c.Role,
 		c.RoleMenu, c.User, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
@@ -257,6 +263,8 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
+	case *DeptMutation:
+		return c.Dept.mutate(ctx, m)
 	case *DictDataMutation:
 		return c.DictData.mutate(ctx, m)
 	case *DictTypeMutation:
@@ -279,6 +287,139 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.UserRole.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
+}
+
+// DeptClient is a client for the Dept schema.
+type DeptClient struct {
+	config
+}
+
+// NewDeptClient returns a client for the Dept from the given config.
+func NewDeptClient(c config) *DeptClient {
+	return &DeptClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `dept.Hooks(f(g(h())))`.
+func (c *DeptClient) Use(hooks ...Hook) {
+	c.hooks.Dept = append(c.hooks.Dept, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `dept.Intercept(f(g(h())))`.
+func (c *DeptClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Dept = append(c.inters.Dept, interceptors...)
+}
+
+// Create returns a builder for creating a Dept entity.
+func (c *DeptClient) Create() *DeptCreate {
+	mutation := newDeptMutation(c.config, OpCreate)
+	return &DeptCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Dept entities.
+func (c *DeptClient) CreateBulk(builders ...*DeptCreate) *DeptCreateBulk {
+	return &DeptCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DeptClient) MapCreateBulk(slice any, setFunc func(*DeptCreate, int)) *DeptCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DeptCreateBulk{err: fmt.Errorf("calling to DeptClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DeptCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DeptCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Dept.
+func (c *DeptClient) Update() *DeptUpdate {
+	mutation := newDeptMutation(c.config, OpUpdate)
+	return &DeptUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DeptClient) UpdateOne(_m *Dept) *DeptUpdateOne {
+	mutation := newDeptMutation(c.config, OpUpdateOne, withDept(_m))
+	return &DeptUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DeptClient) UpdateOneID(id int64) *DeptUpdateOne {
+	mutation := newDeptMutation(c.config, OpUpdateOne, withDeptID(id))
+	return &DeptUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Dept.
+func (c *DeptClient) Delete() *DeptDelete {
+	mutation := newDeptMutation(c.config, OpDelete)
+	return &DeptDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DeptClient) DeleteOne(_m *Dept) *DeptDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DeptClient) DeleteOneID(id int64) *DeptDeleteOne {
+	builder := c.Delete().Where(dept.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DeptDeleteOne{builder}
+}
+
+// Query returns a query builder for Dept.
+func (c *DeptClient) Query() *DeptQuery {
+	return &DeptQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDept},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Dept entity by its id.
+func (c *DeptClient) Get(ctx context.Context, id int64) (*Dept, error) {
+	return c.Query().Where(dept.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DeptClient) GetX(ctx context.Context, id int64) *Dept {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *DeptClient) Hooks() []Hook {
+	return c.hooks.Dept
+}
+
+// Interceptors returns the client interceptors.
+func (c *DeptClient) Interceptors() []Interceptor {
+	return c.inters.Dept
+}
+
+func (c *DeptClient) mutate(ctx context.Context, m *DeptMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DeptCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DeptUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DeptUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DeptDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Dept mutation op: %q", m.Op())
 	}
 }
 
@@ -1743,11 +1884,11 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		DictData, DictType, File, LoginLog, Menu, OperLog, Role, RoleMenu, User,
+		Dept, DictData, DictType, File, LoginLog, Menu, OperLog, Role, RoleMenu, User,
 		UserRole []ent.Hook
 	}
 	inters struct {
-		DictData, DictType, File, LoginLog, Menu, OperLog, Role, RoleMenu, User,
+		Dept, DictData, DictType, File, LoginLog, Menu, OperLog, Role, RoleMenu, User,
 		UserRole []ent.Interceptor
 	}
 )

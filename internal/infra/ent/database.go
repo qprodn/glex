@@ -79,6 +79,11 @@ func (db *Database) Query(ctx context.Context, query string, args ...interface{}
 	return &rows, nil
 }
 
+// Dept is the client for interacting with the Dept builders.
+func (db *Database) Dept(ctx context.Context) *DeptClient {
+	return db.loadClient(ctx).Dept
+}
+
 // DictData is the client for interacting with the DictData builders.
 func (db *Database) DictData(ctx context.Context) *DictDataClient {
 	return db.loadClient(ctx).DictData

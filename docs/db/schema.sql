@@ -369,3 +369,40 @@ comment on column sys_login_log.update_by is '更新者用户ID';
 comment on column sys_login_log.created_at is '创建时间';
 comment on column sys_login_log.updated_at is '更新时间';
 comment on column sys_login_log.deleted_at is '软删除时间；NULL=未删除；日志只写一次，撤回是唯一变更（ADR 0012）';
+
+
+create table if not exists sys_dept (
+    id         bigint       not null,
+    parent_id  bigint       not null default 0,    -- 0 = root; tree derived, no ancestors path (ADR 0014)
+    dept_name  varchar(30)  not null,
+    order_num  integer      not null default 0,
+    leader     bigint       not null default 0,    -- System User id; 0 = none; display-only, never validated
+    phone      varchar(11)  not null default '',
+    email      varchar(50)  not null default '',
+    status     smallint     not null default 0,    -- 0正常 1停用
+    create_by  bigint       not null default 0,    -- audit; Application stamps from Principal (ADR 0002)
+    update_by  bigint       not null default 0,
+    created_at timestamptz  not null default now(),
+    updated_at timestamptz  not null default now(),
+    deleted_at timestamptz,                        -- soft delete; NULL = active
+    constraint sys_dept_pkey primary key (id)
+);
+
+create index if not exists dept_parent_id on sys_dept (parent_id);
+-- No unique constraint on (parent_id, dept_name): enforced by a soft biz check.
+
+comment on table sys_dept is '部门表';
+
+comment on column sys_dept.id is '部门ID（雪花）';
+comment on column sys_dept.parent_id is '父部门ID；0=根部门；树形在领域层内存构建（ADR 0014）';
+comment on column sys_dept.dept_name is '部门名称；同级唯一（领域软检查）';
+comment on column sys_dept.order_num is '显示顺序';
+comment on column sys_dept.leader is '负责人（System User ID）；0=未设置；仅展示，不做存在性校验';
+comment on column sys_dept.phone is '联系电话';
+comment on column sys_dept.email is '邮箱';
+comment on column sys_dept.status is '部门状态：0正常 1停用';
+comment on column sys_dept.create_by is '创建者用户ID';
+comment on column sys_dept.update_by is '更新者用户ID';
+comment on column sys_dept.created_at is '创建时间';
+comment on column sys_dept.updated_at is '更新时间';
+comment on column sys_dept.deleted_at is '软删除时间；NULL=未删除';

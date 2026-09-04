@@ -7,11 +7,13 @@ import (
 	auditv1 "glex/api/audit/v1"
 	dictv1 "glex/api/dict/v1"
 	filev1 "glex/api/file/v1"
+	orgv1 "glex/api/org/v1"
 	userv1 "glex/api/user/v1"
 	accessapp "glex/internal/application/access"
 	auditapp "glex/internal/application/audit"
 	dictapp "glex/internal/application/dict"
 	fileapp "glex/internal/application/file"
+	orgapp "glex/internal/application/org"
 	userapp "glex/internal/application/user"
 	"glex/internal/conf"
 	auditservice "glex/internal/domain/audit/service"
@@ -25,7 +27,7 @@ import (
 )
 
 // NewGRPCServer new a gRPC server.
-func NewGRPCServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, audit *auditapp.AuditApplication, auditDomain auditservice.Audit, logger *slog.Logger) *grpc.Server {
+func NewGRPCServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, audit *auditapp.AuditApplication, dept *orgapp.DeptApplication, auditDomain auditservice.Audit, logger *slog.Logger) *grpc.Server {
 	var opts = []grpc.ServerOption{
 		grpc.Middleware(
 			requestid.Server(requestid.WithLogger(logger)),
@@ -48,6 +50,7 @@ func NewGRPCServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 	userv1.RegisterUserServiceServer(srv, user)
 	accessv1.RegisterMenuServiceServer(srv, menu)
 	accessv1.RegisterRoleServiceServer(srv, role)
+	orgv1.RegisterDeptServiceServer(srv, dept)
 	dictv1.RegisterDictServiceServer(srv, dict)
 	filev1.RegisterFileServiceServer(srv, file)
 	auditv1.RegisterOperLogServiceServer(srv, audit)

@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package org.v1;
+
+option go_package = "glex/api/org/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.org.v1";
+
+// ErrorReason is the stable vocabulary for the `reason` field of the error
+// body. Values are wire-visible: protojson encodes them as their names, so
+// clients branch on the name (e.g. "DEPT_NOT_FOUND") rather than on an HTTP
+// status. Surfaced in `biz` as `ErrDept<Cause>` / `ErrPost<Cause>`. The
+// integer tags are internal to the enum; only the names cross the wire.
+enum ErrorReason {
+  // Unset. Never returned; reserved by proto3 for the zero value.
+  ERROR_REASON_UNSPECIFIED = 0;
+
+  // Dept reasons (DeptService).
+  // The requested department does not exist.
+  DEPT_NOT_FOUND = 1;
+  // The department still has children and cannot be deleted.
+  DEPT_HAS_CHILDREN = 2;
+  // The department is still referenced by System Users and cannot be
+  // deleted or disabled (RuoYi: 部门存在用户 / 部门下存在已分配用户).
+  DEPT_HAS_USERS = 3;
+  // The department still has posts and cannot be deleted (RuoYi 6.0:
+  // 部门存在岗位).
+  DEPT_HAS_POSTS = 4;
+  // The department still has enabled descendants and cannot be disabled
+  // (RuoYi: 该部门包含未停用的子部门).
+  DEPT_HAS_ENABLED_CHILDREN = 5;
+  // dept_name already exists under the same parent.
+  DEPT_NAME_TAKEN = 6;
+  // The seeded root department cannot be deleted (RuoYi: 默认部门,不允许删除).
+  DEPT_ROOT_PROTECTED = 7;
+  // The parent is the department itself or one of its descendants.
+  DEPT_PARENT_INVALID = 8;
+  // The parent department is disabled and takes no children (RuoYi:
+  // 部门停用，不允许新增).
+  DEPT_DISABLED = 9;
+  // dept_name is blank.
+  DEPT_INVALID = 10;
+
+  // Post reasons (PostService, PostAssignmentService).
+  // The requested post does not exist.
+  POST_NOT_FOUND = 11;
+  // post_name already exists within the department.
+  POST_NAME_TAKEN = 12;
+  // post_code already exists.
+  POST_CODE_TAKEN = 13;
+  // post_name/post_code is blank or dept_id is missing.
+  POST_INVALID = 14;
+  // The post still has System Users assigned and cannot be deleted or
+  // disabled (RuoYi: 已分配，不能删除 / 该岗位下存在已分配用户，不能禁用).
+  POST_IN_USE = 15;
+  // One or more post ids in a Post Assignment do not exist (or are
+  // soft-deleted/disabled).
+  POST_NOT_ASSIGNABLE = 16;
+}

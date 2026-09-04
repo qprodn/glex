@@ -7,6 +7,7 @@ import (
 	authnapp "glex/internal/application/authn"
 	dictapp "glex/internal/application/dict"
 	fileapp "glex/internal/application/file"
+	orgapp "glex/internal/application/org"
 	auditimpl "glex/internal/crossdomain/audit/impl"
 	accessimpl "glex/internal/crossdomain/access/impl"
 	authnimpl "glex/internal/crossdomain/authn/impl"
@@ -16,6 +17,7 @@ import (
 	authnservice "glex/internal/domain/authn/service"
 	dictservice "glex/internal/domain/dict/service"
 	fileservice "glex/internal/domain/file/service"
+	orgservice "glex/internal/domain/org/service"
 	userinfra "glex/internal/infra/user"
 	auditinfra "glex/internal/infra/audit"
 	accessinfra "glex/internal/infra/access"
@@ -23,6 +25,7 @@ import (
 	dictinfra "glex/internal/infra/dict"
 	fileinfra "glex/internal/infra/file"
 	lockerinfra "glex/internal/infra/locker"
+	orginfra "glex/internal/infra/org"
 	"glex/internal/infra/store"
 	"glex/internal/server"
 
@@ -48,6 +51,7 @@ var appModule = fx.Options(
 	dictinfra.Module,
 	fileinfra.Module,
 	lockerinfra.Module,
+	orginfra.Module,
 	// domain services
 	userservice.Module,
 	auditservice.Module,
@@ -55,6 +59,7 @@ var appModule = fx.Options(
 	authnservice.Module,
 	dictservice.Module,
 	fileservice.Module,
+	orgservice.Module,
 	// crossdomain contract adapters
 	auditimpl.Module,
 	accessimpl.Module,
@@ -66,6 +71,7 @@ var appModule = fx.Options(
 	authnapp.Module,
 	dictapp.Module,
 	fileapp.Module,
+	orgapp.Module,
 	// transport
 	server.Module,
 	fx.Provide(newApp),
@@ -74,5 +80,6 @@ var appModule = fx.Options(
 		func(m *store.TxManager) accessapp.Transaction { return m },
 		func(m *store.TxManager) authnapp.Transaction { return m },
 		func(m *store.TxManager) dictapp.Transaction { return m },
+		func(m *store.TxManager) orgapp.Transaction { return m },
 	),
 )

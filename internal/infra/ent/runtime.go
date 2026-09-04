@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"glex/internal/infra/ent/dept"
 	"glex/internal/infra/ent/dictdata"
 	"glex/internal/infra/ent/dicttype"
 	"glex/internal/infra/ent/file"
@@ -21,6 +22,53 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	deptMixin := schema.Dept{}.Mixin()
+	deptMixinFields0 := deptMixin[0].Fields()
+	_ = deptMixinFields0
+	deptFields := schema.Dept{}.Fields()
+	_ = deptFields
+	// deptDescCreateBy is the schema descriptor for create_by field.
+	deptDescCreateBy := deptMixinFields0[0].Descriptor()
+	// dept.DefaultCreateBy holds the default value on creation for the create_by field.
+	dept.DefaultCreateBy = deptDescCreateBy.Default.(int64)
+	// deptDescUpdateBy is the schema descriptor for update_by field.
+	deptDescUpdateBy := deptMixinFields0[1].Descriptor()
+	// dept.DefaultUpdateBy holds the default value on creation for the update_by field.
+	dept.DefaultUpdateBy = deptDescUpdateBy.Default.(int64)
+	// deptDescCreatedAt is the schema descriptor for created_at field.
+	deptDescCreatedAt := deptMixinFields0[2].Descriptor()
+	// dept.DefaultCreatedAt holds the default value on creation for the created_at field.
+	dept.DefaultCreatedAt = deptDescCreatedAt.Default.(func() time.Time)
+	// deptDescUpdatedAt is the schema descriptor for updated_at field.
+	deptDescUpdatedAt := deptMixinFields0[3].Descriptor()
+	// dept.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	dept.DefaultUpdatedAt = deptDescUpdatedAt.Default.(func() time.Time)
+	// dept.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	dept.UpdateDefaultUpdatedAt = deptDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// deptDescParentID is the schema descriptor for parent_id field.
+	deptDescParentID := deptFields[1].Descriptor()
+	// dept.DefaultParentID holds the default value on creation for the parent_id field.
+	dept.DefaultParentID = deptDescParentID.Default.(int64)
+	// deptDescOrderNum is the schema descriptor for order_num field.
+	deptDescOrderNum := deptFields[3].Descriptor()
+	// dept.DefaultOrderNum holds the default value on creation for the order_num field.
+	dept.DefaultOrderNum = deptDescOrderNum.Default.(int)
+	// deptDescLeader is the schema descriptor for leader field.
+	deptDescLeader := deptFields[4].Descriptor()
+	// dept.DefaultLeader holds the default value on creation for the leader field.
+	dept.DefaultLeader = deptDescLeader.Default.(int64)
+	// deptDescPhone is the schema descriptor for phone field.
+	deptDescPhone := deptFields[5].Descriptor()
+	// dept.DefaultPhone holds the default value on creation for the phone field.
+	dept.DefaultPhone = deptDescPhone.Default.(string)
+	// deptDescEmail is the schema descriptor for email field.
+	deptDescEmail := deptFields[6].Descriptor()
+	// dept.DefaultEmail holds the default value on creation for the email field.
+	dept.DefaultEmail = deptDescEmail.Default.(string)
+	// deptDescStatus is the schema descriptor for status field.
+	deptDescStatus := deptFields[7].Descriptor()
+	// dept.DefaultStatus holds the default value on creation for the status field.
+	dept.DefaultStatus = deptDescStatus.Default.(int8)
 	dictdataMixin := schema.DictData{}.Mixin()
 	dictdataMixinFields0 := dictdataMixin[0].Fields()
 	_ = dictdataMixinFields0

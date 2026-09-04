@@ -14,6 +14,8 @@ import (
 // Tx is a transactional client that is created by calling Client.Tx().
 type Tx struct {
 	config
+	// Dept is the client for interacting with the Dept builders.
+	Dept *DeptClient
 	// DictData is the client for interacting with the DictData builders.
 	DictData *DictDataClient
 	// DictType is the client for interacting with the DictType builders.
@@ -165,6 +167,7 @@ func (tx *Tx) Client() *Client {
 }
 
 func (tx *Tx) init() {
+	tx.Dept = NewDeptClient(tx.config)
 	tx.DictData = NewDictDataClient(tx.config)
 	tx.DictType = NewDictTypeClient(tx.config)
 	tx.File = NewFileClient(tx.config)
@@ -184,7 +187,7 @@ func (tx *Tx) init() {
 // of them in order to commit or rollback the transaction.
 //
 // If a closed transaction is embedded in one of the generated entities, and the entity
-// applies a query, for example: DictData.QueryXXX(), the query will be executed
+// applies a query, for example: Dept.QueryXXX(), the query will be executed
 // through the driver which created this transaction.
 //
 // Note that txDriver is not goroutine safe.

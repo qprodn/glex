@@ -9,6 +9,35 @@ import (
 )
 
 var (
+	// SysDeptColumns holds the columns for the "sys_dept" table.
+	SysDeptColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "parent_id", Type: field.TypeInt64, Default: 0},
+		{Name: "dept_name", Type: field.TypeString},
+		{Name: "order_num", Type: field.TypeInt, Default: 0, SchemaType: map[string]string{"postgres": "integer"}},
+		{Name: "leader", Type: field.TypeInt64, Default: 0},
+		{Name: "phone", Type: field.TypeString, Default: ""},
+		{Name: "email", Type: field.TypeString, Default: ""},
+		{Name: "status", Type: field.TypeInt8, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
+	}
+	// SysDeptTable holds the schema information for the "sys_dept" table.
+	SysDeptTable = &schema.Table{
+		Name:       "sys_dept",
+		Columns:    SysDeptColumns,
+		PrimaryKey: []*schema.Column{SysDeptColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "dept_parent_id",
+				Unique:  false,
+				Columns: []*schema.Column{SysDeptColumns[6]},
+			},
+		},
+	}
 	// SysDictDataColumns holds the columns for the "sys_dict_data" table.
 	SysDictDataColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -331,6 +360,7 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		SysDeptTable,
 		SysDictDataTable,
 		SysDictTypeTable,
 		SysFileTable,
@@ -345,6 +375,9 @@ var (
 )
 
 func init() {
+	SysDeptTable.Annotation = &entsql.Annotation{
+		Table: "sys_dept",
+	}
 	SysDictDataTable.Annotation = &entsql.Annotation{
 		Table: "sys_dict_data",
 	}

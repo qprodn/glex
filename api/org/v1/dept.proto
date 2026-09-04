@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+package org.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/field_mask.proto";
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "glex/api/org/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.org.v1";
+
+// Dept is a department (部门), ported from RuoYi sys_dept. The tree shape is
+// parent_id only (ADR 0014 — no materialized ancestors path); ListDepts
+// returns a server-built forest.
+message Dept {
+  // Snowflake ID. Server-assigned on create.
+  int64 dept_id = 1;
+  // Parent department id; 0 = root.
+  int64 parent_id = 2;
+  // Department name. Required, non-blank; unique among siblings.
+  string dept_name = 3;
+  // Display order. Defaults to 0; not required (0 is legal).
+  int32 order_num = 4;
+  // Leader as a System User id; 0 = none. Display-only: never validated
+  // against sys_user (the editor restricts the choices).
+  int64 leader = 5;
+  string phone = 6;
+  string email = 7;
+  // 0正常 1停用 (per RuoYi). Ordinary updatable field.
+  int32 status = 8;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  int64 create_by = 9;
+  int64 update_by = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+  // Read-only: populated by ListDepts (the tree), ignored on Create/Update.
+  // Ordered by order_num.
+  repeated Dept children = 13;
+}
+
+// DeptTree is a forest of root departments, each nesting its descendants.
+message DeptTree {
+  repeated Dept depts = 1;
+}
+
+// DeptTreeOption is one node of the lightweight department tree the selects
+// render (user form, post page). It carries no audit or contact data.
+message DeptTreeOption {
+  // The department id (the select's value).
+  int64 dept_id = 1;
+  int64 parent_id = 2;
+  // The department name (the select's label).
+  string label = 3;
+  // True when the department is disabled (0正常 1停用 → selectable=false).
+  bool disabled = 4;
+  repeated DeptTreeOption children = 5;
+}
+
+// DeptTreeSelect is the forest of DeptTreeOption nodes.
+message DeptTreeSelect {
+  repeated DeptTreeOption options = 1;
+}
+
+// DeptService is the department CRUD + tree service.
+service DeptService {
+  // ListDepts returns the full department tree. Not paginated (departments
+  // are small and tree-shaped); the whole non-withdrawn set is returned so
+  // the client can build selects, map ids to names, and filter.
+  rpc ListDepts(google.protobuf.Empty) returns (DeptTree) {
+    option (google.api.http) = {
+      get: "/iam/dept"
+    };
+  }
+  // GetDept retrieves a department by id.
+  rpc GetDept(GetDeptRequest) returns (Dept) {
+    option (google.api.http) = {
+      get: "/iam/dept/{dept_id}"
+    };
+  }
+  // CreateDept creates a department under an existing, enabled parent
+  // (RuoYi: 部门停用，不允许新增). parent_id 0 creates another root.
+  rpc CreateDept(CreateDeptRequest) returns (Dept) {
+    option (google.api.http) = {
+      post: "/iam/dept"
+      body: "dept"
+    };
+  }
+  // UpdateDept partially updates a department via field-mask; moving one is
+  // an ordinary parent_id update (no separate move endpoint, no ancestors
+  // rewrite — ADR 0014). Enabling a department enables its ancestors;
+  // disabling one with enabled descendants or users is refused.
+  rpc UpdateDept(UpdateDeptRequest) returns (Dept) {
+    option (google.api.http) = {
+      patch: "/iam/dept/{dept.dept_id}"
+      body: "dept"
+    };
+  }
+  // DeleteDept soft-deletes a department by id; refused for the seeded root,
+  // while children exist, or while the department still has users or posts.
+  rpc DeleteDept(DeleteDeptRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/iam/dept/{dept_id}"
+    };
+  }
+  // ListDeptTree returns the lightweight department tree the selects render
+  // from. The consumption read every form uses: login required, no
+  // Functional Permission (ListDictEntriesByType's pattern).
+  rpc ListDeptTree(google.protobuf.Empty) returns (DeptTreeSelect) {
+    option (google.api.http) = {
+      get: "/iam/dept/tree"
+    };
+  }
+}
+
+message CreateDeptRequest {
+  // Required. The department to create.
+  Dept dept = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetDeptRequest {
+  // Required. The id of the department to retrieve.
+  int64 dept_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateDeptRequest {
+  // Required. The department to update. dept_id identifies the record.
+  Dept dept = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. Mask of fields to update.
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteDeptRequest {
+  // Required. The id of the department to delete.
+  int64 dept_id = 1 [(google.api.field_behavior) = REQUIRED];
+}

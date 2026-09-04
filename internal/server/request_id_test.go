@@ -28,9 +28,9 @@ func TestHTTPServerReturnsServiceOwnedUUIDv7ForEveryResponse(t *testing.T) {
 		nil,
 		nil,
 		nil,
+		nil,
 		slog.New(slog.DiscardHandler),
 	)
-
 	tests := []struct {
 		name        string
 		method      string

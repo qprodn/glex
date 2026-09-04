@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"glex/internal/infra/ent/dept"
 	"glex/internal/infra/ent/dictdata"
 	"glex/internal/infra/ent/dicttype"
 	"glex/internal/infra/ent/file"
@@ -82,6 +83,7 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
+			dept.Table:     dept.ValidColumn,
 			dictdata.Table: dictdata.ValidColumn,
 			dicttype.Table: dicttype.ValidColumn,
 			file.Table:     file.ValidColumn,

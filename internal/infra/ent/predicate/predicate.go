@@ -6,6 +6,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// Dept is the predicate function for dept builders.
+type Dept func(*sql.Selector)
+
 // DictData is the predicate function for dictdata builders.
 type DictData func(*sql.Selector)
 
