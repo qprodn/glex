@@ -29,6 +29,7 @@ func toBiz(po *ent.User) *userentity.User {
 		Status:    int32(po.Status),
 		Avatar:    po.Avatar,
 		Remark:    po.Remark,
+		DeptID:    po.DeptID,
 		CreateBy:  po.CreateBy,
 		UpdateBy:  po.UpdateBy,
 		LoginIP:   po.LoginIP,
@@ -135,11 +136,15 @@ func (r *userRepo) ListUsers(ctx context.Context, opts ...userrepo.ListOption) (
 	for _, opt := range opts {
 		opt(&o)
 	}
-	pos, err := r.data.DB.User(ctx).Query().
+	q := r.data.DB.User(ctx).Query().
 		Where(
 			user.DeletedAtIsNil(),
 			ents.ApplyFilter(o.Filter),
-		).
+		)
+	if len(o.DeptIDs) > 0 {
+		q = q.Where(user.DeptIDIn(o.DeptIDs...))
+	}
+	pos, err := q.
 		Order(ents.ApplyOrderBy(o.OrderBy)).
 		Offset(o.Offset).
 		Limit(o.Limit).
@@ -163,6 +168,7 @@ func (r *userRepo) CreateUser(ctx context.Context, u *userentity.User) (*userent
 		SetStatus(int8(u.Status)).
 		SetAvatar(u.Avatar).
 		SetRemark(u.Remark).
+		SetDeptID(u.DeptID).
 		SetCreateBy(u.CreateBy).
 		SetUpdateBy(u.UpdateBy)
 	if u.Email != "" {
@@ -197,6 +203,7 @@ func (r *userRepo) UpdateUser(ctx context.Context, u *userentity.User) (*userent
 		SetStatus(int8(u.Status)).
 		SetAvatar(u.Avatar).
 		SetRemark(u.Remark).
+		SetDeptID(u.DeptID).
 		SetUpdateBy(u.UpdateBy)
 	if u.Email != "" {
 		upd.SetEmail(u.Email)

@@ -24,7 +24,7 @@ import (
 // path to the System User reads and writes (ADR 0005).
 type User interface {
 	Get(ctx context.Context, id int64) (*entity.User, error)
-	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.User, error)
+	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int, deptIDs []int64) ([]*entity.User, error)
 	// Create validates uniqueness against active rows and persists the user.
 	Create(ctx context.Context, u *entity.User) (*entity.User, error)
 	// Update validates uniqueness (excluding self) and persists the change,
@@ -61,12 +61,13 @@ func (s *userImpl) Get(ctx context.Context, id int64) (*entity.User, error) {
 	return u, nil
 }
 
-func (s *userImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.User, error) {
+func (s *userImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int, deptIDs []int64) ([]*entity.User, error) {
 	users, err := s.users.ListUsers(ctx,
 		repository.ListFilter(filter),
 		repository.ListOrderBy(orderBy),
 		repository.ListLimit(limit),
 		repository.ListOffset(offset),
+		repository.ListDeptIDs(deptIDs),
 	)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "user.svc.list", err)

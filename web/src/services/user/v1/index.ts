@@ -41,6 +41,9 @@ export type User = {
   // Avatar URL. OSS upload is deferred; the column is a placeholder.
   avatar: string | undefined;
   remark: string | undefined;
+  // The user's department (部门); 0 = none. Validated through the org
+  // module's contract on save: the department must exist and be enabled.
+  deptId: number | undefined;
   // Audit: who created/updated. Filled from the authenticated identity.
   createBy: number | undefined;
   updateBy: number | undefined;
@@ -119,6 +122,11 @@ export type ListUsersRequest = {
   filter: string | undefined;
   // Optional. AIP-132 order, e.g. `created_at desc` or `user_name`.
   orderBy: string | undefined;
+  // Optional. Restrict the listing to this department's subtree (the
+  // department itself and every descendant), resolved server-side through
+  // the org module; 0 = no restriction. Distinct from the filter's exact
+  // fields.
+  deptId: number | undefined;
 };
 
 export type UpdateUserRequest = {
@@ -266,6 +274,9 @@ export function createUserServiceClient(
       }
       if (request.orderBy) {
         queryParams.push(`orderBy=${encodeURIComponent(request.orderBy.toString())}`)
+      }
+      if (request.deptId) {
+        queryParams.push(`deptId=${encodeURIComponent(request.deptId.toString())}`)
       }
       let uri = path;
       if (queryParams.length > 0) {

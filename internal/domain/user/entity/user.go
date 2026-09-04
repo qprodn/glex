@@ -22,6 +22,10 @@ type User struct {
 	Status    int32
 	Avatar    string
 	Remark    string
+	// DeptID is the user's place in the org structure (0 = none). The org
+	// module validates it through the crossdomain org contract; the user
+	// module stores it (ADR 0013).
+	DeptID    int64
 	CreateBy  int64
 	UpdateBy  int64
 	LoginIP   string

@@ -34,6 +34,9 @@ message User {
   // Avatar URL. OSS upload is deferred; the column is a placeholder.
   string avatar = 9;
   string remark = 10;
+  // The user's department (部门); 0 = none. Validated through the org
+  // module's contract on save: the department must exist and be enabled.
+  int64 dept_id = 17;
   // Audit: who created/updated. Filled from the authenticated identity.
   int64 create_by = 11;
   int64 update_by = 12;
@@ -147,6 +150,11 @@ message ListUsersRequest {
   string filter = 3;
   // Optional. AIP-132 order, e.g. `created_at desc` or `user_name`.
   string order_by = 4;
+  // Optional. Restrict the listing to this department's subtree (the
+  // department itself and every descendant), resolved server-side through
+  // the org module; 0 = no restriction. Distinct from the filter's exact
+  // fields.
+  int64 dept_id = 5;
 }
 
 message UpdateUserRequest {

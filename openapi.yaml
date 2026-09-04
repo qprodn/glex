@@ -1086,6 +1086,15 @@ paths:
                   description: Optional. AIP-132 order, e.g. `created_at desc` or `user_name`.
                   schema:
                     type: string
+                - name: deptId
+                  in: query
+                  description: |-
+                    Optional. Restrict the listing to this department's subtree (the
+                     department itself and every descendant), resolved server-side through
+                     the org module; 0 = no restriction. Distinct from the filter's exact
+                     fields.
+                  schema:
+                    type: string
             responses:
                 "200":
                     description: OK
@@ -2398,6 +2407,11 @@ components:
                     description: Avatar URL. OSS upload is deferred; the column is a placeholder.
                 remark:
                     type: string
+                deptId:
+                    type: string
+                    description: |-
+                        The user's department (部门); 0 = none. Validated through the org
+                         module's contract on save: the department must exist and be enabled.
                 createBy:
                     type: string
                     description: 'Audit: who created/updated. Filled from the authenticated identity.'

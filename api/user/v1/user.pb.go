@@ -48,6 +48,9 @@ type User struct {
 	// Avatar URL. OSS upload is deferred; the column is a placeholder.
 	Avatar string `protobuf:"bytes,9,opt,name=avatar,proto3" json:"avatar,omitempty"`
 	Remark string `protobuf:"bytes,10,opt,name=remark,proto3" json:"remark,omitempty"`
+	// The user's department (部门); 0 = none. Validated through the org
+	// module's contract on save: the department must exist and be enabled.
+	DeptId int64 `protobuf:"varint,17,opt,name=dept_id,json=deptId,proto3" json:"dept_id,omitempty"`
 	// Audit: who created/updated. Filled from the authenticated identity.
 	CreateBy int64 `protobuf:"varint,11,opt,name=create_by,json=createBy,proto3" json:"create_by,omitempty"`
 	UpdateBy int64 `protobuf:"varint,12,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
@@ -158,6 +161,13 @@ func (x *User) GetRemark() string {
 		return x.Remark
 	}
 	return ""
+}
+
+func (x *User) GetDeptId() int64 {
+	if x != nil {
+		return x.DeptId
+	}
+	return 0
 }
 
 func (x *User) GetCreateBy() int64 {
@@ -580,7 +590,12 @@ type ListUsersRequest struct {
 	//   - `created_at` range (e.g. `created_at>="2026-01-01T00:00:00Z"`)
 	Filter string `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty"`
 	// Optional. AIP-132 order, e.g. `created_at desc` or `user_name`.
-	OrderBy       string `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
+	OrderBy string `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
+	// Optional. Restrict the listing to this department's subtree (the
+	// department itself and every descendant), resolved server-side through
+	// the org module; 0 = no restriction. Distinct from the filter's exact
+	// fields.
+	DeptId        int64 `protobuf:"varint,5,opt,name=dept_id,json=deptId,proto3" json:"dept_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -641,6 +656,13 @@ func (x *ListUsersRequest) GetOrderBy() string {
 		return x.OrderBy
 	}
 	return ""
+}
+
+func (x *ListUsersRequest) GetDeptId() int64 {
+	if x != nil {
+		return x.DeptId
+	}
+	return 0
 }
 
 type UpdateUserRequest struct {
@@ -746,7 +768,7 @@ var File_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_user_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x12user/v1/user.proto\x12\auser.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\"\x94\x04\n" +
+	"\x12user/v1/user.proto\x12\auser.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\"\xad\x04\n" +
 	"\x04User\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
 	"\tuser_name\x18\x02 \x01(\tR\buserName\x12\x1b\n" +
@@ -758,7 +780,8 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\x06status\x18\b \x01(\x05R\x06status\x12\x16\n" +
 	"\x06avatar\x18\t \x01(\tR\x06avatar\x12\x16\n" +
 	"\x06remark\x18\n" +
-	" \x01(\tR\x06remark\x12\x1b\n" +
+	" \x01(\tR\x06remark\x12\x17\n" +
+	"\adept_id\x18\x11 \x01(\x03R\x06deptId\x12\x1b\n" +
 	"\tcreate_by\x18\v \x01(\x03R\bcreateBy\x12\x1b\n" +
 	"\tupdate_by\x18\f \x01(\x03R\bupdateBy\x12\x19\n" +
 	"\blogin_ip\x18\r \x01(\tR\aloginIp\x129\n" +
@@ -798,13 +821,14 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\x11CreateUserRequest\x12&\n" +
 	"\x04user\x18\x01 \x01(\v2\r.user.v1.UserB\x03\xe0A\x02R\x04user\".\n" +
 	"\x0eGetUserRequest\x12\x1c\n" +
-	"\auser_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06userId\"\x81\x01\n" +
+	"\auser_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06userId\"\x9a\x01\n" +
 	"\x10ListUsersRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
 	"page_token\x18\x02 \x01(\tR\tpageToken\x12\x16\n" +
 	"\x06filter\x18\x03 \x01(\tR\x06filter\x12\x19\n" +
-	"\border_by\x18\x04 \x01(\tR\aorderBy\"}\n" +
+	"\border_by\x18\x04 \x01(\tR\aorderBy\x12\x17\n" +
+	"\adept_id\x18\x05 \x01(\x03R\x06deptId\"}\n" +
 	"\x11UpdateUserRequest\x12&\n" +
 	"\x04user\x18\x01 \x01(\v2\r.user.v1.UserB\x03\xe0A\x02R\x04user\x12@\n" +
 	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x03\xe0A\x02R\n" +

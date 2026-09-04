@@ -12,6 +12,9 @@ type ListOptions struct {
 	OrderBy ordering.OrderBy
 	Offset  int
 	Limit   int
+	// DeptIDs restricts the listing to these departments (the
+	// department-subtree filter; nil = no restriction).
+	DeptIDs []int64
 }
 
 func ListFilter(filter filtering.Filter) ListOption {
@@ -35,5 +38,13 @@ func ListOffset(offset int) ListOption {
 func ListLimit(limit int) ListOption {
 	return func(o *ListOptions) {
 		o.Limit = limit
+	}
+}
+
+// ListDeptIDs restricts a listing to the given departments (the
+// department-subtree filter resolved through the crossdomain org contract).
+func ListDeptIDs(ids []int64) ListOption {
+	return func(o *ListOptions) {
+		o.DeptIDs = ids
 	}
 }

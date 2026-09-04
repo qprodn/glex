@@ -8,6 +8,7 @@ import (
 	"glex/internal/bizpkg"
 	"glex/internal/crossdomain/authn"
 	authnmodel "glex/internal/crossdomain/authn/model"
+	"glex/internal/crossdomain/org"
 	authndomain "glex/internal/domain/authn"
 	authnservice "glex/internal/domain/authn/service"
 	userdomain "glex/internal/domain/user"
@@ -36,6 +37,7 @@ func convertUser(m *userentity.User) *userv1.User {
 		Status:      m.Status,
 		Avatar:      m.Avatar,
 		Remark:      m.Remark,
+		DeptId:      m.DeptID,
 		CreateBy:    m.CreateBy,
 		UpdateBy:    m.UpdateBy,
 		LoginIp:     m.LoginIP,
@@ -60,6 +62,7 @@ type UserApplication struct {
 
 	svc         userservice.User
 	credentials authn.CredentialWriter
+	depts       org.DeptReader
 	tx          Transaction
 	revoker     authn.SessionRevoker
 	logger      *slog.Logger
@@ -71,10 +74,11 @@ type UserApplication struct {
 // authn's, per ADR 0005); tx wraps security writes together with their
 // session revocation; revoker performs the revocation through the authn
 // crossdomain contract.
-func NewUserApplication(svc userservice.User, credentials authn.CredentialWriter, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *UserApplication {
+func NewUserApplication(svc userservice.User, credentials authn.CredentialWriter, depts org.DeptReader, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *UserApplication {
 	return &UserApplication{
 		svc:         svc,
 		credentials: credentials,
+		depts:       depts,
 		tx:          tx,
 		revoker:     revoker,
 		logger:      logger.With(slog.String("component", "application.user")),
@@ -99,6 +103,7 @@ func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUser
 		Status:      in.GetStatus(),
 		Avatar:      in.GetAvatar(),
 		Remark:      in.GetRemark(),
+		DeptID:      in.GetDeptId(),
 		CreateBy:    actor,
 		UpdateBy:    actor,
 	}
@@ -109,6 +114,9 @@ func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUser
 	}
 	var created *userentity.User
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
+		if err := s.ensureDept(ctx, u.DeptID); err != nil {
+			return err
+		}
 		var err error
 		created, err = s.svc.Create(ctx, u)
 		if err != nil {
@@ -205,7 +213,15 @@ func (s *UserApplication) ListUsers(ctx context.Context, req *userv1.ListUsersRe
 	if req.GetPageSize() <= 0 {
 		req.PageSize = 20
 	}
-	users, err := s.svc.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
+	var deptIDs []int64
+	if req.GetDeptId() != 0 {
+		deptIDs, err = s.depts.ResolveSubtreeIDs(ctx, req.GetDeptId())
+		if err != nil {
+			logx.Propagate(ctx, s.logger, "user.list_users", err)
+			return nil, err
+		}
+	}
+	users, err := s.svc.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset), deptIDs)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "user.list_users", err)
 		return nil, err
@@ -246,6 +262,7 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 		Status:      current.GetStatus(),
 		Avatar:      current.GetAvatar(),
 		Remark:      current.GetRemark(),
+		DeptID:      current.GetDeptId(),
 		UpdateBy:    bizpkg.AuditActor(ctx),
 	}
 	passwordPolicy := userentity.RevokeAllLoginSessions()
@@ -256,6 +273,9 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 	}
 	var updated *userentity.User
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
+		if err := s.ensureDept(ctx, u.DeptID); err != nil {
+			return err
+		}
 		result, err := s.svc.Update(ctx, u)
 		if err != nil {
 			return err
@@ -292,6 +312,18 @@ func (s *UserApplication) DeleteUser(ctx context.Context, req *userv1.DeleteUser
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
+}
+
+// ensureDept validates a non-empty department reference through the org
+// crossdomain contract (ADR 0013): the department must exist and be enabled.
+// A zero dept_id (no department) passes. org's kratos errors (DEPT_NOT_FOUND,
+// DEPT_DISABLED) cross to the caller verbatim — the wire shape is the
+// contract's.
+func (s *UserApplication) ensureDept(ctx context.Context, deptID int64) error {
+	if deptID == 0 {
+		return nil
+	}
+	return s.depts.EnsureActiveDept(ctx, deptID)
 }
 
 // writeCredential delegates a password request to authn's credential
