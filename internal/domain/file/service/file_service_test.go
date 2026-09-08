@@ -46,6 +46,16 @@ func (r *fakeFileRepo) FindByID(_ context.Context, id int64) (*entity.StoredFile
 	return f, nil
 }
 
+func (r *fakeFileRepo) FindByIDs(_ context.Context, ids []int64) ([]*entity.StoredFile, error) {
+	var fs []*entity.StoredFile
+	for _, id := range ids {
+		if f, ok := r.byID[id]; ok {
+			fs = append(fs, f)
+		}
+	}
+	return fs, nil
+}
+
 func (r *fakeFileRepo) List(context.Context, ...repository.ListOption) ([]*entity.StoredFile, error) {
 	return nil, nil
 }
@@ -73,14 +83,16 @@ func (r *fakeFileRepo) Delete(_ context.Context, id, _ int64) error {
 // fakeObjectStorage is an in-memory storage.ObjectStorage that hashes like
 // the S3 implementation does.
 type fakeObjectStorage struct {
-	bucket    string
-	put       map[string]string // key → sha256 hex
-	putErr    error
-	getObj    *storage.Object
-	getErr    error
-	lastRange *storage.ByteRange
-	deleted   []string
-	deleteErr error
+	bucket     string
+	put        map[string]string // key → sha256 hex
+	putErr     error
+	getObj     *storage.Object
+	getErr     error
+	lastRange  *storage.ByteRange
+	deleted    []string
+	deleteErr  error
+	presigned  map[string]string // key → url
+	presignErr error
 }
 
 func newFakeObjectStorage() *fakeObjectStorage {
@@ -116,6 +128,13 @@ func (s *fakeObjectStorage) Get(_ context.Context, _ string, rng *storage.ByteRa
 func (s *fakeObjectStorage) Delete(_ context.Context, key string) error {
 	s.deleted = append(s.deleted, key)
 	return s.deleteErr
+}
+
+func (s *fakeObjectStorage) PresignGet(_ context.Context, key string) (string, error) {
+	if s.presignErr != nil {
+		return "", s.presignErr
+	}
+	return s.presigned[key], nil
 }
 
 func newTestService(files repository.FileRepo, store storage.ObjectStorage) File {
@@ -281,6 +300,54 @@ func TestStoredKey(t *testing.T) {
 	}
 	if got := storedKey(123, "dict-import", "", now); got != "dict-import/2026/08/31/123" {
 		t.Errorf("with biz path and no suffix: %q", got)
+	}
+}
+
+func TestBatchGetSkipsUnknownIDs(t *testing.T) {
+	repo := newFakeFileRepo()
+	store := newFakeObjectStorage()
+	svc := newTestService(repo, store)
+
+	kept, err := svc.Accept(context.Background(), &entity.Upload{OriginalName: "a.txt", MIMEType: "text/plain", SizeBytes: 5}, strings.NewReader("hello"), 7)
+	if err != nil {
+		t.Fatalf("Accept: %v", err)
+	}
+	other, err := svc.Accept(context.Background(), &entity.Upload{OriginalName: "b.txt", MIMEType: "text/plain", SizeBytes: 5}, strings.NewReader("world"), 7)
+	if err != nil {
+		t.Fatalf("Accept: %v", err)
+	}
+
+	fs, err := svc.BatchGet(context.Background(), []int64{kept.ID, 999, other.ID})
+	if err != nil {
+		t.Fatalf("BatchGet: %v", err)
+	}
+	if len(fs) != 2 || fs[0].ID != kept.ID || fs[1].ID != other.ID {
+		t.Errorf("resolved %v, want exactly the two known ids in order", fs)
+	}
+}
+
+func TestDisplayURLPresignsStoredKey(t *testing.T) {
+	repo := newFakeFileRepo()
+	store := newFakeObjectStorage()
+	store.presigned = map[string]string{"k/1.txt": "https://signed/1"}
+	svc := newTestService(repo, store)
+
+	url, err := svc.DisplayURL(context.Background(), &entity.StoredFile{ID: 1, ObjKey: "k/1.txt"})
+	if err != nil {
+		t.Fatalf("DisplayURL: %v", err)
+	}
+	if url != "https://signed/1" {
+		t.Errorf("url = %q, want the presigned value for the Stored Key", url)
+	}
+}
+
+func TestDisplayURLPropagatesSigningFailure(t *testing.T) {
+	store := newFakeObjectStorage()
+	store.presignErr = file.ErrFileStorage
+	svc := newTestService(newFakeFileRepo(), store)
+
+	if _, err := svc.DisplayURL(context.Background(), &entity.StoredFile{ID: 1, ObjKey: "k/1.txt"}); !errors.Is(err, file.ErrFileStorage) {
+		t.Fatalf("err = %v, want ErrFileStorage", err)
 	}
 }
 

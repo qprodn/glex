@@ -8,6 +8,7 @@ import (
 	"glex/internal/bizpkg"
 	"glex/internal/crossdomain/authn"
 	authnmodel "glex/internal/crossdomain/authn/model"
+	"glex/internal/crossdomain/file"
 	"glex/internal/crossdomain/org"
 	authndomain "glex/internal/domain/authn"
 	authnservice "glex/internal/domain/authn/service"
@@ -28,26 +29,67 @@ import (
 // omitted — it is write-only (accepted on create/update, never returned).
 func convertUser(m *userentity.User) *userv1.User {
 	u := &userv1.User{
-		UserId:      m.ID,
-		UserName:    m.UserName,
-		NickName:    m.NickName,
-		Email:       m.Email,
-		PhoneNumber: m.PhoneNumber,
-		Gender:      m.Gender,
-		Status:      m.Status,
-		Avatar:      m.Avatar,
-		Remark:      m.Remark,
-		DeptId:      m.DeptID,
-		CreateBy:    m.CreateBy,
-		UpdateBy:    m.UpdateBy,
-		LoginIp:     m.LoginIP,
-		CreatedAt:   timestamppb.New(m.CreatedAt),
-		UpdatedAt:   timestamppb.New(m.UpdatedAt),
+		UserId:       m.ID,
+		UserName:     m.UserName,
+		NickName:     m.NickName,
+		Email:        m.Email,
+		PhoneNumber:  m.PhoneNumber,
+		Gender:       m.Gender,
+		Status:       m.Status,
+		AvatarFileId: m.AvatarFileID,
+		Remark:       m.Remark,
+		DeptId:       m.DeptID,
+		CreateBy:     m.CreateBy,
+		UpdateBy:     m.UpdateBy,
+		LoginIp:      m.LoginIP,
+		CreatedAt:    timestamppb.New(m.CreatedAt),
+		UpdatedAt:    timestamppb.New(m.UpdatedAt),
 	}
 	if m.LoginDate != nil {
 		u.LoginDate = timestamppb.New(*m.LoginDate)
 	}
 	return u
+}
+
+// fillAvatarURLs fills the read-only avatar_url on converted users with one
+// batched Display URL lookup per response (ADR 0016). A failed lookup
+// degrades to the default avatar — the contract boundary and the domain
+// service's breadcrumbs already recorded why, so an avatar never fails the
+// user read carrying it.
+func (s *UserApplication) fillAvatarURLs(ctx context.Context, users ...*userv1.User) {
+	ids := make([]int64, 0, len(users))
+	for _, u := range users {
+		if u.GetAvatarFileId() != 0 {
+			ids = append(ids, u.GetAvatarFileId())
+		}
+	}
+	if len(ids) == 0 {
+		return
+	}
+	urls := s.resolveAvatarURLs(ctx, ids)
+	for _, u := range users {
+		u.AvatarUrl = urls[u.GetAvatarFileId()]
+	}
+}
+
+// avatarURL resolves one avatar id to its Display URL; unset ids and any
+// failure yield "" (same degrade rule as fillAvatarURLs).
+func (s *UserApplication) avatarURL(ctx context.Context, fileID int64) string {
+	if fileID == 0 {
+		return ""
+	}
+	return s.resolveAvatarURLs(ctx, []int64{fileID})[fileID]
+}
+
+// resolveAvatarURLs is the single crossdomain ask behind every avatar_url:
+// one batched lookup, errors swallowed to empty after the boundary logged
+// them.
+func (s *UserApplication) resolveAvatarURLs(ctx context.Context, ids []int64) map[int64]string {
+	urls, err := s.avatars.ResolveURLs(ctx, ids)
+	if err != nil {
+		return nil
+	}
+	return urls
 }
 
 // UserApplication implements the system-user CRUD service. It owns the
@@ -63,6 +105,7 @@ type UserApplication struct {
 	svc         userservice.User
 	credentials authn.CredentialWriter
 	depts       org.DeptReader
+	avatars     file.URLResolver
 	tx          Transaction
 	revoker     authn.SessionRevoker
 	logger      *slog.Logger
@@ -74,11 +117,12 @@ type UserApplication struct {
 // authn's, per ADR 0005); tx wraps security writes together with their
 // session revocation; revoker performs the revocation through the authn
 // crossdomain contract.
-func NewUserApplication(svc userservice.User, credentials authn.CredentialWriter, depts org.DeptReader, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *UserApplication {
+func NewUserApplication(svc userservice.User, credentials authn.CredentialWriter, depts org.DeptReader, avatars file.URLResolver, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *UserApplication {
 	return &UserApplication{
 		svc:         svc,
 		credentials: credentials,
 		depts:       depts,
+		avatars:     avatars,
 		tx:          tx,
 		revoker:     revoker,
 		logger:      logger.With(slog.String("component", "application.user")),
@@ -94,18 +138,18 @@ func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUser
 	in := req.GetUser()
 	actor := bizpkg.AuditActor(ctx)
 	u := &userentity.User{
-		UserName:    in.GetUserName(),
-		NickName:    in.GetNickName(),
-		Email:       in.GetEmail(),
-		PhoneNumber: in.GetPhoneNumber(),
-		Gender:      in.GetGender(),
-		Password:    in.GetPassword(),
-		Status:      in.GetStatus(),
-		Avatar:      in.GetAvatar(),
-		Remark:      in.GetRemark(),
-		DeptID:      in.GetDeptId(),
-		CreateBy:    actor,
-		UpdateBy:    actor,
+		UserName:     in.GetUserName(),
+		NickName:     in.GetNickName(),
+		Email:        in.GetEmail(),
+		PhoneNumber:  in.GetPhoneNumber(),
+		Gender:       in.GetGender(),
+		Password:     in.GetPassword(),
+		Status:       in.GetStatus(),
+		AvatarFileID: in.GetAvatarFileId(),
+		Remark:       in.GetRemark(),
+		DeptID:       in.GetDeptId(),
+		CreateBy:     actor,
+		UpdateBy:     actor,
 	}
 	if u.Password == "" {
 		err := userdomain.ErrPasswordRequired
@@ -127,7 +171,9 @@ func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUser
 		logx.Propagate(ctx, s.logger, "user.create_user", err)
 		return nil, err
 	}
-	return convertUser(created), nil
+	out := convertUser(created)
+	s.fillAvatarURLs(ctx, out)
+	return out, nil
 }
 
 // GetUser retrieves a system user by id.
@@ -137,7 +183,9 @@ func (s *UserApplication) GetUser(ctx context.Context, req *userv1.GetUserReques
 		logx.Propagate(ctx, s.logger, "user.get_user", err)
 		return nil, err
 	}
-	return convertUser(u), nil
+	out := convertUser(u)
+	s.fillAvatarURLs(ctx, out)
+	return out, nil
 }
 
 // GetInfo returns the freshly loaded current System User plus the Role keys and
@@ -155,25 +203,26 @@ func (s *UserApplication) GetInfo(ctx context.Context, _ *emptypb.Empty) (*userv
 		return nil, err
 	}
 	current := &userv1.CurrentUser{
-		UserId:      u.ID,
-		UserName:    u.UserName,
-		NickName:    u.NickName,
-		Email:       u.Email,
-		PhoneNumber: u.PhoneNumber,
-		Gender:      u.Gender,
-		Status:      u.Status,
-		Avatar:      u.Avatar,
-		Remark:      u.Remark,
-		DeptId:      u.DeptID,
-		CreateBy:    u.CreateBy,
-		UpdateBy:    u.UpdateBy,
-		LoginIp:     u.LoginIP,
-		CreatedAt:   timestamppb.New(u.CreatedAt),
-		UpdatedAt:   timestamppb.New(u.UpdatedAt),
+		UserId:       u.ID,
+		UserName:     u.UserName,
+		NickName:     u.NickName,
+		Email:        u.Email,
+		PhoneNumber:  u.PhoneNumber,
+		Gender:       u.Gender,
+		Status:       u.Status,
+		AvatarFileId: u.AvatarFileID,
+		Remark:       u.Remark,
+		DeptId:       u.DeptID,
+		CreateBy:     u.CreateBy,
+		UpdateBy:     u.UpdateBy,
+		LoginIp:      u.LoginIP,
+		CreatedAt:    timestamppb.New(u.CreatedAt),
+		UpdatedAt:    timestamppb.New(u.UpdatedAt),
 	}
 	if u.LoginDate != nil {
 		current.LoginDate = timestamppb.New(*u.LoginDate)
 	}
+	current.AvatarUrl = s.avatarURL(ctx, current.GetAvatarFileId())
 	return &userv1.CurrentUserInfo{
 		User:        current,
 		RoleKeys:    append([]string(nil), principal.RoleKeys()...),
@@ -231,6 +280,7 @@ func (s *UserApplication) ListUsers(ctx context.Context, req *userv1.ListUsersRe
 	for _, u := range users {
 		set.Users = append(set.Users, convertUser(u))
 	}
+	s.fillAvatarURLs(ctx, set.Users...)
 	if len(users) >= int(req.GetPageSize()) {
 		set.NextPageToken = pageToken.Next(req).String()
 	}
@@ -253,18 +303,18 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 	}
 	fieldmask.Update(req.GetUpdateMask(), current, req.GetUser())
 	u := &userentity.User{
-		ID:          current.GetUserId(),
-		UserName:    current.GetUserName(),
-		NickName:    current.GetNickName(),
-		Email:       current.GetEmail(),
-		PhoneNumber: current.GetPhoneNumber(),
-		Gender:      current.GetGender(),
-		Password:    current.GetPassword(),
-		Status:      current.GetStatus(),
-		Avatar:      current.GetAvatar(),
-		Remark:      current.GetRemark(),
-		DeptID:      current.GetDeptId(),
-		UpdateBy:    bizpkg.AuditActor(ctx),
+		ID:           current.GetUserId(),
+		UserName:     current.GetUserName(),
+		NickName:     current.GetNickName(),
+		Email:        current.GetEmail(),
+		PhoneNumber:  current.GetPhoneNumber(),
+		Gender:       current.GetGender(),
+		Password:     current.GetPassword(),
+		Status:       current.GetStatus(),
+		AvatarFileID: current.GetAvatarFileId(),
+		Remark:       current.GetRemark(),
+		DeptID:       current.GetDeptId(),
+		UpdateBy:     bizpkg.AuditActor(ctx),
 	}
 	passwordPolicy := userentity.RevokeAllLoginSessions()
 	if u.Password != "" {
@@ -296,7 +346,9 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 		logx.Propagate(ctx, s.logger, "user.update_user", err)
 		return nil, err
 	}
-	return convertUser(updated), nil
+	out := convertUser(updated)
+	s.fillAvatarURLs(ctx, out)
+	return out, nil
 }
 
 // DeleteUser soft-deletes a user by id and currently revokes their Login

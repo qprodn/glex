@@ -15,7 +15,7 @@ func TestApplicationReceivesComponentLogger(t *testing.T) {
 	var output bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&output, nil))
 
-	NewUserApplication(nil, nil, nil, nil, nil, logger).logger.Info("configured")
+	NewUserApplication(nil, nil, nil, nil, nil, nil, logger).logger.Info("configured")
 
 	for _, component := range []string{
 		"application.user",

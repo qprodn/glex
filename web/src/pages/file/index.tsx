@@ -1,8 +1,8 @@
 import type { StoredFile } from "@/services/file/v1";
 import { type ServiceError, services } from "@/services";
-import { getToken } from "@/utils/token";
 import { buildFilter } from "@/utils/aipFilter";
 import { createTokenPagedRequest } from "@/utils/pager";
+import { downloadBytes, uploadMultipart } from "@/utils/fileTransfer";
 import { InboxOutlined, UploadOutlined } from "@ant-design/icons";
 import {
   type ActionType,
@@ -15,81 +15,10 @@ import { App, Button, Input, Modal, Typography, Upload } from "antd";
 import React, { useRef, useState } from "react";
 
 /**
- * 文件管理: Stored Files list. The two transfer routes are hand-written and
- * multipart/streaming (ADR 0008), so the generated client covers only the
- * metadata calls — upload goes through a raw fetch with the bearer token,
- * download proxies the bytes through the service and saves via a blob URL.
+ * 文件管理: Stored Files list. The transfer plumbing (raw-fetch upload,
+ * blob-URL proxy download) lives in utils/fileTransfer; display URLs ride
+ * the presigned url field (ADR 0016).
  */
-
-/** Read the kratos structured error body out of a non-2xx fetch Response. */
-async function serviceErrorFrom(res: Response): Promise<ServiceError> {
-  try {
-    return (await res.json()) as ServiceError;
-  } catch {
-    return { code: res.status, message: res.statusText };
-  }
-}
-
-function authHeaders(json: boolean): Record<string, string> {
-  const headers: Record<string, string> = json
-    ? { Accept: "application/json" }
-    : {};
-  const token = getToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  return headers;
-}
-
-/** uploadMultipart relays one file (plus optional business path) to POST /file/files. */
-async function uploadMultipart(file: File, bizPath: string): Promise<StoredFile> {
-  const form = new FormData();
-  form.append("file", file);
-  if (bizPath) {
-    form.append("path", bizPath);
-  }
-  const res = await fetch("/file/files", {
-    method: "POST",
-    headers: authHeaders(true),
-    body: form,
-  });
-  if (!res.ok) {
-    throw await serviceErrorFrom(res);
-  }
-  return (await res.json()) as StoredFile;
-}
-
-/**
- * downloadBytes proxies the stored bytes (disposition inline|attachment).
- * Inline opens a blob URL in a new tab (browser-rendered preview for
- * images/PDF); attachment saves under the original name.
- */
-async function downloadBytes(
-  fileId: string,
-  disposition: "inline" | "attachment",
-  originalName: string,
-): Promise<void> {
-  const res = await fetch(
-    `/file/files/${encodeURIComponent(fileId)}/content?disposition=${disposition}`,
-    { headers: authHeaders(false) },
-  );
-  if (!res.ok) {
-    throw await serviceErrorFrom(res);
-  }
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  if (disposition === "inline") {
-    window.open(url, "_blank", "noopener");
-    // The opened tab pins the blob; revoke lazily so it can finish loading.
-    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    return;
-  }
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = originalName;
-  anchor.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
-}
 
 function formatSize(bytes: number | undefined): string {
   if (!bytes || bytes <= 0) {

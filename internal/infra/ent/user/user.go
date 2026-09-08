@@ -38,8 +38,8 @@ const (
 	FieldStatus = "status"
 	// FieldPassword holds the string denoting the password field in the database.
 	FieldPassword = "password"
-	// FieldAvatar holds the string denoting the avatar field in the database.
-	FieldAvatar = "avatar"
+	// FieldAvatarFileID holds the string denoting the avatar_file_id field in the database.
+	FieldAvatarFileID = "avatar_file_id"
 	// FieldRemark holds the string denoting the remark field in the database.
 	FieldRemark = "remark"
 	// FieldDeptID holds the string denoting the dept_id field in the database.
@@ -85,7 +85,7 @@ var Columns = []string{
 	FieldGender,
 	FieldStatus,
 	FieldPassword,
-	FieldAvatar,
+	FieldAvatarFileID,
 	FieldRemark,
 	FieldDeptID,
 	FieldLoginIP,
@@ -121,10 +121,8 @@ var (
 	DefaultStatus int8
 	// DefaultPassword holds the default value on creation for the "password" field.
 	DefaultPassword string
-	// DefaultAvatar holds the default value on creation for the "avatar" field.
-	DefaultAvatar string
-	// AvatarValidator is a validator for the "avatar" field. It is called by the builders before save.
-	AvatarValidator func(string) error
+	// DefaultAvatarFileID holds the default value on creation for the "avatar_file_id" field.
+	DefaultAvatarFileID int64
 	// DefaultRemark holds the default value on creation for the "remark" field.
 	DefaultRemark string
 	// DefaultDeptID holds the default value on creation for the "dept_id" field.
@@ -201,9 +199,9 @@ func ByPassword(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPassword, opts...).ToFunc()
 }
 
-// ByAvatar orders the results by the avatar field.
-func ByAvatar(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldAvatar, opts...).ToFunc()
+// ByAvatarFileID orders the results by the avatar_file_id field.
+func ByAvatarFileID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAvatarFileID, opts...).ToFunc()
 }
 
 // ByRemark orders the results by the remark field.

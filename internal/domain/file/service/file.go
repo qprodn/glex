@@ -26,6 +26,10 @@ import (
 // returns to its caller first logs its Warn breadcrumb (ADR 0011).
 type File interface {
 	Get(ctx context.Context, id int64) (*entity.StoredFile, error)
+	// BatchGet resolves a batch of ids to active Stored Files; unknown or
+	// withdrawn ids are absent from the result (batch semantics — callers
+	// render what resolved).
+	BatchGet(ctx context.Context, ids []int64) ([]*entity.StoredFile, error)
 	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.StoredFile, error)
 	// Accept validates the upload, mints the Stored Key, streams the bytes
 	// to storage while computing the Content Fingerprint, then records the
@@ -39,6 +43,10 @@ type File interface {
 	// Open locates an active Stored File and opens its bytes, optionally one
 	// range. The caller owns the returned Object's Body.
 	Open(ctx context.Context, id int64, rng *storage.ByteRange) (*storage.Object, *entity.StoredFile, error)
+	// DisplayURL mints one Display URL (ADR 0016) — a short-TTL presigned
+	// GET for the row's Stored Key. Signing is local; the failure mode is
+	// upstream-reachability reasons only.
+	DisplayURL(ctx context.Context, f *entity.StoredFile) (string, error)
 }
 
 type fileImpl struct {
@@ -65,6 +73,15 @@ func (s *fileImpl) Get(ctx context.Context, id int64) (*entity.StoredFile, error
 		return nil, err
 	}
 	return f, nil
+}
+
+func (s *fileImpl) BatchGet(ctx context.Context, ids []int64) ([]*entity.StoredFile, error) {
+	fs, err := s.files.FindByIDs(ctx, ids)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.svc.batch_get", err)
+		return nil, err
+	}
+	return fs, nil
 }
 
 func (s *fileImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.StoredFile, error) {
@@ -156,6 +173,15 @@ func (s *fileImpl) Open(ctx context.Context, id int64, rng *storage.ByteRange) (
 		return nil, nil, err
 	}
 	return obj, f, nil
+}
+
+func (s *fileImpl) DisplayURL(ctx context.Context, f *entity.StoredFile) (string, error) {
+	url, err := s.store.PresignGet(ctx, f.ObjKey)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.svc.display_url", err)
+		return "", err
+	}
+	return url, nil
 }
 
 // storedKey builds the Stored Key: [<biz>/]yyyy/MM/dd/<snowflake>.<suffix>.

@@ -38,8 +38,10 @@ export type User = {
   password: string | undefined;
   // 0正常 1停用 (per RuoYi).
   status: number | undefined;
-  // Avatar URL. OSS upload is deferred; the column is a placeholder.
-  avatar: string | undefined;
+  // The user's avatar as a Stored File id (0 = none) — RuoYi's bigint ossId
+  // pattern. Not validated on write; an unresolvable id reads back as an
+  // empty avatar_url (ADR 0016).
+  avatarFileId: number | undefined;
   remark: string | undefined;
   // The user's department (部门); 0 = none. Validated through the org
   // module's contract on save: the department must exist and be enabled.
@@ -52,6 +54,9 @@ export type User = {
   loginDate: wellKnownTimestamp | undefined;
   createdAt: wellKnownTimestamp | undefined;
   updatedAt: wellKnownTimestamp | undefined;
+  // Read-only: the avatar's Display URL, freshly presigned on each read
+  // (ADR 0016). Empty when the id is unset or unresolvable.
+  avatarUrl: string | undefined;
 };
 
 // Encoded using RFC 3339, where generated output will always be Z-normalized
@@ -76,10 +81,14 @@ export type CurrentUser = {
   phoneNumber: string | undefined;
   gender: number | undefined;
   status: number | undefined;
-  avatar: string | undefined;
+  // Read-only: the avatar's Display URL, freshly presigned on each read
+  // (ADR 0016). Empty when the id is unset or unresolvable.
+  avatarUrl: string | undefined;
   remark: string | undefined;
   // The user's department; 0 = none (read-only, same as User.dept_id).
   deptId: number | undefined;
+  // The avatar's Stored File id (read-only, same as User.avatar_file_id).
+  avatarFileId: number | undefined;
   createBy: number | undefined;
   updateBy: number | undefined;
   loginIp: string | undefined;

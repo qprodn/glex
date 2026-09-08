@@ -196,9 +196,16 @@ _Avoid_: checksum, hash, MD5.
 **Stored Key** (存储键):
 The address of a Stored File's bytes inside the single bucket: an optional
 business prefix, date directories, and a name carrying the row's identity and
-the original suffix. It locates bytes; it is not a URL — nothing is
-addressable except through the service.
+the original suffix. It locates bytes; it is never persisted as a URL, and
+attachment downloads still flow only through the service (ADR 0008).
 _Avoid_: object key (S3-speak), path, file path.
+
+**Display URL** (展示链接):
+A short-TTL presigned GET URL the service mints at read time for a Stored
+File, carried on every Stored File response and on translated reads such as
+the avatar (ADR 0016). Holding one is storage access until it lapses; it is
+derived, never stored, and withdrawn files stop resolving.
+_Avoid_: public URL, file URL, link (unqualified), CDN address.
 
 ### cross-module
 

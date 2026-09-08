@@ -12,6 +12,10 @@ import (
 type FileRepo interface {
 	// FindByID resolves one active Stored File.
 	FindByID(ctx context.Context, id int64) (*entity.StoredFile, error)
+	// FindByIDs resolves active Stored Files for a batch of ids. Batch
+	// semantics: unknown or withdrawn ids are simply absent from the
+	// result — callers render what resolved.
+	FindByIDs(ctx context.Context, ids []int64) ([]*entity.StoredFile, error)
 	List(ctx context.Context, opts ...ListOption) ([]*entity.StoredFile, error)
 	// Create inserts the row. The ID is minted up front (NextID) so the
 	// Stored Key and the row correlate; the caller owns any transaction.

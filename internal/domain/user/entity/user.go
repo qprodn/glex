@@ -18,10 +18,15 @@ type User struct {
 	// create/update requests only. It is never populated on reads and never
 	// persisted by this module: the stored hash belongs to authn and is
 	// written solely through its credential capability (ADR 0005).
-	Password  string
-	Status    int32
-	Avatar    string
-	Remark    string
+	Password string
+	Status   int32
+	// AvatarFileID is the user's avatar as a Stored File id (0 = none),
+	// RuoYi's bigint-ossId pattern. The file module resolves it to a
+	// short-TTL Display URL on reads through the crossdomain file contract;
+	// write paths do not validate it — an unresolvable id degrades to the
+	// default avatar (ADR 0016).
+	AvatarFileID int64
+	Remark       string
 	// DeptID is the user's place in the org structure (0 = none). The org
 	// module validates it through the crossdomain org contract; the user
 	// module stores it (ADR 0013).

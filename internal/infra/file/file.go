@@ -57,6 +57,25 @@ func (r *fileRepo) FindByID(ctx context.Context, id int64) (*fileentity.StoredFi
 	return toBizFile(po), nil
 }
 
+// FindByIDs resolves active rows for a batch of ids; unknown or withdrawn
+// ids are absent from the result (batch semantics — no per-id error).
+func (r *fileRepo) FindByIDs(ctx context.Context, ids []int64) ([]*fileentity.StoredFile, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	pos, err := r.data.DB.File(ctx).Query().
+		Where(entfile.IDIn(ids...), entfile.DeletedAtIsNil()).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	files := make([]*fileentity.StoredFile, 0, len(pos))
+	for _, po := range pos {
+		files = append(files, toBizFile(po))
+	}
+	return files, nil
+}
+
 func (r *fileRepo) List(ctx context.Context, opts ...filerepo.ListOption) ([]*fileentity.StoredFile, error) {
 	o := filerepo.ListOptions{Limit: 20}
 	for _, opt := range opts {

@@ -1,34 +1,35 @@
 package main
 
 import (
-	userapp "glex/internal/application/user"
-	auditapp "glex/internal/application/audit"
 	accessapp "glex/internal/application/access"
+	auditapp "glex/internal/application/audit"
 	authnapp "glex/internal/application/authn"
 	dictapp "glex/internal/application/dict"
 	fileapp "glex/internal/application/file"
 	orgapp "glex/internal/application/org"
-	auditimpl "glex/internal/crossdomain/audit/impl"
+	userapp "glex/internal/application/user"
 	accessimpl "glex/internal/crossdomain/access/impl"
+	auditimpl "glex/internal/crossdomain/audit/impl"
 	authnimpl "glex/internal/crossdomain/authn/impl"
+	fileimpl "glex/internal/crossdomain/file/impl"
 	orgimpl "glex/internal/crossdomain/org/impl"
 	userimpl "glex/internal/crossdomain/user/impl"
-	userservice "glex/internal/domain/user/service"
-	auditservice "glex/internal/domain/audit/service"
 	accessservice "glex/internal/domain/access/service"
+	auditservice "glex/internal/domain/audit/service"
 	authnservice "glex/internal/domain/authn/service"
 	dictservice "glex/internal/domain/dict/service"
 	fileservice "glex/internal/domain/file/service"
 	orgservice "glex/internal/domain/org/service"
-	userinfra "glex/internal/infra/user"
-	auditinfra "glex/internal/infra/audit"
+	userservice "glex/internal/domain/user/service"
 	accessinfra "glex/internal/infra/access"
+	auditinfra "glex/internal/infra/audit"
 	authninfra "glex/internal/infra/authn"
 	dictinfra "glex/internal/infra/dict"
 	fileinfra "glex/internal/infra/file"
 	lockerinfra "glex/internal/infra/locker"
 	orginfra "glex/internal/infra/org"
 	"glex/internal/infra/store"
+	userinfra "glex/internal/infra/user"
 	"glex/internal/server"
 
 	"go.uber.org/fx"
@@ -66,6 +67,7 @@ var appModule = fx.Options(
 	auditimpl.Module,
 	accessimpl.Module,
 	authnimpl.Module,
+	fileimpl.Module,
 	orgimpl.Module,
 	userimpl.Module,
 	// application

@@ -234,23 +234,24 @@ func (_u *UserUpdate) SetNillablePassword(v *string) *UserUpdate {
 	return _u
 }
 
-// SetAvatar sets the "avatar" field.
-func (_u *UserUpdate) SetAvatar(v string) *UserUpdate {
-	_u.mutation.SetAvatar(v)
+// SetAvatarFileID sets the "avatar_file_id" field.
+func (_u *UserUpdate) SetAvatarFileID(v int64) *UserUpdate {
+	_u.mutation.ResetAvatarFileID()
+	_u.mutation.SetAvatarFileID(v)
 	return _u
 }
 
-// SetNillableAvatar sets the "avatar" field if the given value is not nil.
-func (_u *UserUpdate) SetNillableAvatar(v *string) *UserUpdate {
+// SetNillableAvatarFileID sets the "avatar_file_id" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableAvatarFileID(v *int64) *UserUpdate {
 	if v != nil {
-		_u.SetAvatar(*v)
+		_u.SetAvatarFileID(*v)
 	}
 	return _u
 }
 
-// ClearAvatar clears the value of the "avatar" field.
-func (_u *UserUpdate) ClearAvatar() *UserUpdate {
-	_u.mutation.ClearAvatar()
+// AddAvatarFileID adds value to the "avatar_file_id" field.
+func (_u *UserUpdate) AddAvatarFileID(v int64) *UserUpdate {
+	_u.mutation.AddAvatarFileID(v)
 	return _u
 }
 
@@ -448,20 +449,7 @@ func (_u *UserUpdate) defaults() {
 	}
 }
 
-// check runs all checks and user-defined validators on the builder.
-func (_u *UserUpdate) check() error {
-	if v, ok := _u.mutation.Avatar(); ok {
-		if err := user.AvatarValidator(v); err != nil {
-			return &ValidationError{Name: "avatar", err: fmt.Errorf(`ent: validator failed for field "User.avatar": %w`, err)}
-		}
-	}
-	return nil
-}
-
 func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
-	if err := _u.check(); err != nil {
-		return _node, err
-	}
 	_spec := sqlgraph.NewUpdateSpec(user.Table, user.Columns, sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -530,11 +518,11 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Password(); ok {
 		_spec.SetField(user.FieldPassword, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.Avatar(); ok {
-		_spec.SetField(user.FieldAvatar, field.TypeString, value)
+	if value, ok := _u.mutation.AvatarFileID(); ok {
+		_spec.SetField(user.FieldAvatarFileID, field.TypeInt64, value)
 	}
-	if _u.mutation.AvatarCleared() {
-		_spec.ClearField(user.FieldAvatar, field.TypeString)
+	if value, ok := _u.mutation.AddedAvatarFileID(); ok {
+		_spec.AddField(user.FieldAvatarFileID, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.Remark(); ok {
 		_spec.SetField(user.FieldRemark, field.TypeString, value)
@@ -874,23 +862,24 @@ func (_u *UserUpdateOne) SetNillablePassword(v *string) *UserUpdateOne {
 	return _u
 }
 
-// SetAvatar sets the "avatar" field.
-func (_u *UserUpdateOne) SetAvatar(v string) *UserUpdateOne {
-	_u.mutation.SetAvatar(v)
+// SetAvatarFileID sets the "avatar_file_id" field.
+func (_u *UserUpdateOne) SetAvatarFileID(v int64) *UserUpdateOne {
+	_u.mutation.ResetAvatarFileID()
+	_u.mutation.SetAvatarFileID(v)
 	return _u
 }
 
-// SetNillableAvatar sets the "avatar" field if the given value is not nil.
-func (_u *UserUpdateOne) SetNillableAvatar(v *string) *UserUpdateOne {
+// SetNillableAvatarFileID sets the "avatar_file_id" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableAvatarFileID(v *int64) *UserUpdateOne {
 	if v != nil {
-		_u.SetAvatar(*v)
+		_u.SetAvatarFileID(*v)
 	}
 	return _u
 }
 
-// ClearAvatar clears the value of the "avatar" field.
-func (_u *UserUpdateOne) ClearAvatar() *UserUpdateOne {
-	_u.mutation.ClearAvatar()
+// AddAvatarFileID adds value to the "avatar_file_id" field.
+func (_u *UserUpdateOne) AddAvatarFileID(v int64) *UserUpdateOne {
+	_u.mutation.AddAvatarFileID(v)
 	return _u
 }
 
@@ -1101,20 +1090,7 @@ func (_u *UserUpdateOne) defaults() {
 	}
 }
 
-// check runs all checks and user-defined validators on the builder.
-func (_u *UserUpdateOne) check() error {
-	if v, ok := _u.mutation.Avatar(); ok {
-		if err := user.AvatarValidator(v); err != nil {
-			return &ValidationError{Name: "avatar", err: fmt.Errorf(`ent: validator failed for field "User.avatar": %w`, err)}
-		}
-	}
-	return nil
-}
-
 func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
-	if err := _u.check(); err != nil {
-		return _node, err
-	}
 	_spec := sqlgraph.NewUpdateSpec(user.Table, user.Columns, sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64))
 	id, ok := _u.mutation.ID()
 	if !ok {
@@ -1200,11 +1176,11 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	if value, ok := _u.mutation.Password(); ok {
 		_spec.SetField(user.FieldPassword, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.Avatar(); ok {
-		_spec.SetField(user.FieldAvatar, field.TypeString, value)
+	if value, ok := _u.mutation.AvatarFileID(); ok {
+		_spec.SetField(user.FieldAvatarFileID, field.TypeInt64, value)
 	}
-	if _u.mutation.AvatarCleared() {
-		_spec.ClearField(user.FieldAvatar, field.TypeString)
+	if value, ok := _u.mutation.AddedAvatarFileID(); ok {
+		_spec.AddField(user.FieldAvatarFileID, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.Remark(); ok {
 		_spec.SetField(user.FieldRemark, field.TypeString, value)

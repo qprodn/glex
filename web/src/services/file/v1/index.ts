@@ -28,10 +28,10 @@ export type ErrorReason =
   // bucket (HTTP 502).
   | "FILE_STORAGE_ERROR";
 // StoredFile is one file accepted into the system's storage (存储文件):
-// a metadata row paired with the bytes in object storage. There is no public
-// URL — bytes are addressable only through the service (ADR 0008), and
-// withdrawal removes the bytes while the row stays as audit history
-// (ADR 0009).
+// a metadata row paired with the bytes in object storage. Attachment
+// downloads address the bytes only through the service (ADR 0008), while
+// display rides the short-TTL presigned url (ADR 0016); withdrawal removes
+// the bytes while the row stays as audit history (ADR 0009).
 export type StoredFile = {
   // Snowflake ID. It also appears in the Stored Key, so the row and the
   // stored bytes correlate.
@@ -55,6 +55,10 @@ export type StoredFile = {
   updateBy: number | undefined;
   createdAt: wellKnownTimestamp | undefined;
   updatedAt: wellKnownTimestamp | undefined;
+  // Display URL (展示链接): a presigned GET URL freshly signed at read time,
+  // valid for the configured TTL (ADR 0016). Derived, never stored; empty
+  // when signing failed — data responses never fail on display sugar.
+  url: string | undefined;
 };
 
 // Encoded using RFC 3339, where generated output will always be Z-normalized
@@ -80,6 +84,14 @@ export type GetFileRequest = {
   //
   // Behaviors: REQUIRED
   fileId: number | undefined;
+};
+
+export type BatchGetFilesRequest = {
+  // Required. The ids of the Stored Files to resolve; unknown or withdrawn
+  // ids are absent from the response.
+  //
+  // Behaviors: REQUIRED
+  fileIds: number[] | undefined;
 };
 
 export type ListFilesRequest = {
@@ -126,6 +138,10 @@ export interface FileService {
   GetFile(request: GetFileRequest): Promise<StoredFile>;
   // ListFiles lists stored files with AIP filter/order/page-token.
   ListFiles(request: ListFilesRequest): Promise<StoredFileSet>;
+  // BatchGetFiles resolves a batch of ids to Stored Files with display
+  // URLs (the business-form counterpart of RuoYi's listByIds). Unknown or
+  // withdrawn ids are skipped, not errors — a form renders what it can.
+  BatchGetFiles(request: BatchGetFilesRequest): Promise<StoredFileSet>;
   // WithdrawFile withdraws a Stored File: the row is soft-deleted (audit
   // stays) and the bytes are removed immediately (ADR 0009). A withdrawn
   // Stored File can be remembered, never downloaded again.
@@ -191,6 +207,28 @@ export function createFileServiceClient(
       }, {
         service: "FileService",
         method: "ListFiles",
+      }) as Promise<StoredFileSet>;
+    },
+    BatchGetFiles(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `file/files:batchGet`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      if (request.fileIds) {
+        request.fileIds.forEach((x) => {
+          queryParams.push(`fileIds=${encodeURIComponent(x.toString())}`)
+        })
+      }
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "FileService",
+        method: "BatchGetFiles",
       }) as Promise<StoredFileSet>;
     },
     WithdrawFile(request) { // eslint-disable-line @typescript-eslint/no-unused-vars

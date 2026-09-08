@@ -26,8 +26,14 @@ file:
     secret_key: minioadmin
     use_ssl: false
     path_style: true
+    # Host browsers use to reach storage when it differs from endpoint
+    # (presigned display URLs are signed against this — ADR 0016). Empty =
+    # endpoint itself, which local dev can already reach.
+    external_endpoint: ""
   # 100 MiB default upload cap.
   max_size_bytes: 104857600
+  # Presigned display-URL lifetime (ADR 0016); 0 falls back to 120s.
+  presign_ttl_seconds: 120
   # Entries ending in "/*" admit a whole type; others are exact matches.
   # The sniffed type (from the bytes) decides — declared types never do.
   allow_mime:

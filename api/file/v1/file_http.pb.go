@@ -18,11 +18,16 @@ var _ = new(context.Context)
 
 const _ = http.SupportPackageIsVersion3
 
+const OperationFileServiceBatchGetFiles = "/file.v1.FileService/BatchGetFiles"
 const OperationFileServiceGetFile = "/file.v1.FileService/GetFile"
 const OperationFileServiceListFiles = "/file.v1.FileService/ListFiles"
 const OperationFileServiceWithdrawFile = "/file.v1.FileService/WithdrawFile"
 
 type FileServiceHTTPServer interface {
+	// BatchGetFiles BatchGetFiles resolves a batch of ids to Stored Files with display
+	// URLs (the business-form counterpart of RuoYi's listByIds). Unknown or
+	// withdrawn ids are skipped, not errors — a form renders what it can.
+	BatchGetFiles(context.Context, *BatchGetFilesRequest) (*StoredFileSet, error)
 	// GetFile GetFile retrieves a Stored File's metadata by id.
 	GetFile(context.Context, *GetFileRequest) (*StoredFile, error)
 	// ListFiles ListFiles lists stored files with AIP filter/order/page-token.
@@ -37,6 +42,7 @@ func RegisterFileServiceHTTPServer(s *http.Server, srv FileServiceHTTPServer) {
 	r := s.Route("/")
 	r.Handle("GET", "/file/files/{file_id}", _FileService_GetFile0_HTTP_Handler(srv))
 	r.Handle("GET", "/file/files", _FileService_ListFiles0_HTTP_Handler(srv))
+	r.Handle("GET", "/file/files:batchGet", _FileService_BatchGetFiles0_HTTP_Handler(srv))
 	r.Handle("DELETE", "/file/files/{file_id}", _FileService_WithdrawFile0_HTTP_Handler(srv))
 }
 
@@ -81,6 +87,25 @@ func _FileService_ListFiles0_HTTP_Handler(srv FileServiceHTTPServer) func(ctx ht
 	}
 }
 
+func _FileService_BatchGetFiles0_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in BatchGetFilesRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationFileServiceBatchGetFiles)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.BatchGetFiles(ctx, req.(*BatchGetFilesRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*StoredFileSet)
+		return ctx.Result(200, reply)
+	}
+}
+
 func _FileService_WithdrawFile0_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in WithdrawFileRequest
@@ -104,6 +129,10 @@ func _FileService_WithdrawFile0_HTTP_Handler(srv FileServiceHTTPServer) func(ctx
 }
 
 type FileServiceHTTPClient interface {
+	// BatchGetFiles BatchGetFiles resolves a batch of ids to Stored Files with display
+	// URLs (the business-form counterpart of RuoYi's listByIds). Unknown or
+	// withdrawn ids are skipped, not errors — a form renders what it can.
+	BatchGetFiles(ctx context.Context, req *BatchGetFilesRequest, opts ...http.CallOption) (rsp *StoredFileSet, err error)
 	// GetFile GetFile retrieves a Stored File's metadata by id.
 	GetFile(ctx context.Context, req *GetFileRequest, opts ...http.CallOption) (rsp *StoredFile, err error)
 	// ListFiles ListFiles lists stored files with AIP filter/order/page-token.
@@ -120,6 +149,25 @@ type FileServiceHTTPClientImpl struct {
 
 func NewFileServiceHTTPClient(client *http.Client) FileServiceHTTPClient {
 	return &FileServiceHTTPClientImpl{client}
+}
+
+// BatchGetFiles BatchGetFiles resolves a batch of ids to Stored Files with display
+// URLs (the business-form counterpart of RuoYi's listByIds). Unknown or
+// withdrawn ids are skipped, not errors — a form renders what it can.
+func (c *FileServiceHTTPClientImpl) BatchGetFiles(ctx context.Context, in *BatchGetFilesRequest, opts ...http.CallOption) (*StoredFileSet, error) {
+	var out StoredFileSet
+	pattern := "/file/files:batchGet"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationFileServiceBatchGetFiles),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 // GetFile GetFile retrieves a Stored File's metadata by id.

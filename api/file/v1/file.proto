@@ -12,10 +12,10 @@ option java_multiple_files = true;
 option java_package = "api.file.v1";
 
 // StoredFile is one file accepted into the system's storage (存储文件):
-// a metadata row paired with the bytes in object storage. There is no public
-// URL — bytes are addressable only through the service (ADR 0008), and
-// withdrawal removes the bytes while the row stays as audit history
-// (ADR 0009).
+// a metadata row paired with the bytes in object storage. Attachment
+// downloads address the bytes only through the service (ADR 0008), while
+// display rides the short-TTL presigned url (ADR 0016); withdrawal removes
+// the bytes while the row stays as audit history (ADR 0009).
 message StoredFile {
   // Snowflake ID. It also appears in the Stored Key, so the row and the
   // stored bytes correlate.
@@ -39,6 +39,10 @@ message StoredFile {
   int64 update_by = 10;
   google.protobuf.Timestamp created_at = 11;
   google.protobuf.Timestamp updated_at = 12;
+  // Display URL (展示链接): a presigned GET URL freshly signed at read time,
+  // valid for the configured TTL (ADR 0016). Derived, never stored; empty
+  // when signing failed — data responses never fail on display sugar.
+  string url = 13;
 }
 
 // StoredFileSet is a page of stored files.
@@ -74,6 +78,14 @@ service FileService {
       get: "/file/files"
     };
   }
+  // BatchGetFiles resolves a batch of ids to Stored Files with display
+  // URLs (the business-form counterpart of RuoYi's listByIds). Unknown or
+  // withdrawn ids are skipped, not errors — a form renders what it can.
+  rpc BatchGetFiles(BatchGetFilesRequest) returns (StoredFileSet) {
+    option (google.api.http) = {
+      get: "/file/files:batchGet"
+    };
+  }
   // DownloadFile proxies one Stored File's bytes (HTTP-only, hand-written
   // route GET /file/files/{file_id}/content): query `disposition` selects
   // inline|attachment (default attachment) and the standard Range header is
@@ -98,6 +110,12 @@ message UploadFileRequest {
 message GetFileRequest {
   // Required. The id of the Stored File to retrieve.
   int64 file_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message BatchGetFilesRequest {
+  // Required. The ids of the Stored Files to resolve; unknown or withdrawn
+  // ids are absent from the response.
+  repeated int64 file_ids = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message ListFilesRequest {

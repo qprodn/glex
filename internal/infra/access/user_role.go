@@ -41,19 +41,19 @@ func NewUserRoleRepo(data *store.Data) accessrepo.UserRoleRepo {
 // The credential column is deliberately not mapped: it is authn's (ADR 0005).
 func toRoleUser(po *ent.User) *accessentity.RoleUser {
 	u := &accessentity.RoleUser{
-		ID:        po.ID,
-		UserName:  po.UserName,
-		NickName:  po.NickName,
-		Gender:    int32(po.Gender),
-		Status:    int32(po.Status),
-		Avatar:    po.Avatar,
-		Remark:    po.Remark,
-		CreateBy:  po.CreateBy,
-		UpdateBy:  po.UpdateBy,
-		LoginIP:   po.LoginIP,
-		LoginDate: po.LoginDate,
-		CreatedAt: po.CreatedAt,
-		UpdatedAt: po.UpdatedAt,
+		ID:           po.ID,
+		UserName:     po.UserName,
+		NickName:     po.NickName,
+		Gender:       int32(po.Gender),
+		Status:       int32(po.Status),
+		AvatarFileID: po.AvatarFileID,
+		Remark:       po.Remark,
+		CreateBy:     po.CreateBy,
+		UpdateBy:     po.UpdateBy,
+		LoginIP:      po.LoginIP,
+		LoginDate:    po.LoginDate,
+		CreatedAt:    po.CreatedAt,
+		UpdatedAt:    po.UpdatedAt,
 	}
 	if po.Email != nil {
 		u.Email = *po.Email

@@ -45,9 +45,11 @@ type User struct {
 	Password string `protobuf:"bytes,7,opt,name=password,proto3" json:"password,omitempty"`
 	// 0正常 1停用 (per RuoYi).
 	Status int32 `protobuf:"varint,8,opt,name=status,proto3" json:"status,omitempty"`
-	// Avatar URL. OSS upload is deferred; the column is a placeholder.
-	Avatar string `protobuf:"bytes,9,opt,name=avatar,proto3" json:"avatar,omitempty"`
-	Remark string `protobuf:"bytes,10,opt,name=remark,proto3" json:"remark,omitempty"`
+	// The user's avatar as a Stored File id (0 = none) — RuoYi's bigint ossId
+	// pattern. Not validated on write; an unresolvable id reads back as an
+	// empty avatar_url (ADR 0016).
+	AvatarFileId int64  `protobuf:"varint,9,opt,name=avatar_file_id,json=avatarFileId,proto3" json:"avatar_file_id,omitempty"`
+	Remark       string `protobuf:"bytes,10,opt,name=remark,proto3" json:"remark,omitempty"`
 	// The user's department (部门); 0 = none. Validated through the org
 	// module's contract on save: the department must exist and be enabled.
 	DeptId int64 `protobuf:"varint,17,opt,name=dept_id,json=deptId,proto3" json:"dept_id,omitempty"`
@@ -55,10 +57,13 @@ type User struct {
 	CreateBy int64 `protobuf:"varint,11,opt,name=create_by,json=createBy,proto3" json:"create_by,omitempty"`
 	UpdateBy int64 `protobuf:"varint,12,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
 	// Last login IP/time. Written by the authn module, read-only here.
-	LoginIp       string                 `protobuf:"bytes,13,opt,name=login_ip,json=loginIp,proto3" json:"login_ip,omitempty"`
-	LoginDate     *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=login_date,json=loginDate,proto3" json:"login_date,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	LoginIp   string                 `protobuf:"bytes,13,opt,name=login_ip,json=loginIp,proto3" json:"login_ip,omitempty"`
+	LoginDate *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=login_date,json=loginDate,proto3" json:"login_date,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// Read-only: the avatar's Display URL, freshly presigned on each read
+	// (ADR 0016). Empty when the id is unset or unresolvable.
+	AvatarUrl     string `protobuf:"bytes,18,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -149,11 +154,11 @@ func (x *User) GetStatus() int32 {
 	return 0
 }
 
-func (x *User) GetAvatar() string {
+func (x *User) GetAvatarFileId() int64 {
 	if x != nil {
-		return x.Avatar
+		return x.AvatarFileId
 	}
-	return ""
+	return 0
 }
 
 func (x *User) GetRemark() string {
@@ -210,6 +215,13 @@ func (x *User) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *User) GetAvatarUrl() string {
+	if x != nil {
+		return x.AvatarUrl
+	}
+	return ""
 }
 
 // UserSet is a page of users.
@@ -277,10 +289,14 @@ type CurrentUser struct {
 	PhoneNumber string                 `protobuf:"bytes,5,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
 	Gender      int32                  `protobuf:"varint,6,opt,name=gender,proto3" json:"gender,omitempty"`
 	Status      int32                  `protobuf:"varint,7,opt,name=status,proto3" json:"status,omitempty"`
-	Avatar      string                 `protobuf:"bytes,8,opt,name=avatar,proto3" json:"avatar,omitempty"`
-	Remark      string                 `protobuf:"bytes,9,opt,name=remark,proto3" json:"remark,omitempty"`
+	// Read-only: the avatar's Display URL, freshly presigned on each read
+	// (ADR 0016). Empty when the id is unset or unresolvable.
+	AvatarUrl string `protobuf:"bytes,8,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	Remark    string `protobuf:"bytes,9,opt,name=remark,proto3" json:"remark,omitempty"`
 	// The user's department; 0 = none (read-only, same as User.dept_id).
-	DeptId        int64                  `protobuf:"varint,16,opt,name=dept_id,json=deptId,proto3" json:"dept_id,omitempty"`
+	DeptId int64 `protobuf:"varint,16,opt,name=dept_id,json=deptId,proto3" json:"dept_id,omitempty"`
+	// The avatar's Stored File id (read-only, same as User.avatar_file_id).
+	AvatarFileId  int64                  `protobuf:"varint,17,opt,name=avatar_file_id,json=avatarFileId,proto3" json:"avatar_file_id,omitempty"`
 	CreateBy      int64                  `protobuf:"varint,10,opt,name=create_by,json=createBy,proto3" json:"create_by,omitempty"`
 	UpdateBy      int64                  `protobuf:"varint,11,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
 	LoginIp       string                 `protobuf:"bytes,12,opt,name=login_ip,json=loginIp,proto3" json:"login_ip,omitempty"`
@@ -370,9 +386,9 @@ func (x *CurrentUser) GetStatus() int32 {
 	return 0
 }
 
-func (x *CurrentUser) GetAvatar() string {
+func (x *CurrentUser) GetAvatarUrl() string {
 	if x != nil {
-		return x.Avatar
+		return x.AvatarUrl
 	}
 	return ""
 }
@@ -387,6 +403,13 @@ func (x *CurrentUser) GetRemark() string {
 func (x *CurrentUser) GetDeptId() int64 {
 	if x != nil {
 		return x.DeptId
+	}
+	return 0
+}
+
+func (x *CurrentUser) GetAvatarFileId() int64 {
+	if x != nil {
+		return x.AvatarFileId
 	}
 	return 0
 }
@@ -777,7 +800,7 @@ var File_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_user_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x12user/v1/user.proto\x12\auser.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\"\xad\x04\n" +
+	"\x12user/v1/user.proto\x12\auser.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\"\xda\x04\n" +
 	"\x04User\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
 	"\tuser_name\x18\x02 \x01(\tR\buserName\x12\x1b\n" +
@@ -786,8 +809,8 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\fphone_number\x18\x05 \x01(\tR\vphoneNumber\x12\x16\n" +
 	"\x06gender\x18\x06 \x01(\x05R\x06gender\x12\x1a\n" +
 	"\bpassword\x18\a \x01(\tR\bpassword\x12\x16\n" +
-	"\x06status\x18\b \x01(\x05R\x06status\x12\x16\n" +
-	"\x06avatar\x18\t \x01(\tR\x06avatar\x12\x16\n" +
+	"\x06status\x18\b \x01(\x05R\x06status\x12$\n" +
+	"\x0eavatar_file_id\x18\t \x01(\x03R\favatarFileId\x12\x16\n" +
 	"\x06remark\x18\n" +
 	" \x01(\tR\x06remark\x12\x17\n" +
 	"\adept_id\x18\x11 \x01(\x03R\x06deptId\x12\x1b\n" +
@@ -799,10 +822,12 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"V\n" +
+	"updated_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1d\n" +
+	"\n" +
+	"avatar_url\x18\x12 \x01(\tR\tavatarUrl\"V\n" +
 	"\aUserSet\x12#\n" +
 	"\x05users\x18\x01 \x03(\v2\r.user.v1.UserR\x05users\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\x98\x04\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xc5\x04\n" +
 	"\vCurrentUser\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
 	"\tuser_name\x18\x02 \x01(\tR\buserName\x12\x1b\n" +
@@ -810,10 +835,12 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\x05email\x18\x04 \x01(\tR\x05email\x12!\n" +
 	"\fphone_number\x18\x05 \x01(\tR\vphoneNumber\x12\x16\n" +
 	"\x06gender\x18\x06 \x01(\x05R\x06gender\x12\x16\n" +
-	"\x06status\x18\a \x01(\x05R\x06status\x12\x16\n" +
-	"\x06avatar\x18\b \x01(\tR\x06avatar\x12\x16\n" +
+	"\x06status\x18\a \x01(\x05R\x06status\x12\x1d\n" +
+	"\n" +
+	"avatar_url\x18\b \x01(\tR\tavatarUrl\x12\x16\n" +
 	"\x06remark\x18\t \x01(\tR\x06remark\x12\x17\n" +
-	"\adept_id\x18\x10 \x01(\x03R\x06deptId\x12\x1b\n" +
+	"\adept_id\x18\x10 \x01(\x03R\x06deptId\x12$\n" +
+	"\x0eavatar_file_id\x18\x11 \x01(\x03R\favatarFileId\x12\x1b\n" +
 	"\tcreate_by\x18\n" +
 	" \x01(\x03R\bcreateBy\x12\x1b\n" +
 	"\tupdate_by\x18\v \x01(\x03R\bupdateBy\x12\x19\n" +

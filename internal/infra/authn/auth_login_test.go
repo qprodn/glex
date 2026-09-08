@@ -127,7 +127,7 @@ func TestAuthLoginRevalidateRejectsStaleHash(t *testing.T) {
 
 	mock.ExpectQuery(`SELECT .* FROM "sys_user"`).
 		WillReturnRows(sqlmock.NewRows(user.Columns).AddRow(
-			int64(42), int64(0), int64(0), now, now, nil, "alice", "Alice", nil, nil, int8(0), int8(0), "new-hash", "", "", int64(0), "", nil,
+			int64(42), int64(0), int64(0), now, now, nil, "alice", "Alice", nil, nil, int8(0), int8(0), "new-hash", int64(0), "", int64(0), "", nil,
 		))
 	_, err = repo.Revalidate(t.Context(), 42, "alice", "old-hash")
 	if !errors.Is(err, authndomain.ErrInvalidCredentials) {

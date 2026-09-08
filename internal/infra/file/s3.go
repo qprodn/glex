@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
@@ -23,6 +24,11 @@ import (
 // DefaultMaxUploadSize is the accept cap when the config leaves
 // max_size_bytes unset: 100 MiB (ADR 0008 sizes the relay against this cap).
 const DefaultMaxUploadSize int64 = 100 << 20
+
+// DefaultPresignTTL is the display-URL lifetime when the config leaves
+// presign_ttl_seconds unset: 120s, RuoYi's private-bucket behavior (ADR
+// 0016).
+const DefaultPresignTTL = 120 * time.Second
 
 // DefaultAllowMIME is the content-type whitelist when the config leaves
 // allow_mime empty: images, video, audio, text, and the common document and
@@ -51,15 +57,19 @@ var DefaultAllowMIME = []string{
 // objectStorage is the S3-protocol implementation of the storage port
 // (ADR 0007: one aws-sdk-go-v2 client, one statically configured bucket).
 type objectStorage struct {
-	client    *s3.Client
-	bucket    string
-	maxSize   int64
-	allowMIME []string
+	client     *s3.Client
+	presigner  *s3.PresignClient
+	bucket     string
+	maxSize    int64
+	allowMIME  []string
+	presignTTL time.Duration
 }
 
 // NewObjectStorage builds the S3 client from the static file config. The
 // endpoint is scheme-joined with use_ssl; path_style addresses MinIO and
-// most self-hosted S3-compatible stores.
+// most self-hosted S3-compatible stores. Presigning rides the same client
+// unless external_endpoint redirects it to the browser-reachable host (ADR
+// 0016).
 func NewObjectStorage(c *conf.File) (storage.ObjectStorage, error) {
 	cfg := c.GetS3()
 	scheme := "https"
@@ -77,6 +87,13 @@ func NewObjectStorage(c *conf.File) (storage.ObjectStorage, error) {
 		o.BaseEndpoint = aws.String(scheme + "://" + cfg.GetEndpoint())
 		o.UsePathStyle = cfg.GetPathStyle()
 	})
+	presignClient := client
+	if cfg.GetExternalEndpoint() != "" {
+		presignClient = s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+			o.BaseEndpoint = aws.String(scheme + "://" + cfg.GetExternalEndpoint())
+			o.UsePathStyle = cfg.GetPathStyle()
+		})
+	}
 	maxSize := int64(c.GetMaxSizeBytes())
 	if maxSize <= 0 {
 		maxSize = DefaultMaxUploadSize
@@ -85,11 +102,17 @@ func NewObjectStorage(c *conf.File) (storage.ObjectStorage, error) {
 	if len(c.GetAllowMime()) > 0 {
 		allow = c.GetAllowMime()
 	}
+	presignTTL := time.Duration(c.GetPresignTtlSeconds()) * time.Second
+	if presignTTL <= 0 {
+		presignTTL = DefaultPresignTTL
+	}
 	return &objectStorage{
-		client:    client,
-		bucket:    cfg.GetBucket(),
-		maxSize:   maxSize,
-		allowMIME: allow,
+		client:     client,
+		presigner:  s3.NewPresignClient(presignClient),
+		bucket:     cfg.GetBucket(),
+		maxSize:    maxSize,
+		allowMIME:  allow,
+		presignTTL: presignTTL,
 	}, nil
 }
 
@@ -165,6 +188,23 @@ func (s *objectStorage) Get(ctx context.Context, key string, rng *storage.ByteRa
 		ContentLength: aws.ToInt64(out.ContentLength),
 		ContentRange:  aws.ToString(out.ContentRange),
 	}, nil
+}
+
+// PresignGet mints a Display URL (ADR 0016): a presigned GET valid for the
+// configured TTL, signed against the external endpoint when one is
+// configured. Signing is local — no storage round-trip, so it cannot fail
+// on unreachable storage, only on malformed input.
+func (s *objectStorage) PresignGet(ctx context.Context, key string) (string, error) {
+	out, err := s.presigner.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	}, func(o *s3.PresignOptions) {
+		o.Expires = s.presignTTL
+	})
+	if err != nil {
+		return "", wrapStorage(err)
+	}
+	return out.URL, nil
 }
 
 // Delete removes the bytes; S3 deletes are idempotent, so a missing key

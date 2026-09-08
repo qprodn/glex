@@ -41,6 +41,11 @@ type ObjectStorage interface {
 	// Get fetches the bytes, optionally one range (nil = full body). The
 	// caller owns the returned Object's Body.
 	Get(ctx context.Context, key string, rng *ByteRange) (*Object, error)
+	// PresignGet mints a short-TTL presigned GET URL for the Stored Key's
+	// bytes — a Display URL (ADR 0016). Signing is a local computation (no
+	// storage round-trip); the TTL is the adapter's configured deployment
+	// concern.
+	PresignGet(ctx context.Context, key string) (url string, err error)
 	// Delete removes the bytes; it is idempotent — a missing key succeeds.
 	Delete(ctx context.Context, key string) error
 }

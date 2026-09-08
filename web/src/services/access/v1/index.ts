@@ -812,8 +812,10 @@ export type userv1_User = {
   password: string | undefined;
   // 0正常 1停用 (per RuoYi).
   status: number | undefined;
-  // Avatar URL. OSS upload is deferred; the column is a placeholder.
-  avatar: string | undefined;
+  // The user's avatar as a Stored File id (0 = none) — RuoYi's bigint ossId
+  // pattern. Not validated on write; an unresolvable id reads back as an
+  // empty avatar_url (ADR 0016).
+  avatarFileId: number | undefined;
   remark: string | undefined;
   // The user's department (部门); 0 = none. Validated through the org
   // module's contract on save: the department must exist and be enabled.
@@ -826,6 +828,9 @@ export type userv1_User = {
   loginDate: wellKnownTimestamp | undefined;
   createdAt: wellKnownTimestamp | undefined;
   updatedAt: wellKnownTimestamp | undefined;
+  // Read-only: the avatar's Display URL, freshly presigned on each read
+  // (ADR 0016). Empty when the id is unset or unresolvable.
+  avatarUrl: string | undefined;
 };
 
 

@@ -23,7 +23,8 @@ import (
 )
 
 // convertStoredFile maps a fileentity.StoredFile DO to the proto StoredFile
-// DTO.
+// DTO. The Display URL is not mapped here — it is derived at read time and
+// attached by fillURL, so the mapper stays a pure field copy.
 func convertStoredFile(f *fileentity.StoredFile) *filev1.StoredFile {
 	return &filev1.StoredFile{
 		FileId:       f.ID,
@@ -39,6 +40,18 @@ func convertStoredFile(f *fileentity.StoredFile) *filev1.StoredFile {
 		CreatedAt:    timestamppb.New(f.CreatedAt),
 		UpdatedAt:    timestamppb.New(f.UpdatedAt),
 	}
+}
+
+// fillURL attaches one Display URL (ADR 0016) to a converted DTO. A signing
+// failure degrades to an empty url — display sugar never fails a data
+// response — and the domain service's propagation breadcrumb already
+// recorded the failure, so nothing is swallowed silently here.
+func (s *FileApplication) fillURL(ctx context.Context, out *filev1.StoredFile, f *fileentity.StoredFile) {
+	url, err := s.svc.DisplayURL(ctx, f)
+	if err != nil {
+		return
+	}
+	out.Url = url
 }
 
 // Disposition is the Content-Disposition a proxy download serves.
@@ -119,7 +132,9 @@ func (s *FileApplication) Upload(ctx context.Context, in *UploadInput) (*filev1.
 		logx.Propagate(ctx, s.logger, "file.upload", err)
 		return nil, err
 	}
-	return convertStoredFile(created), nil
+	out := convertStoredFile(created)
+	s.fillURL(ctx, out, created)
+	return out, nil
 }
 
 // Download opens a Stored File's bytes for the proxy download: it resolves
@@ -166,7 +181,27 @@ func (s *FileApplication) GetFile(ctx context.Context, req *filev1.GetFileReques
 		logx.Propagate(ctx, s.logger, "file.get_file", err)
 		return nil, err
 	}
-	return convertStoredFile(f), nil
+	out := convertStoredFile(f)
+	s.fillURL(ctx, out, f)
+	return out, nil
+}
+
+// BatchGetFiles resolves a batch of ids to Stored Files with display URLs;
+// unknown or withdrawn ids are absent from the response (the business-form
+// counterpart of RuoYi's listByIds, ADR 0016).
+func (s *FileApplication) BatchGetFiles(ctx context.Context, req *filev1.BatchGetFilesRequest) (*filev1.StoredFileSet, error) {
+	files, err := s.svc.BatchGet(ctx, req.GetFileIds())
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "file.batch_get_files", err)
+		return nil, err
+	}
+	set := &filev1.StoredFileSet{Files: make([]*filev1.StoredFile, 0, len(files))}
+	for _, f := range files {
+		out := convertStoredFile(f)
+		s.fillURL(ctx, out, f)
+		set.Files = append(set.Files, out)
+	}
+	return set, nil
 }
 
 // ListFiles lists stored files with AIP-160 filter, AIP-132 order, and
@@ -212,7 +247,9 @@ func (s *FileApplication) ListFiles(ctx context.Context, req *filev1.ListFilesRe
 	}
 	set := &filev1.StoredFileSet{Files: make([]*filev1.StoredFile, 0, len(files))}
 	for _, f := range files {
-		set.Files = append(set.Files, convertStoredFile(f))
+		out := convertStoredFile(f)
+		s.fillURL(ctx, out, f)
+		set.Files = append(set.Files, out)
 	}
 	if len(files) >= int(req.GetPageSize()) {
 		set.NextPageToken = pageToken.Next(req).String()

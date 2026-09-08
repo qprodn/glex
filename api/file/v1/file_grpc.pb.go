@@ -20,11 +20,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	FileService_UploadFile_FullMethodName   = "/file.v1.FileService/UploadFile"
-	FileService_GetFile_FullMethodName      = "/file.v1.FileService/GetFile"
-	FileService_ListFiles_FullMethodName    = "/file.v1.FileService/ListFiles"
-	FileService_DownloadFile_FullMethodName = "/file.v1.FileService/DownloadFile"
-	FileService_WithdrawFile_FullMethodName = "/file.v1.FileService/WithdrawFile"
+	FileService_UploadFile_FullMethodName    = "/file.v1.FileService/UploadFile"
+	FileService_GetFile_FullMethodName       = "/file.v1.FileService/GetFile"
+	FileService_ListFiles_FullMethodName     = "/file.v1.FileService/ListFiles"
+	FileService_BatchGetFiles_FullMethodName = "/file.v1.FileService/BatchGetFiles"
+	FileService_DownloadFile_FullMethodName  = "/file.v1.FileService/DownloadFile"
+	FileService_WithdrawFile_FullMethodName  = "/file.v1.FileService/WithdrawFile"
 )
 
 // FileServiceClient is the client API for FileService service.
@@ -49,6 +50,10 @@ type FileServiceClient interface {
 	GetFile(ctx context.Context, in *GetFileRequest, opts ...grpc.CallOption) (*StoredFile, error)
 	// ListFiles lists stored files with AIP filter/order/page-token.
 	ListFiles(ctx context.Context, in *ListFilesRequest, opts ...grpc.CallOption) (*StoredFileSet, error)
+	// BatchGetFiles resolves a batch of ids to Stored Files with display
+	// URLs (the business-form counterpart of RuoYi's listByIds). Unknown or
+	// withdrawn ids are skipped, not errors — a form renders what it can.
+	BatchGetFiles(ctx context.Context, in *BatchGetFilesRequest, opts ...grpc.CallOption) (*StoredFileSet, error)
 	// DownloadFile proxies one Stored File's bytes (HTTP-only, hand-written
 	// route GET /file/files/{file_id}/content): query `disposition` selects
 	// inline|attachment (default attachment) and the standard Range header is
@@ -98,6 +103,16 @@ func (c *fileServiceClient) ListFiles(ctx context.Context, in *ListFilesRequest,
 	return out, nil
 }
 
+func (c *fileServiceClient) BatchGetFiles(ctx context.Context, in *BatchGetFilesRequest, opts ...grpc.CallOption) (*StoredFileSet, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StoredFileSet)
+	err := c.cc.Invoke(ctx, FileService_BatchGetFiles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *fileServiceClient) DownloadFile(ctx context.Context, in *DownloadFileRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -140,6 +155,10 @@ type FileServiceServer interface {
 	GetFile(context.Context, *GetFileRequest) (*StoredFile, error)
 	// ListFiles lists stored files with AIP filter/order/page-token.
 	ListFiles(context.Context, *ListFilesRequest) (*StoredFileSet, error)
+	// BatchGetFiles resolves a batch of ids to Stored Files with display
+	// URLs (the business-form counterpart of RuoYi's listByIds). Unknown or
+	// withdrawn ids are skipped, not errors — a form renders what it can.
+	BatchGetFiles(context.Context, *BatchGetFilesRequest) (*StoredFileSet, error)
 	// DownloadFile proxies one Stored File's bytes (HTTP-only, hand-written
 	// route GET /file/files/{file_id}/content): query `disposition` selects
 	// inline|attachment (default attachment) and the standard Range header is
@@ -167,6 +186,9 @@ func (UnimplementedFileServiceServer) GetFile(context.Context, *GetFileRequest) 
 }
 func (UnimplementedFileServiceServer) ListFiles(context.Context, *ListFilesRequest) (*StoredFileSet, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListFiles not implemented")
+}
+func (UnimplementedFileServiceServer) BatchGetFiles(context.Context, *BatchGetFilesRequest) (*StoredFileSet, error) {
+	return nil, status.Error(codes.Unimplemented, "method BatchGetFiles not implemented")
 }
 func (UnimplementedFileServiceServer) DownloadFile(context.Context, *DownloadFileRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DownloadFile not implemented")
@@ -249,6 +271,24 @@ func _FileService_ListFiles_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FileService_BatchGetFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchGetFilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FileServiceServer).BatchGetFiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FileService_BatchGetFiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FileServiceServer).BatchGetFiles(ctx, req.(*BatchGetFilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _FileService_DownloadFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DownloadFileRequest)
 	if err := dec(in); err != nil {
@@ -303,6 +343,10 @@ var FileService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListFiles",
 			Handler:    _FileService_ListFiles_Handler,
+		},
+		{
+			MethodName: "BatchGetFiles",
+			Handler:    _FileService_BatchGetFiles_Handler,
 		},
 		{
 			MethodName: "DownloadFile",

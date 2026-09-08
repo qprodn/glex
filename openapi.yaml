@@ -122,6 +122,32 @@ paths:
                 "200":
                     description: OK
                     content: {}
+    /file/files:batchGet:
+        get:
+            tags:
+                - FileService
+            description: |-
+                BatchGetFiles resolves a batch of ids to Stored Files with display
+                 URLs (the business-form counterpart of RuoYi's listByIds). Unknown or
+                 withdrawn ids are skipped, not errors — a form renders what it can.
+            operationId: FileService_BatchGetFiles
+            parameters:
+                - name: fileIds
+                  in: query
+                  description: |-
+                    Required. The ids of the Stored Files to resolve; unknown or withdrawn
+                     ids are absent from the response.
+                  schema:
+                    type: array
+                    items:
+                        type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/file.v1.StoredFileSet'
     /iam/dept:
         get:
             tags:
@@ -2117,12 +2143,18 @@ components:
                 updatedAt:
                     type: string
                     format: date-time
+                url:
+                    type: string
+                    description: |-
+                        Display URL (展示链接): a presigned GET URL freshly signed at read time,
+                         valid for the configured TTL (ADR 0016). Derived, never stored; empty
+                         when signing failed — data responses never fail on display sugar.
             description: |-
                 StoredFile is one file accepted into the system's storage (存储文件):
-                 a metadata row paired with the bytes in object storage. There is no public
-                 URL — bytes are addressable only through the service (ADR 0008), and
-                 withdrawal removes the bytes while the row stays as audit history
-                 (ADR 0009).
+                 a metadata row paired with the bytes in object storage. Attachment
+                 downloads address the bytes only through the service (ADR 0008), while
+                 display rides the short-TTL presigned url (ADR 0016); withdrawal removes
+                 the bytes while the row stays as audit history (ADR 0009).
         file.v1.StoredFileSet:
             type: object
             properties:
@@ -2335,13 +2367,19 @@ components:
                 status:
                     type: integer
                     format: int32
-                avatar:
+                avatarUrl:
                     type: string
+                    description: |-
+                        Read-only: the avatar's Display URL, freshly presigned on each read
+                         (ADR 0016). Empty when the id is unset or unresolvable.
                 remark:
                     type: string
                 deptId:
                     type: string
                     description: The user's department; 0 = none (read-only, same as User.dept_id).
+                avatarFileId:
+                    type: string
+                    description: The avatar's Stored File id (read-only, same as User.avatar_file_id).
                 createBy:
                     type: string
                 updateBy:
@@ -2405,9 +2443,12 @@ components:
                     type: integer
                     description: 0正常 1停用 (per RuoYi).
                     format: int32
-                avatar:
+                avatarFileId:
                     type: string
-                    description: Avatar URL. OSS upload is deferred; the column is a placeholder.
+                    description: |-
+                        The user's avatar as a Stored File id (0 = none) — RuoYi's bigint ossId
+                         pattern. Not validated on write; an unresolvable id reads back as an
+                         empty avatar_url (ADR 0016).
                 remark:
                     type: string
                 deptId:
@@ -2432,6 +2473,11 @@ components:
                 updatedAt:
                     type: string
                     format: date-time
+                avatarUrl:
+                    type: string
+                    description: |-
+                        Read-only: the avatar's Display URL, freshly presigned on each read
+                         (ADR 0016). Empty when the id is unset or unresolvable.
             description: |-
                 User is a system user (系统用户), ported from RuoYi sys_user. Back-office
                  CRUD only — login/session lives in the authn module.

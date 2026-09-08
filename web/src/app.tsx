@@ -102,6 +102,9 @@ export const layout: RunTimeLayoutConfig = ({
   return {
     actionsRender: () => [<SelectLang key="SelectLang" />],
     avatarProps: {
+      // The avatar rides the presigned Display URL minted at GetInfo; empty
+      // falls back to ProLayout's default icon (ADR 0016).
+      src: initialState?.currentUser?.user?.avatarUrl || undefined,
       title: <AvatarName />,
       render: (_, avatarChildren) => (
         <AvatarDropdown>{avatarChildren}</AvatarDropdown>

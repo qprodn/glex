@@ -4,7 +4,9 @@
  */
 import Footer from './Footer';
 import DictTag from './DictTag';
+import FileUpload from './FileUpload';
+import ImageUpload from './ImageUpload';
 import { SelectLang } from './RightContent';
 import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
 
-export { AvatarDropdown, AvatarName, DictTag, Footer, SelectLang };
+export { AvatarDropdown, AvatarName, DictTag, FileUpload, Footer, ImageUpload, SelectLang };

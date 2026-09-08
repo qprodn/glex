@@ -1,6 +1,7 @@
 import type { OnlineSession } from "@/services/authn/v1";
 import type { CurrentUser } from "@/services/user/v1";
 import { services } from "@/services";
+import { ImageUpload } from "@/components";
 import { collectUpdateMask } from "@/utils/fieldMask";
 import {
   PageContainer,
@@ -9,10 +10,40 @@ import {
   ProFormText,
 } from "@ant-design/pro-components";
 import { useAccess, useIntl, useModel } from "@umijs/max";
-import { App, Card, Popconfirm, Table, Tabs, Typography } from "antd";
+import { App, Avatar, Card, Popconfirm, Table, Tabs, Typography } from "antd";
 import React from "react";
 
 const PROFILE_FIELDS = ["nickName", "email", "phoneNumber", "gender"] as const;
+
+/**
+ * AvatarCard uploads the avatar through the generic file transfer and saves
+ * the resulting Stored File id immediately (RuoYi's flow: upload → ossId →
+ * profile write). The display rides the presigned avatar_url from GetInfo;
+ * a reload re-mints it (ADR 0016).
+ */
+const AvatarCard: React.FC<{ user: CurrentUser }> = ({ user }) => {
+  const intl = useIntl();
+  const { message } = App.useApp();
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
+      <Avatar size={72} src={user.avatarUrl}>
+        {user.nickName?.slice(0, 1)}
+      </Avatar>
+      <ImageUpload
+        value={Number(user.avatarFileId ?? 0)}
+        bizPath="avatar"
+        onChange={async (fileId) => {
+          await services.user.UpdateUser({
+            user: { ...user, avatarFileId: fileId, password: undefined },
+            updateMask: "avatar_file_id",
+          });
+          message.success(intl.formatMessage({ id: "common.saved", defaultMessage: "保存成功" }));
+          window.location.reload();
+        }}
+      />
+    </div>
+  );
+};
 
 const ProfileForm: React.FC<{ user: CurrentUser }> = ({ user }) => {
   const intl = useIntl();
@@ -215,7 +246,12 @@ const Profile: React.FC = () => {
                   {
                     key: "profile",
                     label: intl.formatMessage({ id: "pages.profile.tab.profile", defaultMessage: "基本资料" }),
-                    children: <ProfileForm user={user} />,
+                    children: (
+                      <>
+                        <AvatarCard user={user} />
+                        <ProfileForm user={user} />
+                      </>
+                    ),
                   },
                   {
                     key: "password",

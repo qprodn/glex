@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
@@ -22,6 +23,18 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
+
+// fakeURLResolver is the file crossdomain contract double: it hands out a
+// canned Display URL per asked id without touching the file module.
+type fakeURLResolver struct{}
+
+func (f *fakeURLResolver) ResolveURLs(_ context.Context, fileIDs []int64) (map[int64]string, error) {
+	urls := make(map[int64]string, len(fileIDs))
+	for _, id := range fileIDs {
+		urls[id] = "https://signed.example/" + strconv.FormatInt(id, 10)
+	}
+	return urls, nil
+}
 
 // fakeCredentialWriter records password requests handed to authn's credential
 // capability; the user module never hashes or stores the credential itself.
@@ -114,7 +127,7 @@ func (s *fakeUserService) Delete(_ context.Context, id int64, actorID int64) ([]
 }
 
 func newTestUserApplication(svc *fakeUserService, credentials *fakeCredentialWriter, revoker *fakeSessionRevoker) *UserApplication {
-	return NewUserApplication(svc, credentials, new(fakeDeptReader), newFakeTransaction(), revoker, testLogger())
+	return NewUserApplication(svc, credentials, new(fakeDeptReader), new(fakeURLResolver), newFakeTransaction(), revoker, testLogger())
 }
 
 func createUserRequest(u *userv1.User) *userv1.CreateUserRequest {
@@ -148,7 +161,7 @@ func TestCreateUserRunsCreateAndCredentialWriteInOneTransaction(t *testing.T) {
 	svc := newFakeUserService()
 	svc.steps = steps
 	credentials := &fakeCredentialWriter{steps: steps}
-	app := NewUserApplication(svc, credentials, new(fakeDeptReader), tx, new(fakeSessionRevoker), testLogger())
+	app := NewUserApplication(svc, credentials, new(fakeDeptReader), new(fakeURLResolver), tx, new(fakeSessionRevoker), testLogger())
 
 	if _, err := app.CreateUser(context.Background(), createUserRequest(&userv1.User{UserName: "bob", Password: "secret"})); err != nil {
 		t.Fatalf("create user: %v", err)
@@ -407,13 +420,13 @@ func TestConvertUserOmitsPasswordAndMapsFields(t *testing.T) {
 	loginDate := now.Add(time.Hour)
 	dto := convertUser(&userentity.User{
 		ID: 7, UserName: "alice", NickName: "Alice", Email: "a@b.com", PhoneNumber: "13800000000",
-		Gender: 1, Password: "plaintext-secret", Status: 1, Avatar: "http://avatar", Remark: "r",
+		Gender: 1, Password: "plaintext-secret", Status: 1, AvatarFileID: 42, Remark: "r",
 		CreateBy: 1, UpdateBy: 2, LoginIP: "127.0.0.1", LoginDate: &loginDate, CreatedAt: now, UpdatedAt: now,
 	})
 
 	if dto.GetUserId() != 7 || dto.GetUserName() != "alice" || dto.GetNickName() != "Alice" ||
 		dto.GetEmail() != "a@b.com" || dto.GetPhoneNumber() != "13800000000" || dto.GetGender() != 1 ||
-		dto.GetStatus() != 1 || dto.GetAvatar() != "http://avatar" || dto.GetRemark() != "r" ||
+		dto.GetStatus() != 1 || dto.GetAvatarFileId() != 42 || dto.GetRemark() != "r" ||
 		dto.GetCreateBy() != 1 || dto.GetUpdateBy() != 2 || dto.GetLoginIp() != "127.0.0.1" {
 		t.Fatalf("field mapping = %#v", dto)
 	}
@@ -452,7 +465,7 @@ func TestCreateUser_ValidatesDeptThroughContract(t *testing.T) {
 	svc := newFakeUserService()
 	credentials := &fakeCredentialWriter{}
 	depts := &fakeDeptReader{}
-	app := NewUserApplication(svc, credentials, depts, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := NewUserApplication(svc, credentials, depts, new(fakeURLResolver), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(1, "alice", "session-id", nil, nil))
 
 	if _, err := app.CreateUser(ctx, createUserRequest(&userv1.User{
@@ -472,7 +485,7 @@ func TestCreateUser_DeptValidationErrorAborts(t *testing.T) {
 	svc := newFakeUserService()
 	credentials := &fakeCredentialWriter{}
 	depts := &fakeDeptReader{ensureErr: orgdomain.ErrDeptDisabled}
-	app := NewUserApplication(svc, credentials, depts, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := NewUserApplication(svc, credentials, depts, new(fakeURLResolver), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(1, "alice", "session-id", nil, nil))
 	_, err := app.CreateUser(ctx, createUserRequest(&userv1.User{
@@ -489,7 +502,7 @@ func TestCreateUser_DeptValidationErrorAborts(t *testing.T) {
 func TestCreateUser_ZeroDeptSkipsContract(t *testing.T) {
 	svc := newFakeUserService()
 	depts := &fakeDeptReader{}
-	app := NewUserApplication(svc, &fakeCredentialWriter{}, depts, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := NewUserApplication(svc, &fakeCredentialWriter{}, depts, new(fakeURLResolver), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(1, "alice", "session-id", nil, nil))
 
 	if _, err := app.CreateUser(ctx, createUserRequest(&userv1.User{UserName: "bob", Password: "pw"})); err != nil {
@@ -504,7 +517,7 @@ func TestListUsers_ResolvesDeptSubtreeThroughContract(t *testing.T) {
 	svc := newFakeUserService()
 	svc.list = []*userentity.User{{ID: 7, UserName: "bob", DeptID: 3}}
 	depts := &fakeDeptReader{subtree: []int64{2, 3}}
-	app := NewUserApplication(svc, &fakeCredentialWriter{}, depts, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := NewUserApplication(svc, &fakeCredentialWriter{}, depts, new(fakeURLResolver), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	set, err := app.ListUsers(context.Background(), &userv1.ListUsersRequest{DeptId: 2})
 	if err != nil {
@@ -521,7 +534,7 @@ func TestListUsers_ResolvesDeptSubtreeThroughContract(t *testing.T) {
 func TestListUsers_ZeroDeptSkipsContract(t *testing.T) {
 	svc := newFakeUserService()
 	depts := &fakeDeptReader{}
-	app := NewUserApplication(svc, &fakeCredentialWriter{}, depts, newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := NewUserApplication(svc, &fakeCredentialWriter{}, depts, new(fakeURLResolver), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	if _, err := app.ListUsers(context.Background(), &userv1.ListUsersRequest{}); err != nil {
 		t.Fatalf("ListUsers: %v", err)

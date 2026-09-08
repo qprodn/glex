@@ -293,7 +293,7 @@ func (x *Data) GetRedis() *Data_Redis {
 
 // File configures the file module: one S3-compatible endpoint with static
 // credentials (ADR 0007) plus the upload acceptance policy (size cap and
-// content-type whitelist).
+// content-type whitelist) and the display-URL signing policy (ADR 0016).
 type File struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	S3    *File_S3               `protobuf:"bytes,1,opt,name=s3,proto3" json:"s3,omitempty"`
@@ -303,9 +303,12 @@ type File struct {
 	// declared Content-Type never overrides the sniffed value. An entry ending
 	// in "/*" admits the whole type (e.g. "image/*"); any other entry is an
 	// exact match. Empty falls back to the built-in default set.
-	AllowMime     []string `protobuf:"bytes,3,rep,name=allow_mime,json=allowMime,proto3" json:"allow_mime,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	AllowMime []string `protobuf:"bytes,3,rep,name=allow_mime,json=allowMime,proto3" json:"allow_mime,omitempty"`
+	// Lifetime of presigned display URLs in seconds (ADR 0016). 0 falls back
+	// to the built-in default (120s, RuoYi's private-bucket behavior).
+	PresignTtlSeconds uint64 `protobuf:"varint,4,opt,name=presign_ttl_seconds,json=presignTtlSeconds,proto3" json:"presign_ttl_seconds,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *File) Reset() {
@@ -357,6 +360,13 @@ func (x *File) GetAllowMime() []string {
 		return x.AllowMime
 	}
 	return nil
+}
+
+func (x *File) GetPresignTtlSeconds() uint64 {
+	if x != nil {
+		return x.PresignTtlSeconds
+	}
+	return 0
 }
 
 type Auth_LoginCounter struct {
@@ -662,9 +672,13 @@ type File_S3 struct {
 	SecretKey string `protobuf:"bytes,5,opt,name=secret_key,json=secretKey,proto3" json:"secret_key,omitempty"`
 	UseSsl    bool   `protobuf:"varint,6,opt,name=use_ssl,json=useSsl,proto3" json:"use_ssl,omitempty"`
 	// Path-style addressing (true for MinIO and most self-hosted S3).
-	PathStyle     bool `protobuf:"varint,7,opt,name=path_style,json=pathStyle,proto3" json:"path_style,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	PathStyle bool `protobuf:"varint,7,opt,name=path_style,json=pathStyle,proto3" json:"path_style,omitempty"`
+	// Host or host:port browsers use to reach the same storage, when it
+	// differs from endpoint (ADR 0016): presigned display URLs are signed
+	// against this host so browsers can follow them. Empty = endpoint.
+	ExternalEndpoint string `protobuf:"bytes,8,opt,name=external_endpoint,json=externalEndpoint,proto3" json:"external_endpoint,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *File_S3) Reset() {
@@ -746,6 +760,13 @@ func (x *File_S3) GetPathStyle() bool {
 	return false
 }
 
+func (x *File_S3) GetExternalEndpoint() string {
+	if x != nil {
+		return x.ExternalEndpoint
+	}
+	return ""
+}
+
 var File_conf_conf_proto protoreflect.FileDescriptor
 
 const file_conf_conf_proto_rawDesc = "" +
@@ -789,12 +810,13 @@ const file_conf_conf_proto_rawDesc = "" +
 	"\anetwork\x18\x01 \x01(\tR\anetwork\x12\x12\n" +
 	"\x04addr\x18\x02 \x01(\tR\x04addr\x12<\n" +
 	"\fread_timeout\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\vreadTimeout\x12>\n" +
-	"\rwrite_timeout\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\fwriteTimeout\"\xb9\x02\n" +
+	"\rwrite_timeout\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\fwriteTimeout\"\x96\x03\n" +
 	"\x04File\x12#\n" +
 	"\x02s3\x18\x01 \x01(\v2\x13.kratos.api.File.S3R\x02s3\x12$\n" +
 	"\x0emax_size_bytes\x18\x02 \x01(\x04R\fmaxSizeBytes\x12\x1d\n" +
 	"\n" +
-	"allow_mime\x18\x03 \x03(\tR\tallowMime\x1a\xc6\x01\n" +
+	"allow_mime\x18\x03 \x03(\tR\tallowMime\x12.\n" +
+	"\x13presign_ttl_seconds\x18\x04 \x01(\x04R\x11presignTtlSeconds\x1a\xf3\x01\n" +
 	"\x02S3\x12\x1a\n" +
 	"\bendpoint\x18\x01 \x01(\tR\bendpoint\x12\x16\n" +
 	"\x06region\x18\x02 \x01(\tR\x06region\x12\x16\n" +
@@ -805,7 +827,8 @@ const file_conf_conf_proto_rawDesc = "" +
 	"secret_key\x18\x05 \x01(\tR\tsecretKey\x12\x17\n" +
 	"\ause_ssl\x18\x06 \x01(\bR\x06useSsl\x12\x1d\n" +
 	"\n" +
-	"path_style\x18\a \x01(\bR\tpathStyleB\x19Z\x17glex/internal/conf;confb\x06proto3"
+	"path_style\x18\a \x01(\bR\tpathStyle\x12+\n" +
+	"\x11external_endpoint\x18\b \x01(\tR\x10externalEndpointB\x19Z\x17glex/internal/conf;confb\x06proto3"
 
 var (
 	file_conf_conf_proto_rawDescOnce sync.Once

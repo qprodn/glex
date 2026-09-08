@@ -64,7 +64,7 @@ message Data {
 
 // File configures the file module: one S3-compatible endpoint with static
 // credentials (ADR 0007) plus the upload acceptance policy (size cap and
-// content-type whitelist).
+// content-type whitelist) and the display-URL signing policy (ADR 0016).
 message File {
   message S3 {
     // Host or host:port of the S3-compatible endpoint; the scheme comes from
@@ -77,6 +77,10 @@ message File {
     bool use_ssl = 6;
     // Path-style addressing (true for MinIO and most self-hosted S3).
     bool path_style = 7;
+    // Host or host:port browsers use to reach the same storage, when it
+    // differs from endpoint (ADR 0016): presigned display URLs are signed
+    // against this host so browsers can follow them. Empty = endpoint.
+    string external_endpoint = 8;
   }
   S3 s3 = 1;
   // Upload size cap in bytes. 0 falls back to the built-in default.
@@ -86,4 +90,7 @@ message File {
   // in "/*" admits the whole type (e.g. "image/*"); any other entry is an
   // exact match. Empty falls back to the built-in default set.
   repeated string allow_mime = 3;
+  // Lifetime of presigned display URLs in seconds (ADR 0016). 0 falls back
+  // to the built-in default (120s, RuoYi's private-bucket behavior).
+  uint64 presign_ttl_seconds = 4;
 }

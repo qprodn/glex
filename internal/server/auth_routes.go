@@ -46,11 +46,11 @@ func authRoutes() map[string]authmw.Route {
 		accessv1.OperationRoleAssignmentServiceUpdateUserRoles: {Permission: "system:user:edit"},
 		accessv1.OperationRoleAssignmentServiceListRoleUsers:   {Permission: "system:role:list"},
 
-		orgv1.OperationDeptServiceCreateDept:  {Permission: "system:dept:add"},
-		orgv1.OperationDeptServiceGetDept:     {Permission: "system:dept:query"},
-		orgv1.OperationDeptServiceListDepts:   {Permission: "system:dept:list"},
-		orgv1.OperationDeptServiceUpdateDept:  {Permission: "system:dept:edit"},
-		orgv1.OperationDeptServiceDeleteDept:  {Permission: "system:dept:remove"},
+		orgv1.OperationDeptServiceCreateDept: {Permission: "system:dept:add"},
+		orgv1.OperationDeptServiceGetDept:    {Permission: "system:dept:query"},
+		orgv1.OperationDeptServiceListDepts:  {Permission: "system:dept:list"},
+		orgv1.OperationDeptServiceUpdateDept: {Permission: "system:dept:edit"},
+		orgv1.OperationDeptServiceDeleteDept: {Permission: "system:dept:remove"},
 		// The consumption read every form's department select uses: login
 		// required, no Functional Permission (ListDictEntriesByType's
 		// pattern).
@@ -81,11 +81,12 @@ func authRoutes() map[string]authmw.Route {
 
 		// The two transfer routes are hand-written (ADR 0008); their
 		// operation names are declared in file_transfer.go.
-		OperationFileServiceUploadFile:          {Permission: "system:file:upload"},
-		OperationFileServiceDownloadFile:        {Permission: "system:file:download"},
-		filev1.OperationFileServiceGetFile:      {Permission: "system:file:query"},
-		filev1.OperationFileServiceListFiles:    {Permission: "system:file:list"},
-		filev1.OperationFileServiceWithdrawFile: {Permission: "system:file:remove"},
+		OperationFileServiceUploadFile:           {Permission: "system:file:upload"},
+		OperationFileServiceDownloadFile:         {Permission: "system:file:download"},
+		filev1.OperationFileServiceGetFile:       {Permission: "system:file:query"},
+		filev1.OperationFileServiceListFiles:     {Permission: "system:file:list"},
+		filev1.OperationFileServiceBatchGetFiles: {Permission: "system:file:query"},
+		filev1.OperationFileServiceWithdrawFile:  {Permission: "system:file:remove"},
 
 		authnv1.OperationOnlineSessionServiceListOnlineSessions:    {Permission: "monitor:online:list"},
 		authnv1.OperationOnlineSessionServiceKickoutOnlineSession:  {Permission: "monitor:online:forceLogout"},

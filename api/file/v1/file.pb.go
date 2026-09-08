@@ -25,10 +25,10 @@ const (
 )
 
 // StoredFile is one file accepted into the system's storage (存储文件):
-// a metadata row paired with the bytes in object storage. There is no public
-// URL — bytes are addressable only through the service (ADR 0008), and
-// withdrawal removes the bytes while the row stays as audit history
-// (ADR 0009).
+// a metadata row paired with the bytes in object storage. Attachment
+// downloads address the bytes only through the service (ADR 0008), while
+// display rides the short-TTL presigned url (ADR 0016); withdrawal removes
+// the bytes while the row stays as audit history (ADR 0009).
 type StoredFile struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Snowflake ID. It also appears in the Stored Key, so the row and the
@@ -49,10 +49,14 @@ type StoredFile struct {
 	// integrity; identical bytes accepted twice yield two Stored Files.
 	ContentHash string `protobuf:"bytes,8,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"`
 	// Audit: who created/updated. Filled from the authenticated identity.
-	CreateBy      int64                  `protobuf:"varint,9,opt,name=create_by,json=createBy,proto3" json:"create_by,omitempty"`
-	UpdateBy      int64                  `protobuf:"varint,10,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	CreateBy  int64                  `protobuf:"varint,9,opt,name=create_by,json=createBy,proto3" json:"create_by,omitempty"`
+	UpdateBy  int64                  `protobuf:"varint,10,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// Display URL (展示链接): a presigned GET URL freshly signed at read time,
+	// valid for the configured TTL (ADR 0016). Derived, never stored; empty
+	// when signing failed — data responses never fail on display sugar.
+	Url           string `protobuf:"bytes,13,opt,name=url,proto3" json:"url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -169,6 +173,13 @@ func (x *StoredFile) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *StoredFile) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
 }
 
 // StoredFileSet is a page of stored files.
@@ -316,6 +327,52 @@ func (x *GetFileRequest) GetFileId() int64 {
 	return 0
 }
 
+type BatchGetFilesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The ids of the Stored Files to resolve; unknown or withdrawn
+	// ids are absent from the response.
+	FileIds       []int64 `protobuf:"varint,1,rep,packed,name=file_ids,json=fileIds,proto3" json:"file_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BatchGetFilesRequest) Reset() {
+	*x = BatchGetFilesRequest{}
+	mi := &file_file_v1_file_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchGetFilesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchGetFilesRequest) ProtoMessage() {}
+
+func (x *BatchGetFilesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_file_v1_file_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchGetFilesRequest.ProtoReflect.Descriptor instead.
+func (*BatchGetFilesRequest) Descriptor() ([]byte, []int) {
+	return file_file_v1_file_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *BatchGetFilesRequest) GetFileIds() []int64 {
+	if x != nil {
+		return x.FileIds
+	}
+	return nil
+}
+
 type ListFilesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Optional. Page size.
@@ -337,7 +394,7 @@ type ListFilesRequest struct {
 
 func (x *ListFilesRequest) Reset() {
 	*x = ListFilesRequest{}
-	mi := &file_file_v1_file_proto_msgTypes[4]
+	mi := &file_file_v1_file_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -349,7 +406,7 @@ func (x *ListFilesRequest) String() string {
 func (*ListFilesRequest) ProtoMessage() {}
 
 func (x *ListFilesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_file_v1_file_proto_msgTypes[4]
+	mi := &file_file_v1_file_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -362,7 +419,7 @@ func (x *ListFilesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFilesRequest.ProtoReflect.Descriptor instead.
 func (*ListFilesRequest) Descriptor() ([]byte, []int) {
-	return file_file_v1_file_proto_rawDescGZIP(), []int{4}
+	return file_file_v1_file_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListFilesRequest) GetPageSize() int32 {
@@ -405,7 +462,7 @@ type DownloadFileRequest struct {
 
 func (x *DownloadFileRequest) Reset() {
 	*x = DownloadFileRequest{}
-	mi := &file_file_v1_file_proto_msgTypes[5]
+	mi := &file_file_v1_file_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -417,7 +474,7 @@ func (x *DownloadFileRequest) String() string {
 func (*DownloadFileRequest) ProtoMessage() {}
 
 func (x *DownloadFileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_file_v1_file_proto_msgTypes[5]
+	mi := &file_file_v1_file_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -430,7 +487,7 @@ func (x *DownloadFileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DownloadFileRequest.ProtoReflect.Descriptor instead.
 func (*DownloadFileRequest) Descriptor() ([]byte, []int) {
-	return file_file_v1_file_proto_rawDescGZIP(), []int{5}
+	return file_file_v1_file_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *DownloadFileRequest) GetFileId() int64 {
@@ -457,7 +514,7 @@ type WithdrawFileRequest struct {
 
 func (x *WithdrawFileRequest) Reset() {
 	*x = WithdrawFileRequest{}
-	mi := &file_file_v1_file_proto_msgTypes[6]
+	mi := &file_file_v1_file_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -469,7 +526,7 @@ func (x *WithdrawFileRequest) String() string {
 func (*WithdrawFileRequest) ProtoMessage() {}
 
 func (x *WithdrawFileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_file_v1_file_proto_msgTypes[6]
+	mi := &file_file_v1_file_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -482,7 +539,7 @@ func (x *WithdrawFileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WithdrawFileRequest.ProtoReflect.Descriptor instead.
 func (*WithdrawFileRequest) Descriptor() ([]byte, []int) {
-	return file_file_v1_file_proto_rawDescGZIP(), []int{6}
+	return file_file_v1_file_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *WithdrawFileRequest) GetFileId() int64 {
@@ -496,7 +553,7 @@ var File_file_v1_file_proto protoreflect.FileDescriptor
 
 const file_file_v1_file_proto_rawDesc = "" +
 	"\n" +
-	"\x12file/v1/file.proto\x12\afile.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\"\xa2\x03\n" +
+	"\x12file/v1/file.proto\x12\afile.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\"\xb4\x03\n" +
 	"\n" +
 	"StoredFile\x12\x17\n" +
 	"\afile_id\x18\x01 \x01(\x03R\x06fileId\x12#\n" +
@@ -514,14 +571,17 @@ const file_file_v1_file_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"b\n" +
+	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x10\n" +
+	"\x03url\x18\r \x01(\tR\x03url\"b\n" +
 	"\rStoredFileSet\x12)\n" +
 	"\x05files\x18\x01 \x03(\v2\x13.file.v1.StoredFileR\x05files\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\".\n" +
 	"\x11UploadFileRequest\x12\x19\n" +
 	"\bbiz_path\x18\x01 \x01(\tR\abizPath\".\n" +
 	"\x0eGetFileRequest\x12\x1c\n" +
-	"\afile_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06fileId\"\x81\x01\n" +
+	"\afile_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06fileId\"6\n" +
+	"\x14BatchGetFilesRequest\x12\x1e\n" +
+	"\bfile_ids\x18\x01 \x03(\x03B\x03\xe0A\x02R\afileIds\"\x81\x01\n" +
 	"\x10ListFilesRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
@@ -532,12 +592,13 @@ const file_file_v1_file_proto_rawDesc = "" +
 	"\afile_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06fileId\x12 \n" +
 	"\vdisposition\x18\x02 \x01(\tR\vdisposition\"3\n" +
 	"\x13WithdrawFileRequest\x12\x1c\n" +
-	"\afile_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06fileId2\xa4\x03\n" +
+	"\afile_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06fileId2\x8a\x04\n" +
 	"\vFileService\x12=\n" +
 	"\n" +
 	"UploadFile\x12\x1a.file.v1.UploadFileRequest\x1a\x13.file.v1.StoredFile\x12V\n" +
 	"\aGetFile\x12\x17.file.v1.GetFileRequest\x1a\x13.file.v1.StoredFile\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/file/files/{file_id}\x12S\n" +
-	"\tListFiles\x12\x19.file.v1.ListFilesRequest\x1a\x16.file.v1.StoredFileSet\"\x13\x82\xd3\xe4\x93\x02\r\x12\v/file/files\x12D\n" +
+	"\tListFiles\x12\x19.file.v1.ListFilesRequest\x1a\x16.file.v1.StoredFileSet\"\x13\x82\xd3\xe4\x93\x02\r\x12\v/file/files\x12d\n" +
+	"\rBatchGetFiles\x12\x1d.file.v1.BatchGetFilesRequest\x1a\x16.file.v1.StoredFileSet\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/file/files:batchGet\x12D\n" +
 	"\fDownloadFile\x12\x1c.file.v1.DownloadFileRequest\x1a\x16.google.protobuf.Empty\x12c\n" +
 	"\fWithdrawFile\x12\x1c.file.v1.WithdrawFileRequest\x1a\x16.google.protobuf.Empty\"\x1d\x82\xd3\xe4\x93\x02\x17*\x15/file/files/{file_id}B$\n" +
 	"\vapi.file.v1P\x01Z\x13glex/api/file/v1;v1b\x06proto3"
@@ -554,34 +615,37 @@ func file_file_v1_file_proto_rawDescGZIP() []byte {
 	return file_file_v1_file_proto_rawDescData
 }
 
-var file_file_v1_file_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_file_v1_file_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_file_v1_file_proto_goTypes = []any{
 	(*StoredFile)(nil),            // 0: file.v1.StoredFile
 	(*StoredFileSet)(nil),         // 1: file.v1.StoredFileSet
 	(*UploadFileRequest)(nil),     // 2: file.v1.UploadFileRequest
 	(*GetFileRequest)(nil),        // 3: file.v1.GetFileRequest
-	(*ListFilesRequest)(nil),      // 4: file.v1.ListFilesRequest
-	(*DownloadFileRequest)(nil),   // 5: file.v1.DownloadFileRequest
-	(*WithdrawFileRequest)(nil),   // 6: file.v1.WithdrawFileRequest
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),         // 8: google.protobuf.Empty
+	(*BatchGetFilesRequest)(nil),  // 4: file.v1.BatchGetFilesRequest
+	(*ListFilesRequest)(nil),      // 5: file.v1.ListFilesRequest
+	(*DownloadFileRequest)(nil),   // 6: file.v1.DownloadFileRequest
+	(*WithdrawFileRequest)(nil),   // 7: file.v1.WithdrawFileRequest
+	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),         // 9: google.protobuf.Empty
 }
 var file_file_v1_file_proto_depIdxs = []int32{
-	7, // 0: file.v1.StoredFile.created_at:type_name -> google.protobuf.Timestamp
-	7, // 1: file.v1.StoredFile.updated_at:type_name -> google.protobuf.Timestamp
+	8, // 0: file.v1.StoredFile.created_at:type_name -> google.protobuf.Timestamp
+	8, // 1: file.v1.StoredFile.updated_at:type_name -> google.protobuf.Timestamp
 	0, // 2: file.v1.StoredFileSet.files:type_name -> file.v1.StoredFile
 	2, // 3: file.v1.FileService.UploadFile:input_type -> file.v1.UploadFileRequest
 	3, // 4: file.v1.FileService.GetFile:input_type -> file.v1.GetFileRequest
-	4, // 5: file.v1.FileService.ListFiles:input_type -> file.v1.ListFilesRequest
-	5, // 6: file.v1.FileService.DownloadFile:input_type -> file.v1.DownloadFileRequest
-	6, // 7: file.v1.FileService.WithdrawFile:input_type -> file.v1.WithdrawFileRequest
-	0, // 8: file.v1.FileService.UploadFile:output_type -> file.v1.StoredFile
-	0, // 9: file.v1.FileService.GetFile:output_type -> file.v1.StoredFile
-	1, // 10: file.v1.FileService.ListFiles:output_type -> file.v1.StoredFileSet
-	8, // 11: file.v1.FileService.DownloadFile:output_type -> google.protobuf.Empty
-	8, // 12: file.v1.FileService.WithdrawFile:output_type -> google.protobuf.Empty
-	8, // [8:13] is the sub-list for method output_type
-	3, // [3:8] is the sub-list for method input_type
+	5, // 5: file.v1.FileService.ListFiles:input_type -> file.v1.ListFilesRequest
+	4, // 6: file.v1.FileService.BatchGetFiles:input_type -> file.v1.BatchGetFilesRequest
+	6, // 7: file.v1.FileService.DownloadFile:input_type -> file.v1.DownloadFileRequest
+	7, // 8: file.v1.FileService.WithdrawFile:input_type -> file.v1.WithdrawFileRequest
+	0, // 9: file.v1.FileService.UploadFile:output_type -> file.v1.StoredFile
+	0, // 10: file.v1.FileService.GetFile:output_type -> file.v1.StoredFile
+	1, // 11: file.v1.FileService.ListFiles:output_type -> file.v1.StoredFileSet
+	1, // 12: file.v1.FileService.BatchGetFiles:output_type -> file.v1.StoredFileSet
+	9, // 13: file.v1.FileService.DownloadFile:output_type -> google.protobuf.Empty
+	9, // 14: file.v1.FileService.WithdrawFile:output_type -> google.protobuf.Empty
+	9, // [9:15] is the sub-list for method output_type
+	3, // [3:9] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
 	3, // [3:3] is the sub-list for extension extendee
 	0, // [0:3] is the sub-list for field type_name
@@ -598,7 +662,7 @@ func file_file_v1_file_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_file_v1_file_proto_rawDesc), len(file_file_v1_file_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
