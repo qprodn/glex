@@ -92,6 +92,14 @@ func (f *fakeDeptService) EnsureActive(context.Context, int64) error {
 	return nil
 }
 
+func (f *fakeDeptService) DeptPaths(context.Context, []int64) (map[int64]string, error) {
+	return nil, nil
+}
+
+func (f *fakeDeptService) ResolveDeptPath(context.Context, string) (int64, error) {
+	return 0, nil
+}
+
 // errServiceFailed is the propagation sentinel: application tests only assert
 // that a service error crosses the handler untouched.
 var errServiceFailed = errors.New("service failed")

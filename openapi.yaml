@@ -1146,6 +1146,33 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/user.v1.User'
+    /iam/user/-/import:
+        post:
+            tags:
+                - UserService
+            description: |-
+                ImportUsers applies a spreadsheet of new System Users from an Import
+                 File (ADR 0017): the workbook was uploaded through the file module
+                 (business prefix import/user) and is addressed by its Stored File id —
+                 never a Display URL. Every row is validated and either all rows are
+                 created or none is (all-or-nothing on one transaction); row_errors
+                 carries every failure with row and column. Imported users receive the
+                 configured initial credential; the sheet never carries passwords.
+                 Insert-only: an existing login account is a row error.
+            operationId: UserService_ImportUsers
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/user.v1.ImportUsersRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/user.v1.ImportUsersResponse'
     /iam/user/getInfo:
         get:
             tags:
@@ -2377,9 +2404,9 @@ components:
                 deptId:
                     type: string
                     description: The user's department; 0 = none (read-only, same as User.dept_id).
-                avatarFileId:
+                avatar:
                     type: string
-                    description: The avatar's Stored File id (read-only, same as User.avatar_file_id).
+                    description: The avatar's Stored File id (read-only, same as User.avatar).
                 createBy:
                     type: string
                 updateBy:
@@ -2414,6 +2441,40 @@ components:
             description: |-
                 CurrentUserInfo is the authenticated System User and current Authorization
                  Snapshot exposed to the frontend.
+        user.v1.ImportRowError:
+            type: object
+            properties:
+                row:
+                    type: integer
+                    description: 1-based sheet row of the failing cell (the header is row 1).
+                    format: int32
+                column:
+                    type: string
+                    description: The column's header text.
+                reason:
+                    type: string
+                    description: Human-readable reason in the operator's language.
+        user.v1.ImportUsersRequest:
+            required:
+                - fileId
+            type: object
+            properties:
+                fileId:
+                    type: string
+                    description: |-
+                        Required. The Import File's Stored File id, from the file-module
+                         upload (business prefix import/user).
+        user.v1.ImportUsersResponse:
+            type: object
+            properties:
+                importedCount:
+                    type: string
+                    description: Rows created. 0 whenever row_errors is non-empty — all-or-nothing.
+                rowErrors:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/user.v1.ImportRowError'
+                    description: Every row-level failure; non-empty means nothing was imported.
         user.v1.User:
             type: object
             properties:
@@ -2443,12 +2504,12 @@ components:
                     type: integer
                     description: 0正常 1停用 (per RuoYi).
                     format: int32
-                avatarFileId:
+                avatar:
                     type: string
                     description: |-
-                        The user's avatar as a Stored File id (0 = none) — RuoYi's bigint ossId
-                         pattern. Not validated on write; an unresolvable id reads back as an
-                         empty avatar_url (ADR 0016).
+                        The user's avatar as a Stored File id (0 = none) — RuoYi's bigint
+                         avatar column. Not validated on write; an unresolvable id reads back
+                         as an empty avatar_url (ADR 0016).
                 remark:
                     type: string
                 deptId:

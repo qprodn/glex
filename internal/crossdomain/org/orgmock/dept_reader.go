@@ -40,6 +40,21 @@ func (m *MockDeptReader) EXPECT() *MockDeptReaderMockRecorder {
 	return m.recorder
 }
 
+// DeptPaths mocks base method.
+func (m *MockDeptReader) DeptPaths(ctx context.Context, deptIDs []int64) (map[int64]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeptPaths", ctx, deptIDs)
+	ret0, _ := ret[0].(map[int64]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeptPaths indicates an expected call of DeptPaths.
+func (mr *MockDeptReaderMockRecorder) DeptPaths(ctx, deptIDs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeptPaths", reflect.TypeOf((*MockDeptReader)(nil).DeptPaths), ctx, deptIDs)
+}
+
 // EnsureActiveDept mocks base method.
 func (m *MockDeptReader) EnsureActiveDept(ctx context.Context, deptID int64) error {
 	m.ctrl.T.Helper()
@@ -52,6 +67,21 @@ func (m *MockDeptReader) EnsureActiveDept(ctx context.Context, deptID int64) err
 func (mr *MockDeptReaderMockRecorder) EnsureActiveDept(ctx, deptID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureActiveDept", reflect.TypeOf((*MockDeptReader)(nil).EnsureActiveDept), ctx, deptID)
+}
+
+// ResolveDeptPath mocks base method.
+func (m *MockDeptReader) ResolveDeptPath(ctx context.Context, path string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveDeptPath", ctx, path)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ResolveDeptPath indicates an expected call of ResolveDeptPath.
+func (mr *MockDeptReaderMockRecorder) ResolveDeptPath(ctx, path any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveDeptPath", reflect.TypeOf((*MockDeptReader)(nil).ResolveDeptPath), ctx, path)
 }
 
 // ResolveSubtreeIDs mocks base method.

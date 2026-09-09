@@ -22,6 +22,17 @@ var (
 	ErrPhoneConflict = errors.Conflict("PHONE_CONFLICT", "phone_number already exists")
 	// ErrPasswordRequired: create called without a password.
 	ErrPasswordRequired = errors.BadRequest("PASSWORD_REQUIRED", "password is required")
+	// ErrImportWorkbook: the Import File is not a readable workbook shaped
+	// like the import sheet — bad bytes, no header, or missing declared
+	// columns (ADR 0017).
+	ErrImportWorkbook = errors.BadRequest("IMPORT_WORKBOOK_INVALID", "import workbook is invalid")
+	// ErrImportRowOverflow: the import sheet carries more rows than the
+	// module's cap (ADR 0017's row target).
+	ErrImportRowOverflow = errors.BadRequest("IMPORT_ROW_OVERFLOW", "import sheet exceeds the row cap")
+	// ErrExportRowOverflow: the filtered result set exceeds the export row
+	// cap — v1's 50,000-row target refuses rather than truncating (the
+	// import cap's symmetry, ADR 0017).
+	ErrExportRowOverflow = errors.BadRequest("EXPORT_ROW_OVERFLOW", "export result exceeds the row cap")
 )
 
 var (

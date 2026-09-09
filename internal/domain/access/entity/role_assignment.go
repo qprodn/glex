@@ -17,19 +17,19 @@ type RoleAssignment struct {
 // are access's (ADR 0005). It is a read shape, not the user module's
 // aggregate.
 type RoleUser struct {
-	ID           int64
-	UserName     string
-	NickName     string
-	Email        string
-	PhoneNumber  string
-	Gender       int32
-	Status       int32
-	AvatarFileID int64
-	Remark       string
-	CreateBy     int64
-	UpdateBy     int64
-	LoginIP      string
-	LoginDate    *time.Time
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID          int64
+	UserName    string
+	NickName    string
+	Email       string
+	PhoneNumber string
+	Gender      int32
+	Status      int32
+	Avatar      int64
+	Remark      string
+	CreateBy    int64
+	UpdateBy    int64
+	LoginIP     string
+	LoginDate   *time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }

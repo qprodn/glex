@@ -71,5 +71,6 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 	auditv1.RegisterOperLogServiceHTTPServer(srv, audit)
 	auditv1.RegisterLoginLogServiceHTTPServer(srv, audit)
 	registerFileTransferHTTP(srv, file)
+	registerUserExcelHTTP(srv, user)
 	return srv
 }

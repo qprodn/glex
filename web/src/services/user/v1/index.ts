@@ -38,10 +38,10 @@ export type User = {
   password: string | undefined;
   // 0正常 1停用 (per RuoYi).
   status: number | undefined;
-  // The user's avatar as a Stored File id (0 = none) — RuoYi's bigint ossId
-  // pattern. Not validated on write; an unresolvable id reads back as an
-  // empty avatar_url (ADR 0016).
-  avatarFileId: number | undefined;
+  // The user's avatar as a Stored File id (0 = none) — RuoYi's bigint
+  // avatar column. Not validated on write; an unresolvable id reads back
+  // as an empty avatar_url (ADR 0016).
+  avatar: number | undefined;
   remark: string | undefined;
   // The user's department (部门); 0 = none. Validated through the org
   // module's contract on save: the department must exist and be enabled.
@@ -87,8 +87,8 @@ export type CurrentUser = {
   remark: string | undefined;
   // The user's department; 0 = none (read-only, same as User.dept_id).
   deptId: number | undefined;
-  // The avatar's Stored File id (read-only, same as User.avatar_file_id).
-  avatarFileId: number | undefined;
+  // The avatar's Stored File id (read-only, same as User.avatar).
+  avatar: number | undefined;
   createBy: number | undefined;
   updateBy: number | undefined;
   loginIp: string | undefined;
@@ -186,6 +186,43 @@ export type DeleteUserRequest = {
   userId: number | undefined;
 };
 
+export type ImportUsersRequest = {
+  // Required. The Import File's Stored File id, from the file-module
+  // upload (business prefix import/user).
+  //
+  // Behaviors: REQUIRED
+  fileId: number | undefined;
+};
+
+export type ImportUsersResponse = {
+  // Rows created. 0 whenever row_errors is non-empty — all-or-nothing.
+  importedCount: number | undefined;
+  // Every row-level failure; non-empty means nothing was imported.
+  rowErrors: ImportRowError[] | undefined;
+};
+
+export type ImportRowError = {
+  // 1-based sheet row of the failing cell (the header is row 1).
+  row: number | undefined;
+  // The column's header text.
+  column: string | undefined;
+  // Human-readable reason in the operator's language.
+  reason: string | undefined;
+};
+
+export type ExportUsersRequest = {
+  // Optional. Restrict the export to this department's subtree, same as
+  // ListUsers.
+  deptId: number | undefined;
+  // Optional. AIP-160 filter over the same fields as ListUsers.
+  filter: string | undefined;
+  // Optional. AIP-132 order, same fields as ListUsers.
+  orderBy: string | undefined;
+};
+
+export type ImportTemplateRequest = {
+};
+
 // UserService is the system-user CRUD service.
 export interface UserService {
   // GetInfo returns the current System User, Role keys, and Functional
@@ -202,6 +239,15 @@ export interface UserService {
   UpdateUser(request: UpdateUserRequest): Promise<User>;
   // DeleteUser soft-deletes a user by id.
   DeleteUser(request: DeleteUserRequest): Promise<wellKnownEmpty>;
+  // ImportUsers applies a spreadsheet of new System Users from an Import
+  // File (ADR 0017): the workbook was uploaded through the file module
+  // (business prefix import/user) and is addressed by its Stored File id —
+  // never a Display URL. Every row is validated and either all rows are
+  // created or none is (all-or-nothing on one transaction); row_errors
+  // carries every failure with row and column. Imported users receive the
+  // configured initial credential; the sheet never carries passwords.
+  // Insert-only: an existing login account is a row error.
+  ImportUsers(request: ImportUsersRequest): Promise<ImportUsersResponse>;
 }
 
 type RequestType = {
@@ -344,6 +390,23 @@ export function createUserServiceClient(
         service: "UserService",
         method: "DeleteUser",
       }) as Promise<wellKnownEmpty>;
+    },
+    ImportUsers(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `iam/user/-/import`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "UserService",
+        method: "ImportUsers",
+      }) as Promise<ImportUsersResponse>;
     },
   };
 }

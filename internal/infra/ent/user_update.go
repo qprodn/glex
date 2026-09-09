@@ -234,24 +234,24 @@ func (_u *UserUpdate) SetNillablePassword(v *string) *UserUpdate {
 	return _u
 }
 
-// SetAvatarFileID sets the "avatar_file_id" field.
-func (_u *UserUpdate) SetAvatarFileID(v int64) *UserUpdate {
-	_u.mutation.ResetAvatarFileID()
-	_u.mutation.SetAvatarFileID(v)
+// SetAvatar sets the "avatar" field.
+func (_u *UserUpdate) SetAvatar(v int64) *UserUpdate {
+	_u.mutation.ResetAvatar()
+	_u.mutation.SetAvatar(v)
 	return _u
 }
 
-// SetNillableAvatarFileID sets the "avatar_file_id" field if the given value is not nil.
-func (_u *UserUpdate) SetNillableAvatarFileID(v *int64) *UserUpdate {
+// SetNillableAvatar sets the "avatar" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableAvatar(v *int64) *UserUpdate {
 	if v != nil {
-		_u.SetAvatarFileID(*v)
+		_u.SetAvatar(*v)
 	}
 	return _u
 }
 
-// AddAvatarFileID adds value to the "avatar_file_id" field.
-func (_u *UserUpdate) AddAvatarFileID(v int64) *UserUpdate {
-	_u.mutation.AddAvatarFileID(v)
+// AddAvatar adds value to the "avatar" field.
+func (_u *UserUpdate) AddAvatar(v int64) *UserUpdate {
+	_u.mutation.AddAvatar(v)
 	return _u
 }
 
@@ -518,11 +518,11 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Password(); ok {
 		_spec.SetField(user.FieldPassword, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.AvatarFileID(); ok {
-		_spec.SetField(user.FieldAvatarFileID, field.TypeInt64, value)
+	if value, ok := _u.mutation.Avatar(); ok {
+		_spec.SetField(user.FieldAvatar, field.TypeInt64, value)
 	}
-	if value, ok := _u.mutation.AddedAvatarFileID(); ok {
-		_spec.AddField(user.FieldAvatarFileID, field.TypeInt64, value)
+	if value, ok := _u.mutation.AddedAvatar(); ok {
+		_spec.AddField(user.FieldAvatar, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.Remark(); ok {
 		_spec.SetField(user.FieldRemark, field.TypeString, value)
@@ -862,24 +862,24 @@ func (_u *UserUpdateOne) SetNillablePassword(v *string) *UserUpdateOne {
 	return _u
 }
 
-// SetAvatarFileID sets the "avatar_file_id" field.
-func (_u *UserUpdateOne) SetAvatarFileID(v int64) *UserUpdateOne {
-	_u.mutation.ResetAvatarFileID()
-	_u.mutation.SetAvatarFileID(v)
+// SetAvatar sets the "avatar" field.
+func (_u *UserUpdateOne) SetAvatar(v int64) *UserUpdateOne {
+	_u.mutation.ResetAvatar()
+	_u.mutation.SetAvatar(v)
 	return _u
 }
 
-// SetNillableAvatarFileID sets the "avatar_file_id" field if the given value is not nil.
-func (_u *UserUpdateOne) SetNillableAvatarFileID(v *int64) *UserUpdateOne {
+// SetNillableAvatar sets the "avatar" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableAvatar(v *int64) *UserUpdateOne {
 	if v != nil {
-		_u.SetAvatarFileID(*v)
+		_u.SetAvatar(*v)
 	}
 	return _u
 }
 
-// AddAvatarFileID adds value to the "avatar_file_id" field.
-func (_u *UserUpdateOne) AddAvatarFileID(v int64) *UserUpdateOne {
-	_u.mutation.AddAvatarFileID(v)
+// AddAvatar adds value to the "avatar" field.
+func (_u *UserUpdateOne) AddAvatar(v int64) *UserUpdateOne {
+	_u.mutation.AddAvatar(v)
 	return _u
 }
 
@@ -1176,11 +1176,11 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	if value, ok := _u.mutation.Password(); ok {
 		_spec.SetField(user.FieldPassword, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.AvatarFileID(); ok {
-		_spec.SetField(user.FieldAvatarFileID, field.TypeInt64, value)
+	if value, ok := _u.mutation.Avatar(); ok {
+		_spec.SetField(user.FieldAvatar, field.TypeInt64, value)
 	}
-	if value, ok := _u.mutation.AddedAvatarFileID(); ok {
-		_spec.AddField(user.FieldAvatarFileID, field.TypeInt64, value)
+	if value, ok := _u.mutation.AddedAvatar(); ok {
+		_spec.AddField(user.FieldAvatar, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.Remark(); ok {
 		_spec.SetField(user.FieldRemark, field.TypeString, value)

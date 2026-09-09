@@ -20,12 +20,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_GetInfo_FullMethodName    = "/user.v1.UserService/GetInfo"
-	UserService_CreateUser_FullMethodName = "/user.v1.UserService/CreateUser"
-	UserService_GetUser_FullMethodName    = "/user.v1.UserService/GetUser"
-	UserService_ListUsers_FullMethodName  = "/user.v1.UserService/ListUsers"
-	UserService_UpdateUser_FullMethodName = "/user.v1.UserService/UpdateUser"
-	UserService_DeleteUser_FullMethodName = "/user.v1.UserService/DeleteUser"
+	UserService_GetInfo_FullMethodName        = "/user.v1.UserService/GetInfo"
+	UserService_CreateUser_FullMethodName     = "/user.v1.UserService/CreateUser"
+	UserService_GetUser_FullMethodName        = "/user.v1.UserService/GetUser"
+	UserService_ListUsers_FullMethodName      = "/user.v1.UserService/ListUsers"
+	UserService_UpdateUser_FullMethodName     = "/user.v1.UserService/UpdateUser"
+	UserService_DeleteUser_FullMethodName     = "/user.v1.UserService/DeleteUser"
+	UserService_ImportUsers_FullMethodName    = "/user.v1.UserService/ImportUsers"
+	UserService_ExportUsers_FullMethodName    = "/user.v1.UserService/ExportUsers"
+	UserService_ImportTemplate_FullMethodName = "/user.v1.UserService/ImportTemplate"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -48,6 +51,26 @@ type UserServiceClient interface {
 	UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*User, error)
 	// DeleteUser soft-deletes a user by id.
 	DeleteUser(ctx context.Context, in *DeleteUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ImportUsers applies a spreadsheet of new System Users from an Import
+	// File (ADR 0017): the workbook was uploaded through the file module
+	// (business prefix import/user) and is addressed by its Stored File id —
+	// never a Display URL. Every row is validated and either all rows are
+	// created or none is (all-or-nothing on one transaction); row_errors
+	// carries every failure with row and column. Imported users receive the
+	// configured initial credential; the sheet never carries passwords.
+	// Insert-only: an existing login account is a row error.
+	ImportUsers(ctx context.Context, in *ImportUsersRequest, opts ...grpc.CallOption) (*ImportUsersResponse, error)
+	// ExportUsers streams the filtered users as an xlsx workbook (ADR 0017).
+	// HTTP-only, hand-written route — the streaming byte response carries no
+	// google.api.http annotation (same shape as the file module's transfers)
+	// and the gRPC counterpart stays unimplemented. Nothing is stored: the
+	// oper log entry minted for this POST is the only record an export
+	// happened.
+	ExportUsers(ctx context.Context, in *ExportUsersRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ImportTemplate streams the user import sheet's template — the import
+	// columns with headers and no data (ADR 0017). HTTP-only, hand-written
+	// route; gRPC stays unimplemented.
+	ImportTemplate(ctx context.Context, in *ImportTemplateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type userServiceClient struct {
@@ -118,6 +141,36 @@ func (c *userServiceClient) DeleteUser(ctx context.Context, in *DeleteUserReques
 	return out, nil
 }
 
+func (c *userServiceClient) ImportUsers(ctx context.Context, in *ImportUsersRequest, opts ...grpc.CallOption) (*ImportUsersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ImportUsersResponse)
+	err := c.cc.Invoke(ctx, UserService_ImportUsers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ExportUsers(ctx context.Context, in *ExportUsersRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_ExportUsers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ImportTemplate(ctx context.Context, in *ImportTemplateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_ImportTemplate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -138,6 +191,26 @@ type UserServiceServer interface {
 	UpdateUser(context.Context, *UpdateUserRequest) (*User, error)
 	// DeleteUser soft-deletes a user by id.
 	DeleteUser(context.Context, *DeleteUserRequest) (*emptypb.Empty, error)
+	// ImportUsers applies a spreadsheet of new System Users from an Import
+	// File (ADR 0017): the workbook was uploaded through the file module
+	// (business prefix import/user) and is addressed by its Stored File id —
+	// never a Display URL. Every row is validated and either all rows are
+	// created or none is (all-or-nothing on one transaction); row_errors
+	// carries every failure with row and column. Imported users receive the
+	// configured initial credential; the sheet never carries passwords.
+	// Insert-only: an existing login account is a row error.
+	ImportUsers(context.Context, *ImportUsersRequest) (*ImportUsersResponse, error)
+	// ExportUsers streams the filtered users as an xlsx workbook (ADR 0017).
+	// HTTP-only, hand-written route — the streaming byte response carries no
+	// google.api.http annotation (same shape as the file module's transfers)
+	// and the gRPC counterpart stays unimplemented. Nothing is stored: the
+	// oper log entry minted for this POST is the only record an export
+	// happened.
+	ExportUsers(context.Context, *ExportUsersRequest) (*emptypb.Empty, error)
+	// ImportTemplate streams the user import sheet's template — the import
+	// columns with headers and no data (ADR 0017). HTTP-only, hand-written
+	// route; gRPC stays unimplemented.
+	ImportTemplate(context.Context, *ImportTemplateRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -165,6 +238,15 @@ func (UnimplementedUserServiceServer) UpdateUser(context.Context, *UpdateUserReq
 }
 func (UnimplementedUserServiceServer) DeleteUser(context.Context, *DeleteUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteUser not implemented")
+}
+func (UnimplementedUserServiceServer) ImportUsers(context.Context, *ImportUsersRequest) (*ImportUsersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ImportUsers not implemented")
+}
+func (UnimplementedUserServiceServer) ExportUsers(context.Context, *ExportUsersRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ExportUsers not implemented")
+}
+func (UnimplementedUserServiceServer) ImportTemplate(context.Context, *ImportTemplateRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ImportTemplate not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -295,6 +377,60 @@ func _UserService_DeleteUser_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ImportUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ImportUsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ImportUsers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ImportUsers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ImportUsers(ctx, req.(*ImportUsersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ExportUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExportUsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ExportUsers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ExportUsers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ExportUsers(ctx, req.(*ExportUsersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ImportTemplate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ImportTemplateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ImportTemplate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ImportTemplate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ImportTemplate(ctx, req.(*ImportTemplateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -325,6 +461,18 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteUser",
 			Handler:    _UserService_DeleteUser_Handler,
+		},
+		{
+			MethodName: "ImportUsers",
+			Handler:    _UserService_ImportUsers_Handler,
+		},
+		{
+			MethodName: "ExportUsers",
+			Handler:    _UserService_ExportUsers_Handler,
+		},
+		{
+			MethodName: "ImportTemplate",
+			Handler:    _UserService_ImportTemplate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

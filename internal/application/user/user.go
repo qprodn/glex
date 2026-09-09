@@ -6,8 +6,10 @@ import (
 
 	userv1 "glex/api/user/v1"
 	"glex/internal/bizpkg"
+	"glex/internal/conf"
 	"glex/internal/crossdomain/authn"
 	authnmodel "glex/internal/crossdomain/authn/model"
+	"glex/internal/crossdomain/dict"
 	"glex/internal/crossdomain/file"
 	"glex/internal/crossdomain/org"
 	authndomain "glex/internal/domain/authn"
@@ -29,21 +31,21 @@ import (
 // omitted — it is write-only (accepted on create/update, never returned).
 func convertUser(m *userentity.User) *userv1.User {
 	u := &userv1.User{
-		UserId:       m.ID,
-		UserName:     m.UserName,
-		NickName:     m.NickName,
-		Email:        m.Email,
-		PhoneNumber:  m.PhoneNumber,
-		Gender:       m.Gender,
-		Status:       m.Status,
-		AvatarFileId: m.AvatarFileID,
-		Remark:       m.Remark,
-		DeptId:       m.DeptID,
-		CreateBy:     m.CreateBy,
-		UpdateBy:     m.UpdateBy,
-		LoginIp:      m.LoginIP,
-		CreatedAt:    timestamppb.New(m.CreatedAt),
-		UpdatedAt:    timestamppb.New(m.UpdatedAt),
+		UserId:      m.ID,
+		UserName:    m.UserName,
+		NickName:    m.NickName,
+		Email:       m.Email,
+		PhoneNumber: m.PhoneNumber,
+		Gender:      m.Gender,
+		Status:      m.Status,
+		Avatar:      m.Avatar,
+		Remark:      m.Remark,
+		DeptId:      m.DeptID,
+		CreateBy:    m.CreateBy,
+		UpdateBy:    m.UpdateBy,
+		LoginIp:     m.LoginIP,
+		CreatedAt:   timestamppb.New(m.CreatedAt),
+		UpdatedAt:   timestamppb.New(m.UpdatedAt),
 	}
 	if m.LoginDate != nil {
 		u.LoginDate = timestamppb.New(*m.LoginDate)
@@ -59,8 +61,8 @@ func convertUser(m *userentity.User) *userv1.User {
 func (s *UserApplication) fillAvatarURLs(ctx context.Context, users ...*userv1.User) {
 	ids := make([]int64, 0, len(users))
 	for _, u := range users {
-		if u.GetAvatarFileId() != 0 {
-			ids = append(ids, u.GetAvatarFileId())
+		if u.GetAvatar() != 0 {
+			ids = append(ids, u.GetAvatar())
 		}
 	}
 	if len(ids) == 0 {
@@ -68,7 +70,7 @@ func (s *UserApplication) fillAvatarURLs(ctx context.Context, users ...*userv1.U
 	}
 	urls := s.resolveAvatarURLs(ctx, ids)
 	for _, u := range users {
-		u.AvatarUrl = urls[u.GetAvatarFileId()]
+		u.AvatarUrl = urls[u.GetAvatar()]
 	}
 }
 
@@ -106,6 +108,9 @@ type UserApplication struct {
 	credentials authn.CredentialWriter
 	depts       org.DeptReader
 	avatars     file.URLResolver
+	importFiles file.ContentReader
+	dicts       dict.VocabularyReader
+	initPassword string
 	tx          Transaction
 	revoker     authn.SessionRevoker
 	logger      *slog.Logger
@@ -116,16 +121,25 @@ type UserApplication struct {
 // requests through the authn crossdomain contract (the credential column is
 // authn's, per ADR 0005); tx wraps security writes together with their
 // session revocation; revoker performs the revocation through the authn
-// crossdomain contract.
-func NewUserApplication(svc userservice.User, credentials authn.CredentialWriter, depts org.DeptReader, avatars file.URLResolver, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *UserApplication {
+// crossdomain contract; importFiles streams Import Files in and dicts
+// translates sheet columns (ADR 0017); initPassword is the Data Import
+// initial credential (empty = DefaultImportInitPassword).
+func NewUserApplication(svc userservice.User, credentials authn.CredentialWriter, depts org.DeptReader, avatars file.URLResolver, importFiles file.ContentReader, dicts dict.VocabularyReader, cfg *conf.User, tx Transaction, revoker authn.SessionRevoker, logger *slog.Logger) *UserApplication {
+	initPassword := cfg.GetInitPassword()
+	if initPassword == "" {
+		initPassword = DefaultImportInitPassword
+	}
 	return &UserApplication{
-		svc:         svc,
-		credentials: credentials,
-		depts:       depts,
-		avatars:     avatars,
-		tx:          tx,
-		revoker:     revoker,
-		logger:      logger.With(slog.String("component", "application.user")),
+		svc:          svc,
+		credentials:  credentials,
+		depts:        depts,
+		avatars:      avatars,
+		importFiles:  importFiles,
+		dicts:        dicts,
+		initPassword: initPassword,
+		tx:           tx,
+		revoker:      revoker,
+		logger:       logger.With(slog.String("component", "application.user")),
 	}
 }
 
@@ -138,18 +152,18 @@ func (s *UserApplication) CreateUser(ctx context.Context, req *userv1.CreateUser
 	in := req.GetUser()
 	actor := bizpkg.AuditActor(ctx)
 	u := &userentity.User{
-		UserName:     in.GetUserName(),
-		NickName:     in.GetNickName(),
-		Email:        in.GetEmail(),
-		PhoneNumber:  in.GetPhoneNumber(),
-		Gender:       in.GetGender(),
-		Password:     in.GetPassword(),
-		Status:       in.GetStatus(),
-		AvatarFileID: in.GetAvatarFileId(),
-		Remark:       in.GetRemark(),
-		DeptID:       in.GetDeptId(),
-		CreateBy:     actor,
-		UpdateBy:     actor,
+		UserName:    in.GetUserName(),
+		NickName:    in.GetNickName(),
+		Email:       in.GetEmail(),
+		PhoneNumber: in.GetPhoneNumber(),
+		Gender:      in.GetGender(),
+		Password:    in.GetPassword(),
+		Status:      in.GetStatus(),
+		Avatar:      in.GetAvatar(),
+		Remark:      in.GetRemark(),
+		DeptID:      in.GetDeptId(),
+		CreateBy:    actor,
+		UpdateBy:    actor,
 	}
 	if u.Password == "" {
 		err := userdomain.ErrPasswordRequired
@@ -203,26 +217,26 @@ func (s *UserApplication) GetInfo(ctx context.Context, _ *emptypb.Empty) (*userv
 		return nil, err
 	}
 	current := &userv1.CurrentUser{
-		UserId:       u.ID,
-		UserName:     u.UserName,
-		NickName:     u.NickName,
-		Email:        u.Email,
-		PhoneNumber:  u.PhoneNumber,
-		Gender:       u.Gender,
-		Status:       u.Status,
-		AvatarFileId: u.AvatarFileID,
-		Remark:       u.Remark,
-		DeptId:       u.DeptID,
-		CreateBy:     u.CreateBy,
-		UpdateBy:     u.UpdateBy,
-		LoginIp:      u.LoginIP,
-		CreatedAt:    timestamppb.New(u.CreatedAt),
-		UpdatedAt:    timestamppb.New(u.UpdatedAt),
+		UserId:      u.ID,
+		UserName:    u.UserName,
+		NickName:    u.NickName,
+		Email:       u.Email,
+		PhoneNumber: u.PhoneNumber,
+		Gender:      u.Gender,
+		Status:      u.Status,
+		Avatar:      u.Avatar,
+		Remark:      u.Remark,
+		DeptId:      u.DeptID,
+		CreateBy:    u.CreateBy,
+		UpdateBy:    u.UpdateBy,
+		LoginIp:     u.LoginIP,
+		CreatedAt:   timestamppb.New(u.CreatedAt),
+		UpdatedAt:   timestamppb.New(u.UpdatedAt),
 	}
 	if u.LoginDate != nil {
 		current.LoginDate = timestamppb.New(*u.LoginDate)
 	}
-	current.AvatarUrl = s.avatarURL(ctx, current.GetAvatarFileId())
+	current.AvatarUrl = s.avatarURL(ctx, current.GetAvatar())
 	return &userv1.CurrentUserInfo{
 		User:        current,
 		RoleKeys:    append([]string(nil), principal.RoleKeys()...),
@@ -233,14 +247,7 @@ func (s *UserApplication) GetInfo(ctx context.Context, _ *emptypb.Empty) (*userv
 // ListUsers lists users with AIP-160 filter, AIP-132 order, and page-token
 // pagination.
 func (s *UserApplication) ListUsers(ctx context.Context, req *userv1.ListUsersRequest) (*userv1.UserSet, error) {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
-		filtering.DeclareIdent("user_name", filtering.TypeString),
-		filtering.DeclareIdent("email", filtering.TypeString),
-		filtering.DeclareIdent("phone_number", filtering.TypeString),
-		filtering.DeclareIdent("status", filtering.TypeInt),
-		filtering.DeclareIdent("created_at", filtering.TypeTimestamp),
-	)
+	declarations, err := userFilterDeclarations()
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "user.list_users", err)
 		return nil, err
@@ -303,18 +310,18 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 	}
 	fieldmask.Update(req.GetUpdateMask(), current, req.GetUser())
 	u := &userentity.User{
-		ID:           current.GetUserId(),
-		UserName:     current.GetUserName(),
-		NickName:     current.GetNickName(),
-		Email:        current.GetEmail(),
-		PhoneNumber:  current.GetPhoneNumber(),
-		Gender:       current.GetGender(),
-		Password:     current.GetPassword(),
-		Status:       current.GetStatus(),
-		AvatarFileID: current.GetAvatarFileId(),
-		Remark:       current.GetRemark(),
-		DeptID:       current.GetDeptId(),
-		UpdateBy:     bizpkg.AuditActor(ctx),
+		ID:          current.GetUserId(),
+		UserName:    current.GetUserName(),
+		NickName:    current.GetNickName(),
+		Email:       current.GetEmail(),
+		PhoneNumber: current.GetPhoneNumber(),
+		Gender:      current.GetGender(),
+		Password:    current.GetPassword(),
+		Status:      current.GetStatus(),
+		Avatar:      current.GetAvatar(),
+		Remark:      current.GetRemark(),
+		DeptID:      current.GetDeptId(),
+		UpdateBy:    bizpkg.AuditActor(ctx),
 	}
 	passwordPolicy := userentity.RevokeAllLoginSessions()
 	if u.Password != "" {

@@ -11918,8 +11918,8 @@ type UserMutation struct {
 	status                  *int8
 	addstatus               *int8
 	password                *string
-	avatar_file_id          *int64
-	addavatar_file_id       *int64
+	avatar                  *int64
+	addavatar               *int64
 	remark                  *string
 	dept_id                 *int64
 	adddept_id              *int64
@@ -12620,60 +12620,60 @@ func (m *UserMutation) ResetPassword() {
 	m.password = nil
 }
 
-// SetAvatarFileID sets the "avatar_file_id" field.
-func (m *UserMutation) SetAvatarFileID(i int64) {
-	m.avatar_file_id = &i
-	m.addavatar_file_id = nil
+// SetAvatar sets the "avatar" field.
+func (m *UserMutation) SetAvatar(i int64) {
+	m.avatar = &i
+	m.addavatar = nil
 }
 
-// AvatarFileID returns the value of the "avatar_file_id" field in the mutation.
-func (m *UserMutation) AvatarFileID() (r int64, exists bool) {
-	v := m.avatar_file_id
+// Avatar returns the value of the "avatar" field in the mutation.
+func (m *UserMutation) Avatar() (r int64, exists bool) {
+	v := m.avatar
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldAvatarFileID returns the old "avatar_file_id" field's value of the User entity.
+// OldAvatar returns the old "avatar" field's value of the User entity.
 // If the User object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UserMutation) OldAvatarFileID(ctx context.Context) (v int64, err error) {
+func (m *UserMutation) OldAvatar(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldAvatarFileID is only allowed on UpdateOne operations")
+		return v, errors.New("OldAvatar is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldAvatarFileID requires an ID field in the mutation")
+		return v, errors.New("OldAvatar requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldAvatarFileID: %w", err)
+		return v, fmt.Errorf("querying old value for OldAvatar: %w", err)
 	}
-	return oldValue.AvatarFileID, nil
+	return oldValue.Avatar, nil
 }
 
-// AddAvatarFileID adds i to the "avatar_file_id" field.
-func (m *UserMutation) AddAvatarFileID(i int64) {
-	if m.addavatar_file_id != nil {
-		*m.addavatar_file_id += i
+// AddAvatar adds i to the "avatar" field.
+func (m *UserMutation) AddAvatar(i int64) {
+	if m.addavatar != nil {
+		*m.addavatar += i
 	} else {
-		m.addavatar_file_id = &i
+		m.addavatar = &i
 	}
 }
 
-// AddedAvatarFileID returns the value that was added to the "avatar_file_id" field in this mutation.
-func (m *UserMutation) AddedAvatarFileID() (r int64, exists bool) {
-	v := m.addavatar_file_id
+// AddedAvatar returns the value that was added to the "avatar" field in this mutation.
+func (m *UserMutation) AddedAvatar() (r int64, exists bool) {
+	v := m.addavatar
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ResetAvatarFileID resets all changes to the "avatar_file_id" field.
-func (m *UserMutation) ResetAvatarFileID() {
-	m.avatar_file_id = nil
-	m.addavatar_file_id = nil
+// ResetAvatar resets all changes to the "avatar" field.
+func (m *UserMutation) ResetAvatar() {
+	m.avatar = nil
+	m.addavatar = nil
 }
 
 // SetRemark sets the "remark" field.
@@ -13058,8 +13058,8 @@ func (m *UserMutation) Fields() []string {
 	if m.password != nil {
 		fields = append(fields, user.FieldPassword)
 	}
-	if m.avatar_file_id != nil {
-		fields = append(fields, user.FieldAvatarFileID)
+	if m.avatar != nil {
+		fields = append(fields, user.FieldAvatar)
 	}
 	if m.remark != nil {
 		fields = append(fields, user.FieldRemark)
@@ -13105,8 +13105,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Status()
 	case user.FieldPassword:
 		return m.Password()
-	case user.FieldAvatarFileID:
-		return m.AvatarFileID()
+	case user.FieldAvatar:
+		return m.Avatar()
 	case user.FieldRemark:
 		return m.Remark()
 	case user.FieldDeptID:
@@ -13148,8 +13148,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldStatus(ctx)
 	case user.FieldPassword:
 		return m.OldPassword(ctx)
-	case user.FieldAvatarFileID:
-		return m.OldAvatarFileID(ctx)
+	case user.FieldAvatar:
+		return m.OldAvatar(ctx)
 	case user.FieldRemark:
 		return m.OldRemark(ctx)
 	case user.FieldDeptID:
@@ -13251,12 +13251,12 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetPassword(v)
 		return nil
-	case user.FieldAvatarFileID:
+	case user.FieldAvatar:
 		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetAvatarFileID(v)
+		m.SetAvatar(v)
 		return nil
 	case user.FieldRemark:
 		v, ok := value.(string)
@@ -13306,8 +13306,8 @@ func (m *UserMutation) AddedFields() []string {
 	if m.addstatus != nil {
 		fields = append(fields, user.FieldStatus)
 	}
-	if m.addavatar_file_id != nil {
-		fields = append(fields, user.FieldAvatarFileID)
+	if m.addavatar != nil {
+		fields = append(fields, user.FieldAvatar)
 	}
 	if m.adddept_id != nil {
 		fields = append(fields, user.FieldDeptID)
@@ -13328,8 +13328,8 @@ func (m *UserMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedGender()
 	case user.FieldStatus:
 		return m.AddedStatus()
-	case user.FieldAvatarFileID:
-		return m.AddedAvatarFileID()
+	case user.FieldAvatar:
+		return m.AddedAvatar()
 	case user.FieldDeptID:
 		return m.AddedDeptID()
 	}
@@ -13369,12 +13369,12 @@ func (m *UserMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddStatus(v)
 		return nil
-	case user.FieldAvatarFileID:
+	case user.FieldAvatar:
 		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddAvatarFileID(v)
+		m.AddAvatar(v)
 		return nil
 	case user.FieldDeptID:
 		v, ok := value.(int64)
@@ -13497,8 +13497,8 @@ func (m *UserMutation) ResetField(name string) error {
 	case user.FieldPassword:
 		m.ResetPassword()
 		return nil
-	case user.FieldAvatarFileID:
-		m.ResetAvatarFileID()
+	case user.FieldAvatar:
+		m.ResetAvatar()
 		return nil
 	case user.FieldRemark:
 		m.ResetRemark()

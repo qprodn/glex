@@ -45,11 +45,11 @@ type User struct {
 	Password string `protobuf:"bytes,7,opt,name=password,proto3" json:"password,omitempty"`
 	// 0正常 1停用 (per RuoYi).
 	Status int32 `protobuf:"varint,8,opt,name=status,proto3" json:"status,omitempty"`
-	// The user's avatar as a Stored File id (0 = none) — RuoYi's bigint ossId
-	// pattern. Not validated on write; an unresolvable id reads back as an
-	// empty avatar_url (ADR 0016).
-	AvatarFileId int64  `protobuf:"varint,9,opt,name=avatar_file_id,json=avatarFileId,proto3" json:"avatar_file_id,omitempty"`
-	Remark       string `protobuf:"bytes,10,opt,name=remark,proto3" json:"remark,omitempty"`
+	// The user's avatar as a Stored File id (0 = none) — RuoYi's bigint
+	// avatar column. Not validated on write; an unresolvable id reads back
+	// as an empty avatar_url (ADR 0016).
+	Avatar int64  `protobuf:"varint,9,opt,name=avatar,proto3" json:"avatar,omitempty"`
+	Remark string `protobuf:"bytes,10,opt,name=remark,proto3" json:"remark,omitempty"`
 	// The user's department (部门); 0 = none. Validated through the org
 	// module's contract on save: the department must exist and be enabled.
 	DeptId int64 `protobuf:"varint,17,opt,name=dept_id,json=deptId,proto3" json:"dept_id,omitempty"`
@@ -154,9 +154,9 @@ func (x *User) GetStatus() int32 {
 	return 0
 }
 
-func (x *User) GetAvatarFileId() int64 {
+func (x *User) GetAvatar() int64 {
 	if x != nil {
-		return x.AvatarFileId
+		return x.Avatar
 	}
 	return 0
 }
@@ -295,8 +295,8 @@ type CurrentUser struct {
 	Remark    string `protobuf:"bytes,9,opt,name=remark,proto3" json:"remark,omitempty"`
 	// The user's department; 0 = none (read-only, same as User.dept_id).
 	DeptId int64 `protobuf:"varint,16,opt,name=dept_id,json=deptId,proto3" json:"dept_id,omitempty"`
-	// The avatar's Stored File id (read-only, same as User.avatar_file_id).
-	AvatarFileId  int64                  `protobuf:"varint,17,opt,name=avatar_file_id,json=avatarFileId,proto3" json:"avatar_file_id,omitempty"`
+	// The avatar's Stored File id (read-only, same as User.avatar).
+	Avatar        int64                  `protobuf:"varint,17,opt,name=avatar,proto3" json:"avatar,omitempty"`
 	CreateBy      int64                  `protobuf:"varint,10,opt,name=create_by,json=createBy,proto3" json:"create_by,omitempty"`
 	UpdateBy      int64                  `protobuf:"varint,11,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
 	LoginIp       string                 `protobuf:"bytes,12,opt,name=login_ip,json=loginIp,proto3" json:"login_ip,omitempty"`
@@ -407,9 +407,9 @@ func (x *CurrentUser) GetDeptId() int64 {
 	return 0
 }
 
-func (x *CurrentUser) GetAvatarFileId() int64 {
+func (x *CurrentUser) GetAvatar() int64 {
 	if x != nil {
-		return x.AvatarFileId
+		return x.Avatar
 	}
 	return 0
 }
@@ -796,11 +796,274 @@ func (x *DeleteUserRequest) GetUserId() int64 {
 	return 0
 }
 
+type ImportUsersRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The Import File's Stored File id, from the file-module
+	// upload (business prefix import/user).
+	FileId        int64 `protobuf:"varint,1,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImportUsersRequest) Reset() {
+	*x = ImportUsersRequest{}
+	mi := &file_user_v1_user_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportUsersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportUsersRequest) ProtoMessage() {}
+
+func (x *ImportUsersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_v1_user_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportUsersRequest.ProtoReflect.Descriptor instead.
+func (*ImportUsersRequest) Descriptor() ([]byte, []int) {
+	return file_user_v1_user_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ImportUsersRequest) GetFileId() int64 {
+	if x != nil {
+		return x.FileId
+	}
+	return 0
+}
+
+type ImportUsersResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Rows created. 0 whenever row_errors is non-empty — all-or-nothing.
+	ImportedCount int64 `protobuf:"varint,1,opt,name=imported_count,json=importedCount,proto3" json:"imported_count,omitempty"`
+	// Every row-level failure; non-empty means nothing was imported.
+	RowErrors     []*ImportRowError `protobuf:"bytes,2,rep,name=row_errors,json=rowErrors,proto3" json:"row_errors,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImportUsersResponse) Reset() {
+	*x = ImportUsersResponse{}
+	mi := &file_user_v1_user_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportUsersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportUsersResponse) ProtoMessage() {}
+
+func (x *ImportUsersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_user_v1_user_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportUsersResponse.ProtoReflect.Descriptor instead.
+func (*ImportUsersResponse) Descriptor() ([]byte, []int) {
+	return file_user_v1_user_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ImportUsersResponse) GetImportedCount() int64 {
+	if x != nil {
+		return x.ImportedCount
+	}
+	return 0
+}
+
+func (x *ImportUsersResponse) GetRowErrors() []*ImportRowError {
+	if x != nil {
+		return x.RowErrors
+	}
+	return nil
+}
+
+type ImportRowError struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 1-based sheet row of the failing cell (the header is row 1).
+	Row int32 `protobuf:"varint,1,opt,name=row,proto3" json:"row,omitempty"`
+	// The column's header text.
+	Column string `protobuf:"bytes,2,opt,name=column,proto3" json:"column,omitempty"`
+	// Human-readable reason in the operator's language.
+	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImportRowError) Reset() {
+	*x = ImportRowError{}
+	mi := &file_user_v1_user_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportRowError) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportRowError) ProtoMessage() {}
+
+func (x *ImportRowError) ProtoReflect() protoreflect.Message {
+	mi := &file_user_v1_user_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportRowError.ProtoReflect.Descriptor instead.
+func (*ImportRowError) Descriptor() ([]byte, []int) {
+	return file_user_v1_user_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ImportRowError) GetRow() int32 {
+	if x != nil {
+		return x.Row
+	}
+	return 0
+}
+
+func (x *ImportRowError) GetColumn() string {
+	if x != nil {
+		return x.Column
+	}
+	return ""
+}
+
+func (x *ImportRowError) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type ExportUsersRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional. Restrict the export to this department's subtree, same as
+	// ListUsers.
+	DeptId int64 `protobuf:"varint,1,opt,name=dept_id,json=deptId,proto3" json:"dept_id,omitempty"`
+	// Optional. AIP-160 filter over the same fields as ListUsers.
+	Filter string `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	// Optional. AIP-132 order, same fields as ListUsers.
+	OrderBy       string `protobuf:"bytes,3,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExportUsersRequest) Reset() {
+	*x = ExportUsersRequest{}
+	mi := &file_user_v1_user_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExportUsersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExportUsersRequest) ProtoMessage() {}
+
+func (x *ExportUsersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_v1_user_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExportUsersRequest.ProtoReflect.Descriptor instead.
+func (*ExportUsersRequest) Descriptor() ([]byte, []int) {
+	return file_user_v1_user_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ExportUsersRequest) GetDeptId() int64 {
+	if x != nil {
+		return x.DeptId
+	}
+	return 0
+}
+
+func (x *ExportUsersRequest) GetFilter() string {
+	if x != nil {
+		return x.Filter
+	}
+	return ""
+}
+
+func (x *ExportUsersRequest) GetOrderBy() string {
+	if x != nil {
+		return x.OrderBy
+	}
+	return ""
+}
+
+type ImportTemplateRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImportTemplateRequest) Reset() {
+	*x = ImportTemplateRequest{}
+	mi := &file_user_v1_user_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportTemplateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportTemplateRequest) ProtoMessage() {}
+
+func (x *ImportTemplateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_v1_user_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportTemplateRequest.ProtoReflect.Descriptor instead.
+func (*ImportTemplateRequest) Descriptor() ([]byte, []int) {
+	return file_user_v1_user_proto_rawDescGZIP(), []int{13}
+}
+
 var File_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_user_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x12user/v1/user.proto\x12\auser.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\"\xda\x04\n" +
+	"\x12user/v1/user.proto\x12\auser.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\"\xcc\x04\n" +
 	"\x04User\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
 	"\tuser_name\x18\x02 \x01(\tR\buserName\x12\x1b\n" +
@@ -809,8 +1072,8 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\fphone_number\x18\x05 \x01(\tR\vphoneNumber\x12\x16\n" +
 	"\x06gender\x18\x06 \x01(\x05R\x06gender\x12\x1a\n" +
 	"\bpassword\x18\a \x01(\tR\bpassword\x12\x16\n" +
-	"\x06status\x18\b \x01(\x05R\x06status\x12$\n" +
-	"\x0eavatar_file_id\x18\t \x01(\x03R\favatarFileId\x12\x16\n" +
+	"\x06status\x18\b \x01(\x05R\x06status\x12\x16\n" +
+	"\x06avatar\x18\t \x01(\x03R\x06avatar\x12\x16\n" +
 	"\x06remark\x18\n" +
 	" \x01(\tR\x06remark\x12\x17\n" +
 	"\adept_id\x18\x11 \x01(\x03R\x06deptId\x12\x1b\n" +
@@ -827,7 +1090,7 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"avatar_url\x18\x12 \x01(\tR\tavatarUrl\"V\n" +
 	"\aUserSet\x12#\n" +
 	"\x05users\x18\x01 \x03(\v2\r.user.v1.UserR\x05users\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xc5\x04\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xb7\x04\n" +
 	"\vCurrentUser\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
 	"\tuser_name\x18\x02 \x01(\tR\buserName\x12\x1b\n" +
@@ -839,8 +1102,8 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"avatar_url\x18\b \x01(\tR\tavatarUrl\x12\x16\n" +
 	"\x06remark\x18\t \x01(\tR\x06remark\x12\x17\n" +
-	"\adept_id\x18\x10 \x01(\x03R\x06deptId\x12$\n" +
-	"\x0eavatar_file_id\x18\x11 \x01(\x03R\favatarFileId\x12\x1b\n" +
+	"\adept_id\x18\x10 \x01(\x03R\x06deptId\x12\x16\n" +
+	"\x06avatar\x18\x11 \x01(\x03R\x06avatar\x12\x1b\n" +
 	"\tcreate_by\x18\n" +
 	" \x01(\x03R\bcreateBy\x12\x1b\n" +
 	"\tupdate_by\x18\v \x01(\x03R\bupdateBy\x12\x19\n" +
@@ -871,7 +1134,22 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x03\xe0A\x02R\n" +
 	"updateMask\"1\n" +
 	"\x11DeleteUserRequest\x12\x1c\n" +
-	"\auser_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06userId2\x94\x04\n" +
+	"\auser_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06userId\"2\n" +
+	"\x12ImportUsersRequest\x12\x1c\n" +
+	"\afile_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x06fileId\"t\n" +
+	"\x13ImportUsersResponse\x12%\n" +
+	"\x0eimported_count\x18\x01 \x01(\x03R\rimportedCount\x126\n" +
+	"\n" +
+	"row_errors\x18\x02 \x03(\v2\x17.user.v1.ImportRowErrorR\trowErrors\"R\n" +
+	"\x0eImportRowError\x12\x10\n" +
+	"\x03row\x18\x01 \x01(\x05R\x03row\x12\x16\n" +
+	"\x06column\x18\x02 \x01(\tR\x06column\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"`\n" +
+	"\x12ExportUsersRequest\x12\x17\n" +
+	"\adept_id\x18\x01 \x01(\x03R\x06deptId\x12\x16\n" +
+	"\x06filter\x18\x02 \x01(\tR\x06filter\x12\x19\n" +
+	"\border_by\x18\x03 \x01(\tR\aorderBy\"\x17\n" +
+	"\x15ImportTemplateRequest2\x8b\x06\n" +
 	"\vUserService\x12V\n" +
 	"\aGetInfo\x12\x16.google.protobuf.Empty\x1a\x18.user.v1.CurrentUserInfo\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/iam/user/getInfo\x12P\n" +
 	"\n" +
@@ -881,7 +1159,10 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"UpdateUser\x12\x1a.user.v1.UpdateUserRequest\x1a\r.user.v1.User\"&\x82\xd3\xe4\x93\x02 :\x04user2\x18/iam/user/{user.user_id}\x12]\n" +
 	"\n" +
-	"DeleteUser\x12\x1a.user.v1.DeleteUserRequest\x1a\x16.google.protobuf.Empty\"\x1b\x82\xd3\xe4\x93\x02\x15*\x13/iam/user/{user_id}B$\n" +
+	"DeleteUser\x12\x1a.user.v1.DeleteUserRequest\x1a\x16.google.protobuf.Empty\"\x1b\x82\xd3\xe4\x93\x02\x15*\x13/iam/user/{user_id}\x12g\n" +
+	"\vImportUsers\x12\x1b.user.v1.ImportUsersRequest\x1a\x1c.user.v1.ImportUsersResponse\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/iam/user/-/import\x12B\n" +
+	"\vExportUsers\x12\x1b.user.v1.ExportUsersRequest\x1a\x16.google.protobuf.Empty\x12H\n" +
+	"\x0eImportTemplate\x12\x1e.user.v1.ImportTemplateRequest\x1a\x16.google.protobuf.EmptyB$\n" +
 	"\vapi.user.v1P\x01Z\x13glex/api/user/v1;v1b\x06proto3"
 
 var (
@@ -896,7 +1177,7 @@ func file_user_v1_user_proto_rawDescGZIP() []byte {
 	return file_user_v1_user_proto_rawDescData
 }
 
-var file_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_user_v1_user_proto_goTypes = []any{
 	(*User)(nil),                  // 0: user.v1.User
 	(*UserSet)(nil),               // 1: user.v1.UserSet
@@ -907,39 +1188,51 @@ var file_user_v1_user_proto_goTypes = []any{
 	(*ListUsersRequest)(nil),      // 6: user.v1.ListUsersRequest
 	(*UpdateUserRequest)(nil),     // 7: user.v1.UpdateUserRequest
 	(*DeleteUserRequest)(nil),     // 8: user.v1.DeleteUserRequest
-	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
-	(*fieldmaskpb.FieldMask)(nil), // 10: google.protobuf.FieldMask
-	(*emptypb.Empty)(nil),         // 11: google.protobuf.Empty
+	(*ImportUsersRequest)(nil),    // 9: user.v1.ImportUsersRequest
+	(*ImportUsersResponse)(nil),   // 10: user.v1.ImportUsersResponse
+	(*ImportRowError)(nil),        // 11: user.v1.ImportRowError
+	(*ExportUsersRequest)(nil),    // 12: user.v1.ExportUsersRequest
+	(*ImportTemplateRequest)(nil), // 13: user.v1.ImportTemplateRequest
+	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
+	(*fieldmaskpb.FieldMask)(nil), // 15: google.protobuf.FieldMask
+	(*emptypb.Empty)(nil),         // 16: google.protobuf.Empty
 }
 var file_user_v1_user_proto_depIdxs = []int32{
-	9,  // 0: user.v1.User.login_date:type_name -> google.protobuf.Timestamp
-	9,  // 1: user.v1.User.created_at:type_name -> google.protobuf.Timestamp
-	9,  // 2: user.v1.User.updated_at:type_name -> google.protobuf.Timestamp
+	14, // 0: user.v1.User.login_date:type_name -> google.protobuf.Timestamp
+	14, // 1: user.v1.User.created_at:type_name -> google.protobuf.Timestamp
+	14, // 2: user.v1.User.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 3: user.v1.UserSet.users:type_name -> user.v1.User
-	9,  // 4: user.v1.CurrentUser.login_date:type_name -> google.protobuf.Timestamp
-	9,  // 5: user.v1.CurrentUser.created_at:type_name -> google.protobuf.Timestamp
-	9,  // 6: user.v1.CurrentUser.updated_at:type_name -> google.protobuf.Timestamp
+	14, // 4: user.v1.CurrentUser.login_date:type_name -> google.protobuf.Timestamp
+	14, // 5: user.v1.CurrentUser.created_at:type_name -> google.protobuf.Timestamp
+	14, // 6: user.v1.CurrentUser.updated_at:type_name -> google.protobuf.Timestamp
 	2,  // 7: user.v1.CurrentUserInfo.user:type_name -> user.v1.CurrentUser
 	0,  // 8: user.v1.CreateUserRequest.user:type_name -> user.v1.User
 	0,  // 9: user.v1.UpdateUserRequest.user:type_name -> user.v1.User
-	10, // 10: user.v1.UpdateUserRequest.update_mask:type_name -> google.protobuf.FieldMask
-	11, // 11: user.v1.UserService.GetInfo:input_type -> google.protobuf.Empty
-	4,  // 12: user.v1.UserService.CreateUser:input_type -> user.v1.CreateUserRequest
-	5,  // 13: user.v1.UserService.GetUser:input_type -> user.v1.GetUserRequest
-	6,  // 14: user.v1.UserService.ListUsers:input_type -> user.v1.ListUsersRequest
-	7,  // 15: user.v1.UserService.UpdateUser:input_type -> user.v1.UpdateUserRequest
-	8,  // 16: user.v1.UserService.DeleteUser:input_type -> user.v1.DeleteUserRequest
-	3,  // 17: user.v1.UserService.GetInfo:output_type -> user.v1.CurrentUserInfo
-	0,  // 18: user.v1.UserService.CreateUser:output_type -> user.v1.User
-	0,  // 19: user.v1.UserService.GetUser:output_type -> user.v1.User
-	1,  // 20: user.v1.UserService.ListUsers:output_type -> user.v1.UserSet
-	0,  // 21: user.v1.UserService.UpdateUser:output_type -> user.v1.User
-	11, // 22: user.v1.UserService.DeleteUser:output_type -> google.protobuf.Empty
-	17, // [17:23] is the sub-list for method output_type
-	11, // [11:17] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	15, // 10: user.v1.UpdateUserRequest.update_mask:type_name -> google.protobuf.FieldMask
+	11, // 11: user.v1.ImportUsersResponse.row_errors:type_name -> user.v1.ImportRowError
+	16, // 12: user.v1.UserService.GetInfo:input_type -> google.protobuf.Empty
+	4,  // 13: user.v1.UserService.CreateUser:input_type -> user.v1.CreateUserRequest
+	5,  // 14: user.v1.UserService.GetUser:input_type -> user.v1.GetUserRequest
+	6,  // 15: user.v1.UserService.ListUsers:input_type -> user.v1.ListUsersRequest
+	7,  // 16: user.v1.UserService.UpdateUser:input_type -> user.v1.UpdateUserRequest
+	8,  // 17: user.v1.UserService.DeleteUser:input_type -> user.v1.DeleteUserRequest
+	9,  // 18: user.v1.UserService.ImportUsers:input_type -> user.v1.ImportUsersRequest
+	12, // 19: user.v1.UserService.ExportUsers:input_type -> user.v1.ExportUsersRequest
+	13, // 20: user.v1.UserService.ImportTemplate:input_type -> user.v1.ImportTemplateRequest
+	3,  // 21: user.v1.UserService.GetInfo:output_type -> user.v1.CurrentUserInfo
+	0,  // 22: user.v1.UserService.CreateUser:output_type -> user.v1.User
+	0,  // 23: user.v1.UserService.GetUser:output_type -> user.v1.User
+	1,  // 24: user.v1.UserService.ListUsers:output_type -> user.v1.UserSet
+	0,  // 25: user.v1.UserService.UpdateUser:output_type -> user.v1.User
+	16, // 26: user.v1.UserService.DeleteUser:output_type -> google.protobuf.Empty
+	10, // 27: user.v1.UserService.ImportUsers:output_type -> user.v1.ImportUsersResponse
+	16, // 28: user.v1.UserService.ExportUsers:output_type -> google.protobuf.Empty
+	16, // 29: user.v1.UserService.ImportTemplate:output_type -> google.protobuf.Empty
+	21, // [21:30] is the sub-list for method output_type
+	12, // [12:21] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_user_v1_user_proto_init() }
@@ -953,7 +1246,7 @@ func file_user_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_user_v1_user_proto_rawDesc), len(file_user_v1_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

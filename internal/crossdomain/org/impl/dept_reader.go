@@ -33,3 +33,17 @@ func (r *deptReader) EnsureActiveDept(ctx context.Context, deptID int64) error {
 func (r *deptReader) ResolveSubtreeIDs(ctx context.Context, rootDeptID int64) ([]int64, error) {
 	return r.depts.SubtreeIDs(ctx, rootDeptID)
 }
+
+// DeptPaths delegates to the domain service's batch read; unknown ids stay
+// absent so callers degrade per id (ADR 0017).
+func (r *deptReader) DeptPaths(ctx context.Context, deptIDs []int64) (map[int64]string, error) {
+	return r.depts.DeptPaths(ctx, deptIDs)
+}
+
+// ResolveDeptPath passes the org domain's path resolution through: unknown
+// paths and disabled departments return org's kratos errors
+// (DEPT_NOT_FOUND, DEPT_DISABLED) verbatim — the wire shape is the
+// contract's.
+func (r *deptReader) ResolveDeptPath(ctx context.Context, path string) (int64, error) {
+	return r.depts.ResolveDeptPath(ctx, path)
+}

@@ -334,7 +334,7 @@ var (
 		{Name: "gender", Type: field.TypeInt8, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
 		{Name: "status", Type: field.TypeInt8, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
 		{Name: "password", Type: field.TypeString, Default: ""},
-		{Name: "avatar_file_id", Type: field.TypeInt64, Default: 0},
+		{Name: "avatar", Type: field.TypeInt64, Default: 0},
 		{Name: "remark", Type: field.TypeString, Nullable: true, Default: ""},
 		{Name: "dept_id", Type: field.TypeInt64, Default: 0},
 		{Name: "login_ip", Type: field.TypeString, Nullable: true, Default: ""},

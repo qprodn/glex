@@ -111,3 +111,34 @@ export async function batchResolveFiles(fileIds: (number | string)[]): Promise<S
     return [];
   }
 }
+
+/**
+ * downloadWorkbook POSTs one streaming spreadsheet route (ADR 0017: the
+ * hand-written export/template routes) and saves the blob. The filename
+ * rides the percent-encoded download-filename header — the same pair the
+ * backend's Content-Disposition carries — with the caller's fallback when
+ * neither is present.
+ */
+export async function downloadWorkbook(
+  path: string,
+  body: Record<string, unknown>,
+  fallbackName: string,
+): Promise<void> {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { ...authHeaders(true), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw await serviceErrorFrom(res);
+  }
+  const encoded = res.headers.get("download-filename");
+  const name = encoded ? decodeURIComponent(encoded) : fallbackName;
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = name;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}

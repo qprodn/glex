@@ -184,16 +184,16 @@ func (_c *UserCreate) SetNillablePassword(v *string) *UserCreate {
 	return _c
 }
 
-// SetAvatarFileID sets the "avatar_file_id" field.
-func (_c *UserCreate) SetAvatarFileID(v int64) *UserCreate {
-	_c.mutation.SetAvatarFileID(v)
+// SetAvatar sets the "avatar" field.
+func (_c *UserCreate) SetAvatar(v int64) *UserCreate {
+	_c.mutation.SetAvatar(v)
 	return _c
 }
 
-// SetNillableAvatarFileID sets the "avatar_file_id" field if the given value is not nil.
-func (_c *UserCreate) SetNillableAvatarFileID(v *int64) *UserCreate {
+// SetNillableAvatar sets the "avatar" field if the given value is not nil.
+func (_c *UserCreate) SetNillableAvatar(v *int64) *UserCreate {
 	if v != nil {
-		_c.SetAvatarFileID(*v)
+		_c.SetAvatar(*v)
 	}
 	return _c
 }
@@ -357,9 +357,9 @@ func (_c *UserCreate) defaults() {
 		v := user.DefaultPassword
 		_c.mutation.SetPassword(v)
 	}
-	if _, ok := _c.mutation.AvatarFileID(); !ok {
-		v := user.DefaultAvatarFileID
-		_c.mutation.SetAvatarFileID(v)
+	if _, ok := _c.mutation.Avatar(); !ok {
+		v := user.DefaultAvatar
+		_c.mutation.SetAvatar(v)
 	}
 	if _, ok := _c.mutation.Remark(); !ok {
 		v := user.DefaultRemark
@@ -398,8 +398,8 @@ func (_c *UserCreate) check() error {
 	if _, ok := _c.mutation.Password(); !ok {
 		return &ValidationError{Name: "password", err: errors.New(`ent: missing required field "User.password"`)}
 	}
-	if _, ok := _c.mutation.AvatarFileID(); !ok {
-		return &ValidationError{Name: "avatar_file_id", err: errors.New(`ent: missing required field "User.avatar_file_id"`)}
+	if _, ok := _c.mutation.Avatar(); !ok {
+		return &ValidationError{Name: "avatar", err: errors.New(`ent: missing required field "User.avatar"`)}
 	}
 	if _, ok := _c.mutation.DeptID(); !ok {
 		return &ValidationError{Name: "dept_id", err: errors.New(`ent: missing required field "User.dept_id"`)}
@@ -485,9 +485,9 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_spec.SetField(user.FieldPassword, field.TypeString, value)
 		_node.Password = value
 	}
-	if value, ok := _c.mutation.AvatarFileID(); ok {
-		_spec.SetField(user.FieldAvatarFileID, field.TypeInt64, value)
-		_node.AvatarFileID = value
+	if value, ok := _c.mutation.Avatar(); ok {
+		_spec.SetField(user.FieldAvatar, field.TypeInt64, value)
+		_node.Avatar = value
 	}
 	if value, ok := _c.mutation.Remark(); ok {
 		_spec.SetField(user.FieldRemark, field.TypeString, value)
@@ -775,21 +775,21 @@ func (u *UserUpsert) UpdatePassword() *UserUpsert {
 	return u
 }
 
-// SetAvatarFileID sets the "avatar_file_id" field.
-func (u *UserUpsert) SetAvatarFileID(v int64) *UserUpsert {
-	u.Set(user.FieldAvatarFileID, v)
+// SetAvatar sets the "avatar" field.
+func (u *UserUpsert) SetAvatar(v int64) *UserUpsert {
+	u.Set(user.FieldAvatar, v)
 	return u
 }
 
-// UpdateAvatarFileID sets the "avatar_file_id" field to the value that was provided on create.
-func (u *UserUpsert) UpdateAvatarFileID() *UserUpsert {
-	u.SetExcluded(user.FieldAvatarFileID)
+// UpdateAvatar sets the "avatar" field to the value that was provided on create.
+func (u *UserUpsert) UpdateAvatar() *UserUpsert {
+	u.SetExcluded(user.FieldAvatar)
 	return u
 }
 
-// AddAvatarFileID adds v to the "avatar_file_id" field.
-func (u *UserUpsert) AddAvatarFileID(v int64) *UserUpsert {
-	u.Add(user.FieldAvatarFileID, v)
+// AddAvatar adds v to the "avatar" field.
+func (u *UserUpsert) AddAvatar(v int64) *UserUpsert {
+	u.Add(user.FieldAvatar, v)
 	return u
 }
 
@@ -1133,24 +1133,24 @@ func (u *UserUpsertOne) UpdatePassword() *UserUpsertOne {
 	})
 }
 
-// SetAvatarFileID sets the "avatar_file_id" field.
-func (u *UserUpsertOne) SetAvatarFileID(v int64) *UserUpsertOne {
+// SetAvatar sets the "avatar" field.
+func (u *UserUpsertOne) SetAvatar(v int64) *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
-		s.SetAvatarFileID(v)
+		s.SetAvatar(v)
 	})
 }
 
-// AddAvatarFileID adds v to the "avatar_file_id" field.
-func (u *UserUpsertOne) AddAvatarFileID(v int64) *UserUpsertOne {
+// AddAvatar adds v to the "avatar" field.
+func (u *UserUpsertOne) AddAvatar(v int64) *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
-		s.AddAvatarFileID(v)
+		s.AddAvatar(v)
 	})
 }
 
-// UpdateAvatarFileID sets the "avatar_file_id" field to the value that was provided on create.
-func (u *UserUpsertOne) UpdateAvatarFileID() *UserUpsertOne {
+// UpdateAvatar sets the "avatar" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateAvatar() *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
-		s.UpdateAvatarFileID()
+		s.UpdateAvatar()
 	})
 }
 
@@ -1672,24 +1672,24 @@ func (u *UserUpsertBulk) UpdatePassword() *UserUpsertBulk {
 	})
 }
 
-// SetAvatarFileID sets the "avatar_file_id" field.
-func (u *UserUpsertBulk) SetAvatarFileID(v int64) *UserUpsertBulk {
+// SetAvatar sets the "avatar" field.
+func (u *UserUpsertBulk) SetAvatar(v int64) *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
-		s.SetAvatarFileID(v)
+		s.SetAvatar(v)
 	})
 }
 
-// AddAvatarFileID adds v to the "avatar_file_id" field.
-func (u *UserUpsertBulk) AddAvatarFileID(v int64) *UserUpsertBulk {
+// AddAvatar adds v to the "avatar" field.
+func (u *UserUpsertBulk) AddAvatar(v int64) *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
-		s.AddAvatarFileID(v)
+		s.AddAvatar(v)
 	})
 }
 
-// UpdateAvatarFileID sets the "avatar_file_id" field to the value that was provided on create.
-func (u *UserUpsertBulk) UpdateAvatarFileID() *UserUpsertBulk {
+// UpdateAvatar sets the "avatar" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateAvatar() *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
-		s.UpdateAvatarFileID()
+		s.UpdateAvatar()
 	})
 }
 

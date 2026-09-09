@@ -22,20 +22,20 @@ import (
 // deliberately not mapped: only authn's adapters read it (ADR 0005).
 func toBiz(po *ent.User) *userentity.User {
 	u := &userentity.User{
-		ID:           po.ID,
-		UserName:     po.UserName,
-		NickName:     po.NickName,
-		Gender:       int32(po.Gender),
-		Status:       int32(po.Status),
-		AvatarFileID: po.AvatarFileID,
-		Remark:       po.Remark,
-		DeptID:       po.DeptID,
-		CreateBy:     po.CreateBy,
-		UpdateBy:     po.UpdateBy,
-		LoginIP:      po.LoginIP,
-		LoginDate:    po.LoginDate,
-		CreatedAt:    po.CreatedAt,
-		UpdatedAt:    po.UpdatedAt,
+		ID:        po.ID,
+		UserName:  po.UserName,
+		NickName:  po.NickName,
+		Gender:    int32(po.Gender),
+		Status:    int32(po.Status),
+		Avatar:    po.Avatar,
+		Remark:    po.Remark,
+		DeptID:    po.DeptID,
+		CreateBy:  po.CreateBy,
+		UpdateBy:  po.UpdateBy,
+		LoginIP:   po.LoginIP,
+		LoginDate: po.LoginDate,
+		CreatedAt: po.CreatedAt,
+		UpdatedAt: po.UpdatedAt,
 	}
 	if po.Email != nil {
 		u.Email = *po.Email
@@ -166,7 +166,7 @@ func (r *userRepo) CreateUser(ctx context.Context, u *userentity.User) (*userent
 		SetNickName(u.NickName).
 		SetGender(int8(u.Gender)).
 		SetStatus(int8(u.Status)).
-		SetAvatarFileID(u.AvatarFileID).
+		SetAvatar(u.Avatar).
 		SetRemark(u.Remark).
 		SetDeptID(u.DeptID).
 		SetCreateBy(u.CreateBy).
@@ -201,7 +201,7 @@ func (r *userRepo) UpdateUser(ctx context.Context, u *userentity.User) (*userent
 		SetNickName(u.NickName).
 		SetGender(int8(u.Gender)).
 		SetStatus(int8(u.Status)).
-		SetAvatarFileID(u.AvatarFileID).
+		SetAvatar(u.Avatar).
 		SetRemark(u.Remark).
 		SetDeptID(u.DeptID).
 		SetUpdateBy(u.UpdateBy)

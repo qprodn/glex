@@ -489,10 +489,10 @@ func init() {
 	userDescPassword := userFields[7].Descriptor()
 	// user.DefaultPassword holds the default value on creation for the password field.
 	user.DefaultPassword = userDescPassword.Default.(string)
-	// userDescAvatarFileID is the schema descriptor for avatar_file_id field.
-	userDescAvatarFileID := userFields[8].Descriptor()
-	// user.DefaultAvatarFileID holds the default value on creation for the avatar_file_id field.
-	user.DefaultAvatarFileID = userDescAvatarFileID.Default.(int64)
+	// userDescAvatar is the schema descriptor for avatar field.
+	userDescAvatar := userFields[8].Descriptor()
+	// user.DefaultAvatar holds the default value on creation for the avatar field.
+	user.DefaultAvatar = userDescAvatar.Default.(int64)
 	// userDescRemark is the schema descriptor for remark field.
 	userDescRemark := userFields[9].Descriptor()
 	// user.DefaultRemark holds the default value on creation for the remark field.

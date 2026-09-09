@@ -109,6 +109,14 @@ func (f *fakeDeptServiceForPost) EnsureActive(context.Context, int64) error {
 	return nil
 }
 
+func (f *fakeDeptServiceForPost) DeptPaths(context.Context, []int64) (map[int64]string, error) {
+	return nil, nil
+}
+
+func (f *fakeDeptServiceForPost) ResolveDeptPath(context.Context, string) (int64, error) {
+	return 0, nil
+}
+
 func newPostApp(svc *fakePostService, depts *fakeDeptServiceForPost) (*PostApplication, *fakeTransaction) {
 	tx := newFakeTransaction()
 	return NewPostApplication(svc, depts, tx, testLogger()), tx

@@ -25,4 +25,14 @@ type DeptReader interface {
 	// ResolveSubtreeIDs returns the department's id plus every descendant
 	// id — the department-subtree filter behind the user list.
 	ResolveSubtreeIDs(ctx context.Context, rootDeptID int64) ([]int64, error)
+	// DeptPaths maps department ids to their root-first display paths
+	// ("总公司/研发部") — Data Export's department column (ADR 0017).
+	// Unknown or withdrawn ids are absent from the map; the export cell
+	// degrades to empty, one sour reference never fails the page.
+	DeptPaths(ctx context.Context, deptIDs []int64) (map[int64]string, error)
+	// ResolveDeptPath maps a root-first display path back to the
+	// department id — Data Import's department column (ADR 0017).
+	// DEPT_NOT_FOUND for an unknown path, DEPT_DISABLED for a disabled
+	// department; the org wire shape consumers surface.
+	ResolveDeptPath(ctx context.Context, path string) (int64, error)
 }

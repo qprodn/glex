@@ -30,12 +30,12 @@ const AvatarCard: React.FC<{ user: CurrentUser }> = ({ user }) => {
         {user.nickName?.slice(0, 1)}
       </Avatar>
       <ImageUpload
-        value={Number(user.avatarFileId ?? 0)}
+        value={Number(user.avatar ?? 0)}
         bizPath="avatar"
         onChange={async (fileId) => {
           await services.user.UpdateUser({
-            user: { ...user, avatarFileId: fileId, password: undefined },
-            updateMask: "avatar_file_id",
+            user: { ...user, avatar: fileId, password: undefined },
+            updateMask: "avatar",
           });
           message.success(intl.formatMessage({ id: "common.saved", defaultMessage: "保存成功" }));
           window.location.reload();

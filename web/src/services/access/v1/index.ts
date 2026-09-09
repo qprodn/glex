@@ -812,10 +812,10 @@ export type userv1_User = {
   password: string | undefined;
   // 0正常 1停用 (per RuoYi).
   status: number | undefined;
-  // The user's avatar as a Stored File id (0 = none) — RuoYi's bigint ossId
-  // pattern. Not validated on write; an unresolvable id reads back as an
-  // empty avatar_url (ADR 0016).
-  avatarFileId: number | undefined;
+  // The user's avatar as a Stored File id (0 = none) — RuoYi's bigint
+  // avatar column. Not validated on write; an unresolvable id reads back
+  // as an empty avatar_url (ADR 0016).
+  avatar: number | undefined;
   remark: string | undefined;
   // The user's department (部门); 0 = none. Validated through the org
   // module's contract on save: the department must exist and be enabled.

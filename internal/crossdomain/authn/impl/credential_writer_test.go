@@ -23,6 +23,32 @@ func (s *recordingCredentialService) Store(_ context.Context, systemUserID int64
 	return s.err
 }
 
+func (s *recordingCredentialService) StoreAll(ctx context.Context, systemUserIDs []int64, password string) error {
+	for _, id := range systemUserIDs {
+		if err := s.Store(ctx, id, password); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func TestCredentialWriterBatchDelegatesToTheProvider(t *testing.T) {
+	credentials := &recordingCredentialService{}
+	writer := NewCredentialWriter(credentials)
+
+	if err := writer.WriteSystemUserCredentials(t.Context(), []int64{42, 43}, "secret"); err != nil {
+		t.Fatalf("WriteSystemUserCredentials: %v", err)
+	}
+	for _, id := range []int64{42, 43} {
+		if credentials.stored[id] != "secret" {
+			t.Fatalf("credential for %d = %q, want the shared plaintext delegated verbatim", id, credentials.stored[id])
+		}
+	}
+	if err := writer.WriteSystemUserCredentials(t.Context(), []int64{0}, "secret"); err == nil {
+		t.Fatal("a non-positive id must be rejected before any write")
+	}
+}
+
 func TestCredentialWriterPassesPlaintextToTheProvider(t *testing.T) {
 	credentials := &recordingCredentialService{}
 	writer := NewCredentialWriter(credentials)

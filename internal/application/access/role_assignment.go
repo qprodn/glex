@@ -31,20 +31,20 @@ func convertRoleAssignment(a *accessentity.RoleAssignment) *accessv1.RoleAssignm
 // is not shared across the module seam.
 func convertRoleUser(m *accessentity.RoleUser) *userv1.User {
 	u := &userv1.User{
-		UserId:       m.ID,
-		UserName:     m.UserName,
-		NickName:     m.NickName,
-		Email:        m.Email,
-		PhoneNumber:  m.PhoneNumber,
-		Gender:       m.Gender,
-		Status:       m.Status,
-		AvatarFileId: m.AvatarFileID,
-		Remark:       m.Remark,
-		CreateBy:     m.CreateBy,
-		UpdateBy:     m.UpdateBy,
-		LoginIp:      m.LoginIP,
-		CreatedAt:    timestamppb.New(m.CreatedAt),
-		UpdatedAt:    timestamppb.New(m.UpdatedAt),
+		UserId:      m.ID,
+		UserName:    m.UserName,
+		NickName:    m.NickName,
+		Email:       m.Email,
+		PhoneNumber: m.PhoneNumber,
+		Gender:      m.Gender,
+		Status:      m.Status,
+		Avatar:      m.Avatar,
+		Remark:      m.Remark,
+		CreateBy:    m.CreateBy,
+		UpdateBy:    m.UpdateBy,
+		LoginIp:     m.LoginIP,
+		CreatedAt:   timestamppb.New(m.CreatedAt),
+		UpdatedAt:   timestamppb.New(m.UpdatedAt),
 	}
 	if m.LoginDate != nil {
 		u.LoginDate = timestamppb.New(*m.LoginDate)

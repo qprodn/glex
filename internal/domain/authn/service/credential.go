@@ -19,6 +19,11 @@ type Credential interface {
 	// Store hashes the requested password with authn's policy and stores it
 	// inside the caller's propagated transaction.
 	Store(ctx context.Context, systemUserID int64, password string) error
+	// StoreAll stores the same password for a batch of System Users inside
+	// the caller's propagated transaction, hashing it once — Data Import's
+	// initial credential (ADR 0017), where every row shares one password
+	// and per-row bcrypt would cost a minute per thousand rows.
+	StoreAll(ctx context.Context, systemUserIDs []int64, password string) error
 }
 
 type credentialImpl struct {
@@ -44,6 +49,25 @@ func (s *credentialImpl) Store(ctx context.Context, systemUserID int64, password
 	if err := s.credentials.StoreCredential(ctx, systemUserID, hash); err != nil {
 		logx.Propagate(ctx, s.logger, "authn.svc.store_credential", err)
 		return err
+	}
+	return nil
+}
+
+func (s *credentialImpl) StoreAll(ctx context.Context, systemUserIDs []int64, password string) error {
+	if len(systemUserIDs) == 0 {
+		return nil
+	}
+	hash, err := HashPassword(password)
+	if err != nil {
+		err = fmt.Errorf("store system user credentials: hash password: %w", err)
+		logx.Propagate(ctx, s.logger, "authn.svc.store_credentials", err)
+		return err
+	}
+	for _, id := range systemUserIDs {
+		if err := s.credentials.StoreCredential(ctx, id, hash); err != nil {
+			logx.Propagate(ctx, s.logger, "authn.svc.store_credentials", err)
+			return err
+		}
 	}
 	return nil
 }

@@ -41,8 +41,8 @@ type User struct {
 	Status int8 `json:"status,omitempty"`
 	// Password holds the value of the "password" field.
 	Password string `json:"password,omitempty"`
-	// AvatarFileID holds the value of the "avatar_file_id" field.
-	AvatarFileID int64 `json:"avatar_file_id,omitempty"`
+	// Avatar holds the value of the "avatar" field.
+	Avatar int64 `json:"avatar,omitempty"`
 	// Remark holds the value of the "remark" field.
 	Remark string `json:"remark,omitempty"`
 	// DeptID holds the value of the "dept_id" field.
@@ -91,7 +91,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case user.FieldID, user.FieldCreateBy, user.FieldUpdateBy, user.FieldGender, user.FieldStatus, user.FieldAvatarFileID, user.FieldDeptID:
+		case user.FieldID, user.FieldCreateBy, user.FieldUpdateBy, user.FieldGender, user.FieldStatus, user.FieldAvatar, user.FieldDeptID:
 			values[i] = new(sql.NullInt64)
 		case user.FieldUserName, user.FieldNickName, user.FieldEmail, user.FieldPhoneNumber, user.FieldPassword, user.FieldRemark, user.FieldLoginIP:
 			values[i] = new(sql.NullString)
@@ -193,11 +193,11 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Password = value.String
 			}
-		case user.FieldAvatarFileID:
+		case user.FieldAvatar:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field avatar_file_id", values[i])
+				return fmt.Errorf("unexpected type %T for field avatar", values[i])
 			} else if value.Valid {
-				_m.AvatarFileID = value.Int64
+				_m.Avatar = value.Int64
 			}
 		case user.FieldRemark:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -312,8 +312,8 @@ func (_m *User) String() string {
 	builder.WriteString("password=")
 	builder.WriteString(_m.Password)
 	builder.WriteString(", ")
-	builder.WriteString("avatar_file_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.AvatarFileID))
+	builder.WriteString("avatar=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Avatar))
 	builder.WriteString(", ")
 	builder.WriteString("remark=")
 	builder.WriteString(_m.Remark)

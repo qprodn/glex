@@ -31,10 +31,10 @@ message User {
   string password = 7;
   // 0正常 1停用 (per RuoYi).
   int32 status = 8;
-  // The user's avatar as a Stored File id (0 = none) — RuoYi's bigint ossId
-  // pattern. Not validated on write; an unresolvable id reads back as an
-  // empty avatar_url (ADR 0016).
-  int64 avatar_file_id = 9;
+  // The user's avatar as a Stored File id (0 = none) — RuoYi's bigint
+  // avatar column. Not validated on write; an unresolvable id reads back
+  // as an empty avatar_url (ADR 0016).
+  int64 avatar = 9;
   string remark = 10;
   // The user's department (部门); 0 = none. Validated through the org
   // module's contract on save: the department must exist and be enabled.
@@ -75,8 +75,8 @@ message CurrentUser {
   string remark = 9;
   // The user's department; 0 = none (read-only, same as User.dept_id).
   int64 dept_id = 16;
-  // The avatar's Stored File id (read-only, same as User.avatar_file_id).
-  int64 avatar_file_id = 17;
+  // The avatar's Stored File id (read-only, same as User.avatar).
+  int64 avatar = 17;
   int64 create_by = 10;
   int64 update_by = 11;
   string login_ip = 12;
@@ -135,6 +135,31 @@ service UserService {
       delete: "/iam/user/{user_id}"
     };
   }
+  // ImportUsers applies a spreadsheet of new System Users from an Import
+  // File (ADR 0017): the workbook was uploaded through the file module
+  // (business prefix import/user) and is addressed by its Stored File id —
+  // never a Display URL. Every row is validated and either all rows are
+  // created or none is (all-or-nothing on one transaction); row_errors
+  // carries every failure with row and column. Imported users receive the
+  // configured initial credential; the sheet never carries passwords.
+  // Insert-only: an existing login account is a row error.
+  rpc ImportUsers(ImportUsersRequest) returns (ImportUsersResponse) {
+    option (google.api.http) = {
+      post: "/iam/user/-/import"
+      body: "*"
+    };
+  }
+  // ExportUsers streams the filtered users as an xlsx workbook (ADR 0017).
+  // HTTP-only, hand-written route — the streaming byte response carries no
+  // google.api.http annotation (same shape as the file module's transfers)
+  // and the gRPC counterpart stays unimplemented. Nothing is stored: the
+  // oper log entry minted for this POST is the only record an export
+  // happened.
+  rpc ExportUsers(ExportUsersRequest) returns (google.protobuf.Empty);
+  // ImportTemplate streams the user import sheet's template — the import
+  // columns with headers and no data (ADR 0017). HTTP-only, hand-written
+  // route; gRPC stays unimplemented.
+  rpc ImportTemplate(ImportTemplateRequest) returns (google.protobuf.Empty);
 }
 
 message CreateUserRequest {
@@ -179,3 +204,37 @@ message DeleteUserRequest {
   // Required. The id of the user to delete.
   int64 user_id = 1 [(google.api.field_behavior) = REQUIRED];
 }
+
+message ImportUsersRequest {
+  // Required. The Import File's Stored File id, from the file-module
+  // upload (business prefix import/user).
+  int64 file_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ImportUsersResponse {
+  // Rows created. 0 whenever row_errors is non-empty — all-or-nothing.
+  int64 imported_count = 1;
+  // Every row-level failure; non-empty means nothing was imported.
+  repeated ImportRowError row_errors = 2;
+}
+
+message ImportRowError {
+  // 1-based sheet row of the failing cell (the header is row 1).
+  int32 row = 1;
+  // The column's header text.
+  string column = 2;
+  // Human-readable reason in the operator's language.
+  string reason = 3;
+}
+
+message ExportUsersRequest {
+  // Optional. Restrict the export to this department's subtree, same as
+  // ListUsers.
+  int64 dept_id = 1;
+  // Optional. AIP-160 filter over the same fields as ListUsers.
+  string filter = 2;
+  // Optional. AIP-132 order, same fields as ListUsers.
+  string order_by = 3;
+}
+
+message ImportTemplateRequest {}

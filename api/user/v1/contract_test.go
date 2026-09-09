@@ -20,6 +20,15 @@ func TestUserHTTPRoutesMatchConfirmedContract(t *testing.T) {
 	want := map[protoreflect.FullName]route{
 		"user.v1.UserService.GetInfo": {verb: "GET", path: "/iam/user/getInfo"},
 	}
+	// handWritten declares the deliberately annotation-less methods (ADR
+	// 0017): streaming byte responses the proto generators cannot express
+	// (the file module's transfer precedent). The routes live in
+	// internal/server/user_excel.go and must keep these shapes — the entry
+	// documents the pairing the proto cannot.
+	handWritten := map[protoreflect.FullName]route{
+		"user.v1.UserService.ExportUsers":    {verb: "POST", path: "/iam/user/-/export"},
+		"user.v1.UserService.ImportTemplate": {verb: "POST", path: "/iam/user/-/importTemplate"},
+	}
 
 	seen := make(map[protoreflect.FullName]bool)
 	services := userv1.File_user_v1_user_proto.Services()
@@ -29,6 +38,10 @@ func TestUserHTTPRoutesMatchConfirmedContract(t *testing.T) {
 			method := methods.Get(methodIndex)
 			gotVerb, gotPath, err := methodHTTPRoute(method)
 			if err != nil {
+				if _, deliberate := handWritten[method.FullName()]; deliberate {
+					seen[method.FullName()] = true
+					continue
+				}
 				t.Fatalf("%s: %v", method.FullName(), err)
 			}
 			if expected, ok := want[method.FullName()]; ok {
@@ -37,11 +50,19 @@ func TestUserHTTPRoutesMatchConfirmedContract(t *testing.T) {
 					t.Errorf("%s route = %s %s, want %s %s", method.FullName(), gotVerb, gotPath, expected.verb, expected.path)
 				}
 			}
+			if _, duplicate := handWritten[method.FullName()]; duplicate && err == nil {
+				t.Errorf("%s is declared hand-written but carries an annotation; drop one of the two", method.FullName())
+			}
 		}
 	}
 	for name := range want {
 		if !seen[name] {
 			t.Errorf("required route for %s is missing", name)
+		}
+	}
+	for name := range handWritten {
+		if !seen[name] {
+			t.Errorf("hand-written route declaration for %s is stale: the method no longer exists", name)
 		}
 	}
 }

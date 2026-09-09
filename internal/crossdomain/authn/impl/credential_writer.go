@@ -30,3 +30,14 @@ func (w *credentialWriter) WriteSystemUserCredential(ctx context.Context, reques
 	}
 	return w.credentials.Store(ctx, request.SystemUserID, request.Password)
 }
+
+// WriteSystemUserCredentials stores the shared password for the batch inside
+// the caller's propagated transaction, hashing it once (ADR 0017).
+func (w *credentialWriter) WriteSystemUserCredentials(ctx context.Context, systemUserIDs []int64, password string) error {
+	for _, id := range systemUserIDs {
+		if id <= 0 {
+			return fmt.Errorf("write system user credentials: system_user_id is required")
+		}
+	}
+	return w.credentials.StoreAll(ctx, systemUserIDs, password)
+}

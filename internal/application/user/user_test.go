@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"glex/internal/conf"
+
 	authnmodel "glex/internal/crossdomain/authn/model"
 	authndomain "glex/internal/domain/authn"
 	authnentity "glex/internal/domain/authn/entity"
@@ -51,6 +53,15 @@ func (w *fakeCredentialWriter) WriteSystemUserCredential(_ context.Context, requ
 	return w.err
 }
 
+// WriteSystemUserCredentials records the Data Import batch ask (ADR 0017) —
+// one shared password, ids only.
+func (w *fakeCredentialWriter) WriteSystemUserCredentials(_ context.Context, systemUserIDs []int64, password string) error {
+	for _, id := range systemUserIDs {
+		w.written = append(w.written, &authnmodel.SystemUserCredential{SystemUserID: id, Password: password})
+	}
+	return w.err
+}
+
 // fakeUserService is an in-memory userservice.User for testing the application
 // orchestration in isolation from the domain: it carries no domain rules (the
 // uniqueness checks live in the service's own tests), just enough state to
@@ -61,6 +72,9 @@ type fakeUserService struct {
 	// list backs List with offset/limit windowing so pagination flows through
 	// the real page-token mechanics.
 	list []*userentity.User
+	// conflictOn makes Create refuse that login account with the domain's
+	// uniqueness sentinel — Data Import's in-transaction conflict path.
+	conflictOn string
 
 	created      []*userentity.User
 	updated      []userentity.User
@@ -104,6 +118,9 @@ func (s *fakeUserService) List(_ context.Context, _ filtering.Filter, _ ordering
 }
 
 func (s *fakeUserService) Create(_ context.Context, u *userentity.User) (*userentity.User, error) {
+	if s.conflictOn != "" && u.UserName == s.conflictOn {
+		return nil, userdomain.ErrUserNameConflict
+	}
 	u.ID = s.nextID
 	s.nextID++
 	s.byID[u.ID] = u
@@ -127,7 +144,7 @@ func (s *fakeUserService) Delete(_ context.Context, id int64, actorID int64) ([]
 }
 
 func newTestUserApplication(svc *fakeUserService, credentials *fakeCredentialWriter, revoker *fakeSessionRevoker) *UserApplication {
-	return NewUserApplication(svc, credentials, new(fakeDeptReader), new(fakeURLResolver), newFakeTransaction(), revoker, testLogger())
+	return NewUserApplication(svc, credentials, new(fakeDeptReader), new(fakeURLResolver), nil, nil, new(conf.User), newFakeTransaction(), revoker, testLogger())
 }
 
 func createUserRequest(u *userv1.User) *userv1.CreateUserRequest {
@@ -161,7 +178,7 @@ func TestCreateUserRunsCreateAndCredentialWriteInOneTransaction(t *testing.T) {
 	svc := newFakeUserService()
 	svc.steps = steps
 	credentials := &fakeCredentialWriter{steps: steps}
-	app := NewUserApplication(svc, credentials, new(fakeDeptReader), new(fakeURLResolver), tx, new(fakeSessionRevoker), testLogger())
+	app := NewUserApplication(svc, credentials, new(fakeDeptReader), new(fakeURLResolver), nil, nil, new(conf.User), tx, new(fakeSessionRevoker), testLogger())
 
 	if _, err := app.CreateUser(context.Background(), createUserRequest(&userv1.User{UserName: "bob", Password: "secret"})); err != nil {
 		t.Fatalf("create user: %v", err)
@@ -420,13 +437,13 @@ func TestConvertUserOmitsPasswordAndMapsFields(t *testing.T) {
 	loginDate := now.Add(time.Hour)
 	dto := convertUser(&userentity.User{
 		ID: 7, UserName: "alice", NickName: "Alice", Email: "a@b.com", PhoneNumber: "13800000000",
-		Gender: 1, Password: "plaintext-secret", Status: 1, AvatarFileID: 42, Remark: "r",
+		Gender: 1, Password: "plaintext-secret", Status: 1, Avatar: 42, Remark: "r",
 		CreateBy: 1, UpdateBy: 2, LoginIP: "127.0.0.1", LoginDate: &loginDate, CreatedAt: now, UpdatedAt: now,
 	})
 
 	if dto.GetUserId() != 7 || dto.GetUserName() != "alice" || dto.GetNickName() != "Alice" ||
 		dto.GetEmail() != "a@b.com" || dto.GetPhoneNumber() != "13800000000" || dto.GetGender() != 1 ||
-		dto.GetStatus() != 1 || dto.GetAvatarFileId() != 42 || dto.GetRemark() != "r" ||
+		dto.GetStatus() != 1 || dto.GetAvatar() != 42 || dto.GetRemark() != "r" ||
 		dto.GetCreateBy() != 1 || dto.GetUpdateBy() != 2 || dto.GetLoginIp() != "127.0.0.1" {
 		t.Fatalf("field mapping = %#v", dto)
 	}
@@ -449,6 +466,8 @@ type fakeDeptReader struct {
 	ensureErr error
 	subtree   []int64
 	subtreeID int64
+	paths     map[int64]string
+	resolve   map[string]int64
 }
 
 func (f *fakeDeptReader) EnsureActiveDept(_ context.Context, deptID int64) error {
@@ -461,11 +480,22 @@ func (f *fakeDeptReader) ResolveSubtreeIDs(_ context.Context, rootDeptID int64) 
 	return f.subtree, nil
 }
 
+func (f *fakeDeptReader) DeptPaths(_ context.Context, deptIDs []int64) (map[int64]string, error) {
+	return f.paths, nil
+}
+
+func (f *fakeDeptReader) ResolveDeptPath(_ context.Context, path string) (int64, error) {
+	if id, ok := f.resolve[path]; ok {
+		return id, nil
+	}
+	return 0, orgdomain.ErrDeptNotFound
+}
+
 func TestCreateUser_ValidatesDeptThroughContract(t *testing.T) {
 	svc := newFakeUserService()
 	credentials := &fakeCredentialWriter{}
 	depts := &fakeDeptReader{}
-	app := NewUserApplication(svc, credentials, depts, new(fakeURLResolver), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := NewUserApplication(svc, credentials, depts, new(fakeURLResolver), nil, nil, new(conf.User), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(1, "alice", "session-id", nil, nil))
 
 	if _, err := app.CreateUser(ctx, createUserRequest(&userv1.User{
@@ -485,7 +515,7 @@ func TestCreateUser_DeptValidationErrorAborts(t *testing.T) {
 	svc := newFakeUserService()
 	credentials := &fakeCredentialWriter{}
 	depts := &fakeDeptReader{ensureErr: orgdomain.ErrDeptDisabled}
-	app := NewUserApplication(svc, credentials, depts, new(fakeURLResolver), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := NewUserApplication(svc, credentials, depts, new(fakeURLResolver), nil, nil, new(conf.User), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(1, "alice", "session-id", nil, nil))
 	_, err := app.CreateUser(ctx, createUserRequest(&userv1.User{
@@ -502,7 +532,7 @@ func TestCreateUser_DeptValidationErrorAborts(t *testing.T) {
 func TestCreateUser_ZeroDeptSkipsContract(t *testing.T) {
 	svc := newFakeUserService()
 	depts := &fakeDeptReader{}
-	app := NewUserApplication(svc, &fakeCredentialWriter{}, depts, new(fakeURLResolver), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := NewUserApplication(svc, &fakeCredentialWriter{}, depts, new(fakeURLResolver), nil, nil, new(conf.User), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 	ctx := authnservice.WithPrincipal(t.Context(), authnentity.NewPrincipal(1, "alice", "session-id", nil, nil))
 
 	if _, err := app.CreateUser(ctx, createUserRequest(&userv1.User{UserName: "bob", Password: "pw"})); err != nil {
@@ -517,7 +547,7 @@ func TestListUsers_ResolvesDeptSubtreeThroughContract(t *testing.T) {
 	svc := newFakeUserService()
 	svc.list = []*userentity.User{{ID: 7, UserName: "bob", DeptID: 3}}
 	depts := &fakeDeptReader{subtree: []int64{2, 3}}
-	app := NewUserApplication(svc, &fakeCredentialWriter{}, depts, new(fakeURLResolver), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := NewUserApplication(svc, &fakeCredentialWriter{}, depts, new(fakeURLResolver), nil, nil, new(conf.User), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	set, err := app.ListUsers(context.Background(), &userv1.ListUsersRequest{DeptId: 2})
 	if err != nil {
@@ -534,7 +564,7 @@ func TestListUsers_ResolvesDeptSubtreeThroughContract(t *testing.T) {
 func TestListUsers_ZeroDeptSkipsContract(t *testing.T) {
 	svc := newFakeUserService()
 	depts := &fakeDeptReader{}
-	app := NewUserApplication(svc, &fakeCredentialWriter{}, depts, new(fakeURLResolver), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
+	app := NewUserApplication(svc, &fakeCredentialWriter{}, depts, new(fakeURLResolver), nil, nil, new(conf.User), newFakeTransaction(), new(fakeSessionRevoker), testLogger())
 
 	if _, err := app.ListUsers(context.Background(), &userv1.ListUsersRequest{}); err != nil {
 		t.Fatalf("ListUsers: %v", err)

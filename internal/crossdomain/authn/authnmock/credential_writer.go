@@ -54,3 +54,17 @@ func (mr *MockCredentialWriterMockRecorder) WriteSystemUserCredential(ctx, reque
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteSystemUserCredential", reflect.TypeOf((*MockCredentialWriter)(nil).WriteSystemUserCredential), ctx, request)
 }
+
+// WriteSystemUserCredentials mocks base method.
+func (m *MockCredentialWriter) WriteSystemUserCredentials(ctx context.Context, systemUserIDs []int64, password string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WriteSystemUserCredentials", ctx, systemUserIDs, password)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// WriteSystemUserCredentials indicates an expected call of WriteSystemUserCredentials.
+func (mr *MockCredentialWriterMockRecorder) WriteSystemUserCredentials(ctx, systemUserIDs, password any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteSystemUserCredentials", reflect.TypeOf((*MockCredentialWriter)(nil).WriteSystemUserCredentials), ctx, systemUserIDs, password)
+}

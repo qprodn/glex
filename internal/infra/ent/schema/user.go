@@ -45,9 +45,9 @@ func (User) Fields() []ent.Field {
 		// dedicated credential store.
 		field.String("password").Default(""),
 		// The user's avatar as a Stored File id (0 = none) — RuoYi's bigint
-		// ossId pattern. Resolved to a Display URL on reads via the
+		// avatar column. Resolved to a Display URL on reads via the
 		// crossdomain file contract (ADR 0016); no ent edge, no FK.
-		field.Int64("avatar_file_id").Default(0),
+		field.Int64("avatar").Default(0),
 		field.String("remark").Optional().Default(""),
 		// The user's place in the org structure (ADR 0013): a plain column
 		// referencing sys_dept, 0 = none. The org module validates it via the

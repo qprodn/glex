@@ -70,3 +70,10 @@ auth:
   # Assert true only when the service port is private and the exclusive edge
   # proxy replaces the forwarded source-IP header with its authoritative value.
   edge_proxy_authoritative_source_ip: true
+
+# User module (ADR 0017). init_password is the initial credential every
+# imported System User receives — a documented weak default (RuoYi's
+# sys.user.initPassword lineage) operators must rotate, not a real
+# credential. Omit or leave empty for the built-in "123456".
+user:
+  init_password: "123456"

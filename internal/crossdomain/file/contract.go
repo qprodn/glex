@@ -8,9 +8,11 @@ package file
 
 import (
 	"context"
+	"io"
 )
 
 //go:generate go tool mockgen -package filemock -destination filemock/url_resolver.go glex/internal/crossdomain/file URLResolver
+//go:generate go tool mockgen -package filemock -destination filemock/content_reader.go glex/internal/crossdomain/file ContentReader
 
 // URLResolver exposes the file module's Display URL reads (ADR 0016) to
 // modules that hold Stored File references — the avatar today.
@@ -21,4 +23,15 @@ type URLResolver interface {
 	// read. Signing failures skip the id the same way; the skip is logged
 	// at this boundary, not propagated.
 	ResolveURLs(ctx context.Context, fileIDs []int64) (map[int64]string, error)
+}
+
+// ContentReader exposes one Stored File's bytes to modules consuming them
+// as Import File sources (ADR 0017): Data Import reads the workbook the
+// operator uploaded, in-process, without a presigned round-trip. Errors
+// cross this seam as the file domain's kratos errors (FILE_NOT_FOUND for
+// unknown or withdrawn ids) — the wire shape is the contract's.
+type ContentReader interface {
+	// OpenContent opens the Stored File's bytes in full; the caller owns
+	// closing the body.
+	OpenContent(ctx context.Context, fileID int64) (io.ReadCloser, error)
 }

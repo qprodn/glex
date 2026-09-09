@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"sort"
+	"strings"
 
 	"glex/internal/domain/org"
 	"glex/internal/domain/org/entity"
@@ -40,6 +41,17 @@ type Dept interface {
 	// EnsureActive rejects departments that are missing or disabled — the
 	// user-save validation behind the org contract.
 	EnsureActive(ctx context.Context, deptID int64) error
+	// DeptPaths maps the given department ids to their root-first display
+	// paths ("总公司/研发部"), loading the tree once. Unknown or withdrawn
+	// ids are absent from the map — callers degrade per id, they never fail
+	// the page for one sour reference.
+	DeptPaths(ctx context.Context, deptIDs []int64) (map[int64]string, error)
+	// ResolveDeptPath maps a root-first display path back to the department
+	// id — Data Import's department column (ADR 0017). Sibling names are
+	// unique (AssertSiblingNameUnique), so a full path names at most one
+	// department. Unknown paths return DEPT_NOT_FOUND and disabled
+	// departments DEPT_DISABLED, the org wire shape consumers surface.
+	ResolveDeptPath(ctx context.Context, path string) (int64, error)
 }
 
 type deptImpl struct {
@@ -225,6 +237,84 @@ func (s *deptImpl) EnsureActive(ctx context.Context, deptID int64) error {
 		return err
 	}
 	return nil
+}
+
+func (s *deptImpl) DeptPaths(ctx context.Context, deptIDs []int64) (map[int64]string, error) {
+	depts, err := s.depts.ListDepts(ctx)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "org.svc.dept_paths", err)
+		return nil, err
+	}
+	wanted := make(map[int64]struct{}, len(deptIDs))
+	for _, id := range deptIDs {
+		wanted[id] = struct{}{}
+	}
+	byID := make(map[int64]*entity.Dept, len(depts))
+	for _, d := range depts {
+		byID[d.ID] = d
+	}
+	paths := make(map[int64]string, len(deptIDs))
+	for id := range wanted {
+		if path, ok := deptPath(byID, id); ok {
+			paths[id] = path
+		}
+	}
+	return paths, nil
+}
+
+func (s *deptImpl) ResolveDeptPath(ctx context.Context, path string) (int64, error) {
+	depts, err := s.depts.ListDepts(ctx)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "org.svc.resolve_dept_path", err)
+		return 0, err
+	}
+	byID := make(map[int64]*entity.Dept, len(depts))
+	for _, d := range depts {
+		byID[d.ID] = d
+	}
+	for _, d := range depts {
+		if p, ok := deptPath(byID, d.ID); ok && p == path {
+			if !d.Enabled() {
+				err := org.ErrDeptDisabled
+				logx.Propagate(ctx, s.logger, "org.svc.resolve_dept_path", err)
+				return 0, err
+			}
+			return d.ID, nil
+		}
+	}
+	err = org.ErrDeptNotFound
+	logx.Propagate(ctx, s.logger, "org.svc.resolve_dept_path", err)
+	return 0, err
+}
+
+// deptPath walks a department's parent chain to the root and joins the
+// names root-first with "/". A broken chain (unknown parent, or a cycle the
+// move guard should have prevented) yields ok=false — the reference degrades,
+// the read never fails on it.
+func deptPath(byID map[int64]*entity.Dept, deptID int64) (string, bool) {
+	var names []string
+	visited := map[int64]struct{}{}
+	for id := deptID; ; {
+		d, ok := byID[id]
+		if !ok {
+			return "", false
+		}
+		if _, seen := visited[id]; seen {
+			return "", false
+		}
+		visited[id] = struct{}{}
+		names = append(names, d.DeptName)
+		if d.ParentID == 0 {
+			break
+		}
+		id = d.ParentID
+	}
+	for i, j := 0, len(names)-1; i < j; i, j = i+1, j-1 {
+		names[i], names[j] = names[j], names[i]
+	}
+	// The ASCII separator has one spelling across the exported cell and the
+	// import that reads it back.
+	return strings.Join(names, "/"), true
 }
 
 // assertMoveAllowed rejects moving a department under itself or one of its

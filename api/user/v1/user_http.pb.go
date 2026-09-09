@@ -22,6 +22,7 @@ const OperationUserServiceCreateUser = "/user.v1.UserService/CreateUser"
 const OperationUserServiceDeleteUser = "/user.v1.UserService/DeleteUser"
 const OperationUserServiceGetInfo = "/user.v1.UserService/GetInfo"
 const OperationUserServiceGetUser = "/user.v1.UserService/GetUser"
+const OperationUserServiceImportUsers = "/user.v1.UserService/ImportUsers"
 const OperationUserServiceListUsers = "/user.v1.UserService/ListUsers"
 const OperationUserServiceUpdateUser = "/user.v1.UserService/UpdateUser"
 
@@ -36,6 +37,15 @@ type UserServiceHTTPServer interface {
 	GetInfo(context.Context, *emptypb.Empty) (*CurrentUserInfo, error)
 	// GetUser GetUser retrieves a user by id.
 	GetUser(context.Context, *GetUserRequest) (*User, error)
+	// ImportUsers ImportUsers applies a spreadsheet of new System Users from an Import
+	// File (ADR 0017): the workbook was uploaded through the file module
+	// (business prefix import/user) and is addressed by its Stored File id —
+	// never a Display URL. Every row is validated and either all rows are
+	// created or none is (all-or-nothing on one transaction); row_errors
+	// carries every failure with row and column. Imported users receive the
+	// configured initial credential; the sheet never carries passwords.
+	// Insert-only: an existing login account is a row error.
+	ImportUsers(context.Context, *ImportUsersRequest) (*ImportUsersResponse, error)
 	// ListUsers ListUsers lists users with AIP filter/order/page-token.
 	ListUsers(context.Context, *ListUsersRequest) (*UserSet, error)
 	// UpdateUser UpdateUser partially updates a user (field-mask). Empty password = unchanged.
@@ -50,6 +60,7 @@ func RegisterUserServiceHTTPServer(s *http.Server, srv UserServiceHTTPServer) {
 	r.Handle("GET", "/iam/user", _UserService_ListUsers0_HTTP_Handler(srv))
 	r.Handle("PATCH", "/iam/user/{user.user_id}", _UserService_UpdateUser0_HTTP_Handler(srv))
 	r.Handle("DELETE", "/iam/user/{user_id}", _UserService_DeleteUser0_HTTP_Handler(srv))
+	r.Handle("POST", "/iam/user/-/import", _UserService_ImportUsers0_HTTP_Handler(srv))
 }
 
 func _UserService_GetInfo0_HTTP_Handler(srv UserServiceHTTPServer) func(ctx http.Context) error {
@@ -181,6 +192,25 @@ func _UserService_DeleteUser0_HTTP_Handler(srv UserServiceHTTPServer) func(ctx h
 	}
 }
 
+func _UserService_ImportUsers0_HTTP_Handler(srv UserServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ImportUsersRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationUserServiceImportUsers)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ImportUsers(ctx, req.(*ImportUsersRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ImportUsersResponse)
+		return ctx.Result(200, reply)
+	}
+}
+
 type UserServiceHTTPClient interface {
 	// CreateUser CreateUser creates a new system user.
 	CreateUser(ctx context.Context, req *CreateUserRequest, opts ...http.CallOption) (rsp *User, err error)
@@ -192,6 +222,15 @@ type UserServiceHTTPClient interface {
 	GetInfo(ctx context.Context, req *emptypb.Empty, opts ...http.CallOption) (rsp *CurrentUserInfo, err error)
 	// GetUser GetUser retrieves a user by id.
 	GetUser(ctx context.Context, req *GetUserRequest, opts ...http.CallOption) (rsp *User, err error)
+	// ImportUsers ImportUsers applies a spreadsheet of new System Users from an Import
+	// File (ADR 0017): the workbook was uploaded through the file module
+	// (business prefix import/user) and is addressed by its Stored File id —
+	// never a Display URL. Every row is validated and either all rows are
+	// created or none is (all-or-nothing on one transaction); row_errors
+	// carries every failure with row and column. Imported users receive the
+	// configured initial credential; the sheet never carries passwords.
+	// Insert-only: an existing login account is a row error.
+	ImportUsers(ctx context.Context, req *ImportUsersRequest, opts ...http.CallOption) (rsp *ImportUsersResponse, err error)
 	// ListUsers ListUsers lists users with AIP filter/order/page-token.
 	ListUsers(ctx context.Context, req *ListUsersRequest, opts ...http.CallOption) (rsp *UserSet, err error)
 	// UpdateUser UpdateUser partially updates a user (field-mask). Empty password = unchanged.
@@ -271,6 +310,31 @@ func (c *UserServiceHTTPClientImpl) GetUser(ctx context.Context, in *GetUserRequ
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ImportUsers ImportUsers applies a spreadsheet of new System Users from an Import
+// File (ADR 0017): the workbook was uploaded through the file module
+// (business prefix import/user) and is addressed by its Stored File id —
+// never a Display URL. Every row is validated and either all rows are
+// created or none is (all-or-nothing on one transaction); row_errors
+// carries every failure with row and column. Imported users receive the
+// configured initial credential; the sheet never carries passwords.
+// Insert-only: an existing login account is a row error.
+func (c *UserServiceHTTPClientImpl) ImportUsers(ctx context.Context, in *ImportUsersRequest, opts ...http.CallOption) (*ImportUsersResponse, error) {
+	var out ImportUsersResponse
+	pattern := "/iam/user/-/import"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationUserServiceImportUsers),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
 	if err != nil {
 		return nil, err
 	}

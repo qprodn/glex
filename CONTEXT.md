@@ -225,3 +225,23 @@ hard-deletes rows. Withdrawal is permanent for that record: a link granted
 again after withdrawal is a new record with its own creation audit, while the
 withdrawn generation stays as history.
 _Avoid_: logical delete, del_flag, is_deleted.
+
+### import/export
+
+**Data Import** (数据导入):
+Applying rows read from an Import File to a module's records as one
+indivisible batch — either every row validates and writes, or none does. The
+module doing the importing is named by the Import File's business prefix.
+_Avoid_: Excel upload, batch upload, 数据上传.
+
+**Import File** (导入文件):
+The Stored File offered to a module as the row source of a Data Import; it
+remains stored afterwards as the record of what was offered, identified
+across modules by its Stored File id.
+_Avoid_: source attachment, upload file, Excel 文件 (unqualified).
+
+**Data Export** (数据导出):
+A module's records rendered as a spreadsheet and delivered straight to the
+requesting operator as a download. The system keeps no copy of what left —
+the operation log is the only record that an export happened.
+_Avoid_: export file (there is no file), download URL, 导出文件.

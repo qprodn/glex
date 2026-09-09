@@ -5,17 +5,20 @@ import { useDict, valueEnumOf } from "@/hooks/useDict";
 import { services } from "@/services";
 import { buildFilter } from "@/utils/aipFilter";
 import { buildDeptNames, toDeptTreeData } from "@/utils/deptTree";
+import { downloadWorkbook } from "@/utils/fileTransfer";
 import { createTokenPagedRequest } from "@/utils/pager";
-import { PlusOutlined } from "@ant-design/icons";
+import { DownloadOutlined, PlusOutlined, UploadOutlined } from "@ant-design/icons";
 import {
   type ActionType,
   PageContainer,
   type ProColumns,
+  type ProFormInstance,
   ProTable,
 } from "@ant-design/pro-components";
 import { Access, useAccess, useIntl } from "@umijs/max";
 import { App, Button, Card, Modal, Tree, Typography } from "antd";
 import React, { useRef, useState } from "react";
+import ImportUsersModal from "./ImportUsersModal";
 import RoleAssignDrawer from "./RoleAssignDrawer";
 import UserFormModal from "./UserFormModal";
 
@@ -32,6 +35,9 @@ const UserList: React.FC = () => {
   const [assignUser, setAssignUser] = useState<User | undefined>();
   const [deptTree, setDeptTree] = useState<DeptTreeOption[]>([]);
   const [selectedDept, setSelectedDept] = useState<number | undefined>();
+  const [importOpen, setImportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const searchFormRef = useRef<ProFormInstance>(undefined);
 
   React.useEffect(() => {
     services.dept.ListDeptTree({}).then((tree) => setDeptTree(tree.options ?? []));
@@ -65,6 +71,40 @@ const UserList: React.FC = () => {
     }),
     [selectedDept],
   );
+
+  // Export carries the list page's exact filter (search form + department
+  // subtree) — the backend follows the same fields (ADR 0017).
+  const onExport = async () => {
+    const params = (searchFormRef.current?.getFieldsValue() ?? {}) as {
+      userName?: string;
+      phoneNumber?: string;
+      status?: number | string | null;
+    };
+    setExporting(true);
+    try {
+      await downloadWorkbook(
+        "/iam/user/-/export",
+        {
+          filter: buildFilter([
+            { field: "user_name", value: params.userName || undefined },
+            { field: "phone_number", value: params.phoneNumber || undefined },
+            {
+              field: "status",
+              value:
+                params.status === undefined || params.status === null || params.status === ""
+                  ? undefined
+                  : Number(params.status),
+            },
+          ]),
+          orderBy: "created_at desc",
+          deptId: selectedDept ?? 0,
+        },
+        "用户数据.xlsx",
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const onDelete = (record: User) => {
     Modal.confirm({
@@ -177,6 +217,7 @@ const UserList: React.FC = () => {
           search={{ labelWidth: "auto" }}
           columns={columns}
           request={pager}
+          formRef={searchFormRef}
           toolBarRender={() => [
             <Access key="add" accessible={access.perm("system:user:add")}>
               <Button
@@ -190,6 +231,16 @@ const UserList: React.FC = () => {
                 {intl.formatMessage({ id: "common.new", defaultMessage: "新建" })}
               </Button>
             </Access>,
+            <Access key="import" accessible={access.perm("system:user:import")}>
+              <Button icon={<UploadOutlined />} onClick={() => setImportOpen(true)}>
+                {intl.formatMessage({ id: "common.import", defaultMessage: "导入" })}
+              </Button>
+            </Access>,
+            <Access key="export" accessible={access.perm("system:user:export")}>
+              <Button icon={<DownloadOutlined />} loading={exporting} onClick={onExport}>
+                {intl.formatMessage({ id: "common.export", defaultMessage: "导出" })}
+              </Button>
+            </Access>,
           ]}
         />
       </div>
@@ -200,6 +251,15 @@ const UserList: React.FC = () => {
         onClose={(changed) => {
           setFormOpen(false);
           setEditing(undefined);
+          if (changed) {
+            actionRef.current?.reload();
+          }
+        }}
+      />
+      <ImportUsersModal
+        open={importOpen}
+        onClose={(changed) => {
+          setImportOpen(false);
           if (changed) {
             actionRef.current?.reload();
           }
