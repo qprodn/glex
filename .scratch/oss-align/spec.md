@@ -12,7 +12,7 @@ addressable URL" clause):
    freshly signed at read time (default 120s), on Upload/Get/List/BatchGet.
 2. **BatchGetFiles** — `GET /file/files:batchGet?file_ids=…` (RuoYi's
    `listByIds`): ids → metadata + urls; missing/withdrawn ids are skipped.
-3. **Avatar chain** — `sys_user.avatar_file_id` bigint (RuoYi's ossId
+3. **Avatar chain** — `sys_user.avatar` bigint (RuoYi's
    pattern); read paths resolve `avatar_url` through the new
    `crossdomain/file.URLResolver`; unknown/withdrawn ids degrade to empty.
 4. **Frontend** — shared `fileTransfer` util, reusable `ImageUpload` /
