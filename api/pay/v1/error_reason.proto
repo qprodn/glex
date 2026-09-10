@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package pay.v1;
+
+option go_package = "glex/api/pay/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.pay.v1";
+
+// ErrorReason is the stable vocabulary for the `reason` field of the error
+// body. Values are wire-visible: protojson encodes them as their names, so
+// clients branch on the name (e.g. "REFUND_EXCEED_LIMIT") rather than on an
+// HTTP status. The integer tags are internal to the enum; only the names
+// cross the wire.
+enum ErrorReason {
+  // Unset. Never returned; reserved by proto3 for the zero value.
+  ERROR_REASON_UNSPECIFIED = 0;
+
+  // The requested Merchant Account does not exist (or is withdrawn) — also
+  // the notify route's answer for an unknown merchant path (HTTP 404).
+  MERCHANT_NOT_FOUND = 1;
+  // A Merchant Account parameter is invalid: blank name, unknown schema
+  // field, missing required value, over-length remark.
+  MERCHANT_INVALID = 2;
+  // The display name is already taken by an active account of the channel
+  // (HTTP 409).
+  MERCHANT_DUPLICATE = 3;
+  // The Channel has no registered adapter — configuration of an unadopted
+  // channel, or a probe/payment on one.
+  CHANNEL_NOT_ADOPTED = 4;
+  // PAY_MASTER_KEY is absent or malformed — merchant configuration refuses
+  // to operate rather than degrade to plaintext (ADR 0018).
+  MASTER_KEY_MISSING = 5;
+  // The stored ciphertext failed to decrypt or authenticate — corrupted
+  // rows or a wrong master key.
+  CONFIG_CRYPTO_ERROR = 6;
+  // The requested Payment does not exist (or is soft-deleted).
+  PAYMENT_NOT_FOUND = 7;
+  // A Payment parameter is invalid: non-positive amount, unsupported
+  // currency (MVP: CNY), unsupported pay method, blank biz_no or subject.
+  PAYMENT_INVALID = 8;
+  // The Payment is not in the state the operation needs — refunding an
+  // unpaid Payment (HTTP 409).
+  PAYMENT_NOT_PAID = 9;
+  // The requested Refund does not exist (or is soft-deleted).
+  REFUND_NOT_FOUND = 10;
+  // Refunded + requested would exceed the paid amount (HTTP 409).
+  REFUND_EXCEED_LIMIT = 11;
+  // The Channel rejected or failed the server-to-server call — prepay,
+  // query, close, refund, probe (HTTP 502).
+  CHANNEL_ERROR = 12;
+  // A Channel notification failed signature verification and was recorded
+  // unverified, then rejected (HTTP 400).
+  CHANNEL_NOTIFY_INVALID = 13;
+}

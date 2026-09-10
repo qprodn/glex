@@ -1,0 +1,477 @@
+syntax = "proto3";
+
+package pay.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "glex/api/pay/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.pay.v1";
+
+// MerchantAccount is one Channel Merchant Account (商户账号): the platform's
+// own collecting account at one Channel. The credential config is never
+// served — every response carries only config_masked, the write-time masked
+// echo (ADR 0018/0021).
+message MerchantAccount {
+  // Snowflake ID.
+  int64 merchant_id = 1;
+  // 1 WeChat Pay, 2 Alipay, 3 UnionPay (reserved), 4 Stripe (reserved).
+  int32 channel = 2;
+  // Display alias, unique per channel among active accounts.
+  string name = 3;
+  // 0 enabled, 1 disabled.
+  int32 status = 4;
+  // Masked echo of the channel config keyed by schema field name — secret
+  // fields read like "****ab12", plain fields read verbatim. Display never
+  // decrypts (ADR 0018).
+  map<string, string> config_masked = 5;
+  // SHA-256 hex of the canonical plaintext config; changes whenever the
+  // config is rewritten.
+  string config_digest = 6;
+  // Master-key version the ciphertext was written under (ADR 0018).
+  int32 key_version = 7;
+  string remark = 8;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  int64 create_by = 9;
+  int64 update_by = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// MerchantAccountSet is a page of Merchant Accounts.
+message MerchantAccountSet {
+  repeated MerchantAccount merchants = 1;
+  // Opaque token for the next page; empty when on the last page.
+  string next_page_token = 2;
+}
+
+// SchemaOption is one labeled choice of a select field.
+message SchemaOption {
+  string value = 1;
+  string label = 2;
+}
+
+// SchemaField is one field of a Channel's config schema — the unit the
+// merchant form renders. Types: text, password, textarea, select. Secret
+// fields are encrypted at rest, masked on every read, and scrubbed from
+// operation logs (ADR 0018); on update, a blank secret means "keep the
+// stored value".
+message SchemaField {
+  // Config key (the form field's name and the config JSON's key).
+  string name = 1;
+  string label = 2;
+  string type = 3;
+  bool required = 4;
+  bool secret = 5;
+  string placeholder = 6;
+  string help = 7;
+  // Form group label; fields render grouped in declaration order.
+  string group = 8;
+  // Choices for select fields.
+  repeated SchemaOption choices = 9;
+  // Default value for untouched fields.
+  string default_value = 10;
+}
+
+// ChannelSchema is one Channel's config schema — the single source the
+// merchant form renders and writes validate against (ADR 0021).
+message ChannelSchema {
+  int32 channel = 1;
+  // Stable code, e.g. "wechat", "alipay".
+  string name = 2;
+  // Display label, e.g. "微信支付".
+  string label = 3;
+  repeated SchemaField fields = 4;
+  // True when an adapter is registered and the Channel can collect.
+  bool adopted = 5;
+}
+
+// GetChannelSchemasResponse lists every Channel the module knows.
+message GetChannelSchemasResponse {
+  repeated ChannelSchema schemas = 1;
+}
+
+// ProbeResult reports one Connectivity Test (连通性测试): a cheap
+// authenticated Channel call that moves no money.
+message ProbeResult {
+  bool ok = 1;
+  // Human-readable outcome; the failure reason when ok is false.
+  string message = 2;
+  int64 latency_ms = 3;
+}
+
+// Payment is one attempt to collect a stated amount into one Merchant
+// Account through one Pay Method (支付单). The payment_id doubles as the
+// Channel's merchant order number. Amounts are int64 minor units (ADR 0019).
+message Payment {
+  // Snowflake ID — the Payment number.
+  int64 payment_id = 1;
+  int64 merchant_id = 2;
+  // Channel snapshot from the Merchant Account at initiation.
+  int32 channel = 3;
+  // Business Order Number — the caller's opaque reference, not unique.
+  string biz_no = 4;
+  string subject = 5;
+  // Minor units (fen for CNY). Always > 0.
+  int64 amount = 6;
+  // ISO 4217 code; the MVP channels collect CNY only.
+  string currency = 7;
+  // 1 Native, 2 JSAPI, 3 H5, 4 App.
+  int32 pay_method = 8;
+  // 1 PENDING, 2 PAID, 3 FAILED, 4 CLOSED, 5 EXPIRED — terminal states
+  // are irreversible.
+  int32 status = 9;
+  // Channel trade number (WeChat transaction_id / Alipay trade_no).
+  string channel_trade_no = 10;
+  // Channel prepay payload — the Native code_url a QR renders from.
+  string channel_payload = 11;
+  // Payer identity reported by the Channel (openid / buyer_id).
+  string payer_id = 12;
+  // Sum of successful refunds, minor units. Refunds never change status.
+  int64 refunded_amount = 13;
+  string fail_reason = 14;
+  // Judged lazily: a PENDING payment past this time settles to EXPIRED on
+  // its next settlement-path touch (never on list reads).
+  google.protobuf.Timestamp expire_time = 15;
+  google.protobuf.Timestamp paid_at = 16;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  int64 create_by = 17;
+  int64 update_by = 18;
+  google.protobuf.Timestamp created_at = 19;
+  google.protobuf.Timestamp updated_at = 20;
+}
+
+// PaymentSet is a page of Payments.
+message PaymentSet {
+  repeated Payment payments = 1;
+  string next_page_token = 2;
+}
+
+// Refund is one request to return part or all of a paid Payment's amount
+// (退款单). The refund_id doubles as the Channel's merchant refund number.
+message Refund {
+  // Snowflake ID — the Refund number.
+  int64 refund_id = 1;
+  int64 payment_id = 2;
+  int64 merchant_id = 3;
+  int32 channel = 4;
+  // This refund's amount, minor units; together all refunds of a Payment
+  // never exceed its amount.
+  int64 amount = 5;
+  string reason = 6;
+  // 1 PENDING, 2 SUCCESS, 3 FAILED.
+  int32 status = 7;
+  string channel_refund_no = 8;
+  string fail_reason = 9;
+  google.protobuf.Timestamp refunded_at = 10;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  int64 create_by = 11;
+  int64 update_by = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+// RefundSet is a page of Refunds.
+message RefundSet {
+  repeated Refund refunds = 1;
+  string next_page_token = 2;
+}
+
+// PayService is the payment module's management surface: Merchant Account
+// configuration, unified Payment initiation, and Refunds. Channel
+// callbacks arrive on the auth-exempt notify route (ADR 0020) — a
+// hand-written route, not part of this service.
+service PayService {
+  // ---- Merchant Accounts (perms pay:merchant:*) ----
+
+  // CreateMerchantAccount validates the config against the Channel's
+  // schema, encrypts it whole (ADR 0018), and records the masked echo.
+  rpc CreateMerchantAccount(CreateMerchantAccountRequest) returns (MerchantAccount) {
+    option (google.api.http) = {
+      post: "/pay/merchant"
+      body: "*"
+    };
+  }
+  // ListMerchantAccounts lists Merchant Accounts with AIP filter/order/
+  // page-token. Responses carry masked configs only.
+  rpc ListMerchantAccounts(ListMerchantAccountsRequest) returns (MerchantAccountSet) {
+    option (google.api.http) = {
+      get: "/pay/merchant"
+    };
+  }
+  // GetMerchantAccount retrieves one Merchant Account (masked config).
+  rpc GetMerchantAccount(GetMerchantAccountRequest) returns (MerchantAccount) {
+    option (google.api.http) = {
+      get: "/pay/merchant/{merchant_id}"
+    };
+  }
+  // UpdateMerchantAccount replaces the display name, remark, and the whole
+  // config form; secret fields left blank keep their stored values
+  // (schema semantics, ADR 0021).
+  rpc UpdateMerchantAccount(UpdateMerchantAccountRequest) returns (MerchantAccount) {
+    option (google.api.http) = {
+      patch: "/pay/merchant/{merchant_id}"
+      body: "*"
+    };
+  }
+  // ChangeMerchantAccountStatus enables or disables a Merchant Account.
+  // Disabling stops new Payments only; in-flight ones still settle.
+  rpc ChangeMerchantAccountStatus(ChangeMerchantAccountStatusRequest) returns (MerchantAccount) {
+    option (google.api.http) = {
+      put: "/pay/merchant/{merchant_id}/status"
+      body: "*"
+    };
+  }
+  // WithdrawMerchantAccount soft-deletes the Merchant Account. In-flight
+  // Payments are not blocked — their channel is snapshotted; new ones are.
+  rpc WithdrawMerchantAccount(WithdrawMerchantAccountRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/pay/merchant/{merchant_id}"
+    };
+  }
+  // ProbeMerchantAccount runs the Connectivity Test: one cheap
+  // authenticated Channel call (WeChat platform-certificate pull; Alipay
+  // query of a nonexistent trade), moving no money.
+  rpc ProbeMerchantAccount(ProbeMerchantAccountRequest) returns (ProbeResult) {
+    option (google.api.http) = {
+      post: "/pay/merchant/{merchant_id}/probe"
+      body: "*"
+    };
+  }
+  // GetChannelSchemas returns every Channel's config schema — the source
+  // the merchant form renders from.
+  rpc GetChannelSchemas(GetChannelSchemasRequest) returns (GetChannelSchemasResponse) {
+    option (google.api.http) = {
+      get: "/pay/channel-schemas"
+    };
+  }
+
+  // ---- Payments (perms pay:payment:*) ----
+
+  // CreatePayment initiates one Native Payment: it closes the Merchant
+  // Account's still-pending Payments for the Business Order Number, then
+  // prepays at the Channel and returns the Payment carrying the QR payload
+  // in channel_payload. A concurrent duplicate submit is rejected
+  // (LOCK_BUSY / HTTP 409).
+  rpc CreatePayment(CreatePaymentRequest) returns (Payment) {
+    option (google.api.http) = {
+      post: "/pay/payment"
+      body: "*"
+    };
+  }
+  // GetPayment retrieves one Payment. A PENDING payment past its expiry
+  // settles first (channel-confirmed PAID wins, else EXPIRED).
+  rpc GetPayment(GetPaymentRequest) returns (Payment) {
+    option (google.api.http) = {
+      get: "/pay/payment/{payment_id}"
+    };
+  }
+  // ListPayments lists Payments with AIP filter/order/page-token. List
+  // reads never touch the Channel.
+  rpc ListPayments(ListPaymentsRequest) returns (PaymentSet) {
+    option (google.api.http) = {
+      get: "/pay/payment"
+    };
+  }
+  // QueryPayment asks the Channel for the Payment's true state and advances
+  // it by CAS — the explicit settlement path when callbacks are lost.
+  rpc QueryPayment(QueryPaymentRequest) returns (Payment) {
+    option (google.api.http) = {
+      post: "/pay/payment/{payment_id}/query"
+      body: "*"
+    };
+  }
+  // ClosePayment closes a PENDING Payment at the Channel, then locally. A
+  // Channel "already paid" answer flips to a query and settles PAID; late
+  // close intents on terminal Payments are no-ops.
+  rpc ClosePayment(ClosePaymentRequest) returns (Payment) {
+    option (google.api.http) = {
+      post: "/pay/payment/{payment_id}/close"
+      body: "*"
+    };
+  }
+
+  // ---- Refunds (perms pay:refund:*) ----
+
+  // CreateRefund refunds part of a paid Payment under the payment-scoped
+  // lock: refunded + amount ≤ paid, or REFUND_EXCEED_LIMIT. WeChat refunds
+  // return PENDING (callback settles); Alipay's synchronous refund settles
+  // immediately.
+  rpc CreateRefund(CreateRefundRequest) returns (Refund) {
+    option (google.api.http) = {
+      post: "/pay/refund"
+      body: "*"
+    };
+  }
+  // GetRefund retrieves one Refund.
+  rpc GetRefund(GetRefundRequest) returns (Refund) {
+    option (google.api.http) = {
+      get: "/pay/refund/{refund_id}"
+    };
+  }
+  // ListRefunds lists Refunds with AIP filter/order/page-token.
+  rpc ListRefunds(ListRefundsRequest) returns (RefundSet) {
+    option (google.api.http) = {
+      get: "/pay/refund"
+    };
+  }
+  // QueryRefund asks the Channel for the Refund's true state and advances
+  // it by CAS.
+  rpc QueryRefund(QueryRefundRequest) returns (Refund) {
+    option (google.api.http) = {
+      post: "/pay/refund/{refund_id}/query"
+      body: "*"
+    };
+  }
+}
+
+message CreateMerchantAccountRequest {
+  // Required. The Channel to configure.
+  int32 channel = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. Display alias, unique per channel among active accounts.
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+  // Required. Config values keyed by the Channel schema's field names.
+  // Validated server-side against the schema before encryption.
+  map<string, string> config = 3 [(google.api.field_behavior) = REQUIRED];
+  // Optional. Remark, ≤ 500 chars.
+  string remark = 4;
+}
+
+message ListMerchantAccountsRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `name` (e.g. `name="主店"`, exact)
+  //   * `channel` (e.g. `channel=1`)
+  //   * `status` (e.g. `status=0`)
+  string filter = 3;
+  // Optional. AIP-132 order on a pay_merchant_account column, e.g.
+  // `id desc` (the default), `created_at`.
+  string order_by = 4;
+}
+
+message GetMerchantAccountRequest {
+  // Required. The id of the Merchant Account to retrieve.
+  int64 merchant_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateMerchantAccountRequest {
+  // Required. The id of the Merchant Account to update.
+  int64 merchant_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. New display alias.
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+  // Required. The whole config form. Secret fields left blank keep their
+  // stored values; plain fields are replaced verbatim.
+  map<string, string> config = 3 [(google.api.field_behavior) = REQUIRED];
+  // Optional. New remark.
+  string remark = 4;
+}
+
+message ChangeMerchantAccountStatusRequest {
+  // Required. The id of the Merchant Account.
+  int64 merchant_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. 0 enabled, 1 disabled.
+  int32 status = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message WithdrawMerchantAccountRequest {
+  // Required. The id of the Merchant Account to withdraw.
+  int64 merchant_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ProbeMerchantAccountRequest {
+  // Required. The id of the Merchant Account to probe.
+  int64 merchant_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetChannelSchemasRequest {}
+
+message CreatePaymentRequest {
+  // Required. The Merchant Account to collect into; must exist and be
+  // enabled, and its Channel must have a registered adapter.
+  int64 merchant_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. Business Order Number — opaque caller reference, ≤ 64 chars.
+  string biz_no = 2 [(google.api.field_behavior) = REQUIRED];
+  // Required. Display subject, ≤ 256 chars.
+  string subject = 3 [(google.api.field_behavior) = REQUIRED];
+  // Required. Amount in minor units (fen), > 0.
+  int64 amount = 4 [(google.api.field_behavior) = REQUIRED];
+  // Optional. 1 Native (the only MVP method); defaults to Native.
+  int32 pay_method = 5;
+  // Optional. Expiry window in minutes; 0 or negative uses the 30-minute
+  // default.
+  int32 expire_minutes = 6;
+}
+
+message GetPaymentRequest {
+  // Required. The Payment number.
+  int64 payment_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListPaymentsRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `biz_no` (e.g. `biz_no="ORDER-1"`, exact)
+  //   * `status` (e.g. `status=1`)
+  //   * `merchant_id` (e.g. `merchant_id=1000000000000000001`)
+  //   * `channel` (e.g. `channel=1`)
+  //   * `created_at` (e.g. `created_at>="2026-01-01T00:00:00Z"`)
+  string filter = 3;
+  // Optional. AIP-132 order on a pay_payment column, e.g. `id desc` (the
+  // default), `amount`, `created_at`, `expire_time`, `paid_at`.
+  string order_by = 4;
+}
+
+message QueryPaymentRequest {
+  // Required. The Payment number to query at the Channel.
+  int64 payment_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ClosePaymentRequest {
+  // Required. The Payment number to close.
+  int64 payment_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message CreateRefundRequest {
+  // Required. The paid Payment to refund.
+  int64 payment_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. Refund amount in minor units; refunded + amount ≤ paid.
+  int64 amount = 2 [(google.api.field_behavior) = REQUIRED];
+  // Optional. Reason, ≤ 256 chars.
+  string reason = 3;
+}
+
+message GetRefundRequest {
+  // Required. The Refund number.
+  int64 refund_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListRefundsRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `payment_id` (e.g. `payment_id=1000000000000000001`)
+  //   * `merchant_id` (e.g. `merchant_id=1000000000000000001`)
+  //   * `channel` (e.g. `channel=1`)
+  //   * `status` (e.g. `status=2`)
+  //   * `created_at` (e.g. `created_at>="2026-01-01T00:00:00Z"`)
+  string filter = 3;
+  // Optional. AIP-132 order on a pay_refund column, e.g. `id desc` (the
+  // default), `amount`, `created_at`.
+  string order_by = 4;
+}
+
+message QueryRefundRequest {
+  // Required. The Refund number to query at the Channel.
+  int64 refund_id = 1 [(google.api.field_behavior) = REQUIRED];
+}

@@ -7,6 +7,7 @@ import (
 	dictapp "glex/internal/application/dict"
 	fileapp "glex/internal/application/file"
 	orgapp "glex/internal/application/org"
+	payapp "glex/internal/application/pay"
 	userapp "glex/internal/application/user"
 	accessimpl "glex/internal/crossdomain/access/impl"
 	auditimpl "glex/internal/crossdomain/audit/impl"
@@ -29,6 +30,7 @@ import (
 	fileinfra "glex/internal/infra/file"
 	lockerinfra "glex/internal/infra/locker"
 	orginfra "glex/internal/infra/org"
+	payinfra "glex/internal/infra/pay"
 	"glex/internal/infra/store"
 	userinfra "glex/internal/infra/user"
 	"glex/internal/server"
@@ -56,6 +58,7 @@ var appModule = fx.Options(
 	fileinfra.Module,
 	lockerinfra.Module,
 	orginfra.Module,
+	payinfra.Module,
 	// domain services
 	userservice.Module,
 	auditservice.Module,
@@ -80,6 +83,7 @@ var appModule = fx.Options(
 	dictapp.Module,
 	fileapp.Module,
 	orgapp.Module,
+	payapp.Module,
 	// transport
 	server.Module,
 	fx.Provide(newApp),
@@ -89,5 +93,6 @@ var appModule = fx.Options(
 		func(m *store.TxManager) authnapp.Transaction { return m },
 		func(m *store.TxManager) dictapp.Transaction { return m },
 		func(m *store.TxManager) orgapp.Transaction { return m },
+		func(m *store.TxManager) payapp.Transaction { return m },
 	),
 )

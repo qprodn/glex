@@ -10,6 +10,10 @@ import (
 	"glex/internal/infra/ent/loginlog"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/operlog"
+	"glex/internal/infra/ent/paymerchantaccount"
+	"glex/internal/infra/ent/paynotifylog"
+	"glex/internal/infra/ent/paypayment"
+	"glex/internal/infra/ent/payrefund"
 	"glex/internal/infra/ent/post"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/rolemenu"
@@ -353,6 +357,188 @@ func init() {
 	operlogDescRequestID := operlogFields[11].Descriptor()
 	// operlog.DefaultRequestID holds the default value on creation for the request_id field.
 	operlog.DefaultRequestID = operlogDescRequestID.Default.(string)
+	paymerchantaccountMixin := schema.PayMerchantAccount{}.Mixin()
+	paymerchantaccountMixinFields0 := paymerchantaccountMixin[0].Fields()
+	_ = paymerchantaccountMixinFields0
+	paymerchantaccountFields := schema.PayMerchantAccount{}.Fields()
+	_ = paymerchantaccountFields
+	// paymerchantaccountDescCreateBy is the schema descriptor for create_by field.
+	paymerchantaccountDescCreateBy := paymerchantaccountMixinFields0[0].Descriptor()
+	// paymerchantaccount.DefaultCreateBy holds the default value on creation for the create_by field.
+	paymerchantaccount.DefaultCreateBy = paymerchantaccountDescCreateBy.Default.(int64)
+	// paymerchantaccountDescUpdateBy is the schema descriptor for update_by field.
+	paymerchantaccountDescUpdateBy := paymerchantaccountMixinFields0[1].Descriptor()
+	// paymerchantaccount.DefaultUpdateBy holds the default value on creation for the update_by field.
+	paymerchantaccount.DefaultUpdateBy = paymerchantaccountDescUpdateBy.Default.(int64)
+	// paymerchantaccountDescCreatedAt is the schema descriptor for created_at field.
+	paymerchantaccountDescCreatedAt := paymerchantaccountMixinFields0[2].Descriptor()
+	// paymerchantaccount.DefaultCreatedAt holds the default value on creation for the created_at field.
+	paymerchantaccount.DefaultCreatedAt = paymerchantaccountDescCreatedAt.Default.(func() time.Time)
+	// paymerchantaccountDescUpdatedAt is the schema descriptor for updated_at field.
+	paymerchantaccountDescUpdatedAt := paymerchantaccountMixinFields0[3].Descriptor()
+	// paymerchantaccount.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	paymerchantaccount.DefaultUpdatedAt = paymerchantaccountDescUpdatedAt.Default.(func() time.Time)
+	// paymerchantaccount.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	paymerchantaccount.UpdateDefaultUpdatedAt = paymerchantaccountDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// paymerchantaccountDescName is the schema descriptor for name field.
+	paymerchantaccountDescName := paymerchantaccountFields[2].Descriptor()
+	// paymerchantaccount.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	paymerchantaccount.NameValidator = paymerchantaccountDescName.Validators[0].(func(string) error)
+	// paymerchantaccountDescStatus is the schema descriptor for status field.
+	paymerchantaccountDescStatus := paymerchantaccountFields[3].Descriptor()
+	// paymerchantaccount.DefaultStatus holds the default value on creation for the status field.
+	paymerchantaccount.DefaultStatus = paymerchantaccountDescStatus.Default.(int16)
+	// paymerchantaccountDescConfigDigest is the schema descriptor for config_digest field.
+	paymerchantaccountDescConfigDigest := paymerchantaccountFields[6].Descriptor()
+	// paymerchantaccount.ConfigDigestValidator is a validator for the "config_digest" field. It is called by the builders before save.
+	paymerchantaccount.ConfigDigestValidator = paymerchantaccountDescConfigDigest.Validators[0].(func(string) error)
+	// paymerchantaccountDescKeyVersion is the schema descriptor for key_version field.
+	paymerchantaccountDescKeyVersion := paymerchantaccountFields[7].Descriptor()
+	// paymerchantaccount.DefaultKeyVersion holds the default value on creation for the key_version field.
+	paymerchantaccount.DefaultKeyVersion = paymerchantaccountDescKeyVersion.Default.(int)
+	// paymerchantaccountDescRemark is the schema descriptor for remark field.
+	paymerchantaccountDescRemark := paymerchantaccountFields[8].Descriptor()
+	// paymerchantaccount.DefaultRemark holds the default value on creation for the remark field.
+	paymerchantaccount.DefaultRemark = paymerchantaccountDescRemark.Default.(string)
+	// paymerchantaccount.RemarkValidator is a validator for the "remark" field. It is called by the builders before save.
+	paymerchantaccount.RemarkValidator = paymerchantaccountDescRemark.Validators[0].(func(string) error)
+	paynotifylogMixin := schema.PayNotifyLog{}.Mixin()
+	paynotifylogMixinFields0 := paynotifylogMixin[0].Fields()
+	_ = paynotifylogMixinFields0
+	paynotifylogFields := schema.PayNotifyLog{}.Fields()
+	_ = paynotifylogFields
+	// paynotifylogDescCreateBy is the schema descriptor for create_by field.
+	paynotifylogDescCreateBy := paynotifylogMixinFields0[0].Descriptor()
+	// paynotifylog.DefaultCreateBy holds the default value on creation for the create_by field.
+	paynotifylog.DefaultCreateBy = paynotifylogDescCreateBy.Default.(int64)
+	// paynotifylogDescUpdateBy is the schema descriptor for update_by field.
+	paynotifylogDescUpdateBy := paynotifylogMixinFields0[1].Descriptor()
+	// paynotifylog.DefaultUpdateBy holds the default value on creation for the update_by field.
+	paynotifylog.DefaultUpdateBy = paynotifylogDescUpdateBy.Default.(int64)
+	// paynotifylogDescCreatedAt is the schema descriptor for created_at field.
+	paynotifylogDescCreatedAt := paynotifylogMixinFields0[2].Descriptor()
+	// paynotifylog.DefaultCreatedAt holds the default value on creation for the created_at field.
+	paynotifylog.DefaultCreatedAt = paynotifylogDescCreatedAt.Default.(func() time.Time)
+	// paynotifylogDescUpdatedAt is the schema descriptor for updated_at field.
+	paynotifylogDescUpdatedAt := paynotifylogMixinFields0[3].Descriptor()
+	// paynotifylog.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	paynotifylog.DefaultUpdatedAt = paynotifylogDescUpdatedAt.Default.(func() time.Time)
+	// paynotifylog.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	paynotifylog.UpdateDefaultUpdatedAt = paynotifylogDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// paynotifylogDescNotifyID is the schema descriptor for notify_id field.
+	paynotifylogDescNotifyID := paynotifylogFields[2].Descriptor()
+	// paynotifylog.NotifyIDValidator is a validator for the "notify_id" field. It is called by the builders before save.
+	paynotifylog.NotifyIDValidator = paynotifylogDescNotifyID.Validators[0].(func(string) error)
+	// paynotifylogDescTargetNo is the schema descriptor for target_no field.
+	paynotifylogDescTargetNo := paynotifylogFields[5].Descriptor()
+	// paynotifylog.TargetNoValidator is a validator for the "target_no" field. It is called by the builders before save.
+	paynotifylog.TargetNoValidator = paynotifylogDescTargetNo.Validators[0].(func(string) error)
+	// paynotifylogDescReceivedAt is the schema descriptor for received_at field.
+	paynotifylogDescReceivedAt := paynotifylogFields[10].Descriptor()
+	// paynotifylog.DefaultReceivedAt holds the default value on creation for the received_at field.
+	paynotifylog.DefaultReceivedAt = paynotifylogDescReceivedAt.Default.(func() time.Time)
+	paypaymentMixin := schema.PayPayment{}.Mixin()
+	paypaymentMixinFields0 := paypaymentMixin[0].Fields()
+	_ = paypaymentMixinFields0
+	paypaymentFields := schema.PayPayment{}.Fields()
+	_ = paypaymentFields
+	// paypaymentDescCreateBy is the schema descriptor for create_by field.
+	paypaymentDescCreateBy := paypaymentMixinFields0[0].Descriptor()
+	// paypayment.DefaultCreateBy holds the default value on creation for the create_by field.
+	paypayment.DefaultCreateBy = paypaymentDescCreateBy.Default.(int64)
+	// paypaymentDescUpdateBy is the schema descriptor for update_by field.
+	paypaymentDescUpdateBy := paypaymentMixinFields0[1].Descriptor()
+	// paypayment.DefaultUpdateBy holds the default value on creation for the update_by field.
+	paypayment.DefaultUpdateBy = paypaymentDescUpdateBy.Default.(int64)
+	// paypaymentDescCreatedAt is the schema descriptor for created_at field.
+	paypaymentDescCreatedAt := paypaymentMixinFields0[2].Descriptor()
+	// paypayment.DefaultCreatedAt holds the default value on creation for the created_at field.
+	paypayment.DefaultCreatedAt = paypaymentDescCreatedAt.Default.(func() time.Time)
+	// paypaymentDescUpdatedAt is the schema descriptor for updated_at field.
+	paypaymentDescUpdatedAt := paypaymentMixinFields0[3].Descriptor()
+	// paypayment.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	paypayment.DefaultUpdatedAt = paypaymentDescUpdatedAt.Default.(func() time.Time)
+	// paypayment.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	paypayment.UpdateDefaultUpdatedAt = paypaymentDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// paypaymentDescBizNo is the schema descriptor for biz_no field.
+	paypaymentDescBizNo := paypaymentFields[3].Descriptor()
+	// paypayment.BizNoValidator is a validator for the "biz_no" field. It is called by the builders before save.
+	paypayment.BizNoValidator = paypaymentDescBizNo.Validators[0].(func(string) error)
+	// paypaymentDescSubject is the schema descriptor for subject field.
+	paypaymentDescSubject := paypaymentFields[4].Descriptor()
+	// paypayment.SubjectValidator is a validator for the "subject" field. It is called by the builders before save.
+	paypayment.SubjectValidator = paypaymentDescSubject.Validators[0].(func(string) error)
+	// paypaymentDescCurrency is the schema descriptor for currency field.
+	paypaymentDescCurrency := paypaymentFields[6].Descriptor()
+	// paypayment.DefaultCurrency holds the default value on creation for the currency field.
+	paypayment.DefaultCurrency = paypaymentDescCurrency.Default.(string)
+	// paypayment.CurrencyValidator is a validator for the "currency" field. It is called by the builders before save.
+	paypayment.CurrencyValidator = paypaymentDescCurrency.Validators[0].(func(string) error)
+	// paypaymentDescPayMethod is the schema descriptor for pay_method field.
+	paypaymentDescPayMethod := paypaymentFields[7].Descriptor()
+	// paypayment.DefaultPayMethod holds the default value on creation for the pay_method field.
+	paypayment.DefaultPayMethod = paypaymentDescPayMethod.Default.(int16)
+	// paypaymentDescStatus is the schema descriptor for status field.
+	paypaymentDescStatus := paypaymentFields[8].Descriptor()
+	// paypayment.DefaultStatus holds the default value on creation for the status field.
+	paypayment.DefaultStatus = paypaymentDescStatus.Default.(int16)
+	// paypaymentDescChannelTradeNo is the schema descriptor for channel_trade_no field.
+	paypaymentDescChannelTradeNo := paypaymentFields[9].Descriptor()
+	// paypayment.ChannelTradeNoValidator is a validator for the "channel_trade_no" field. It is called by the builders before save.
+	paypayment.ChannelTradeNoValidator = paypaymentDescChannelTradeNo.Validators[0].(func(string) error)
+	// paypaymentDescPayerID is the schema descriptor for payer_id field.
+	paypaymentDescPayerID := paypaymentFields[11].Descriptor()
+	// paypayment.PayerIDValidator is a validator for the "payer_id" field. It is called by the builders before save.
+	paypayment.PayerIDValidator = paypaymentDescPayerID.Validators[0].(func(string) error)
+	// paypaymentDescRefundedAmount is the schema descriptor for refunded_amount field.
+	paypaymentDescRefundedAmount := paypaymentFields[12].Descriptor()
+	// paypayment.DefaultRefundedAmount holds the default value on creation for the refunded_amount field.
+	paypayment.DefaultRefundedAmount = paypaymentDescRefundedAmount.Default.(int64)
+	// paypaymentDescFailReason is the schema descriptor for fail_reason field.
+	paypaymentDescFailReason := paypaymentFields[13].Descriptor()
+	// paypayment.FailReasonValidator is a validator for the "fail_reason" field. It is called by the builders before save.
+	paypayment.FailReasonValidator = paypaymentDescFailReason.Validators[0].(func(string) error)
+	payrefundMixin := schema.PayRefund{}.Mixin()
+	payrefundMixinFields0 := payrefundMixin[0].Fields()
+	_ = payrefundMixinFields0
+	payrefundFields := schema.PayRefund{}.Fields()
+	_ = payrefundFields
+	// payrefundDescCreateBy is the schema descriptor for create_by field.
+	payrefundDescCreateBy := payrefundMixinFields0[0].Descriptor()
+	// payrefund.DefaultCreateBy holds the default value on creation for the create_by field.
+	payrefund.DefaultCreateBy = payrefundDescCreateBy.Default.(int64)
+	// payrefundDescUpdateBy is the schema descriptor for update_by field.
+	payrefundDescUpdateBy := payrefundMixinFields0[1].Descriptor()
+	// payrefund.DefaultUpdateBy holds the default value on creation for the update_by field.
+	payrefund.DefaultUpdateBy = payrefundDescUpdateBy.Default.(int64)
+	// payrefundDescCreatedAt is the schema descriptor for created_at field.
+	payrefundDescCreatedAt := payrefundMixinFields0[2].Descriptor()
+	// payrefund.DefaultCreatedAt holds the default value on creation for the created_at field.
+	payrefund.DefaultCreatedAt = payrefundDescCreatedAt.Default.(func() time.Time)
+	// payrefundDescUpdatedAt is the schema descriptor for updated_at field.
+	payrefundDescUpdatedAt := payrefundMixinFields0[3].Descriptor()
+	// payrefund.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	payrefund.DefaultUpdatedAt = payrefundDescUpdatedAt.Default.(func() time.Time)
+	// payrefund.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	payrefund.UpdateDefaultUpdatedAt = payrefundDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// payrefundDescReason is the schema descriptor for reason field.
+	payrefundDescReason := payrefundFields[5].Descriptor()
+	// payrefund.DefaultReason holds the default value on creation for the reason field.
+	payrefund.DefaultReason = payrefundDescReason.Default.(string)
+	// payrefund.ReasonValidator is a validator for the "reason" field. It is called by the builders before save.
+	payrefund.ReasonValidator = payrefundDescReason.Validators[0].(func(string) error)
+	// payrefundDescStatus is the schema descriptor for status field.
+	payrefundDescStatus := payrefundFields[6].Descriptor()
+	// payrefund.DefaultStatus holds the default value on creation for the status field.
+	payrefund.DefaultStatus = payrefundDescStatus.Default.(int16)
+	// payrefundDescChannelRefundNo is the schema descriptor for channel_refund_no field.
+	payrefundDescChannelRefundNo := payrefundFields[7].Descriptor()
+	// payrefund.ChannelRefundNoValidator is a validator for the "channel_refund_no" field. It is called by the builders before save.
+	payrefund.ChannelRefundNoValidator = payrefundDescChannelRefundNo.Validators[0].(func(string) error)
+	// payrefundDescFailReason is the schema descriptor for fail_reason field.
+	payrefundDescFailReason := payrefundFields[8].Descriptor()
+	// payrefund.FailReasonValidator is a validator for the "fail_reason" field. It is called by the builders before save.
+	payrefund.FailReasonValidator = payrefundDescFailReason.Validators[0].(func(string) error)
 	postMixin := schema.Post{}.Mixin()
 	postMixinFields0 := postMixin[0].Fields()
 	_ = postMixinFields0

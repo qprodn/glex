@@ -9,6 +9,7 @@ import (
 	dictv1 "glex/api/dict/v1"
 	filev1 "glex/api/file/v1"
 	orgv1 "glex/api/org/v1"
+	payv1 "glex/api/pay/v1"
 	userv1 "glex/api/user/v1"
 	domainaudit "glex/internal/domain/audit"
 	auditentity "glex/internal/domain/audit/entity"
@@ -101,6 +102,27 @@ func authRoutes() map[string]authmw.Route {
 		auditv1.OperationOperLogServiceDeleteOperLog:   {Permission: "monitor:operlog:remove"},
 		auditv1.OperationLoginLogServiceListLoginLogs:  {Permission: "monitor:loginlog:list"},
 		auditv1.OperationLoginLogServiceDeleteLoginLog: {Permission: "monitor:loginlog:remove"},
+
+		// pay: merchant management, unified payments, refunds (design §9).
+		// The notify route is deliberately absent — the channel's request
+		// signature is the authentication there (ADR 0020).
+		payv1.OperationPayServiceCreateMerchantAccount:       {Permission: "pay:merchant:create"},
+		payv1.OperationPayServiceListMerchantAccounts:        {Permission: "pay:merchant:list"},
+		payv1.OperationPayServiceGetMerchantAccount:          {Permission: "pay:merchant:list"},
+		payv1.OperationPayServiceUpdateMerchantAccount:       {Permission: "pay:merchant:update"},
+		payv1.OperationPayServiceChangeMerchantAccountStatus: {Permission: "pay:merchant:update"},
+		payv1.OperationPayServiceWithdrawMerchantAccount:     {Permission: "pay:merchant:remove"},
+		payv1.OperationPayServiceProbeMerchantAccount:        {Permission: "pay:merchant:probe"},
+		payv1.OperationPayServiceGetChannelSchemas:           {Permission: "pay:merchant:list"},
+		payv1.OperationPayServiceCreatePayment:               {Permission: "pay:payment:create"},
+		payv1.OperationPayServiceGetPayment:                  {Permission: "pay:payment:list"},
+		payv1.OperationPayServiceListPayments:                {Permission: "pay:payment:list"},
+		payv1.OperationPayServiceQueryPayment:                {Permission: "pay:payment:query"},
+		payv1.OperationPayServiceClosePayment:                {Permission: "pay:payment:close"},
+		payv1.OperationPayServiceCreateRefund:                {Permission: "pay:refund:create"},
+		payv1.OperationPayServiceGetRefund:                   {Permission: "pay:refund:list"},
+		payv1.OperationPayServiceListRefunds:                 {Permission: "pay:refund:list"},
+		payv1.OperationPayServiceQueryRefund:                 {Permission: "pay:refund:query"},
 	}
 }
 

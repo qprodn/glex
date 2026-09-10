@@ -1,0 +1,56 @@
+// Package pay owns the pay module per ADR 0005: the Channel Merchant
+// Accounts the back office configures and the Payments and Refunds
+// collected through them. The package root holds only the typed errors;
+// the objects live in entity, the row ports in repository, and the module's
+// own rules — plus the channel gateway seam — in service.
+package pay
+
+import (
+	"github.com/go-kratos/kratos/v3/errors"
+)
+
+var (
+	// ErrMerchantNotFound: the requested Merchant Account does not exist
+	// (or is withdrawn). Also the notify route's answer for an unknown
+	// merchant path.
+	ErrMerchantNotFound = errors.NotFound("MERCHANT_NOT_FOUND", "merchant account not found")
+	// ErrMerchantInvalid: a Merchant Account parameter is invalid — blank
+	// name, unknown schema field, missing required value, over-length
+	// remark.
+	ErrMerchantInvalid = errors.BadRequest("MERCHANT_INVALID", "merchant account parameters are invalid")
+	// ErrMerchantDuplicate: the display name is already taken by an active
+	// account of the same channel.
+	ErrMerchantDuplicate = errors.Conflict("MERCHANT_DUPLICATE", "merchant account name already exists")
+	// ErrChannelNotAdopted: the Channel has no registered adapter —
+	// configuration of an unadopted channel, or a probe/payment on one.
+	ErrChannelNotAdopted = errors.BadRequest("CHANNEL_NOT_ADOPTED", "channel is not adopted")
+	// ErrMasterKeyMissing: PAY_MASTER_KEY is absent or malformed (ADR 0018)
+	// — merchant configuration refuses to operate rather than degrade to
+	// plaintext.
+	ErrMasterKeyMissing = errors.InternalServer("MASTER_KEY_MISSING", "payment master key is not configured")
+	// ErrConfigCrypto: the stored ciphertext failed to decrypt or
+	// authenticate — corrupted rows or a wrong master key.
+	ErrConfigCrypto = errors.InternalServer("CONFIG_CRYPTO_ERROR", "merchant config decryption failed")
+	// ErrPaymentNotFound: the requested Payment does not exist (or is
+	// soft-deleted).
+	ErrPaymentNotFound = errors.NotFound("PAYMENT_NOT_FOUND", "payment not found")
+	// ErrPaymentInvalid: a Payment parameter is invalid — non-positive
+	// amount, unsupported currency (MVP: CNY), unsupported pay method,
+	// blank biz_no or subject.
+	ErrPaymentInvalid = errors.BadRequest("PAYMENT_INVALID", "payment parameters are invalid")
+	// ErrPaymentNotPaid: the Payment is not in the state the operation
+	// needs — refunding an unpaid Payment.
+	ErrPaymentNotPaid = errors.Conflict("PAYMENT_NOT_PAID", "payment is not paid")
+	// ErrRefundNotFound: the requested Refund does not exist (or is
+	// soft-deleted).
+	ErrRefundNotFound = errors.NotFound("REFUND_NOT_FOUND", "refund not found")
+	// ErrRefundExceedLimit: refunded + requested would exceed the paid
+	// amount.
+	ErrRefundExceedLimit = errors.Conflict("REFUND_EXCEED_LIMIT", "refund exceeds the paid amount")
+	// ErrChannelError: the Channel rejected or failed the
+	// server-to-server call — prepay, query, close, refund, probe.
+	ErrChannelError = errors.New(502, "CHANNEL_ERROR", "payment channel request failed")
+	// ErrNotifyInvalid: a Channel notification failed signature
+	// verification and was recorded unverified, then rejected.
+	ErrNotifyInvalid = errors.BadRequest("CHANNEL_NOTIFY_INVALID", "channel notification failed verification")
+)

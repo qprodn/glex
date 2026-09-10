@@ -28,6 +28,14 @@ type Tx struct {
 	Menu *MenuClient
 	// OperLog is the client for interacting with the OperLog builders.
 	OperLog *OperLogClient
+	// PayMerchantAccount is the client for interacting with the PayMerchantAccount builders.
+	PayMerchantAccount *PayMerchantAccountClient
+	// PayNotifyLog is the client for interacting with the PayNotifyLog builders.
+	PayNotifyLog *PayNotifyLogClient
+	// PayPayment is the client for interacting with the PayPayment builders.
+	PayPayment *PayPaymentClient
+	// PayRefund is the client for interacting with the PayRefund builders.
+	PayRefund *PayRefundClient
 	// Post is the client for interacting with the Post builders.
 	Post *PostClient
 	// Role is the client for interacting with the Role builders.
@@ -178,6 +186,10 @@ func (tx *Tx) init() {
 	tx.LoginLog = NewLoginLogClient(tx.config)
 	tx.Menu = NewMenuClient(tx.config)
 	tx.OperLog = NewOperLogClient(tx.config)
+	tx.PayMerchantAccount = NewPayMerchantAccountClient(tx.config)
+	tx.PayNotifyLog = NewPayNotifyLogClient(tx.config)
+	tx.PayPayment = NewPayPaymentClient(tx.config)
+	tx.PayRefund = NewPayRefundClient(tx.config)
 	tx.Post = NewPostClient(tx.config)
 	tx.Role = NewRoleClient(tx.config)
 	tx.RoleMenu = NewRoleMenuClient(tx.config)

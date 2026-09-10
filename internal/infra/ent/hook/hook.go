@@ -92,6 +92,54 @@ func (f OperLogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OperLogMutation", m)
 }
 
+// The PayMerchantAccountFunc type is an adapter to allow the use of ordinary
+// function as PayMerchantAccount mutator.
+type PayMerchantAccountFunc func(context.Context, *ent.PayMerchantAccountMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PayMerchantAccountFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PayMerchantAccountMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PayMerchantAccountMutation", m)
+}
+
+// The PayNotifyLogFunc type is an adapter to allow the use of ordinary
+// function as PayNotifyLog mutator.
+type PayNotifyLogFunc func(context.Context, *ent.PayNotifyLogMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PayNotifyLogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PayNotifyLogMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PayNotifyLogMutation", m)
+}
+
+// The PayPaymentFunc type is an adapter to allow the use of ordinary
+// function as PayPayment mutator.
+type PayPaymentFunc func(context.Context, *ent.PayPaymentMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PayPaymentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PayPaymentMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PayPaymentMutation", m)
+}
+
+// The PayRefundFunc type is an adapter to allow the use of ordinary
+// function as PayRefund mutator.
+type PayRefundFunc func(context.Context, *ent.PayRefundMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PayRefundFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PayRefundMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PayRefundMutation", m)
+}
+
 // The PostFunc type is an adapter to allow the use of ordinary
 // function as Post mutator.
 type PostFunc func(context.Context, *ent.PostMutation) (ent.Value, error)

@@ -13,6 +13,10 @@ import (
 	"glex/internal/infra/ent/loginlog"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/operlog"
+	"glex/internal/infra/ent/paymerchantaccount"
+	"glex/internal/infra/ent/paynotifylog"
+	"glex/internal/infra/ent/paypayment"
+	"glex/internal/infra/ent/payrefund"
 	"glex/internal/infra/ent/post"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/rolemenu"
@@ -85,19 +89,23 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			dept.Table:     dept.ValidColumn,
-			dictdata.Table: dictdata.ValidColumn,
-			dicttype.Table: dicttype.ValidColumn,
-			file.Table:     file.ValidColumn,
-			loginlog.Table: loginlog.ValidColumn,
-			menu.Table:     menu.ValidColumn,
-			operlog.Table:  operlog.ValidColumn,
-			post.Table:     post.ValidColumn,
-			role.Table:     role.ValidColumn,
-			rolemenu.Table: rolemenu.ValidColumn,
-			user.Table:     user.ValidColumn,
-			userpost.Table: userpost.ValidColumn,
-			userrole.Table: userrole.ValidColumn,
+			dept.Table:               dept.ValidColumn,
+			dictdata.Table:           dictdata.ValidColumn,
+			dicttype.Table:           dicttype.ValidColumn,
+			file.Table:               file.ValidColumn,
+			loginlog.Table:           loginlog.ValidColumn,
+			menu.Table:               menu.ValidColumn,
+			operlog.Table:            operlog.ValidColumn,
+			paymerchantaccount.Table: paymerchantaccount.ValidColumn,
+			paynotifylog.Table:       paynotifylog.ValidColumn,
+			paypayment.Table:         paypayment.ValidColumn,
+			payrefund.Table:          payrefund.ValidColumn,
+			post.Table:               post.ValidColumn,
+			role.Table:               role.ValidColumn,
+			rolemenu.Table:           rolemenu.ValidColumn,
+			user.Table:               user.ValidColumn,
+			userpost.Table:           userpost.ValidColumn,
+			userrole.Table:           userrole.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

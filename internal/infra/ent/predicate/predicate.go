@@ -27,6 +27,18 @@ type Menu func(*sql.Selector)
 // OperLog is the predicate function for operlog builders.
 type OperLog func(*sql.Selector)
 
+// PayMerchantAccount is the predicate function for paymerchantaccount builders.
+type PayMerchantAccount func(*sql.Selector)
+
+// PayNotifyLog is the predicate function for paynotifylog builders.
+type PayNotifyLog func(*sql.Selector)
+
+// PayPayment is the predicate function for paypayment builders.
+type PayPayment func(*sql.Selector)
+
+// PayRefund is the predicate function for payrefund builders.
+type PayRefund func(*sql.Selector)
+
 // Post is the predicate function for post builders.
 type Post func(*sql.Selector)
 

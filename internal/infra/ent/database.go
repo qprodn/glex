@@ -114,6 +114,26 @@ func (db *Database) OperLog(ctx context.Context) *OperLogClient {
 	return db.loadClient(ctx).OperLog
 }
 
+// PayMerchantAccount is the client for interacting with the PayMerchantAccount builders.
+func (db *Database) PayMerchantAccount(ctx context.Context) *PayMerchantAccountClient {
+	return db.loadClient(ctx).PayMerchantAccount
+}
+
+// PayNotifyLog is the client for interacting with the PayNotifyLog builders.
+func (db *Database) PayNotifyLog(ctx context.Context) *PayNotifyLogClient {
+	return db.loadClient(ctx).PayNotifyLog
+}
+
+// PayPayment is the client for interacting with the PayPayment builders.
+func (db *Database) PayPayment(ctx context.Context) *PayPaymentClient {
+	return db.loadClient(ctx).PayPayment
+}
+
+// PayRefund is the client for interacting with the PayRefund builders.
+func (db *Database) PayRefund(ctx context.Context) *PayRefundClient {
+	return db.loadClient(ctx).PayRefund
+}
+
 // Post is the client for interacting with the Post builders.
 func (db *Database) Post(ctx context.Context) *PostClient {
 	return db.loadClient(ctx).Post

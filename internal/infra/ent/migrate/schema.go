@@ -229,6 +229,165 @@ var (
 			},
 		},
 	}
+	// PayMerchantAccountColumns holds the columns for the "pay_merchant_account" table.
+	PayMerchantAccountColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "channel", Type: field.TypeInt16},
+		{Name: "name", Type: field.TypeString, Size: 64},
+		{Name: "status", Type: field.TypeInt16, Default: 0},
+		{Name: "config_cipher", Type: field.TypeString, Size: 2147483647},
+		{Name: "config_masked", Type: field.TypeJSON},
+		{Name: "config_digest", Type: field.TypeString, Size: 64},
+		{Name: "key_version", Type: field.TypeInt, Default: 1},
+		{Name: "remark", Type: field.TypeString, Size: 500, Default: ""},
+	}
+	// PayMerchantAccountTable holds the schema information for the "pay_merchant_account" table.
+	PayMerchantAccountTable = &schema.Table{
+		Name:       "pay_merchant_account",
+		Columns:    PayMerchantAccountColumns,
+		PrimaryKey: []*schema.Column{PayMerchantAccountColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "paymerchantaccount_channel_name",
+				Unique:  true,
+				Columns: []*schema.Column{PayMerchantAccountColumns[6], PayMerchantAccountColumns[7]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+		},
+	}
+	// PayNotifyLogColumns holds the columns for the "pay_notify_log" table.
+	PayNotifyLogColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "channel", Type: field.TypeInt16},
+		{Name: "notify_id", Type: field.TypeString, Size: 128},
+		{Name: "merchant_id", Type: field.TypeInt64},
+		{Name: "kind", Type: field.TypeInt16},
+		{Name: "target_no", Type: field.TypeString, Size: 64},
+		{Name: "verified", Type: field.TypeBool},
+		{Name: "processed", Type: field.TypeBool},
+		{Name: "raw_body", Type: field.TypeString, Size: 2147483647},
+		{Name: "sign_headers", Type: field.TypeJSON, Nullable: true},
+		{Name: "received_at", Type: field.TypeTime},
+	}
+	// PayNotifyLogTable holds the schema information for the "pay_notify_log" table.
+	PayNotifyLogTable = &schema.Table{
+		Name:       "pay_notify_log",
+		Columns:    PayNotifyLogColumns,
+		PrimaryKey: []*schema.Column{PayNotifyLogColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "paynotifylog_channel_notify_id",
+				Unique:  true,
+				Columns: []*schema.Column{PayNotifyLogColumns[6], PayNotifyLogColumns[7]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+			{
+				Name:    "paynotifylog_merchant_id",
+				Unique:  false,
+				Columns: []*schema.Column{PayNotifyLogColumns[8]},
+			},
+		},
+	}
+	// PayPaymentColumns holds the columns for the "pay_payment" table.
+	PayPaymentColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "merchant_id", Type: field.TypeInt64},
+		{Name: "channel", Type: field.TypeInt16},
+		{Name: "biz_no", Type: field.TypeString, Size: 64},
+		{Name: "subject", Type: field.TypeString, Size: 256},
+		{Name: "amount", Type: field.TypeInt64},
+		{Name: "currency", Type: field.TypeString, Size: 3, Default: "CNY"},
+		{Name: "pay_method", Type: field.TypeInt16, Default: 1},
+		{Name: "status", Type: field.TypeInt16, Default: 1},
+		{Name: "channel_trade_no", Type: field.TypeString, Nullable: true, Size: 64},
+		{Name: "channel_payload", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "payer_id", Type: field.TypeString, Nullable: true, Size: 64},
+		{Name: "refunded_amount", Type: field.TypeInt64, Default: 0},
+		{Name: "fail_reason", Type: field.TypeString, Nullable: true, Size: 256},
+		{Name: "expire_time", Type: field.TypeTime},
+		{Name: "paid_at", Type: field.TypeTime, Nullable: true},
+	}
+	// PayPaymentTable holds the schema information for the "pay_payment" table.
+	PayPaymentTable = &schema.Table{
+		Name:       "pay_payment",
+		Columns:    PayPaymentColumns,
+		PrimaryKey: []*schema.Column{PayPaymentColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "paypayment_merchant_id_biz_no",
+				Unique:  false,
+				Columns: []*schema.Column{PayPaymentColumns[6], PayPaymentColumns[8]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+			{
+				Name:    "paypayment_status",
+				Unique:  false,
+				Columns: []*schema.Column{PayPaymentColumns[13]},
+			},
+			{
+				Name:    "paypayment_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{PayPaymentColumns[3]},
+			},
+			{
+				Name:    "paypayment_channel_trade_no",
+				Unique:  false,
+				Columns: []*schema.Column{PayPaymentColumns[14]},
+			},
+		},
+	}
+	// PayRefundColumns holds the columns for the "pay_refund" table.
+	PayRefundColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "payment_id", Type: field.TypeInt64},
+		{Name: "merchant_id", Type: field.TypeInt64},
+		{Name: "channel", Type: field.TypeInt16},
+		{Name: "amount", Type: field.TypeInt64},
+		{Name: "reason", Type: field.TypeString, Size: 256, Default: ""},
+		{Name: "status", Type: field.TypeInt16, Default: 1},
+		{Name: "channel_refund_no", Type: field.TypeString, Nullable: true, Size: 64},
+		{Name: "fail_reason", Type: field.TypeString, Nullable: true, Size: 256},
+		{Name: "refunded_at", Type: field.TypeTime, Nullable: true},
+	}
+	// PayRefundTable holds the schema information for the "pay_refund" table.
+	PayRefundTable = &schema.Table{
+		Name:       "pay_refund",
+		Columns:    PayRefundColumns,
+		PrimaryKey: []*schema.Column{PayRefundColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "payrefund_payment_id",
+				Unique:  false,
+				Columns: []*schema.Column{PayRefundColumns[6]},
+			},
+		},
+	}
 	// SysPostColumns holds the columns for the "sys_post" table.
 	SysPostColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -437,6 +596,10 @@ var (
 		SysLoginLogTable,
 		SysMenuTable,
 		SysOperLogTable,
+		PayMerchantAccountTable,
+		PayNotifyLogTable,
+		PayPaymentTable,
+		PayRefundTable,
 		SysPostTable,
 		SysRoleTable,
 		SysRoleMenuTable,
@@ -467,6 +630,18 @@ func init() {
 	}
 	SysOperLogTable.Annotation = &entsql.Annotation{
 		Table: "sys_oper_log",
+	}
+	PayMerchantAccountTable.Annotation = &entsql.Annotation{
+		Table: "pay_merchant_account",
+	}
+	PayNotifyLogTable.Annotation = &entsql.Annotation{
+		Table: "pay_notify_log",
+	}
+	PayPaymentTable.Annotation = &entsql.Annotation{
+		Table: "pay_payment",
+	}
+	PayRefundTable.Annotation = &entsql.Annotation{
+		Table: "pay_refund",
 	}
 	SysPostTable.Annotation = &entsql.Annotation{
 		Table: "sys_post",

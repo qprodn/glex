@@ -471,3 +471,193 @@ comment on column sys_user_post.update_by is '更新者用户ID';
 comment on column sys_user_post.created_at is '创建时间';
 comment on column sys_user_post.updated_at is '更新时间';
 comment on column sys_user_post.deleted_at is '软删除时间；NULL=未删除';
+
+-- ============================================================
+-- pay 模块（原生设计，非 RuoYi 血统 —— 不用 sys_ 前缀）
+-- ============================================================
+
+create table if not exists pay_merchant_account (
+    id             bigint       not null,
+    channel        smallint     not null,                  -- 1 微信 2 支付宝 3 云闪付(预留) 4 Stripe(预留)
+    name           varchar(64)  not null,                  -- 显示别名；同渠道活跃行内唯一
+    status         smallint     not null default 0,        -- 0 启用 1 停用
+    config_cipher  text         not null,                  -- 渠道配置 JSON 密文（ADR 0018/0021）
+    config_masked  jsonb        not null,                  -- 写入时生成的掩码回显（明文存放，仅掩码）
+    config_digest  varchar(64)  not null,                  -- 明文配置 sha256，网关缓存键一半
+    key_version    int          not null default 1,        -- 主密钥版本（KEK 轮换预留，ADR 0018）
+    remark         varchar(500) not null default '',
+    create_by      bigint       not null default 0,
+    update_by      bigint       not null default 0,
+    created_at     timestamptz  not null default now(),
+    updated_at     timestamptz  not null default now(),
+    deleted_at     timestamptz,                            -- 软删除；NULL=未删除
+    constraint pay_merchant_account_pkey primary key (id)
+);
+
+-- 同一渠道的活跃账号展示名唯一；撤除后名字可复用（ADR 0002 软删除）。
+create unique index if not exists merchant_channel_name
+    on pay_merchant_account (channel, name)
+    where deleted_at is null;
+
+comment on table pay_merchant_account is '商户账号表（渠道收款账号，凭据密文落库 ADR 0018/0021）';
+
+comment on column pay_merchant_account.id is '主键ID（雪花）';
+comment on column pay_merchant_account.channel is '支付渠道：1微信 2支付宝 3云闪付(预留) 4Stripe(预留)';
+comment on column pay_merchant_account.name is '显示别名；同渠道活跃行内唯一（部分唯一索引）';
+comment on column pay_merchant_account.status is '账号状态：0启用 1停用（停用仅禁止新支付）';
+comment on column pay_merchant_account.config_cipher is '渠道配置 JSON 密文；格式 key_version:nonce_b64:ciphertext_b64';
+comment on column pay_merchant_account.config_masked is '掩码回显（如 ****ab12）；展示路径永不解密';
+comment on column pay_merchant_account.config_digest is '明文配置 sha256 hex；商户配置重写即变化';
+comment on column pay_merchant_account.key_version is '加密所用主密钥版本';
+comment on column pay_merchant_account.remark is '备注';
+comment on column pay_merchant_account.create_by is '创建者用户ID';
+comment on column pay_merchant_account.update_by is '更新者用户ID';
+comment on column pay_merchant_account.created_at is '创建时间';
+comment on column pay_merchant_account.updated_at is '更新时间';
+comment on column pay_merchant_account.deleted_at is '软删除时间；NULL=未删除';
+
+create table if not exists pay_payment (
+    id                bigint       not null,             -- 即支付单号，字符串形式作渠道 out_trade_no
+    merchant_id       bigint       not null,             -- 收款商户账号（引用，无 FK）
+    channel           smallint     not null,             -- 发起时商户渠道快照
+    biz_no            varchar(64)  not null,             -- 业务单号（引用，不唯一）
+    subject           varchar(256) not null,
+    amount            bigint       not null,             -- 金额，最小单位（分），ADR 0019
+    currency          char(3)      not null default 'CNY',
+    pay_method        smallint     not null default 1,   -- 1 Native 2 JSAPI 3 H5 4 App
+    status            smallint     not null default 1,   -- 1 待支付 2 已支付 3 失败 4 已关闭 5 已过期
+    channel_trade_no  varchar(64),                       -- 渠道交易号（微信 transaction_id / 支付宝 trade_no）
+    channel_payload   text,                              -- 预下单返回（code_url 等），供二维码重渲染
+    payer_id          varchar(64),                       -- 付款方（openid / buyer_id）
+    refunded_amount   bigint       not null default 0,   -- 已退累计（维护字段，退款推进时累加）
+    fail_reason       varchar(256),
+    expire_time       timestamptz  not null,             -- 下单时间 + 有效期（默认 30 分钟）
+    paid_at           timestamptz,
+    create_by         bigint       not null default 0,
+    update_by         bigint       not null default 0,
+    created_at        timestamptz  not null default now(),
+    updated_at        timestamptz  not null default now(),
+    deleted_at        timestamptz,                       -- 软删除；NULL=未删除
+    constraint pay_payment_pkey primary key (id)
+);
+
+-- 惰性过期结算路径与列表过滤的检索索引；均不唯一 —— 重复发起保留历史。
+create index if not exists payment_merchant_biz_no
+    on pay_payment (merchant_id, biz_no)
+    where deleted_at is null;
+create index if not exists payment_status
+    on pay_payment (status);
+create index if not exists payment_created_at
+    on pay_payment (created_at);
+create index if not exists payment_channel_trade_no
+    on pay_payment (channel_trade_no);
+
+comment on table pay_payment is '支付单表（统一收单；状态推进一律 CAS，终态不可逆）';
+
+comment on column pay_payment.id is '支付单号（雪花）；同时是渠道商户订单号 out_trade_no';
+comment on column pay_payment.merchant_id is '收款商户账号ID（pay_merchant_account 引用）';
+comment on column pay_payment.channel is '支付渠道（发起时快照）';
+comment on column pay_payment.biz_no is '业务单号；调用方引用材料，同一商户可多笔';
+comment on column pay_payment.subject is '商品主题';
+comment on column pay_payment.amount is '支付金额（最小单位：分），ADR 0019';
+comment on column pay_payment.currency is '币种（ISO 4217）；MVP 渠道仅 CNY';
+comment on column pay_payment.pay_method is '支付方式：1扫码 2JSAPI 3H5 4App';
+comment on column pay_payment.status is '状态：1待支付 2已支付 3失败 4已关闭 5已过期（退款不改状态）';
+comment on column pay_payment.channel_trade_no is '渠道交易号';
+comment on column pay_payment.channel_payload is '渠道预下单返回原文（code_url 等）';
+comment on column pay_payment.payer_id is '付款方标识（openid / buyer_id）';
+comment on column pay_payment.refunded_amount is '已退款累计金额（分）；仅退款流程累加';
+comment on column pay_payment.fail_reason is '失败/关闭原因';
+comment on column pay_payment.expire_time is '过期时间；惰性判定，无定时任务';
+comment on column pay_payment.paid_at is '支付完成时间';
+comment on column pay_payment.create_by is '创建者用户ID';
+comment on column pay_payment.update_by is '更新者用户ID（0=渠道驱动的系统推进）';
+comment on column pay_payment.created_at is '创建时间';
+comment on column pay_payment.updated_at is '更新时间';
+comment on column pay_payment.deleted_at is '软删除时间；NULL=未删除';
+
+create table if not exists pay_refund (
+    id                bigint       not null,             -- 即退款单号，作渠道 out_refund_no
+    payment_id        bigint       not null,             -- 原支付单（引用，无 FK）
+    merchant_id       bigint       not null,
+    channel           smallint     not null,             -- 沿支付单渠道
+    amount            bigint       not null,             -- 本次退款金额（分），ADR 0019
+    reason            varchar(256) not null default '',
+    status            smallint     not null default 1,   -- 1 处理中 2 成功 3 失败
+    channel_refund_no varchar(64),                       -- 渠道退款单号
+    fail_reason       varchar(256),
+    refunded_at       timestamptz,
+    create_by         bigint       not null default 0,
+    update_by         bigint       not null default 0,
+    created_at        timestamptz  not null default now(),
+    updated_at        timestamptz  not null default now(),
+    deleted_at        timestamptz,                       -- 软删除；NULL=未删除
+    constraint pay_refund_pkey primary key (id)
+);
+
+create index if not exists refund_payment_id
+    on pay_refund (payment_id);
+
+comment on table pay_refund is '退款单表（多次部分退款，累计不超过已付金额）';
+
+comment on column pay_refund.id is '退款单号（雪花）；同时是渠道商户退款单号 out_refund_no';
+comment on column pay_refund.payment_id is '原支付单ID（pay_payment 引用）';
+comment on column pay_refund.merchant_id is '商户账号ID（沿支付单）';
+comment on column pay_refund.channel is '支付渠道（沿支付单）';
+comment on column pay_refund.amount is '本次退款金额（分），ADR 0019';
+comment on column pay_refund.reason is '退款原因';
+comment on column pay_refund.status is '状态：1处理中 2成功 3失败（CAS 推进）';
+comment on column pay_refund.channel_refund_no is '渠道退款单号';
+comment on column pay_refund.fail_reason is '失败原因';
+comment on column pay_refund.refunded_at is '退款成功时间';
+comment on column pay_refund.create_by is '创建者用户ID';
+comment on column pay_refund.update_by is '更新者用户ID（0=渠道驱动的系统推进）';
+comment on column pay_refund.created_at is '创建时间';
+comment on column pay_refund.updated_at is '更新时间';
+comment on column pay_refund.deleted_at is '软删除时间；NULL=未删除';
+
+create table if not exists pay_notify_log (
+    id            bigint        not null,
+    channel       smallint      not null,
+    notify_id     varchar(128)  not null,                 -- 渠道侧通知标识（微信 v3 header id / 支付宝 notify_id）
+    merchant_id   bigint        not null,                 -- 路由命中的商户账号
+    kind          smallint      not null,                 -- 1 支付 2 退款
+    target_no     varchar(64)   not null,                 -- 支付单号或退款单号
+    verified      boolean       not null,                 -- 验签是否通过；false 行仅作证据
+    processed     boolean       not null,                 -- 幂等命中（重复投递）为 false
+    raw_body      text          not null,                 -- 原始请求体（取证锚点）
+    sign_headers  jsonb,                                  -- 验签相关请求头
+    received_at   timestamptz   not null default now(),
+    create_by     bigint        not null default 0,       -- 渠道无 Principal，恒为 0（系统自身）
+    update_by     bigint        not null default 0,
+    created_at    timestamptz   not null default now(),
+    updated_at    timestamptz   not null default now(),
+    deleted_at    timestamptz,                            -- 软删除；NULL=未删除
+    constraint pay_notify_log_pkey primary key (id)
+);
+
+-- (渠道, 通知ID) 活跃行唯一：渠道保证重投，唯一约束即幂等（ADR 0020）。
+create unique index if not exists notify_channel_notify_id
+    on pay_notify_log (channel, notify_id)
+    where deleted_at is null;
+create index if not exists notify_merchant_id
+    on pay_notify_log (merchant_id);
+
+comment on table pay_notify_log is '渠道回调流水表（write-once 证据流，ADR 0020）';
+
+comment on column pay_notify_log.id is '主键ID（雪花）';
+comment on column pay_notify_log.channel is '支付渠道';
+comment on column pay_notify_log.notify_id is '渠道通知标识；去重半键';
+comment on column pay_notify_log.merchant_id is '路由命中的商户账号ID';
+comment on column pay_notify_log.kind is '通知类别：1支付 2退款';
+comment on column pay_notify_log.target_no is '通知指向的单号（支付单号/退款单号）';
+comment on column pay_notify_log.verified is '验签结果；false 行不推进任何状态';
+comment on column pay_notify_log.processed is '是否完成状态推进；幂等命中为 false';
+comment on column pay_notify_log.raw_body is '原始请求体（取证）';
+comment on column pay_notify_log.sign_headers is '验签相关请求头（取证）';
+comment on column pay_notify_log.received_at is '接收时间';
+comment on column pay_notify_log.create_by is '创建者用户ID（渠道回调恒为0）';
+comment on column pay_notify_log.update_by is '更新者用户ID';
+comment on column pay_notify_log.created_at is '创建时间';
+comment on column pay_notify_log.updated_at is '更新时间';
+comment on column pay_notify_log.deleted_at is '软删除时间；NULL=未删除';

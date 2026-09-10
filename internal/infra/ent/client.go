@@ -18,6 +18,10 @@ import (
 	"glex/internal/infra/ent/loginlog"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/operlog"
+	"glex/internal/infra/ent/paymerchantaccount"
+	"glex/internal/infra/ent/paynotifylog"
+	"glex/internal/infra/ent/paypayment"
+	"glex/internal/infra/ent/payrefund"
 	"glex/internal/infra/ent/post"
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/rolemenu"
@@ -52,6 +56,14 @@ type Client struct {
 	Menu *MenuClient
 	// OperLog is the client for interacting with the OperLog builders.
 	OperLog *OperLogClient
+	// PayMerchantAccount is the client for interacting with the PayMerchantAccount builders.
+	PayMerchantAccount *PayMerchantAccountClient
+	// PayNotifyLog is the client for interacting with the PayNotifyLog builders.
+	PayNotifyLog *PayNotifyLogClient
+	// PayPayment is the client for interacting with the PayPayment builders.
+	PayPayment *PayPaymentClient
+	// PayRefund is the client for interacting with the PayRefund builders.
+	PayRefund *PayRefundClient
 	// Post is the client for interacting with the Post builders.
 	Post *PostClient
 	// Role is the client for interacting with the Role builders.
@@ -82,6 +94,10 @@ func (c *Client) init() {
 	c.LoginLog = NewLoginLogClient(c.config)
 	c.Menu = NewMenuClient(c.config)
 	c.OperLog = NewOperLogClient(c.config)
+	c.PayMerchantAccount = NewPayMerchantAccountClient(c.config)
+	c.PayNotifyLog = NewPayNotifyLogClient(c.config)
+	c.PayPayment = NewPayPaymentClient(c.config)
+	c.PayRefund = NewPayRefundClient(c.config)
 	c.Post = NewPostClient(c.config)
 	c.Role = NewRoleClient(c.config)
 	c.RoleMenu = NewRoleMenuClient(c.config)
@@ -178,21 +194,25 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:      ctx,
-		config:   cfg,
-		Dept:     NewDeptClient(cfg),
-		DictData: NewDictDataClient(cfg),
-		DictType: NewDictTypeClient(cfg),
-		File:     NewFileClient(cfg),
-		LoginLog: NewLoginLogClient(cfg),
-		Menu:     NewMenuClient(cfg),
-		OperLog:  NewOperLogClient(cfg),
-		Post:     NewPostClient(cfg),
-		Role:     NewRoleClient(cfg),
-		RoleMenu: NewRoleMenuClient(cfg),
-		User:     NewUserClient(cfg),
-		UserPost: NewUserPostClient(cfg),
-		UserRole: NewUserRoleClient(cfg),
+		ctx:                ctx,
+		config:             cfg,
+		Dept:               NewDeptClient(cfg),
+		DictData:           NewDictDataClient(cfg),
+		DictType:           NewDictTypeClient(cfg),
+		File:               NewFileClient(cfg),
+		LoginLog:           NewLoginLogClient(cfg),
+		Menu:               NewMenuClient(cfg),
+		OperLog:            NewOperLogClient(cfg),
+		PayMerchantAccount: NewPayMerchantAccountClient(cfg),
+		PayNotifyLog:       NewPayNotifyLogClient(cfg),
+		PayPayment:         NewPayPaymentClient(cfg),
+		PayRefund:          NewPayRefundClient(cfg),
+		Post:               NewPostClient(cfg),
+		Role:               NewRoleClient(cfg),
+		RoleMenu:           NewRoleMenuClient(cfg),
+		User:               NewUserClient(cfg),
+		UserPost:           NewUserPostClient(cfg),
+		UserRole:           NewUserRoleClient(cfg),
 	}, nil
 }
 
@@ -210,21 +230,25 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:      ctx,
-		config:   cfg,
-		Dept:     NewDeptClient(cfg),
-		DictData: NewDictDataClient(cfg),
-		DictType: NewDictTypeClient(cfg),
-		File:     NewFileClient(cfg),
-		LoginLog: NewLoginLogClient(cfg),
-		Menu:     NewMenuClient(cfg),
-		OperLog:  NewOperLogClient(cfg),
-		Post:     NewPostClient(cfg),
-		Role:     NewRoleClient(cfg),
-		RoleMenu: NewRoleMenuClient(cfg),
-		User:     NewUserClient(cfg),
-		UserPost: NewUserPostClient(cfg),
-		UserRole: NewUserRoleClient(cfg),
+		ctx:                ctx,
+		config:             cfg,
+		Dept:               NewDeptClient(cfg),
+		DictData:           NewDictDataClient(cfg),
+		DictType:           NewDictTypeClient(cfg),
+		File:               NewFileClient(cfg),
+		LoginLog:           NewLoginLogClient(cfg),
+		Menu:               NewMenuClient(cfg),
+		OperLog:            NewOperLogClient(cfg),
+		PayMerchantAccount: NewPayMerchantAccountClient(cfg),
+		PayNotifyLog:       NewPayNotifyLogClient(cfg),
+		PayPayment:         NewPayPaymentClient(cfg),
+		PayRefund:          NewPayRefundClient(cfg),
+		Post:               NewPostClient(cfg),
+		Role:               NewRoleClient(cfg),
+		RoleMenu:           NewRoleMenuClient(cfg),
+		User:               NewUserClient(cfg),
+		UserPost:           NewUserPostClient(cfg),
+		UserRole:           NewUserRoleClient(cfg),
 	}, nil
 }
 
@@ -254,7 +278,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Dept, c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog, c.Post,
+		c.Dept, c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog,
+		c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment, c.PayRefund, c.Post,
 		c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
 	} {
 		n.Use(hooks...)
@@ -265,7 +290,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Dept, c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog, c.Post,
+		c.Dept, c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog,
+		c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment, c.PayRefund, c.Post,
 		c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
@@ -289,6 +315,14 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Menu.mutate(ctx, m)
 	case *OperLogMutation:
 		return c.OperLog.mutate(ctx, m)
+	case *PayMerchantAccountMutation:
+		return c.PayMerchantAccount.mutate(ctx, m)
+	case *PayNotifyLogMutation:
+		return c.PayNotifyLog.mutate(ctx, m)
+	case *PayPaymentMutation:
+		return c.PayPayment.mutate(ctx, m)
+	case *PayRefundMutation:
+		return c.PayRefund.mutate(ctx, m)
 	case *PostMutation:
 		return c.Post.mutate(ctx, m)
 	case *RoleMutation:
@@ -1250,6 +1284,538 @@ func (c *OperLogClient) mutate(ctx context.Context, m *OperLogMutation) (Value, 
 		return (&OperLogDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown OperLog mutation op: %q", m.Op())
+	}
+}
+
+// PayMerchantAccountClient is a client for the PayMerchantAccount schema.
+type PayMerchantAccountClient struct {
+	config
+}
+
+// NewPayMerchantAccountClient returns a client for the PayMerchantAccount from the given config.
+func NewPayMerchantAccountClient(c config) *PayMerchantAccountClient {
+	return &PayMerchantAccountClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `paymerchantaccount.Hooks(f(g(h())))`.
+func (c *PayMerchantAccountClient) Use(hooks ...Hook) {
+	c.hooks.PayMerchantAccount = append(c.hooks.PayMerchantAccount, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `paymerchantaccount.Intercept(f(g(h())))`.
+func (c *PayMerchantAccountClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PayMerchantAccount = append(c.inters.PayMerchantAccount, interceptors...)
+}
+
+// Create returns a builder for creating a PayMerchantAccount entity.
+func (c *PayMerchantAccountClient) Create() *PayMerchantAccountCreate {
+	mutation := newPayMerchantAccountMutation(c.config, OpCreate)
+	return &PayMerchantAccountCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PayMerchantAccount entities.
+func (c *PayMerchantAccountClient) CreateBulk(builders ...*PayMerchantAccountCreate) *PayMerchantAccountCreateBulk {
+	return &PayMerchantAccountCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PayMerchantAccountClient) MapCreateBulk(slice any, setFunc func(*PayMerchantAccountCreate, int)) *PayMerchantAccountCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PayMerchantAccountCreateBulk{err: fmt.Errorf("calling to PayMerchantAccountClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PayMerchantAccountCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PayMerchantAccountCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PayMerchantAccount.
+func (c *PayMerchantAccountClient) Update() *PayMerchantAccountUpdate {
+	mutation := newPayMerchantAccountMutation(c.config, OpUpdate)
+	return &PayMerchantAccountUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PayMerchantAccountClient) UpdateOne(_m *PayMerchantAccount) *PayMerchantAccountUpdateOne {
+	mutation := newPayMerchantAccountMutation(c.config, OpUpdateOne, withPayMerchantAccount(_m))
+	return &PayMerchantAccountUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PayMerchantAccountClient) UpdateOneID(id int64) *PayMerchantAccountUpdateOne {
+	mutation := newPayMerchantAccountMutation(c.config, OpUpdateOne, withPayMerchantAccountID(id))
+	return &PayMerchantAccountUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PayMerchantAccount.
+func (c *PayMerchantAccountClient) Delete() *PayMerchantAccountDelete {
+	mutation := newPayMerchantAccountMutation(c.config, OpDelete)
+	return &PayMerchantAccountDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PayMerchantAccountClient) DeleteOne(_m *PayMerchantAccount) *PayMerchantAccountDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PayMerchantAccountClient) DeleteOneID(id int64) *PayMerchantAccountDeleteOne {
+	builder := c.Delete().Where(paymerchantaccount.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PayMerchantAccountDeleteOne{builder}
+}
+
+// Query returns a query builder for PayMerchantAccount.
+func (c *PayMerchantAccountClient) Query() *PayMerchantAccountQuery {
+	return &PayMerchantAccountQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePayMerchantAccount},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PayMerchantAccount entity by its id.
+func (c *PayMerchantAccountClient) Get(ctx context.Context, id int64) (*PayMerchantAccount, error) {
+	return c.Query().Where(paymerchantaccount.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PayMerchantAccountClient) GetX(ctx context.Context, id int64) *PayMerchantAccount {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PayMerchantAccountClient) Hooks() []Hook {
+	return c.hooks.PayMerchantAccount
+}
+
+// Interceptors returns the client interceptors.
+func (c *PayMerchantAccountClient) Interceptors() []Interceptor {
+	return c.inters.PayMerchantAccount
+}
+
+func (c *PayMerchantAccountClient) mutate(ctx context.Context, m *PayMerchantAccountMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PayMerchantAccountCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PayMerchantAccountUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PayMerchantAccountUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PayMerchantAccountDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PayMerchantAccount mutation op: %q", m.Op())
+	}
+}
+
+// PayNotifyLogClient is a client for the PayNotifyLog schema.
+type PayNotifyLogClient struct {
+	config
+}
+
+// NewPayNotifyLogClient returns a client for the PayNotifyLog from the given config.
+func NewPayNotifyLogClient(c config) *PayNotifyLogClient {
+	return &PayNotifyLogClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `paynotifylog.Hooks(f(g(h())))`.
+func (c *PayNotifyLogClient) Use(hooks ...Hook) {
+	c.hooks.PayNotifyLog = append(c.hooks.PayNotifyLog, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `paynotifylog.Intercept(f(g(h())))`.
+func (c *PayNotifyLogClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PayNotifyLog = append(c.inters.PayNotifyLog, interceptors...)
+}
+
+// Create returns a builder for creating a PayNotifyLog entity.
+func (c *PayNotifyLogClient) Create() *PayNotifyLogCreate {
+	mutation := newPayNotifyLogMutation(c.config, OpCreate)
+	return &PayNotifyLogCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PayNotifyLog entities.
+func (c *PayNotifyLogClient) CreateBulk(builders ...*PayNotifyLogCreate) *PayNotifyLogCreateBulk {
+	return &PayNotifyLogCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PayNotifyLogClient) MapCreateBulk(slice any, setFunc func(*PayNotifyLogCreate, int)) *PayNotifyLogCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PayNotifyLogCreateBulk{err: fmt.Errorf("calling to PayNotifyLogClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PayNotifyLogCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PayNotifyLogCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PayNotifyLog.
+func (c *PayNotifyLogClient) Update() *PayNotifyLogUpdate {
+	mutation := newPayNotifyLogMutation(c.config, OpUpdate)
+	return &PayNotifyLogUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PayNotifyLogClient) UpdateOne(_m *PayNotifyLog) *PayNotifyLogUpdateOne {
+	mutation := newPayNotifyLogMutation(c.config, OpUpdateOne, withPayNotifyLog(_m))
+	return &PayNotifyLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PayNotifyLogClient) UpdateOneID(id int64) *PayNotifyLogUpdateOne {
+	mutation := newPayNotifyLogMutation(c.config, OpUpdateOne, withPayNotifyLogID(id))
+	return &PayNotifyLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PayNotifyLog.
+func (c *PayNotifyLogClient) Delete() *PayNotifyLogDelete {
+	mutation := newPayNotifyLogMutation(c.config, OpDelete)
+	return &PayNotifyLogDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PayNotifyLogClient) DeleteOne(_m *PayNotifyLog) *PayNotifyLogDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PayNotifyLogClient) DeleteOneID(id int64) *PayNotifyLogDeleteOne {
+	builder := c.Delete().Where(paynotifylog.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PayNotifyLogDeleteOne{builder}
+}
+
+// Query returns a query builder for PayNotifyLog.
+func (c *PayNotifyLogClient) Query() *PayNotifyLogQuery {
+	return &PayNotifyLogQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePayNotifyLog},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PayNotifyLog entity by its id.
+func (c *PayNotifyLogClient) Get(ctx context.Context, id int64) (*PayNotifyLog, error) {
+	return c.Query().Where(paynotifylog.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PayNotifyLogClient) GetX(ctx context.Context, id int64) *PayNotifyLog {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PayNotifyLogClient) Hooks() []Hook {
+	return c.hooks.PayNotifyLog
+}
+
+// Interceptors returns the client interceptors.
+func (c *PayNotifyLogClient) Interceptors() []Interceptor {
+	return c.inters.PayNotifyLog
+}
+
+func (c *PayNotifyLogClient) mutate(ctx context.Context, m *PayNotifyLogMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PayNotifyLogCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PayNotifyLogUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PayNotifyLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PayNotifyLogDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PayNotifyLog mutation op: %q", m.Op())
+	}
+}
+
+// PayPaymentClient is a client for the PayPayment schema.
+type PayPaymentClient struct {
+	config
+}
+
+// NewPayPaymentClient returns a client for the PayPayment from the given config.
+func NewPayPaymentClient(c config) *PayPaymentClient {
+	return &PayPaymentClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `paypayment.Hooks(f(g(h())))`.
+func (c *PayPaymentClient) Use(hooks ...Hook) {
+	c.hooks.PayPayment = append(c.hooks.PayPayment, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `paypayment.Intercept(f(g(h())))`.
+func (c *PayPaymentClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PayPayment = append(c.inters.PayPayment, interceptors...)
+}
+
+// Create returns a builder for creating a PayPayment entity.
+func (c *PayPaymentClient) Create() *PayPaymentCreate {
+	mutation := newPayPaymentMutation(c.config, OpCreate)
+	return &PayPaymentCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PayPayment entities.
+func (c *PayPaymentClient) CreateBulk(builders ...*PayPaymentCreate) *PayPaymentCreateBulk {
+	return &PayPaymentCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PayPaymentClient) MapCreateBulk(slice any, setFunc func(*PayPaymentCreate, int)) *PayPaymentCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PayPaymentCreateBulk{err: fmt.Errorf("calling to PayPaymentClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PayPaymentCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PayPaymentCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PayPayment.
+func (c *PayPaymentClient) Update() *PayPaymentUpdate {
+	mutation := newPayPaymentMutation(c.config, OpUpdate)
+	return &PayPaymentUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PayPaymentClient) UpdateOne(_m *PayPayment) *PayPaymentUpdateOne {
+	mutation := newPayPaymentMutation(c.config, OpUpdateOne, withPayPayment(_m))
+	return &PayPaymentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PayPaymentClient) UpdateOneID(id int64) *PayPaymentUpdateOne {
+	mutation := newPayPaymentMutation(c.config, OpUpdateOne, withPayPaymentID(id))
+	return &PayPaymentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PayPayment.
+func (c *PayPaymentClient) Delete() *PayPaymentDelete {
+	mutation := newPayPaymentMutation(c.config, OpDelete)
+	return &PayPaymentDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PayPaymentClient) DeleteOne(_m *PayPayment) *PayPaymentDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PayPaymentClient) DeleteOneID(id int64) *PayPaymentDeleteOne {
+	builder := c.Delete().Where(paypayment.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PayPaymentDeleteOne{builder}
+}
+
+// Query returns a query builder for PayPayment.
+func (c *PayPaymentClient) Query() *PayPaymentQuery {
+	return &PayPaymentQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePayPayment},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PayPayment entity by its id.
+func (c *PayPaymentClient) Get(ctx context.Context, id int64) (*PayPayment, error) {
+	return c.Query().Where(paypayment.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PayPaymentClient) GetX(ctx context.Context, id int64) *PayPayment {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PayPaymentClient) Hooks() []Hook {
+	return c.hooks.PayPayment
+}
+
+// Interceptors returns the client interceptors.
+func (c *PayPaymentClient) Interceptors() []Interceptor {
+	return c.inters.PayPayment
+}
+
+func (c *PayPaymentClient) mutate(ctx context.Context, m *PayPaymentMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PayPaymentCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PayPaymentUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PayPaymentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PayPaymentDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PayPayment mutation op: %q", m.Op())
+	}
+}
+
+// PayRefundClient is a client for the PayRefund schema.
+type PayRefundClient struct {
+	config
+}
+
+// NewPayRefundClient returns a client for the PayRefund from the given config.
+func NewPayRefundClient(c config) *PayRefundClient {
+	return &PayRefundClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `payrefund.Hooks(f(g(h())))`.
+func (c *PayRefundClient) Use(hooks ...Hook) {
+	c.hooks.PayRefund = append(c.hooks.PayRefund, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `payrefund.Intercept(f(g(h())))`.
+func (c *PayRefundClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PayRefund = append(c.inters.PayRefund, interceptors...)
+}
+
+// Create returns a builder for creating a PayRefund entity.
+func (c *PayRefundClient) Create() *PayRefundCreate {
+	mutation := newPayRefundMutation(c.config, OpCreate)
+	return &PayRefundCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PayRefund entities.
+func (c *PayRefundClient) CreateBulk(builders ...*PayRefundCreate) *PayRefundCreateBulk {
+	return &PayRefundCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PayRefundClient) MapCreateBulk(slice any, setFunc func(*PayRefundCreate, int)) *PayRefundCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PayRefundCreateBulk{err: fmt.Errorf("calling to PayRefundClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PayRefundCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PayRefundCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PayRefund.
+func (c *PayRefundClient) Update() *PayRefundUpdate {
+	mutation := newPayRefundMutation(c.config, OpUpdate)
+	return &PayRefundUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PayRefundClient) UpdateOne(_m *PayRefund) *PayRefundUpdateOne {
+	mutation := newPayRefundMutation(c.config, OpUpdateOne, withPayRefund(_m))
+	return &PayRefundUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PayRefundClient) UpdateOneID(id int64) *PayRefundUpdateOne {
+	mutation := newPayRefundMutation(c.config, OpUpdateOne, withPayRefundID(id))
+	return &PayRefundUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PayRefund.
+func (c *PayRefundClient) Delete() *PayRefundDelete {
+	mutation := newPayRefundMutation(c.config, OpDelete)
+	return &PayRefundDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PayRefundClient) DeleteOne(_m *PayRefund) *PayRefundDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PayRefundClient) DeleteOneID(id int64) *PayRefundDeleteOne {
+	builder := c.Delete().Where(payrefund.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PayRefundDeleteOne{builder}
+}
+
+// Query returns a query builder for PayRefund.
+func (c *PayRefundClient) Query() *PayRefundQuery {
+	return &PayRefundQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePayRefund},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PayRefund entity by its id.
+func (c *PayRefundClient) Get(ctx context.Context, id int64) (*PayRefund, error) {
+	return c.Query().Where(payrefund.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PayRefundClient) GetX(ctx context.Context, id int64) *PayRefund {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PayRefundClient) Hooks() []Hook {
+	return c.hooks.PayRefund
+}
+
+// Interceptors returns the client interceptors.
+func (c *PayRefundClient) Interceptors() []Interceptor {
+	return c.inters.PayRefund
+}
+
+func (c *PayRefundClient) mutate(ctx context.Context, m *PayRefundMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PayRefundCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PayRefundUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PayRefundUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PayRefundDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PayRefund mutation op: %q", m.Op())
 	}
 }
 
@@ -2230,12 +2796,14 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Dept, DictData, DictType, File, LoginLog, Menu, OperLog, Post, Role, RoleMenu,
-		User, UserPost, UserRole []ent.Hook
+		Dept, DictData, DictType, File, LoginLog, Menu, OperLog, PayMerchantAccount,
+		PayNotifyLog, PayPayment, PayRefund, Post, Role, RoleMenu, User, UserPost,
+		UserRole []ent.Hook
 	}
 	inters struct {
-		Dept, DictData, DictType, File, LoginLog, Menu, OperLog, Post, Role, RoleMenu,
-		User, UserPost, UserRole []ent.Interceptor
+		Dept, DictData, DictType, File, LoginLog, Menu, OperLog, PayMerchantAccount,
+		PayNotifyLog, PayPayment, PayRefund, Post, Role, RoleMenu, User, UserPost,
+		UserRole []ent.Interceptor
 	}
 )
 

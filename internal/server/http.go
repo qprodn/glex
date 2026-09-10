@@ -9,6 +9,7 @@ import (
 	dictv1 "glex/api/dict/v1"
 	filev1 "glex/api/file/v1"
 	orgv1 "glex/api/org/v1"
+	payv1 "glex/api/pay/v1"
 	userv1 "glex/api/user/v1"
 	accessapp "glex/internal/application/access"
 	auditapp "glex/internal/application/audit"
@@ -16,6 +17,7 @@ import (
 	dictapp "glex/internal/application/dict"
 	fileapp "glex/internal/application/file"
 	orgapp "glex/internal/application/org"
+	payapp "glex/internal/application/pay"
 	userapp "glex/internal/application/user"
 	"glex/internal/conf"
 	auditservice "glex/internal/domain/audit/service"
@@ -31,7 +33,7 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, audit *auditapp.AuditApplication, dept *orgapp.DeptApplication, post *orgapp.PostApplication, postAssignment *orgapp.PostAssignmentApplication, authenticator authnrepo.Authenticator, auditDomain auditservice.Audit, logger *slog.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, audit *auditapp.AuditApplication, dept *orgapp.DeptApplication, post *orgapp.PostApplication, postAssignment *orgapp.PostAssignmentApplication, pay *payapp.PayApplication, authenticator authnrepo.Authenticator, auditDomain auditservice.Audit, logger *slog.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Filter(
 			requestid.HTTP(requestid.WithLogger(logger)),
@@ -70,6 +72,7 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 	filev1.RegisterFileServiceHTTPServer(srv, file)
 	auditv1.RegisterOperLogServiceHTTPServer(srv, audit)
 	auditv1.RegisterLoginLogServiceHTTPServer(srv, audit)
+	payv1.RegisterPayServiceHTTPServer(srv, pay)
 	registerFileTransferHTTP(srv, file)
 	registerUserExcelHTTP(srv, user)
 	return srv
