@@ -46,9 +46,6 @@ type PaymentRepo interface {
 	MarkClosed(ctx context.Context, id int64) (bool, error)
 	// MarkExpired CASes Pending → Expired (lazy expiry on settlement paths).
 	MarkExpired(ctx context.Context, id int64) (bool, error)
-	// AccumulateRefunded adds amount to refunded_amount atomically, on rows
-	// still Paid. Returns false when the row is not Paid.
-	AccumulateRefunded(ctx context.Context, id int64, amount int64) (bool, error)
 	// NextID mints the snowflake row ID (the Payment number).
 	NextID() int64
 }

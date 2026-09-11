@@ -245,18 +245,12 @@ func (s *refundImpl) ApplyRefundState(ctx context.Context, refundNo int64, state
 				slog.Int64("asserted_amount", state.RefundAmount))
 			return false, nil
 		}
-		advanced, err := s.refunds.MarkSuccess(ctx, refundNo, state.ChannelRefundNo, state.RefundedAt)
+		// The settle and the refunded-sum advance are one atomic unit in
+		// the repo — the sum moves exactly once with the status.
+		advanced, err := s.refunds.MarkSuccess(ctx, refundNo, rf.PaymentID, rf.Amount, state.ChannelRefundNo, state.RefundedAt)
 		if err != nil {
 			logx.Propagate(ctx, s.logger, "pay.svc.refund.apply_state", err)
 			return false, err
-		}
-		if advanced {
-			// The refund status moved Pending → Success exactly once, so
-			// the payment's refunded sum advances exactly once with it.
-			if _, err := s.payments.AccumulateRefunded(ctx, rf.PaymentID, rf.Amount); err != nil {
-				logx.Propagate(ctx, s.logger, "pay.svc.refund.apply_state", err)
-				return false, err
-			}
 		}
 		return advanced, nil
 	case payentity.RefundFailed:

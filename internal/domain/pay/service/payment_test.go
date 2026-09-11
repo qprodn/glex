@@ -149,13 +149,12 @@ func (f *fakePaymentRepo) MarkExpired(ctx context.Context, id int64) (bool, erro
 	return true, nil
 }
 
-func (f *fakePaymentRepo) AccumulateRefunded(ctx context.Context, id int64, amount int64) (bool, error) {
-	p, ok := f.p[id]
-	if !ok || p.Status != payentity.PaymentPaid {
-		return false, nil
+// addRefunded mirrors the refunded-sum advance the real MarkSuccess runs
+// inside its transaction (the fake pair wires it through the refund repo).
+func (f *fakePaymentRepo) addRefunded(id, amount int64) {
+	if p, ok := f.p[id]; ok && p.Status == payentity.PaymentPaid {
+		p.RefundedAmount += amount
 	}
-	p.RefundedAmount += amount
-	return true, nil
 }
 
 func (f *fakePaymentRepo) NextID() int64 { f.nextID++; return f.nextID }

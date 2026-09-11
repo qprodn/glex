@@ -299,24 +299,6 @@ func (r *paymentRepo) MarkExpired(ctx context.Context, id int64) (bool, error) {
 	return n > 0, nil
 }
 
-// AccumulateRefunded adds to refunded_amount atomically in SQL
-// (refunded_amount = refunded_amount + ?), only on rows still Paid — the
-// payment's status itself never changes on a refund.
-func (r *paymentRepo) AccumulateRefunded(ctx context.Context, id int64, amount int64) (bool, error) {
-	n, err := r.data.DB.PayPayment(ctx).Update().
-		Where(
-			entpayment.IDEQ(id),
-			entpayment.StatusEQ(int16(payentity.PaymentPaid)),
-			entpayment.DeletedAtIsNil(),
-		).
-		AddRefundedAmount(amount).
-		Save(ctx)
-	if err != nil {
-		return false, r.storeError(ctx, "pay.payment.accumulate_refunded", err)
-	}
-	return n > 0, nil
-}
-
 // systemActor marks channel-driven transitions as the system itself
 // acting (ADR 0002 — 0 is the system).
 const systemActor = int64(0)

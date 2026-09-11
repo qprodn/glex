@@ -19,6 +19,9 @@ import (
 type fakeRefundRepo struct {
 	r      map[int64]*payentity.Refund
 	nextID int64
+	// payments mirrors the atomic refunded-sum advance the real
+	// MarkSuccess performs inside its transaction; wired by the fixture.
+	payments *fakePaymentRepo
 }
 
 func newFakeRefundRepo() *fakeRefundRepo {
@@ -43,7 +46,7 @@ func (f *fakeRefundRepo) Create(ctx context.Context, rf *payentity.Refund) (*pay
 	return &cp, nil
 }
 
-func (f *fakeRefundRepo) MarkSuccess(ctx context.Context, id int64, channelRefundNo string, refundedAt time.Time) (bool, error) {
+func (f *fakeRefundRepo) MarkSuccess(ctx context.Context, id, paymentID, amount int64, channelRefundNo string, refundedAt time.Time) (bool, error) {
 	rf, ok := f.r[id]
 	if !ok || rf.Status != payentity.RefundPending {
 		return false, nil
@@ -54,6 +57,9 @@ func (f *fakeRefundRepo) MarkSuccess(ctx context.Context, id int64, channelRefun
 		refundedAt = time.Now()
 	}
 	rf.RefundedAt = &refundedAt
+	if f.payments != nil {
+		f.payments.addRefunded(paymentID, amount)
+	}
 	return true, nil
 }
 
@@ -151,6 +157,7 @@ func newTestRefundService(t *testing.T, gw ChannelGateway) (Refund, *fakeRefundR
 		ExpireTime: time.Now().Add(time.Hour),
 	}
 	refunds := newFakeRefundRepo()
+	refunds.payments = payments
 	t.Setenv(crypt.EnvMasterKey, "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=")
 	cipher := crypt.New()
 	merchantRepo := newFakeMerchantRepo(cipher)
