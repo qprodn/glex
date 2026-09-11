@@ -215,7 +215,11 @@ func (s *PayApplication) GetChannelSchemas(ctx context.Context, req *payv1.GetCh
 
 // ChannelSecretFields lists every adopted channel's schema-marked secret
 // config field names — the pay half of the operlog scrub set (ADR 0018).
+// Nil-tolerant so a pay-less server assembly still boots.
 func (s *PayApplication) ChannelSecretFields() []string {
+	if s == nil || s.merchants == nil {
+		return nil
+	}
 	fields := make([]string, 0, 8)
 	for _, schema := range s.merchants.Schemas() {
 		for _, f := range schema.Fields {

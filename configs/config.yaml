@@ -77,3 +77,10 @@ auth:
 # credential. Omit or leave empty for the built-in "123456".
 user:
   init_password: "123456"
+
+pay:
+  # 渠道回调基础地址（ADR 0020）：/pay/notify/{channel}/{merchant_id} 挂在其后。
+  # 上线收款前必须配置为公网可达地址。
+  notify_base_url: ""
+  # 回调路由每商户每分钟限流，0 取内置默认（60）。
+  notify_rate_limit_per_minute: 60

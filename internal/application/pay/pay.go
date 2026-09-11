@@ -6,7 +6,9 @@ import (
 
 	payv1 "glex/api/pay/v1"
 	"glex/internal/bizpkg"
+	"glex/internal/conf"
 	payservice "glex/internal/domain/pay/service"
+	"glex/internal/lock"
 )
 
 // PayApplication implements the pay management service. It owns the
@@ -16,14 +18,29 @@ type PayApplication struct {
 	payv1.UnimplementedPayServiceServer
 
 	merchants payservice.Merchant
+	payments  payservice.Payment
+	tx        Transaction
+	locker    lock.Locker
+	payConfig *conf.Pay
 	logger    *slog.Logger
 }
 
-// NewPayApplication creates the PayApplication. The payment and refund
-// use cases join as their tickets land.
-func NewPayApplication(merchants payservice.Merchant, logger *slog.Logger) *PayApplication {
+// NewPayApplication creates the PayApplication. The refund use cases join
+// with their ticket.
+func NewPayApplication(
+	merchants payservice.Merchant,
+	payments payservice.Payment,
+	tx Transaction,
+	locker lock.Locker,
+	payConfig *conf.Pay,
+	logger *slog.Logger,
+) *PayApplication {
 	return &PayApplication{
 		merchants: merchants,
+		payments:  payments,
+		tx:        tx,
+		locker:    locker,
+		payConfig: payConfig,
 		logger:    logger.With(slog.String("component", "application.pay")),
 	}
 }

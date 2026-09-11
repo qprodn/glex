@@ -11,6 +11,20 @@ message Bootstrap {
   Auth auth = 3;
   File file = 4;
   User user = 5;
+  Pay pay = 6;
+}
+
+// Pay configures the pay module: where channels push their notifications
+// and how hard the notify endpoints throttle.
+message Pay {
+  // Base URL the channels call back to, e.g. "https://pay.example.com".
+  // The notify route is /pay/notify/{channel}/{merchant_id} behind it
+  // (ADR 0020). Empty leaves prepays without a usable notify URL —
+  // deployments must set it before collecting.
+  string notify_base_url = 1;
+  // Notify route rate limit per merchant per minute. 0 falls back to the
+  // built-in default (60).
+  uint32 notify_rate_limit_per_minute = 2;
 }
 
 // Auth configures Login Session lifetimes, concurrency, login throttling, and
