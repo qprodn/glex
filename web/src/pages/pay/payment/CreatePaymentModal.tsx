@@ -21,7 +21,6 @@ const CreatePaymentModal: React.FC<{
   const intl = useIntl();
   const { message } = App.useApp();
   const [merchants, setMerchants] = useState<MerchantAccount[]>([]);
-  const [created, setCreated] = useState<{ paymentId: number; codeUrl: string } | undefined>();
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   useEffect(() => {
@@ -30,8 +29,14 @@ const CreatePaymentModal: React.FC<{
       .ListMerchantAccounts({ pageSize: 100, pageToken: undefined, filter: "status=0", orderBy: undefined })
       .then((set) => setMerchants(set.merchants ?? []))
       .catch(async (e) => { message.error(asServiceError(e)?.message ?? String(e)); });
-    return () => stopPoll();
   }, [open]);
+
+  // The poll outlives this modal: after a successful order the parent
+  // closes it and swaps to the QR dialog, while the poll keeps running
+  // until the payment settles — only unmount retires it.
+  useEffect(() => {
+    return () => stopPoll();
+  }, []);
 
   const stopPoll = () => {
     if (pollRef.current) clearInterval(pollRef.current);
@@ -71,7 +76,7 @@ const CreatePaymentModal: React.FC<{
     }>
       title={intl.formatMessage({ id: "pages.pay.payment.create", defaultMessage: "发起支付" })}
       width={480}
-      open={open && !created}
+      open={open}
       modalProps={{ destroyOnHidden: true, onCancel: () => onClose(false) }}
       onFinish={async (values) => {
         try {
@@ -85,8 +90,10 @@ const CreatePaymentModal: React.FC<{
           });
           message.success(intl.formatMessage({ id: "pages.pay.payment.created", defaultMessage: "下单成功，请扫码支付" }));
           const paymentId = Number(p.paymentId);
-          setCreated({ paymentId, codeUrl: p.channelPayload ?? "" });
           pollUntilSettled(paymentId);
+          // Hand the QR payload to the parent — it opens the QR dialog and
+          // refreshes the list; the poll keeps running until settlement.
+          onClose(true, p.channelPayload ?? "", paymentId);
           return true;
         } catch (e) {
           message.error(asServiceError(e)?.message ?? String(e));

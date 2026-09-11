@@ -75,7 +75,15 @@ const MerchantFormModal: React.FC<MerchantFormModalProps> = ({ open, record, onC
       </>
     );
     const name = ["config", fieldName];
-    const initialValue = isEdit ? undefined : field.defaultValue || undefined;
+    // Edit mode prefills non-secret fields from the masked echo — the
+    // server echoes plain values verbatim, and the update contract
+    // replaces the whole config, so a missing plain field would wipe the
+    // stored value (or fail a required check). Secrets stay blank so
+    // "blank = keep the stored value" holds.
+    let initialValue = field.defaultValue || undefined;
+    if (isEdit && !field.secret && masked[fieldName]) {
+      initialValue = masked[fieldName];
+    }
     if (field.type === "textarea") {
       return (
         <ProFormTextArea
@@ -98,7 +106,7 @@ const MerchantFormModal: React.FC<MerchantFormModalProps> = ({ open, record, onC
           label={label}
           rules={rules}
           extra={extra}
-          initialValue={isEdit ? undefined : field.defaultValue || undefined}
+          initialValue={initialValue}
           options={(field.choices ?? []).map((c) => ({ value: c.value, label: c.label }))}
         />
       );
