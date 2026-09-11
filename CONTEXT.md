@@ -2,8 +2,8 @@
 
 The domain concerned with **who can operate the system, the navigation they see,
 how their identity is established, the controlled vocabularies the back office
-renders choices from, the organization structure it groups people by, and the
-files it stores**. It is organized as six modules in one service: **user**
+renders choices from, the organization structure it groups people by, the
+files it stores, and the payments it collects**. It is organized as six modules in one service: **user**
 (System User accounts), **org** (organization structure — departments, posts,
 and post assignments), **access** (authorization — roles, menus, grants, and
 permission resolution), **authn** (authentication — credentials, login
@@ -13,7 +13,9 @@ accepting uploads, serving downloads, and withdrawing Stored Files), ported from
 RuoYi-Vue-Plus's `sys_user`, `sys_dept`, `sys_post`, `sys_menu`, `sys_role`,
 `sys_user_role`, `sys_user_post`, `sys_dict_type`, and `sys_dict_data`; the
 file module continues that lineage with its own `sys_file` (RuoYi's `sys_oss`,
-renamed).
+renamed). A seventh module, **pay** (payment — the Channel Merchant Accounts
+the back office configures and the payments and refunds collected through
+them), is designed natively for glex rather than ported.
 
 ## Language
 
@@ -206,6 +208,69 @@ File, carried on every Stored File response and on translated reads such as
 the avatar (ADR 0016). Holding one is storage access until it lapses; it is
 derived, never stored, and withdrawn files stop resolving.
 _Avoid_: public URL, file URL, link (unqualified), CDN address.
+
+### pay
+
+**Channel** (支付渠道):
+One external payment provider the system collects money through — WeChat
+Pay, Alipay, UnionPay, Stripe — identified by a stable code. A Channel fixes
+the shape of the credentials its Merchant Accounts carry and the wire
+behavior its adapter speaks; money moves at the Channel.
+_Avoid_: Pay Method (a different concept), gateway, provider, 第三方支付
+(unqualified).
+
+**Merchant Account** (商户账号):
+The platform's own collecting account at one Channel — the WeChat Pay mchid
+with its keys and certificates, the Alipay app, the Stripe account —
+configured from the back office with its credential material held encrypted
+(ADR 0018). A payment is collected into exactly one Merchant Account;
+several may be configured per Channel and are picked explicitly when a
+payment is initiated.
+_Avoid_: 商户 (unqualified), sub-merchant / 子商户 (service-provider mode, out of
+scope), tenant, vendor.
+
+**Pay Method** (支付方式):
+The form a payment takes on the paying side — Native (QR code), JSAPI /
+Mini Program, H5, App — chosen per initiation within a Channel; the
+Channel's response carries the method-specific payload (code URL, prepay
+info, redirect).
+_Avoid_: Channel (a different concept), 支付类型, trade type (WeChat wire
+jargon).
+
+**Payment** (支付单):
+One attempt to collect a stated amount into one Merchant Account through one
+Pay Method, identified by its own number — which also serves as the
+Channel's merchant order number for it. A Payment ends in exactly one
+terminal state: paid, failed, closed, or expired. Initiating again for the
+same Business Order Number closes that Merchant Account's still-pending
+Payments first.
+_Avoid_: 订单 (the caller's business order), transaction, trade, 支付记录.
+
+**Business Order Number** (业务单号):
+The caller-supplied identifier tying a Payment to the business thing being
+paid for. To pay it is opaque reference material — indexed for lookup,
+never interpreted, and not unique among Payments.
+_Avoid_: 支付单号 (the Payment's own number), out_trade_no, order id.
+
+**Refund** (退款单):
+One request to return part or all of a paid Payment's amount through the
+Channel it arrived on. A Payment may carry several Refunds, together never
+exceeding what was paid; each ends refunded or failed.
+_Avoid_: 退款记录, chargeback (a card-dispute concept, the Channel's concern),
+撤销.
+
+**Channel Notification** (渠道回调):
+A Channel's asynchronous assertion about a Payment or Refund, pushed to the
+module's notify endpoint and accepted only with a valid request signature —
+the signature is the authentication (ADR 0020). Each is recorded write-once
+with its raw body as the evidence stream; redelivery is absorbed, never
+re-processed.
+_Avoid_: webhook, 异步通知 (unqualified), callback.
+
+**Connectivity Test** (连通性测试):
+A cheap authenticated Channel call made on demand to prove a Merchant
+Account's credentials work. It leaves no Payment and moves no money.
+_Avoid_: 验证支付, test pay, ping.
 
 ### cross-module
 

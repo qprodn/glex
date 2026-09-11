@@ -1592,6 +1592,467 @@ paths:
                 "200":
                     description: OK
                     content: {}
+    /pay/channel-schemas:
+        get:
+            tags:
+                - PayService
+            description: |-
+                GetChannelSchemas returns every Channel's config schema — the source
+                 the merchant form renders from.
+            operationId: PayService_GetChannelSchemas
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.GetChannelSchemasResponse'
+    /pay/merchant:
+        get:
+            tags:
+                - PayService
+            description: |-
+                ListMerchantAccounts lists Merchant Accounts with AIP filter/order/
+                 page-token. Responses carry masked configs only.
+            operationId: PayService_ListMerchantAccounts
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `name` (e.g. `name="主店"`, exact)
+                       * `channel` (e.g. `channel=1`)
+                       * `status` (e.g. `status=0`)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: |-
+                    Optional. AIP-132 order on a pay_merchant_account column, e.g.
+                     `id desc` (the default), `created_at`.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.MerchantAccountSet'
+        post:
+            tags:
+                - PayService
+            description: |-
+                CreateMerchantAccount validates the config against the Channel's
+                 schema, encrypts it whole (ADR 0018), and records the masked echo.
+            operationId: PayService_CreateMerchantAccount
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/pay.v1.CreateMerchantAccountRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.MerchantAccount'
+    /pay/merchant/{merchantId}:
+        get:
+            tags:
+                - PayService
+            description: GetMerchantAccount retrieves one Merchant Account (masked config).
+            operationId: PayService_GetMerchantAccount
+            parameters:
+                - name: merchantId
+                  in: path
+                  description: Required. The id of the Merchant Account to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.MerchantAccount'
+        delete:
+            tags:
+                - PayService
+            description: |-
+                WithdrawMerchantAccount soft-deletes the Merchant Account. In-flight
+                 Payments are not blocked — their channel is snapshotted; new ones are.
+            operationId: PayService_WithdrawMerchantAccount
+            parameters:
+                - name: merchantId
+                  in: path
+                  description: Required. The id of the Merchant Account to withdraw.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+        patch:
+            tags:
+                - PayService
+            description: |-
+                UpdateMerchantAccount replaces the display name, remark, and the whole
+                 config form; secret fields left blank keep their stored values
+                 (schema semantics, ADR 0021).
+            operationId: PayService_UpdateMerchantAccount
+            parameters:
+                - name: merchantId
+                  in: path
+                  description: Required. The id of the Merchant Account to update.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/pay.v1.UpdateMerchantAccountRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.MerchantAccount'
+    /pay/merchant/{merchantId}/probe:
+        post:
+            tags:
+                - PayService
+            description: |-
+                ProbeMerchantAccount runs the Connectivity Test: one cheap
+                 authenticated Channel call (WeChat platform-certificate pull; Alipay
+                 query of a nonexistent trade), moving no money.
+            operationId: PayService_ProbeMerchantAccount
+            parameters:
+                - name: merchantId
+                  in: path
+                  description: Required. The id of the Merchant Account to probe.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/pay.v1.ProbeMerchantAccountRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.ProbeResult'
+    /pay/merchant/{merchantId}/status:
+        put:
+            tags:
+                - PayService
+            description: |-
+                ChangeMerchantAccountStatus enables or disables a Merchant Account.
+                 Disabling stops new Payments only; in-flight ones still settle.
+            operationId: PayService_ChangeMerchantAccountStatus
+            parameters:
+                - name: merchantId
+                  in: path
+                  description: Required. The id of the Merchant Account.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/pay.v1.ChangeMerchantAccountStatusRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.MerchantAccount'
+    /pay/payment:
+        get:
+            tags:
+                - PayService
+            description: |-
+                ListPayments lists Payments with AIP filter/order/page-token. List
+                 reads never touch the Channel.
+            operationId: PayService_ListPayments
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `biz_no` (e.g. `biz_no="ORDER-1"`, exact)
+                       * `status` (e.g. `status=1`)
+                       * `merchant_id` (e.g. `merchant_id=1000000000000000001`)
+                       * `channel` (e.g. `channel=1`)
+                       * `created_at` (e.g. `created_at>="2026-01-01T00:00:00Z"`)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: |-
+                    Optional. AIP-132 order on a pay_payment column, e.g. `id desc` (the
+                     default), `amount`, `created_at`, `expire_time`, `paid_at`.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.PaymentSet'
+        post:
+            tags:
+                - PayService
+            description: |-
+                CreatePayment initiates one Native Payment: it closes the Merchant
+                 Account's still-pending Payments for the Business Order Number, then
+                 prepays at the Channel and returns the Payment carrying the QR payload
+                 in channel_payload. A concurrent duplicate submit is rejected
+                 (LOCK_BUSY / HTTP 409).
+            operationId: PayService_CreatePayment
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/pay.v1.CreatePaymentRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.Payment'
+    /pay/payment/{paymentId}:
+        get:
+            tags:
+                - PayService
+            description: |-
+                GetPayment retrieves one Payment. A PENDING payment past its expiry
+                 settles first (channel-confirmed PAID wins, else EXPIRED).
+            operationId: PayService_GetPayment
+            parameters:
+                - name: paymentId
+                  in: path
+                  description: Required. The Payment number.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.Payment'
+    /pay/payment/{paymentId}/close:
+        post:
+            tags:
+                - PayService
+            description: |-
+                ClosePayment closes a PENDING Payment at the Channel, then locally. A
+                 Channel "already paid" answer flips to a query and settles PAID; late
+                 close intents on terminal Payments are no-ops.
+            operationId: PayService_ClosePayment
+            parameters:
+                - name: paymentId
+                  in: path
+                  description: Required. The Payment number to close.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/pay.v1.ClosePaymentRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.Payment'
+    /pay/payment/{paymentId}/query:
+        post:
+            tags:
+                - PayService
+            description: |-
+                QueryPayment asks the Channel for the Payment's true state and advances
+                 it by CAS — the explicit settlement path when callbacks are lost.
+            operationId: PayService_QueryPayment
+            parameters:
+                - name: paymentId
+                  in: path
+                  description: Required. The Payment number to query at the Channel.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/pay.v1.QueryPaymentRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.Payment'
+    /pay/refund:
+        get:
+            tags:
+                - PayService
+            description: ListRefunds lists Refunds with AIP filter/order/page-token.
+            operationId: PayService_ListRefunds
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `payment_id` (e.g. `payment_id=1000000000000000001`)
+                       * `merchant_id` (e.g. `merchant_id=1000000000000000001`)
+                       * `channel` (e.g. `channel=1`)
+                       * `status` (e.g. `status=2`)
+                       * `created_at` (e.g. `created_at>="2026-01-01T00:00:00Z"`)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: |-
+                    Optional. AIP-132 order on a pay_refund column, e.g. `id desc` (the
+                     default), `amount`, `created_at`.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.RefundSet'
+        post:
+            tags:
+                - PayService
+            description: |-
+                CreateRefund refunds part of a paid Payment under the payment-scoped
+                 lock: refunded + amount ≤ paid, or REFUND_EXCEED_LIMIT. WeChat refunds
+                 return PENDING (callback settles); Alipay's synchronous refund settles
+                 immediately.
+            operationId: PayService_CreateRefund
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/pay.v1.CreateRefundRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.Refund'
+    /pay/refund/{refundId}:
+        get:
+            tags:
+                - PayService
+            description: GetRefund retrieves one Refund.
+            operationId: PayService_GetRefund
+            parameters:
+                - name: refundId
+                  in: path
+                  description: Required. The Refund number.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.Refund'
+    /pay/refund/{refundId}/query:
+        post:
+            tags:
+                - PayService
+            description: |-
+                QueryRefund asks the Channel for the Refund's true state and advances
+                 it by CAS.
+            operationId: PayService_QueryRefund
+            parameters:
+                - name: refundId
+                  in: path
+                  description: Required. The Refund number to query at the Channel.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/pay.v1.QueryRefundRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.Refund'
 components:
     schemas:
         access.v1.Menu:
@@ -2375,6 +2836,430 @@ components:
                  department's active posts with their assigned flags, ordered by
                  (post_sort, post_id). Not paginated — a department's posts are a small
                  flat set.
+        pay.v1.ChangeMerchantAccountStatusRequest:
+            required:
+                - merchantId
+                - status
+            type: object
+            properties:
+                merchantId:
+                    type: string
+                    description: Required. The id of the Merchant Account.
+                status:
+                    type: integer
+                    description: Required. 0 enabled, 1 disabled.
+                    format: int32
+        pay.v1.ChannelSchema:
+            type: object
+            properties:
+                channel:
+                    type: integer
+                    format: int32
+                name:
+                    type: string
+                    description: Stable code, e.g. "wechat", "alipay".
+                label:
+                    type: string
+                    description: Display label, e.g. "微信支付".
+                fields:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/pay.v1.SchemaField'
+                adopted:
+                    type: boolean
+                    description: True when an adapter is registered and the Channel can collect.
+            description: |-
+                ChannelSchema is one Channel's config schema — the single source the
+                 merchant form renders and writes validate against (ADR 0021).
+        pay.v1.ClosePaymentRequest:
+            required:
+                - paymentId
+            type: object
+            properties:
+                paymentId:
+                    type: string
+                    description: Required. The Payment number to close.
+        pay.v1.CreateMerchantAccountRequest:
+            required:
+                - channel
+                - name
+                - config
+            type: object
+            properties:
+                channel:
+                    type: integer
+                    description: Required. The Channel to configure.
+                    format: int32
+                name:
+                    type: string
+                    description: Required. Display alias, unique per channel among active accounts.
+                config:
+                    type: object
+                    additionalProperties:
+                        type: string
+                    description: |-
+                        Required. Config values keyed by the Channel schema's field names.
+                         Validated server-side against the schema before encryption.
+                remark:
+                    type: string
+                    description: Optional. Remark, ≤ 500 chars.
+        pay.v1.CreatePaymentRequest:
+            required:
+                - merchantId
+                - bizNo
+                - subject
+                - amount
+            type: object
+            properties:
+                merchantId:
+                    type: string
+                    description: |-
+                        Required. The Merchant Account to collect into; must exist and be
+                         enabled, and its Channel must have a registered adapter.
+                bizNo:
+                    type: string
+                    description: Required. Business Order Number — opaque caller reference, ≤ 64 chars.
+                subject:
+                    type: string
+                    description: Required. Display subject, ≤ 256 chars.
+                amount:
+                    type: string
+                    description: Required. Amount in minor units (fen), > 0.
+                payMethod:
+                    type: integer
+                    description: Optional. 1 Native (the only MVP method); defaults to Native.
+                    format: int32
+                expireMinutes:
+                    type: integer
+                    description: |-
+                        Optional. Expiry window in minutes; 0 or negative uses the 30-minute
+                         default.
+                    format: int32
+        pay.v1.CreateRefundRequest:
+            required:
+                - paymentId
+                - amount
+            type: object
+            properties:
+                paymentId:
+                    type: string
+                    description: Required. The paid Payment to refund.
+                amount:
+                    type: string
+                    description: Required. Refund amount in minor units; refunded + amount ≤ paid.
+                reason:
+                    type: string
+                    description: Optional. Reason, ≤ 256 chars.
+        pay.v1.GetChannelSchemasResponse:
+            type: object
+            properties:
+                schemas:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/pay.v1.ChannelSchema'
+            description: GetChannelSchemasResponse lists every Channel the module knows.
+        pay.v1.MerchantAccount:
+            type: object
+            properties:
+                merchantId:
+                    type: string
+                    description: Snowflake ID.
+                channel:
+                    type: integer
+                    description: 1 WeChat Pay, 2 Alipay, 3 UnionPay (reserved), 4 Stripe (reserved).
+                    format: int32
+                name:
+                    type: string
+                    description: Display alias, unique per channel among active accounts.
+                status:
+                    type: integer
+                    description: 0 enabled, 1 disabled.
+                    format: int32
+                configMasked:
+                    type: object
+                    additionalProperties:
+                        type: string
+                    description: |-
+                        Masked echo of the channel config keyed by schema field name — secret
+                         fields read like "****ab12", plain fields read verbatim. Display never
+                         decrypts (ADR 0018).
+                configDigest:
+                    type: string
+                    description: |-
+                        SHA-256 hex of the canonical plaintext config; changes whenever the
+                         config is rewritten.
+                keyVersion:
+                    type: integer
+                    description: Master-key version the ciphertext was written under (ADR 0018).
+                    format: int32
+                remark:
+                    type: string
+                createBy:
+                    type: string
+                    description: 'Audit: who created/updated. Filled from the authenticated identity.'
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                MerchantAccount is one Channel Merchant Account (商户账号): the platform's
+                 own collecting account at one Channel. The credential config is never
+                 served — every response carries only config_masked, the write-time masked
+                 echo (ADR 0018/0021).
+        pay.v1.MerchantAccountSet:
+            type: object
+            properties:
+                merchants:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/pay.v1.MerchantAccount'
+                nextPageToken:
+                    type: string
+                    description: Opaque token for the next page; empty when on the last page.
+            description: MerchantAccountSet is a page of Merchant Accounts.
+        pay.v1.Payment:
+            type: object
+            properties:
+                paymentId:
+                    type: string
+                    description: Snowflake ID — the Payment number.
+                merchantId:
+                    type: string
+                channel:
+                    type: integer
+                    description: Channel snapshot from the Merchant Account at initiation.
+                    format: int32
+                bizNo:
+                    type: string
+                    description: Business Order Number — the caller's opaque reference, not unique.
+                subject:
+                    type: string
+                amount:
+                    type: string
+                    description: Minor units (fen for CNY). Always > 0.
+                currency:
+                    type: string
+                    description: ISO 4217 code; the MVP channels collect CNY only.
+                payMethod:
+                    type: integer
+                    description: 1 Native, 2 JSAPI, 3 H5, 4 App.
+                    format: int32
+                status:
+                    type: integer
+                    description: |-
+                        1 PENDING, 2 PAID, 3 FAILED, 4 CLOSED, 5 EXPIRED — terminal states
+                         are irreversible.
+                    format: int32
+                channelTradeNo:
+                    type: string
+                    description: Channel trade number (WeChat transaction_id / Alipay trade_no).
+                channelPayload:
+                    type: string
+                    description: Channel prepay payload — the Native code_url a QR renders from.
+                payerId:
+                    type: string
+                    description: Payer identity reported by the Channel (openid / buyer_id).
+                refundedAmount:
+                    type: string
+                    description: Sum of successful refunds, minor units. Refunds never change status.
+                failReason:
+                    type: string
+                expireTime:
+                    type: string
+                    description: |-
+                        Judged lazily: a PENDING payment past this time settles to EXPIRED on
+                         its next settlement-path touch (never on list reads).
+                    format: date-time
+                paidAt:
+                    type: string
+                    format: date-time
+                createBy:
+                    type: string
+                    description: 'Audit: who created/updated. Filled from the authenticated identity.'
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                Payment is one attempt to collect a stated amount into one Merchant
+                 Account through one Pay Method (支付单). The payment_id doubles as the
+                 Channel's merchant order number. Amounts are int64 minor units (ADR 0019).
+        pay.v1.PaymentSet:
+            type: object
+            properties:
+                payments:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/pay.v1.Payment'
+                nextPageToken:
+                    type: string
+            description: PaymentSet is a page of Payments.
+        pay.v1.ProbeMerchantAccountRequest:
+            required:
+                - merchantId
+            type: object
+            properties:
+                merchantId:
+                    type: string
+                    description: Required. The id of the Merchant Account to probe.
+        pay.v1.ProbeResult:
+            type: object
+            properties:
+                ok:
+                    type: boolean
+                message:
+                    type: string
+                    description: Human-readable outcome; the failure reason when ok is false.
+                latencyMs:
+                    type: string
+            description: |-
+                ProbeResult reports one Connectivity Test (连通性测试): a cheap
+                 authenticated Channel call that moves no money.
+        pay.v1.QueryPaymentRequest:
+            required:
+                - paymentId
+            type: object
+            properties:
+                paymentId:
+                    type: string
+                    description: Required. The Payment number to query at the Channel.
+        pay.v1.QueryRefundRequest:
+            required:
+                - refundId
+            type: object
+            properties:
+                refundId:
+                    type: string
+                    description: Required. The Refund number to query at the Channel.
+        pay.v1.Refund:
+            type: object
+            properties:
+                refundId:
+                    type: string
+                    description: Snowflake ID — the Refund number.
+                paymentId:
+                    type: string
+                merchantId:
+                    type: string
+                channel:
+                    type: integer
+                    format: int32
+                amount:
+                    type: string
+                    description: |-
+                        This refund's amount, minor units; together all refunds of a Payment
+                         never exceed its amount.
+                reason:
+                    type: string
+                status:
+                    type: integer
+                    description: 1 PENDING, 2 SUCCESS, 3 FAILED.
+                    format: int32
+                channelRefundNo:
+                    type: string
+                failReason:
+                    type: string
+                refundedAt:
+                    type: string
+                    format: date-time
+                createBy:
+                    type: string
+                    description: 'Audit: who created/updated. Filled from the authenticated identity.'
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                Refund is one request to return part or all of a paid Payment's amount
+                 (退款单). The refund_id doubles as the Channel's merchant refund number.
+        pay.v1.RefundSet:
+            type: object
+            properties:
+                refunds:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/pay.v1.Refund'
+                nextPageToken:
+                    type: string
+            description: RefundSet is a page of Refunds.
+        pay.v1.SchemaField:
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: Config key (the form field's name and the config JSON's key).
+                label:
+                    type: string
+                type:
+                    type: string
+                required:
+                    type: boolean
+                secret:
+                    type: boolean
+                placeholder:
+                    type: string
+                help:
+                    type: string
+                group:
+                    type: string
+                    description: Form group label; fields render grouped in declaration order.
+                choices:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/pay.v1.SchemaOption'
+                    description: Choices for select fields.
+                defaultValue:
+                    type: string
+                    description: Default value for untouched fields.
+            description: |-
+                SchemaField is one field of a Channel's config schema — the unit the
+                 merchant form renders. Types: text, password, textarea, select. Secret
+                 fields are encrypted at rest, masked on every read, and scrubbed from
+                 operation logs (ADR 0018); on update, a blank secret means "keep the
+                 stored value".
+        pay.v1.SchemaOption:
+            type: object
+            properties:
+                value:
+                    type: string
+                label:
+                    type: string
+            description: SchemaOption is one labeled choice of a select field.
+        pay.v1.UpdateMerchantAccountRequest:
+            required:
+                - merchantId
+                - name
+                - config
+            type: object
+            properties:
+                merchantId:
+                    type: string
+                    description: Required. The id of the Merchant Account to update.
+                name:
+                    type: string
+                    description: Required. New display alias.
+                config:
+                    type: object
+                    additionalProperties:
+                        type: string
+                    description: |-
+                        Required. The whole config form. Secret fields left blank keep their
+                         stored values; plain fields are replaced verbatim.
+                remark:
+                    type: string
+                    description: Optional. New remark.
         user.v1.CurrentUser:
             type: object
             properties:
@@ -2591,6 +3476,12 @@ tags:
         OperLogService is the read/withdraw view over recorded operations. Rows
          arrive through the operlog middleware (ADR 0012); no endpoint creates or
          updates them.
+    - name: PayService
+      description: |-
+        PayService is the payment module's management surface: Merchant Account
+         configuration, unified Payment initiation, and Refunds. Channel
+         callbacks arrive on the auth-exempt notify route (ADR 0020) — a
+         hand-written route, not part of this service.
     - name: PostAssignmentService
       description: |-
         PostAssignmentService owns the user↔post link (**Post Assignment**):

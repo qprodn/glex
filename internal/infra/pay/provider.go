@@ -4,17 +4,24 @@
 package payinfra
 
 import (
+	payservice "glex/internal/domain/pay/service"
+
 	"go.uber.org/fx"
 )
 
 // Module contains the pay persistence adapters: the Merchant Account,
-// Payment, Refund, and notify-log repos plus the credential cipher.
+// Payment, Refund, and notify-log repos, the credential cipher, and the
+// channel adapter registry with its two port bindings.
 var Module = fx.Module("pay-infra",
 	fx.Provide(
 		NewCipher,
+		NewAdapterRegistry,
 		NewMerchantAccountRepo,
 		NewPaymentRepo,
 		NewRefundRepo,
 		NewNotifyLogRepo,
+		fx.Annotate(newCatalog, fx.As(new(payservice.ChannelCatalog))),
+		fx.Annotate(newGatewayRegistry, fx.As(new(payservice.GatewayRegistry))),
+		fx.Annotate(newConfigCipher, fx.As(new(payservice.ConfigCipher))),
 	),
 )

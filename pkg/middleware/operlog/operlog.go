@@ -89,7 +89,11 @@ var safeMethods = map[string]bool{
 type options struct {
 	recorder Recorder
 	skip     map[string]bool
-	logger   *slog.Logger
+	// scrubKeys are the JSON keys masked in recorded payloads: the static
+	// set below plus whatever the composition root adds (the pay module's
+	// schema-marked credential fields).
+	scrubKeys map[string]bool
+	logger    *slog.Logger
 }
 
 // Option configures the middleware.
@@ -105,6 +109,18 @@ func WithSkip(operations ...string) Option {
 	}
 }
 
+// WithSecretKeys adds module-specific secret field names to the scrub
+// set (matched case-insensitively at any JSON depth, like the built-ins).
+// The pay module feeds its channels' schema-marked secret fields here so
+// merchant credential writes are never logged (ADR 0018).
+func WithSecretKeys(keys ...string) Option {
+	return func(o *options) {
+		for _, key := range keys {
+			o.scrubKeys[strings.ToLower(key)] = true
+		}
+	}
+}
+
 // WithLogger sets the logger used for recording failures; it defaults to
 // slog.Default().
 func WithLogger(logger *slog.Logger) Option {
@@ -115,7 +131,15 @@ func WithLogger(logger *slog.Logger) Option {
 
 // Server returns the operation-audit middleware.
 func Server(recorder Recorder, opts ...Option) middleware.Middleware {
-	o := options{recorder: recorder, skip: map[string]bool{}, logger: slog.Default()}
+	o := options{
+		recorder:  recorder,
+		skip:      map[string]bool{},
+		scrubKeys: make(map[string]bool, len(secretKeys)),
+		logger:    slog.Default(),
+	}
+	for key := range secretKeys {
+		o.scrubKeys[key] = true
+	}
 	for _, opt := range opts {
 		opt(&o)
 	}
@@ -170,7 +194,7 @@ func (o *options) record(ctx context.Context, req any, start time.Time, err erro
 			entry.ErrMsg = err.Error()
 		}
 	}
-	entry.Request = marshalRequest(o.logger, req)
+	entry.Request = o.marshalRequest(req)
 	recordCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), recordTimeout)
 	defer cancel()
 	if recordErr := o.recorder.Record(recordCtx, entry); recordErr != nil {
@@ -216,24 +240,24 @@ func clientIP(ctx context.Context) string {
 // marshalRequest renders the request message as scrubbed protojson. A
 // non-proto or unmarshalable request records a placeholder — auditing never
 // blocks on the payload it is describing (ADR 0012).
-func marshalRequest(logger *slog.Logger, req any) string {
+func (o *options) marshalRequest(req any) string {
 	msg, ok := req.(proto.Message)
 	if !ok || msg == nil {
 		return ""
 	}
 	raw, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(msg)
 	if err != nil {
-		logger.WarnContext(context.Background(), "oper log request marshal failed",
+		o.logger.WarnContext(context.Background(), "oper log request marshal failed",
 			slog.Any("error", err),
 		)
 		return "(unmarshalable request)"
 	}
-	return scrub(string(raw))
+	return o.scrub(string(raw))
 }
 
 // scrub replaces the values of secret keys with a mask. Payloads are small
 // JSON objects, so a scan-based rewrite is plenty.
-func scrub(raw string) string {
+func (o *options) scrub(raw string) string {
 	var b strings.Builder
 	b.Grow(len(raw))
 	rest := raw
@@ -254,7 +278,7 @@ func scrub(raw string) string {
 		b.WriteString(key)
 		b.WriteByte('"')
 		rest = rest[idx+1+end+1:]
-		if !secretKeys[strings.ToLower(key)] {
+		if !o.scrubKeys[strings.ToLower(key)] {
 			continue
 		}
 		// A secret key: keep valid JSON by splicing the mask over its value.

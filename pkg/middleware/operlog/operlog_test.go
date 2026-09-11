@@ -3,6 +3,7 @@ package operlog
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"testing"
@@ -157,9 +158,37 @@ func TestSwallowsRecorderFailures(t *testing.T) {
 }
 
 func TestScrubMasksSecretKeys(t *testing.T) {
-	got := scrub(`{"user_name":"alice","password":"hunter2","profile":{"old_password":"a,b\"c"},"remark":"keep","tags":["x","y"]}`)
+	o := newTestOptions()
+	got := o.scrub(`{"user_name":"alice","password":"hunter2","profile":{"old_password":"a,b\"c"},"remark":"keep","tags":["x","y"]}`)
 	want := `{"user_name":"alice","password":"***","profile":{"old_password":"***"},"remark":"keep","tags":["x","y"]}`
 	if got != want {
 		t.Fatalf("scrub = %s, want %s", got, want)
 	}
+}
+
+func TestScrubMasksModuleSecretKeys(t *testing.T) {
+	o := newTestOptions(WithSecretKeys("Merchant_Private_Key", "api_v3_key"))
+	got := o.scrub(`{"config":{"merchant_private_key":"BEGIN","api_v3_key":"k","name":"主店"}}`)
+	want := `{"config":{"merchant_private_key":"***","api_v3_key":"***","name":"主店"}}`
+	if got != want {
+		t.Fatalf("scrub = %s, want %s", got, want)
+	}
+}
+
+// newTestOptions builds an options value the way Server does, without the
+// middleware wrapper — scrub tests key on the scrub behavior alone.
+func newTestOptions(opts ...Option) *options {
+	o := options{
+		recorder:  &fakeRecorder{},
+		skip:      map[string]bool{},
+		scrubKeys: make(map[string]bool, len(secretKeys)),
+		logger:    slog.New(slog.DiscardHandler),
+	}
+	for key := range secretKeys {
+		o.scrubKeys[key] = true
+	}
+	for _, opt := range opts {
+		opt(&o)
+	}
+	return &o
 }

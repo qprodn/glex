@@ -96,7 +96,9 @@ type SchemaOption struct {
 // merchant form renders and writes validate against. Secret fields are
 // encrypted at rest, masked on every read, and scrubbed from operation
 // logs; on update, a blank secret means "keep the stored value" (ADR 0018,
-// ADR 0021).
+// ADR 0021). RequiredWhen expresses mode-dependent requirements (e.g.
+// Alipay's certificate mode): the field is required exactly when every
+// named sibling field holds one of the listed values.
 type SchemaField struct {
 	Name        string
 	Label       string
@@ -108,6 +110,7 @@ type SchemaField struct {
 	Group       string
 	Choices     []SchemaOption
 	Default     string
+	RequiredWhen map[string]string
 }
 
 // ChannelSchema is one Channel's config schema — defined once beside the

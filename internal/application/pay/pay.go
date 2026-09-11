@@ -1,13 +1,12 @@
-// Package pay implements the pay module's application use cases: Merchant
-// Account management, unified Payment initiation, Refunds, and Channel
-// notification intake. Authentication and the operations' Functional
-// Permission policy are enforced by the registered HTTP middleware.
 package pay
 
 import (
+	"context"
 	"log/slog"
 
 	payv1 "glex/api/pay/v1"
+	"glex/internal/bizpkg"
+	payservice "glex/internal/domain/pay/service"
 )
 
 // PayApplication implements the pay management service. It owns the
@@ -16,12 +15,21 @@ import (
 type PayApplication struct {
 	payv1.UnimplementedPayServiceServer
 
-	logger *slog.Logger
+	merchants payservice.Merchant
+	logger    *slog.Logger
 }
 
-// NewPayApplication creates the PayApplication.
-func NewPayApplication(logger *slog.Logger) *PayApplication {
+// NewPayApplication creates the PayApplication. The payment and refund
+// use cases join as their tickets land.
+func NewPayApplication(merchants payservice.Merchant, logger *slog.Logger) *PayApplication {
 	return &PayApplication{
-		logger: logger.With(slog.String("component", "application.pay")),
+		merchants: merchants,
+		logger:    logger.With(slog.String("component", "application.pay")),
 	}
+}
+
+// actor reads the authenticated Principal from the request context (0 =
+// the system itself, ADR 0002).
+func (s *PayApplication) actor(ctx context.Context) int64 {
+	return bizpkg.AuditActor(ctx)
 }

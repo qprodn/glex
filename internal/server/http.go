@@ -46,6 +46,7 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 			operlog.Server(operLogRecorder{audit: auditDomain},
 				operlog.WithLogger(logger),
 				operlog.WithSkip(authnv1.OperationAuthServiceLogin, authnv1.OperationAuthServiceLogout),
+				operlog.WithSecretKeys(pay.ChannelSecretFields()...),
 			),
 		),
 	}
