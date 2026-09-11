@@ -9,4 +9,7 @@ export default {
   "menu.monitor.online": "Online Sessions",
   "menu.monitor.operlog": "Operation Logs",
   "menu.monitor.loginlog": "Login Logs",
+  "menu.pay.merchant": "Merchant Accounts",
+  "menu.pay.payment": "Payments",
+  "menu.pay.refund": "Refunds",
 };

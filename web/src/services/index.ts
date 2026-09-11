@@ -12,6 +12,7 @@ import {
   createPostServiceClient,
 } from "@/services/org/v1";
 import { createFileServiceClient } from "@/services/file/v1";
+import { createPayServiceClient } from "@/services/pay/v1";
 import { createUserServiceClient } from "@/services/user/v1";
 import { request } from "@umijs/max";
 import { getToken } from "@/utils/token";
@@ -61,6 +62,7 @@ export const services = {
   file: createFileServiceClient(requestHandler),
   audit: createOperLogServiceClient(requestHandler),
   loginlog: createLoginLogServiceClient(requestHandler),
+  pay: createPayServiceClient(requestHandler),
 };
 
 /**

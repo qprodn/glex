@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] 四张表与设计文档 §4 一致并在数据库中创建：雪花 id、审计五字段、软删除、smallint 枚举、(channel, name) 与 (channel, notify_id) 的 partial unique 及各索引
-- [ ] 五处模块空壳 + 四个 fx Module 注册进装配；`make api` 与 `make all` 通过
-- [ ] 服务带空 pay 模块正常启动，既有六模块行为无回归
+- [x] 四张表与设计文档 §4 一致并在数据库中创建：雪花 id、审计五字段、软删除、smallint 枚举、(channel, name) 与 (channel, notify_id) 的 partial unique 及各索引
+- [x] 五处模块空壳 + 四个 fx Module 注册进装配；`make api` 与 `make all` 通过
+- [x] 服务带空 pay 模块正常启动，既有六模块行为无回归

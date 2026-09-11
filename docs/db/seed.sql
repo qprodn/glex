@@ -322,4 +322,65 @@ values (1000000000000000327, 1000000000000000101, 1000000000000000270, 0, 0),
        (1000000000000000336, 1000000000000000101, 1000000000000000284, 0, 0)
 on conflict do nothing;
 
+
+-- ============================================================
+-- pay 模块：支付管理目录 + 商户/支付单/退款单三页（perms 与
+-- internal/server/auth_routes.go 一一对应，design §9）
+-- ============================================================
+
+-- 目录「支付管理」
+insert into sys_menu (id, menu_name, parent_id, order_num, path, menu_type, icon, create_by, update_by)
+values (1000000000000000400, '支付管理', 0, 3, 'pay', 1, 'money', 0, 0)
+on conflict do nothing;
+
+-- 商户管理（菜单 + 按钮）
+insert into sys_menu (id, menu_name, parent_id, order_num, path, component, menu_type, perms, icon, create_by, update_by)
+values (1000000000000000410, '商户管理', 1000000000000000400, 1, 'merchant', 'pay/merchant/index', 2, 'pay:merchant:list', 'shop', 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, menu_type, perms, create_by, update_by)
+values (1000000000000000411, '商户新增', 1000000000000000410, 1, 3, 'pay:merchant:create', 0, 0),
+       (1000000000000000412, '商户修改', 1000000000000000410, 2, 3, 'pay:merchant:update', 0, 0),
+       (1000000000000000413, '商户撤除', 1000000000000000410, 3, 3, 'pay:merchant:remove', 0, 0),
+       (1000000000000000414, '连通测试', 1000000000000000410, 4, 3, 'pay:merchant:probe', 0, 0)
+on conflict do nothing;
+
+-- 支付单（菜单 + 按钮）
+insert into sys_menu (id, menu_name, parent_id, order_num, path, component, menu_type, perms, icon, create_by, update_by)
+values (1000000000000000420, '支付单', 1000000000000000400, 2, 'payment', 'pay/payment/index', 2, 'pay:payment:list', 'credit-card', 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, menu_type, perms, create_by, update_by)
+values (1000000000000000421, '发起支付', 1000000000000000420, 1, 3, 'pay:payment:create', 0, 0),
+       (1000000000000000422, '支付查单', 1000000000000000420, 2, 3, 'pay:payment:query', 0, 0),
+       (1000000000000000423, '支付关单', 1000000000000000420, 3, 3, 'pay:payment:close', 0, 0)
+on conflict do nothing;
+
+-- 退款单（菜单 + 按钮）
+insert into sys_menu (id, menu_name, parent_id, order_num, path, component, menu_type, perms, icon, create_by, update_by)
+values (1000000000000000430, '退款单', 1000000000000000400, 3, 'refund', 'pay/refund/index', 2, 'pay:refund:list', 'rollback', 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, menu_type, perms, create_by, update_by)
+values (1000000000000000431, '发起退款', 1000000000000000430, 1, 3, 'pay:refund:create', 0, 0),
+       (1000000000000000432, '退款查单', 1000000000000000430, 2, 3, 'pay:refund:query', 0, 0)
+on conflict do nothing;
+
+-- superadmin 追加支付管理全部菜单
+insert into sys_role_menu (id, role_id, menu_id, create_by, update_by)
+values (1000000000000000340, 1000000000000000101, 1000000000000000400, 0, 0),
+       (1000000000000000341, 1000000000000000101, 1000000000000000410, 0, 0),
+       (1000000000000000342, 1000000000000000101, 1000000000000000411, 0, 0),
+       (1000000000000000343, 1000000000000000101, 1000000000000000412, 0, 0),
+       (1000000000000000344, 1000000000000000101, 1000000000000000413, 0, 0),
+       (1000000000000000345, 1000000000000000101, 1000000000000000414, 0, 0),
+       (1000000000000000346, 1000000000000000101, 1000000000000000420, 0, 0),
+       (1000000000000000347, 1000000000000000101, 1000000000000000421, 0, 0),
+       (1000000000000000348, 1000000000000000101, 1000000000000000422, 0, 0),
+       (1000000000000000349, 1000000000000000101, 1000000000000000423, 0, 0),
+       (1000000000000000350, 1000000000000000101, 1000000000000000430, 0, 0),
+       (1000000000000000351, 1000000000000000101, 1000000000000000431, 0, 0),
+       (1000000000000000352, 1000000000000000101, 1000000000000000432, 0, 0)
+on conflict do nothing;
+
 commit;

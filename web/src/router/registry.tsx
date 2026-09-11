@@ -29,6 +29,9 @@ export const componentRegistry: Record<string, React.ComponentType> = {
   "monitor/operlog/index": lazyPage(() => import("@/pages/monitor/operlog")),
   "monitor/loginlog/index": lazyPage(() => import("@/pages/monitor/loginlog")),
   "file/index": lazyPage(() => import("@/pages/file")),
+  "pay/merchant/index": lazyPage(() => import("@/pages/pay/merchant")),
+  "pay/payment/index": lazyPage(() => import("@/pages/pay/payment")),
+  "pay/refund/index": lazyPage(() => import("@/pages/pay/refund")),
 };
 
 /** Keys the menu form offers as its component dropdown options. */

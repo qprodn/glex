@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Prepay / Query / Close / Refund / QueryRefund / ParseNotification / Probe 全量实现，httptest 伪渠道契约测试覆盖报文映射、单位换算（渠道单位 ↔ 最小单位，ADR 0019）
-- [ ] 验签或解密失败返回错误，调用方据此拒绝处理
-- [ ] 客户端缓存键含配置摘要：更新商户配置后新配置立即生效，无需重启
-- [ ] 录入真实商户号后连通性测试通过（手工验收一次即可）
+- [x] Prepay / Query / Close / Refund / QueryRefund / ParseNotification / Probe 全量实现，httptest 伪渠道契约测试覆盖报文映射、单位换算（渠道单位 ↔ 最小单位，ADR 0019）
+- [x] 验签或解密失败返回错误，调用方据此拒绝处理
+- [x] 客户端缓存键含配置摘要：更新商户配置后新配置立即生效，无需重启
+- [x] 录入真实商户号后连通性测试通过（手工验收一次即可）
