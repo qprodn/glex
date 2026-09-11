@@ -94,5 +94,8 @@ var appModule = fx.Options(
 		func(m *store.TxManager) dictapp.Transaction { return m },
 		func(m *store.TxManager) orgapp.Transaction { return m },
 		func(m *store.TxManager) payapp.Transaction { return m },
+		// The notify route group's limiter, adapted to the server's
+		// net/http filter shape (ADR 0020).
+		func(l *payinfra.NotifyRateLimiter) server.NotifyLimiter { return l.Filter },
 	),
 )

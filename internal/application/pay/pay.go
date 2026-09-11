@@ -17,31 +17,36 @@ import (
 type PayApplication struct {
 	payv1.UnimplementedPayServiceServer
 
-	merchants payservice.Merchant
-	payments  payservice.Payment
-	tx        Transaction
-	locker    lock.Locker
-	payConfig *conf.Pay
-	logger    *slog.Logger
+	merchants     payservice.Merchant
+	payments      payservice.Payment
+	refunds       payservice.Refund
+	notifications payservice.Notification
+	tx            Transaction
+	locker        lock.Locker
+	payConfig     *conf.Pay
+	logger        *slog.Logger
 }
 
-// NewPayApplication creates the PayApplication. The refund use cases join
-// with their ticket.
+// NewPayApplication creates the PayApplication.
 func NewPayApplication(
 	merchants payservice.Merchant,
 	payments payservice.Payment,
+	refunds payservice.Refund,
+	notifications payservice.Notification,
 	tx Transaction,
 	locker lock.Locker,
 	payConfig *conf.Pay,
 	logger *slog.Logger,
 ) *PayApplication {
 	return &PayApplication{
-		merchants: merchants,
-		payments:  payments,
-		tx:        tx,
-		locker:    locker,
-		payConfig: payConfig,
-		logger:    logger.With(slog.String("component", "application.pay")),
+		merchants:     merchants,
+		payments:      payments,
+		refunds:       refunds,
+		notifications: notifications,
+		tx:            tx,
+		locker:        locker,
+		payConfig:     payConfig,
+		logger:        logger.With(slog.String("component", "application.pay")),
 	}
 }
 

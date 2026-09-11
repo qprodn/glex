@@ -63,6 +63,11 @@ type Merchant interface {
 	Schemas() []payentity.ChannelSchema
 	// Adopted reports whether the channel can collect.
 	Adopted(channel payentity.Channel) bool
+	// ResolveGateway decrypts the merchant's config and resolves its
+	// gateway — the shared intake for channel-touching paths outside
+	// merchant CRUD (notification intake today). The config decryption
+	// failure surfaces as the module's master-key/crypto sentinels.
+	ResolveGateway(ctx context.Context, merchantID int64) (*payentity.MerchantAccount, ChannelGateway, error)
 }
 
 type merchantImpl struct {
@@ -264,6 +269,24 @@ func (s *merchantImpl) Probe(ctx context.Context, id int64) (*ProbeOutcome, erro
 	outcome.OK = true
 	outcome.Message = "连接成功"
 	return outcome, nil
+}
+
+func (s *merchantImpl) ResolveGateway(ctx context.Context, merchantID int64) (*payentity.MerchantAccount, ChannelGateway, error) {
+	m, err := s.merchants.FindByID(ctx, merchantID)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "pay.svc.merchant.resolve_gateway", err)
+		return nil, nil, err
+	}
+	if err := s.merchants.LoadConfig(ctx, m); err != nil {
+		logx.Propagate(ctx, s.logger, "pay.svc.merchant.resolve_gateway", err)
+		return nil, nil, err
+	}
+	gw, err := s.gateways.Resolve(ctx, m)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "pay.svc.merchant.resolve_gateway", err)
+		return nil, nil, err
+	}
+	return m, gw, nil
 }
 
 func (s *merchantImpl) Schemas() []payentity.ChannelSchema {

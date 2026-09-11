@@ -249,6 +249,7 @@ func (g *gateway) ParseNotification(ctx context.Context, m *payentity.MerchantAc
 	} else {
 		out.Kind = payentity.NotifyKindPayment
 		out.TargetNo = notif.OutTradeNo
+		out.PaymentState = mapTradeStatus(notif.TradeStatus)
 	}
 	return out, nil
 }

@@ -22,8 +22,13 @@ func NewNotifyLogRepo(data *store.Data) payrepo.NotifyLogRepo {
 // partial unique is the dedup: a constraint violation means the channel
 // redelivered an already-accepted notification — reported as ok=false
 // (an expected business condition, never logged as an error, ADR 0007).
+func (r *notifyLogRepo) NextID() int64 {
+	return newSnowflakeID()
+}
+
 func (r *notifyLogRepo) Insert(ctx context.Context, n *entity.ChannelNotification) (bool, error) {
 	create := r.data.DB.PayNotifyLog(ctx).Create().
+		SetID(n.ID).
 		SetChannel(int16(n.Channel)).
 		SetNotifyID(n.NotifyID).
 		SetMerchantID(n.MerchantID).

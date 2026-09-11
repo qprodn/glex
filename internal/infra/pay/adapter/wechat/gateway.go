@@ -249,6 +249,7 @@ func (g *gateway) ParseNotification(ctx context.Context, m *payentity.MerchantAc
 			Kind:           payentity.NotifyKindPayment,
 			TargetNo:       deref(tx.OutTradeNo),
 			ChannelTradeNo: deref(tx.TransactionId),
+			PaymentState:   mapTradeState(deref(tx.TradeState)),
 			Verified:       true,
 		}
 		if tx.Payer != nil {

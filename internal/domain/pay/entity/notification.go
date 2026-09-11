@@ -15,6 +15,9 @@ const (
 // doubles as the notify-log row's intake: the handler records the raw
 // evidence (RawBody, SignHeaders, Verified) before any state advances.
 type ChannelNotification struct {
+	// ID is the notify-log row's identity, minted by the intake path
+	// before the write-once insert.
+	ID int64
 	Channel   Channel
 	MerchantID int64
 	// NotifyID is the Channel's notification identifier — the dedup
@@ -27,6 +30,10 @@ type ChannelNotification struct {
 	// ChannelTradeNo is the Channel's own trade/refund number, backfilled
 	// onto the target row on success.
 	ChannelTradeNo string
+	// PaymentState is the channel-asserted payment state, normalized to
+	// the module's vocabulary (Paid for success pushes; channels also
+	// announce closes).
+	PaymentState PaymentStatus
 	// Payment success evidence.
 	PayerID string
 	PaidAt  time.Time

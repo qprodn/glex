@@ -33,7 +33,7 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, audit *auditapp.AuditApplication, dept *orgapp.DeptApplication, post *orgapp.PostApplication, postAssignment *orgapp.PostAssignmentApplication, pay *payapp.PayApplication, authenticator authnrepo.Authenticator, auditDomain auditservice.Audit, logger *slog.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, audit *auditapp.AuditApplication, dept *orgapp.DeptApplication, post *orgapp.PostApplication, postAssignment *orgapp.PostAssignmentApplication, pay *payapp.PayApplication, payNotifyLimiter NotifyLimiter, authenticator authnrepo.Authenticator, auditDomain auditservice.Audit, logger *slog.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Filter(
 			requestid.HTTP(requestid.WithLogger(logger)),
@@ -45,7 +45,14 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 			validate.Middleware(),
 			operlog.Server(operLogRecorder{audit: auditDomain},
 				operlog.WithLogger(logger),
-				operlog.WithSkip(authnv1.OperationAuthServiceLogin, authnv1.OperationAuthServiceLogout),
+				operlog.WithSkip(
+					authnv1.OperationAuthServiceLogin,
+					authnv1.OperationAuthServiceLogout,
+					// The notify route records itself in pay_notify_log
+					// (ADR 0020) and carries no Principal — never an
+					// oper-log event.
+					OperationPayServiceChannelNotification,
+				),
 				operlog.WithSecretKeys(pay.ChannelSecretFields()...),
 			),
 		),
@@ -74,6 +81,7 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 	auditv1.RegisterOperLogServiceHTTPServer(srv, audit)
 	auditv1.RegisterLoginLogServiceHTTPServer(srv, audit)
 	payv1.RegisterPayServiceHTTPServer(srv, pay)
+	registerPayNotifyHTTP(srv, pay, payNotifyLimiter)
 	registerFileTransferHTTP(srv, file)
 	registerUserExcelHTTP(srv, user)
 	return srv

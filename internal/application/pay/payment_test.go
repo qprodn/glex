@@ -67,12 +67,18 @@ func newTestPayApplication(locker *fakeLocker, payments *fakePaymentSvc) *PayApp
 	return NewPayApplication(
 		&fakeMerchantSvc{},
 		payments,
+		&fakeRefundSvc{},
+		&fakeNotificationSvc{},
 		&fakeTx{},
 		locker,
 		&conf.Pay{NotifyBaseUrl: "https://pay.example.com"},
 		slog.New(slog.DiscardHandler),
 	)
 }
+
+type fakeRefundSvc struct{ payservice.Refund }
+
+type fakeNotificationSvc struct{ payservice.Notification }
 
 func TestCreatePaymentLocksAndPrepays(t *testing.T) {
 	locker := &fakeLocker{}
