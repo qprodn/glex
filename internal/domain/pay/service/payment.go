@@ -347,15 +347,39 @@ func (s *paymentImpl) Close(ctx context.Context, id int64, actorID int64) (*paye
 }
 
 // ApplyChannelState advances one payment per channel-asserted truth. Every
-// transition is a CAS from Pending; false returns are duplicates or
-// out-of-order receipts — no-ops by design, never errors.
+// transition is a CAS from Pending; false returns are duplicates,
+// out-of-order receipts, or a rejected amount mismatch — no-ops by design,
+// never errors.
 func (s *paymentImpl) ApplyChannelState(ctx context.Context, paymentNo int64, state ChannelPaymentState) (bool, error) {
 	switch state.State {
 	case payentity.PaymentPaid:
+		// Amount verification before the CAS: a signature-valid success
+		// naming a different amount for our out_trade_no never settles.
+		// Zero means the confirmation asserted no amount and skips the
+		// check (the adapters always populate it on Paid).
+		if state.Amount > 0 {
+			p, err := s.payments.FindByID(ctx, paymentNo)
+			if err != nil {
+				if errors.Is(err, pay.ErrPaymentNotFound) {
+					return false, nil
+				}
+				logx.Propagate(ctx, s.logger, "pay.svc.payment.apply_state", err)
+				return false, err
+			}
+			if p.Amount != state.Amount {
+				s.logger.Warn("channel-asserted paid amount differs from the payment; refusing to settle",
+					slog.String("operation", "pay.svc.payment.apply_state"),
+					slog.Int64("payment_id", paymentNo),
+					slog.Int64("stored_amount", p.Amount),
+					slog.Int64("asserted_amount", state.Amount))
+				return false, nil
+			}
+		}
 		capture := payentity.PaidCapture{
 			ChannelTradeNo: state.ChannelTradeNo,
 			PayerID:        state.PayerID,
 			PaidAt:         state.PaidAt,
+			Amount:         state.Amount,
 		}
 		advanced, err := s.payments.MarkPaid(ctx, paymentNo, capture)
 		if err != nil {

@@ -302,3 +302,38 @@ func TestRefundApplyStateDuplicateDoesNotDoubleCount(t *testing.T) {
 		t.Fatalf("refund status = %v", stored.Status)
 	}
 }
+
+func TestRefundApplyStateRejectsRefundAmountMismatch(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundSuccess}}
+	svc, refunds, payments, paymentID := newTestRefundService(t, gw)
+	rf, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: 40}, 7)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	// A signature-valid success naming the wrong refund amount never settles.
+	advanced, err := svc.ApplyRefundState(context.Background(), rf.ID, ChannelRefundState{
+		State: payentity.RefundSuccess, RefundAmount: 999,
+	})
+	if err != nil || advanced {
+		t.Fatalf("mismatch advanced = %v, err = %v", advanced, err)
+	}
+	stored := refunds.r[rf.ID]
+	if stored.Status != payentity.RefundPending {
+		t.Fatalf("status = %v — a mismatched amount must not settle", stored.Status)
+	}
+	p, _ := payments.FindByID(context.Background(), paymentID)
+	if p.RefundedAmount != 0 {
+		t.Fatalf("refunded_amount = %d, want 0", p.RefundedAmount)
+	}
+	// The verified amount settles and moves the sum.
+	advanced, err = svc.ApplyRefundState(context.Background(), rf.ID, ChannelRefundState{
+		State: payentity.RefundSuccess, RefundAmount: 40,
+	})
+	if err != nil || !advanced {
+		t.Fatalf("verified advanced = %v, err = %v", advanced, err)
+	}
+	p, _ = payments.FindByID(context.Background(), paymentID)
+	if p.RefundedAmount != 40 {
+		t.Fatalf("refunded_amount = %d, want 40", p.RefundedAmount)
+	}
+}

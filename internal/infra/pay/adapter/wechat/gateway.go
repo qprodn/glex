@@ -153,6 +153,9 @@ func (g *gateway) Query(ctx context.Context, m *payentity.MerchantAccount, payme
 		return payservice.ChannelPaymentState{}, mapAPIError(err)
 	}
 	state := payservice.ChannelPaymentState{State: mapTradeState(deref(resp.TradeState))}
+	if resp.Amount != nil {
+		state.Amount = derefI64(resp.Amount.Total)
+	}
 	if resp.TransactionId != nil {
 		state.ChannelTradeNo = *resp.TransactionId
 	}
@@ -202,7 +205,11 @@ func (g *gateway) Refund(ctx context.Context, req payservice.RefundRequest) (pay
 	if err != nil {
 		return payservice.ChannelRefundState{}, mapAPIError(err)
 	}
-	return mapRefund(deref((*string)(resp.Status)), resp.SuccessTime, resp.RefundId), nil
+	state := mapRefund(deref((*string)(resp.Status)), resp.SuccessTime, resp.RefundId)
+	if resp.Amount != nil {
+		state.RefundAmount = derefI64(resp.Amount.Refund)
+	}
+	return state, nil
 }
 
 // QueryRefund asks the channel for the refund's true state.
@@ -213,7 +220,11 @@ func (g *gateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount,
 	if err != nil {
 		return payservice.ChannelRefundState{}, mapAPIError(err)
 	}
-	return mapRefund(deref((*string)(resp.Status)), resp.SuccessTime, resp.RefundId), nil
+	state := mapRefund(deref((*string)(resp.Status)), resp.SuccessTime, resp.RefundId)
+	if resp.Amount != nil {
+		state.RefundAmount = derefI64(resp.Amount.Refund)
+	}
+	return state, nil
 }
 
 // ParseNotification verifies the delivery's signature against the cached
@@ -252,6 +263,9 @@ func (g *gateway) ParseNotification(ctx context.Context, m *payentity.MerchantAc
 			PaymentState:   mapTradeState(deref(tx.TradeState)),
 			Verified:       true,
 		}
+		if tx.Amount != nil {
+			out.Amount = derefI64(tx.Amount.Total)
+		}
 		if tx.Payer != nil {
 			out.PayerID = deref(tx.Payer.Openid)
 		}
@@ -273,6 +287,9 @@ func (g *gateway) ParseNotification(ctx context.Context, m *payentity.MerchantAc
 			ChannelTradeNo: deref(rf.RefundId),
 			RefundState:    mapRefundStatus(deref((*string)(rf.Status))),
 			Verified:       true,
+		}
+		if rf.Amount != nil {
+			out.RefundAmount = derefI64(rf.Amount.Refund)
 		}
 		if rf.SuccessTime != nil {
 			out.RefundedAt = *rf.SuccessTime
@@ -420,6 +437,14 @@ func deref(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+// derefI64 returns *p or 0 when nil — the SDK's optional amount fields.
+func derefI64(p *int64) int64 {
+	if p == nil {
+		return 0
+	}
+	return *p
 }
 
 // parseTime parses the channel's RFC3339 timestamps; empty input yields

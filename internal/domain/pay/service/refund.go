@@ -233,6 +233,18 @@ func (s *refundImpl) ApplyRefundState(ctx context.Context, refundNo int64, state
 			logx.Propagate(ctx, s.logger, "pay.svc.refund.apply_state", err)
 			return false, err
 		}
+		// Amount verification before the CAS: a signature-valid success
+		// naming a different amount for our out_refund_no never settles.
+		// Zero means the confirmation asserted no amount and skips the
+		// check (the adapters always populate it on Success).
+		if state.RefundAmount > 0 && rf.Amount != state.RefundAmount {
+			s.logger.Warn("channel-asserted refund amount differs from the refund; refusing to settle",
+				slog.String("operation", "pay.svc.refund.apply_state"),
+				slog.Int64("refund_id", refundNo),
+				slog.Int64("stored_amount", rf.Amount),
+				slog.Int64("asserted_amount", state.RefundAmount))
+			return false, nil
+		}
 		advanced, err := s.refunds.MarkSuccess(ctx, refundNo, state.ChannelRefundNo, state.RefundedAt)
 		if err != nil {
 			logx.Propagate(ctx, s.logger, "pay.svc.refund.apply_state", err)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -128,6 +129,7 @@ func (g *gateway) Query(ctx context.Context, m *payentity.MerchantAccount, payme
 	state := payservice.ChannelPaymentState{
 		State:          mapTradeStatus(rsp.TradeStatus),
 		ChannelTradeNo: rsp.TradeNo,
+		Amount:         parseYuanToFen(rsp.TotalAmount),
 	}
 	if rsp.BuyerLogonId != "" {
 		state.PayerID = rsp.BuyerLogonId
@@ -182,10 +184,13 @@ func (g *gateway) Refund(ctx context.Context, req payservice.RefundRequest) (pay
 		}, nil
 	}
 	// Synchronous settlement — FundChange "N" means the identical refund
-	// request was already processed, which is still a settled refund.
+	// request was already processed, which is still a settled refund. The
+	// settled amount is exactly the one the channel just accepted (an
+	// amount mismatch is rejected with ACQ.REFUND_AMT_NOT_EQUAL above).
 	return payservice.ChannelRefundState{
-		State:      payentity.RefundSuccess,
-		RefundedAt: time.Now(),
+		State:        payentity.RefundSuccess,
+		RefundedAt:   time.Now(),
+		RefundAmount: req.Amount,
 	}, nil
 }
 
@@ -209,6 +214,7 @@ func (g *gateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount,
 	state := payservice.ChannelRefundState{State: payentity.RefundPending}
 	if rsp.RefundStatus == "REFUND_SUCCESS" {
 		state.State = payentity.RefundSuccess
+		state.RefundAmount = parseYuanToFen(rsp.RefundAmount)
 		if t := parseAlipayTime(rsp.GMTRefundPay); t != nil {
 			state.RefundedAt = *t
 		}
@@ -246,10 +252,12 @@ func (g *gateway) ParseNotification(ctx context.Context, m *payentity.MerchantAc
 		out.TargetNo = notif.OutRequestNo
 		out.RefundState = payentity.RefundSuccess
 		out.RefundedAt = time.Now()
+		out.RefundAmount = parseYuanToFen(notif.RefundFee)
 	} else {
 		out.Kind = payentity.NotifyKindPayment
 		out.TargetNo = notif.OutTradeNo
 		out.PaymentState = mapTradeStatus(notif.TradeStatus)
+		out.Amount = parseYuanToFen(notif.TotalAmount)
 	}
 	return out, nil
 }
@@ -300,6 +308,32 @@ func fenToYuan(fen int64) string {
 		fen = 0
 	}
 	return fmt.Sprintf("%d.%02d", fen/100, fen%100)
+}
+
+// parseYuanToFen converts Alipay's two-decimal yuan text into minor units
+// with integer math only (ADR 0019). An unparseable amount yields 0, which
+// the advance path treats as "not asserted" and skips verification on.
+func parseYuanToFen(s string) int64 {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0
+	}
+	yuan, frac := s, ""
+	if i := strings.IndexByte(s, '.'); i >= 0 {
+		yuan, frac = s[:i], s[i+1:]
+		if len(frac) > 2 {
+			return 0
+		}
+		for len(frac) < 2 {
+			frac += "0"
+		}
+	}
+	y, errYuan := strconv.ParseInt(yuan, 10, 64)
+	f, errFrac := strconv.ParseInt(frac, 10, 64)
+	if errYuan != nil || errFrac != nil {
+		return 0
+	}
+	return y*100 + f
 }
 
 // parseAlipayTime parses the channel's Beijing-time text timestamps.

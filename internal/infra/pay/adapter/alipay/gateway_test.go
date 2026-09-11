@@ -342,6 +342,11 @@ func TestQueryMapsTradeStatuses(t *testing.T) {
 	if state.State != payentity.PaymentPaid || state.ChannelTradeNo != "ali-txn-1" || state.PayerID == "" || state.PaidAt.IsZero() {
 		t.Fatalf("state = %+v", state)
 	}
+	// The channel-asserted total rides along for the settle-path amount
+	// verification (ADR 0019).
+	if state.Amount != 100 {
+		t.Fatalf("asserted amount = %d, want 100", state.Amount)
+	}
 	f.trades["CLOSED-1"] = &tradeState{status: alipay.TradeStatusClosed, tradeNo: "ali-txn-2"}
 	state, err = gw.Query(context.Background(), nil, "CLOSED-1")
 	if err != nil || state.State != payentity.PaymentClosed {
@@ -400,6 +405,9 @@ func TestRefundSynchronousSettlement(t *testing.T) {
 	if out.State != payentity.RefundSuccess || out.RefundedAt.IsZero() {
 		t.Fatalf("refund state = %+v", out)
 	}
+	if out.RefundAmount != 40 {
+		t.Fatalf("refund amount = %d, want 40", out.RefundAmount)
+	}
 	// The amount crossed as a yuan string (fen → yuan is the adapter's one
 	// conversion, ADR 0019).
 	if !strings.Contains(f.lastBiz["biz_content"], `"refund_amount":"0.40"`) {
@@ -436,6 +444,9 @@ func TestQueryRefund(t *testing.T) {
 	if state.State != payentity.RefundSuccess || state.RefundedAt.IsZero() {
 		t.Fatalf("refund state = %+v", state)
 	}
+	if state.RefundAmount != 40 {
+		t.Fatalf("refund amount = %d, want 40", state.RefundAmount)
+	}
 	// Unknown refunds are pending, not errors.
 	f.refunds["RF-GHOST"] = &refundState{notExist: true}
 	state, err = gw.QueryRefund(context.Background(), nil, "RF-GHOST")
@@ -466,6 +477,9 @@ func TestParseNotificationPaymentSuccess(t *testing.T) {
 	if out.PaidAt.IsZero() {
 		t.Fatal("paid_at missing")
 	}
+	if out.Amount != 100 {
+		t.Fatalf("asserted amount = %d, want 100", out.Amount)
+	}
 }
 
 func TestParseNotificationRefundCarriesRequestNo(t *testing.T) {
@@ -484,6 +498,9 @@ func TestParseNotificationRefundCarriesRequestNo(t *testing.T) {
 	}
 	if out.Kind != payentity.NotifyKindRefund || out.TargetNo != "RF-9" || out.RefundState != payentity.RefundSuccess {
 		t.Fatalf("notification = %+v", out)
+	}
+	if out.RefundAmount != 40 {
+		t.Fatalf("asserted refund amount = %d, want 40", out.RefundAmount)
 	}
 }
 

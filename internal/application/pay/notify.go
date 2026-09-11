@@ -146,6 +146,7 @@ func (s *PayApplication) advance(ctx context.Context, notif *payentity.ChannelNo
 			ChannelTradeNo: notif.ChannelTradeNo,
 			PayerID:        notif.PayerID,
 			PaidAt:         notif.PaidAt,
+			Amount:         notif.Amount,
 		})
 	case payentity.NotifyKindRefund:
 		targetNo, err := strconv.ParseInt(notif.TargetNo, 10, 64)
@@ -178,6 +179,7 @@ func (s *PayApplication) advance(ctx context.Context, notif *payentity.ChannelNo
 			State:           notif.RefundState,
 			ChannelRefundNo: notif.ChannelTradeNo,
 			RefundedAt:      notif.RefundedAt,
+			RefundAmount:    notif.RefundAmount,
 		})
 	default:
 		s.logger.Warn("verified notification carries an unknown kind",

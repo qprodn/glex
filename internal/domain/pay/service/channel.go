@@ -43,7 +43,12 @@ type ChannelPaymentState struct {
 	ChannelTradeNo string
 	PayerID        string
 	PaidAt         time.Time
-	FailReason     string
+	// Amount is the channel-asserted paid total in minor units (ADR 0019).
+	// The advance path must verify it against the Payment row before the
+	// CAS — a signature-valid success naming a different amount never
+	// settles. Zero means "not asserted" and skips the check.
+	Amount     int64
+	FailReason string
 }
 
 // RefundRequest is one unified refund call. Total is the original payment's
@@ -68,7 +73,11 @@ type ChannelRefundState struct {
 	State           entity.RefundStatus // Pending / Success / Failed
 	ChannelRefundNo string
 	RefundedAt      time.Time
-	FailReason      string
+	// RefundAmount is the channel-asserted refunded amount in minor units
+	// (ADR 0019), verified against the Refund row before the settle CAS.
+	// Zero means "not asserted" and skips the check.
+	RefundAmount int64
+	FailReason   string
 }
 
 // ChannelGateway is the per-channel seam the whole module talks through.

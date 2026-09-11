@@ -20,6 +20,8 @@ require (
 	github.com/mileusna/useragent v1.3.5
 	github.com/redis/go-redis/v9 v9.19.0
 	github.com/sa-tokens/sa-token-go/core v0.2.3
+	github.com/smartwalle/alipay/v3 v3.2.31
+	github.com/wechatpay-apiv3/wechatpay-go v0.2.18
 	github.com/xuri/excelize/v2 v2.11.0
 	go.einride.tech/aip v0.86.3
 	go.uber.org/automaxprocs v1.6.0
@@ -70,12 +72,10 @@ require (
 	github.com/panjf2000/ants/v2 v2.12.0 // indirect
 	github.com/richardlehane/mscfb v1.0.7 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
-	github.com/smartwalle/alipay/v3 v3.2.31 // indirect
 	github.com/smartwalle/ncrypto v1.0.4 // indirect
 	github.com/smartwalle/ngx v1.1.2 // indirect
 	github.com/smartwalle/nsign v1.0.9 // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
-	github.com/wechatpay-apiv3/wechatpay-go v0.2.18 // indirect
 	github.com/xuri/efp v0.0.1 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	github.com/yuin/gopher-lua v1.1.1 // indirect

@@ -503,6 +503,33 @@ func TestApplyChannelStateBackfillsEvidence(t *testing.T) {
 	}
 }
 
+func TestApplyChannelStateRejectsAmountMismatch(t *testing.T) {
+	svc, repo, merchantID := newTestPaymentService(t, &scriptGateway{})
+	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	// A signature-valid success naming the wrong amount never settles.
+	advanced, err := svc.ApplyChannelState(ctx(), p.ID, ChannelPaymentState{
+		State: payentity.PaymentPaid, ChannelTradeNo: "wx-txn-1", Amount: 999,
+	})
+	if err != nil || advanced {
+		t.Fatalf("mismatch advanced = %v, err = %v", advanced, err)
+	}
+	stored, _ := repo.FindByID(context.Background(), p.ID)
+	if stored.Status != payentity.PaymentPending {
+		t.Fatalf("status = %v — a mismatched amount must not settle", stored.Status)
+	}
+	// The verified amount settles.
+	advanced, err = svc.ApplyChannelState(ctx(), p.ID, ChannelPaymentState{
+		State: payentity.PaymentPaid, ChannelTradeNo: "wx-txn-1", Amount: 100,
+	})
+	if err != nil || !advanced {
+		t.Fatalf("verified advanced = %v, err = %v", advanced, err)
+	}
+	stored, _ = repo.FindByID(context.Background(), p.ID)
+	if stored.Status != payentity.PaymentPaid {
+		t.Fatalf("status = %v, want Paid", stored.Status)
+	}
+}
+
 // newFakeCipher builds the real credential cipher over the shared test
 // master key (the environment is set by the service test constructors).
 func newFakeCipher() *crypt.Cipher {

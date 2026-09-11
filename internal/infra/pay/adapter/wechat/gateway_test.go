@@ -450,6 +450,7 @@ func TestQueryMapsTradeStates(t *testing.T) {
 		TransactionId: strPtr("wx-txn-1"),
 		SuccessTime:   strPtr(paid.UTC().Format(time.RFC3339)),
 		Payer:         &payments.TransactionPayer{Openid: strPtr("openid-1")},
+		Amount:        &payments.TransactionAmount{Total: i64Ptr(100), Currency: strPtr("CNY")},
 	}
 	state, err := gw.Query(context.Background(), nil, "PAID-1")
 	if err != nil {
@@ -458,6 +459,11 @@ func TestQueryMapsTradeStates(t *testing.T) {
 	if state.State != payentity.PaymentPaid || state.ChannelTradeNo != "wx-txn-1" ||
 		state.PayerID != "openid-1" || state.PaidAt.IsZero() {
 		t.Fatalf("state = %+v", state)
+	}
+	// The channel-asserted total rides along for the settle-path amount
+	// verification (ADR 0019).
+	if state.Amount != 100 {
+		t.Fatalf("asserted amount = %d, want 100", state.Amount)
 	}
 	f.states["CLOSED-1"] = payments.Transaction{OutTradeNo: strPtr("CLOSED-1"), TradeState: strPtr("CLOSED")}
 	state, err = gw.Query(context.Background(), nil, "CLOSED-1")
@@ -533,6 +539,9 @@ func TestRefundAndQueryRefund(t *testing.T) {
 	if state.State != payentity.RefundSuccess || state.ChannelRefundNo != "wx-refund-1" || state.RefundedAt.IsZero() {
 		t.Fatalf("settled state = %+v", state)
 	}
+	if state.RefundAmount != 40 {
+		t.Fatalf("asserted refund amount = %d, want 40", state.RefundAmount)
+	}
 	// ABNORMAL maps to failed with a reason.
 	f.refunds["RF-2"] = refundFixture("RF-2", "PAY-1", "wx-refund-2", "wx-txn-2", "ABNORMAL")
 	out, err = gw.Refund(context.Background(), payservice.RefundRequest{RefundNo: "RF-2", PaymentNo: "PAY-1", Total: 100, Amount: 1})
@@ -554,6 +563,7 @@ func TestParseNotificationPaymentSuccess(t *testing.T) {
 		TradeState:    strPtr("SUCCESS"),
 		SuccessTime:   strPtr(paid.UTC().Format(time.RFC3339)),
 		Payer:         &payments.TransactionPayer{Openid: strPtr("openid-9")},
+		Amount:        &payments.TransactionAmount{Total: i64Ptr(100), Currency: strPtr("CNY")},
 	})
 	out, err := gw.ParseNotification(context.Background(), nil, headers, body)
 	if err != nil {
@@ -565,6 +575,9 @@ func TestParseNotificationPaymentSuccess(t *testing.T) {
 	}
 	if out.PaidAt.Unix() != paid.Unix() {
 		t.Fatalf("paid_at = %v, want ~%v", out.PaidAt, paid)
+	}
+	if out.Amount != 100 {
+		t.Fatalf("asserted amount = %d, want 100", out.Amount)
 	}
 }
 
@@ -582,6 +595,9 @@ func TestParseNotificationRefundSuccess(t *testing.T) {
 	if !out.Verified || out.Kind != payentity.NotifyKindRefund || out.TargetNo != "RF-9" ||
 		out.RefundState != payentity.RefundSuccess || out.NotifyID != "EV-TEST-0002" {
 		t.Fatalf("notification = %+v", out)
+	}
+	if out.RefundAmount != 40 {
+		t.Fatalf("asserted refund amount = %d, want 40", out.RefundAmount)
 	}
 }
 

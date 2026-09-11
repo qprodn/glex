@@ -102,4 +102,8 @@ type PaidCapture struct {
 	ChannelTradeNo string
 	PayerID        string
 	PaidAt         time.Time
+	// Amount is the channel-asserted paid total in minor units (ADR 0019);
+	// the caller must have verified it against the row's Amount before the
+	// settle CAS. Zero means "not asserted".
+	Amount int64
 }

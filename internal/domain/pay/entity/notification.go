@@ -34,12 +34,20 @@ type ChannelNotification struct {
 	// the module's vocabulary (Paid for success pushes; channels also
 	// announce closes).
 	PaymentState PaymentStatus
+	// Amount is the channel-asserted payment total in minor units
+	// (WeChat amount.total / Alipay total_amount). The advance path must
+	// reject any notification whose Amount differs from Payment.Amount —
+	// the last defense against a misrouted or mismatched settle.
+	Amount int64
 	// Payment success evidence.
 	PayerID string
 	PaidAt  time.Time
 	// Refund outcome (Kind == NotifyKindRefund).
 	RefundState RefundStatus
 	RefundedAt  time.Time
+	// RefundAmount is the channel-asserted refunded amount in minor units,
+	// verified against Refund.Amount for Kind == NotifyKindRefund.
+	RefundAmount int64
 	// Raw evidence, recorded write-once.
 	RawBody     string
 	SignHeaders map[string]string
