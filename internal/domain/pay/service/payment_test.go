@@ -39,6 +39,23 @@ func (f *fakePaymentRepo) FindByID(ctx context.Context, id int64) (*payentity.Pa
 	return nil, pay.ErrPaymentNotFound
 }
 
+// FindLatestByBizNo returns the newest active row for the pair.
+func (f *fakePaymentRepo) FindLatestByBizNo(ctx context.Context, merchantID int64, bizNo string) (*payentity.Payment, error) {
+	var newest *payentity.Payment
+	for _, p := range f.p {
+		if p.MerchantID == merchantID && p.BizNo == bizNo {
+			if newest == nil || p.ID > newest.ID {
+				cp := *p
+				newest = &cp
+			}
+		}
+	}
+	if newest == nil {
+		return nil, pay.ErrPaymentNotFound
+	}
+	return newest, nil
+}
+
 func (f *fakePaymentRepo) List(ctx context.Context, opts ...payrepo.ListOption) ([]*payentity.Payment, error) {
 	return nil, nil
 }

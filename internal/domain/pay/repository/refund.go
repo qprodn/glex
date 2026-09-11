@@ -21,6 +21,11 @@ type RefundRepo interface {
 	MarkSuccess(ctx context.Context, id int64, channelRefundNo string, refundedAt time.Time) (bool, error)
 	// MarkFailed CASes Pending → Failed with the reason.
 	MarkFailed(ctx context.Context, id int64, reason string) (bool, error)
+	// PendingRefundSum sums the amounts of a payment's still-Pending
+	// refunds — the in-flight reservations the cap check must count
+	// alongside the settled sum (ticket 07: async refunds must reserve
+	// their amount while PENDING).
+	PendingRefundSum(ctx context.Context, paymentID int64) (int64, error)
 	// NextID mints the snowflake row ID (the Refund number).
 	NextID() int64
 }

@@ -16,6 +16,10 @@ type MerchantAccountRepo interface {
 	// FindByID resolves one active Merchant Account. Config stays nil —
 	// display never decrypts.
 	FindByID(ctx context.Context, id int64) (*entity.MerchantAccount, error)
+	// FindByIDAny resolves the account regardless of withdrawal — the
+	// settlement paths (prepay, query, close, notify) keep resolving a
+	// withdrawn merchant's snapshot channel (design §7).
+	FindByIDAny(ctx context.Context, id int64) (*entity.MerchantAccount, error)
 	List(ctx context.Context, opts ...ListOption) ([]*entity.MerchantAccount, error)
 	// LoadConfig decrypts the account's stored config into Config. Fails
 	// with the master-key sentinel when PAY_MASTER_KEY is absent (ADR 0018).

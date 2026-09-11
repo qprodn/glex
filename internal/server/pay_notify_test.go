@@ -200,6 +200,10 @@ func (r *goldMerchantRepo) List(ctx context.Context, opts ...payrepo.ListOption)
 	return nil, nil
 }
 
+func (r *goldMerchantRepo) FindByIDAny(ctx context.Context, id int64) (*payentity.MerchantAccount, error) {
+	return r.FindByID(ctx, id)
+}
+
 func (r *goldMerchantRepo) LoadConfig(ctx context.Context, m *payentity.MerchantAccount) error {
 	values, err := r.c.Decrypt(r.m[m.ID].ConfigCipher)
 	if err != nil {
@@ -242,6 +246,10 @@ func (r *goldPaymentRepo) FindByID(ctx context.Context, id int64) (*payentity.Pa
 		cp := *p
 		return &cp, nil
 	}
+	return nil, paydomain.ErrPaymentNotFound
+}
+
+func (r *goldPaymentRepo) FindLatestByBizNo(ctx context.Context, merchantID int64, bizNo string) (*payentity.Payment, error) {
 	return nil, paydomain.ErrPaymentNotFound
 }
 

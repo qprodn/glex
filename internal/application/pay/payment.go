@@ -6,7 +6,6 @@ import (
 
 	payv1 "glex/api/pay/v1"
 	"glex/internal/bizpkg"
-	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
 	payservice "glex/internal/domain/pay/service"
 	"glex/pkg/logx"
@@ -14,7 +13,6 @@ import (
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
 	"go.einride.tech/aip/pagination"
-	kratoserrors "github.com/go-kratos/kratos/v3/errors"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -166,17 +164,4 @@ func (s *PayApplication) ClosePayment(ctx context.Context, req *payv1.ClosePayme
 		return nil, err
 	}
 	return convertPayment(p), nil
-}
-
-// mapChannelError normalizes gateway failures for API responses: kratos
-// domain sentinels pass through untouched, everything unknown becomes
-// CHANNEL_ERROR (502).
-func (s *PayApplication) mapChannelError(err error) error {
-	if err == nil {
-		return nil
-	}
-	if kerr := kratoserrors.FromError(err); kerr != nil && kerr.Reason != "" && kerr.Reason != kratoserrors.UnknownReason {
-		return err
-	}
-	return pay.ErrChannelError.WithCause(err)
 }

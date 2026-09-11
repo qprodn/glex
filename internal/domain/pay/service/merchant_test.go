@@ -49,6 +49,16 @@ func (f *fakeMerchantRepo) List(ctx context.Context, opts ...payrepo.ListOption)
 	return nil, nil
 }
 
+// FindByIDAny resolves regardless of withdrawal — the fake deletes map
+// covers the same ground.
+func (f *fakeMerchantRepo) FindByIDAny(ctx context.Context, id int64) (*payentity.MerchantAccount, error) {
+	if m, ok := f.m[id]; ok {
+		cp := *m
+		return &cp, nil
+	}
+	return nil, pay.ErrMerchantNotFound
+}
+
 func (f *fakeMerchantRepo) LoadConfig(ctx context.Context, m *payentity.MerchantAccount) error {
 	stored, ok := f.m[m.ID]
 	if !ok {

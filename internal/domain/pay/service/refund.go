@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	pay "glex/internal/domain/pay"
@@ -114,10 +113,15 @@ func (s *refundImpl) Create(ctx context.Context, in *CreateRefundInput, actorID 
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.create", err)
 		return nil, err
 	}
-	// The cap, under the caller's payment-scoped lock: refunded + this ≤
-	// paid. The SQL sum accumulates atomically afterwards; the lock is
-	// what serializes the check.
-	if p.RefundedAmount+in.Amount > p.Amount {
+	// The cap, under the caller's payment-scoped lock: settled + in-
+	// flight + this ≤ paid. PENDING refunds reserve their amount — two
+	// serialized async refunds of the same remainder must not both pass.
+	pending, err := s.refunds.PendingRefundSum(ctx, p.ID)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "pay.svc.refund.create", err)
+		return nil, err
+	}
+	if p.RefundedAmount+pending+in.Amount > p.Amount {
 		err = pay.ErrRefundExceedLimit
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.create", err)
 		return nil, err
@@ -150,17 +154,25 @@ func (s *refundImpl) PrepayRefund(ctx context.Context, id int64, notifyBaseURL s
 	if rf.Status != payentity.RefundPending {
 		return rf, nil
 	}
-	p, gw, err := s.resolve(ctx, rf.MerchantID)
+	m, gw, err := s.resolve(ctx, rf.MerchantID)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "pay.svc.refund.prepay", err)
+		return nil, err
+	}
+	// Channels whose refund API wants the original trade number and total
+	// read them off the payment row — one read, errors propagate (a
+	// refund must not ride on degraded evidence).
+	payment, err := s.payments.FindByID(ctx, rf.PaymentID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.prepay", err)
 		return nil, err
 	}
 	state, err := gw.Refund(ctx, RefundRequest{
-		Merchant:       p,
-		RefundNo:       strconvInt64(rf.ID),
-		PaymentNo:      strconvInt64(rf.PaymentID),
-		ChannelTradeNo: s.channelTradeNo(ctx, rf.PaymentID),
-		Total:          s.totalAmount(ctx, rf.PaymentID),
+		Merchant:       m,
+		RefundNo:       fmtPaymentNo(rf.ID),
+		PaymentNo:      fmtPaymentNo(rf.PaymentID),
+		ChannelTradeNo: payment.ChannelTradeNo,
+		Total:          payment.Amount,
 		Amount:         rf.Amount,
 		Reason:         rf.Reason,
 		NotifyURL:      notifyURL(notifyBaseURL, rf.Channel, rf.MerchantID),
@@ -191,12 +203,12 @@ func (s *refundImpl) Query(ctx context.Context, id int64) (*payentity.Refund, er
 	if rf.Status != payentity.RefundPending {
 		return rf, nil
 	}
-	_, gw, err := s.resolve(ctx, rf.MerchantID)
+	m, gw, err := s.resolve(ctx, rf.MerchantID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.query", err)
 		return nil, err
 	}
-	state, err := gw.QueryRefund(ctx, &payentity.MerchantAccount{}, strconvInt64(rf.ID))
+	state, err := gw.QueryRefund(ctx, m, fmtPaymentNo(rf.ID))
 	if err != nil {
 		err = pay.ErrChannelError.WithCause(err)
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.query", err)
@@ -248,18 +260,7 @@ func (s *refundImpl) ApplyRefundState(ctx context.Context, refundNo int64, state
 }
 
 func (s *refundImpl) resolve(ctx context.Context, merchantID int64) (*payentity.MerchantAccount, ChannelGateway, error) {
-	m, err := s.merchants.FindByID(ctx, merchantID)
-	if err != nil {
-		return nil, nil, err
-	}
-	if err := s.merchants.LoadConfig(ctx, m); err != nil {
-		return nil, nil, err
-	}
-	gw, err := s.gateways.Resolve(ctx, m)
-	if err != nil {
-		return nil, nil, err
-	}
-	return m, gw, nil
+	return resolveMerchantGateway(ctx, s.merchants, s.gateways, merchantID)
 }
 
 // channelTradeNo and totalAmount read the payment's snapshot for channels
@@ -281,7 +282,3 @@ func (s *refundImpl) totalAmount(ctx context.Context, paymentID int64) int64 {
 	return p.Amount
 }
 
-// strconvInt64 renders a snowflake ID as the channel-facing number.
-func strconvInt64(id int64) string {
-	return fmt.Sprintf("%d", id)
-}

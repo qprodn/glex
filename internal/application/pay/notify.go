@@ -68,26 +68,27 @@ func (s *PayApplication) HandleChannelNotification(
 		logx.Propagate(ctx, s.logger, "pay.notify.intake", err)
 		return nil, err
 	}
-	ok, err := s.notifications.Record(ctx, &notif)
-	if err != nil {
-		// The evidence insert is the pipeline's durability gate — without
-		// it the state advance must not run; a non-ACK makes the channel
-		// retry (ADR 0020).
+	// The evidence insert is the pipeline's durability gate — without it
+	// the state advance must not run; a non-ACK makes the channel retry
+	// (ADR 0020). The dedup bool is deliberately unused below: the advance
+	// re-runs for duplicates too (idempotent CAS), so the outcome reads
+	// from the advance, not the insert.
+	if _, err := s.notifications.Record(ctx, &notif); err != nil {
 		logx.Propagate(ctx, s.logger, "pay.notify.intake", err)
 		return nil, err
 	}
-	if !ok {
-		// Duplicate delivery: ACK without re-processing (design §7).
-		return &NotifyOutcome{Processed: false, AckBody: ackBody(channel)}, nil
-	}
+	// The advance runs for new AND duplicate deliveries: every state
+	// transition is an idempotent CAS, so a redelivery of an applied
+	// notification is a no-op — while a redelivery whose first advance
+	// FAILED gets healed instead of being ACKed into a lost update (the
+	// dedup alone must never retire an unprocessed event).
 	processed, err := s.advance(ctx, &notif)
 	if err != nil {
-		// The advance failed — no ACK, the channel retries, the dedup
-		// absorbs its redelivery.
+		// The advance failed — no ACK, the channel retries, and the next
+		// delivery (duplicate or not) re-attempts the advance.
 		logx.Propagate(ctx, s.logger, "pay.notify.advance", err)
 		return nil, err
 	}
-	_ = processed
 	if err := s.notifications.MarkProcessed(ctx, notif.ID); err != nil {
 		// The flag is diagnostic; the CAS advance is the guarantee (the
 		// handling site, ADR 0007).
@@ -96,7 +97,7 @@ func (s *PayApplication) HandleChannelNotification(
 			slog.Int64("notify_log_id", notif.ID),
 			slog.Any("error", err))
 	}
-	return &NotifyOutcome{Processed: true, AckBody: ackBody(channel)}, nil
+	return &NotifyOutcome{Processed: processed, AckBody: ackBody(channel)}, nil
 }
 
 // advance applies the verified event to its target row.

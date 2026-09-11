@@ -272,16 +272,11 @@ func (s *merchantImpl) Probe(ctx context.Context, id int64) (*ProbeOutcome, erro
 }
 
 func (s *merchantImpl) ResolveGateway(ctx context.Context, merchantID int64) (*payentity.MerchantAccount, ChannelGateway, error) {
-	m, err := s.merchants.FindByID(ctx, merchantID)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "pay.svc.merchant.resolve_gateway", err)
-		return nil, nil, err
-	}
-	if err := s.merchants.LoadConfig(ctx, m); err != nil {
-		logx.Propagate(ctx, s.logger, "pay.svc.merchant.resolve_gateway", err)
-		return nil, nil, err
-	}
-	gw, err := s.gateways.Resolve(ctx, m)
+	// Settlement paths resolve past withdrawal: a withdrawn merchant's
+	// in-flight payments still settle on its snapshot channel (design §7),
+	// while display and editing paths keep the strict lookup. The shared
+	// seam logs its own breadcrumbs; the wrapping op names this site.
+	m, gw, err := resolveMerchantGateway(ctx, s.merchants, s.gateways, merchantID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.resolve_gateway", err)
 		return nil, nil, err
@@ -308,13 +303,14 @@ func validateDisplayName(name string) error {
 }
 
 // mergeBlankSecrets substitutes the stored value for every secret field
-// the caller left blank; plain fields pass through verbatim (blank plain
-// means blank — only secrets have the keep semantics).
+// the caller left blank — a missing key is as blank as an empty string
+// (design §7: 敏感字段留空 = 保持原值); plain fields pass through verbatim,
+// where a missing key means blank.
 func mergeBlankSecrets(schema payentity.ChannelSchema, stored, submitted map[string]string) map[string]string {
 	merged := make(map[string]string, len(schema.Fields))
 	for _, field := range schema.Fields {
 		v, ok := submitted[field.Name]
-		if field.Secret && ok && v == "" {
+		if field.Secret && (!ok || v == "") {
 			merged[field.Name] = stored[field.Name]
 			continue
 		}

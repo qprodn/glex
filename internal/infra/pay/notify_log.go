@@ -2,6 +2,7 @@ package payinfra
 
 import (
 	"context"
+	"log/slog"
 
 	"glex/internal/domain/pay/entity"
 	payrepo "glex/internal/domain/pay/repository"
@@ -10,12 +11,23 @@ import (
 )
 
 type notifyLogRepo struct {
-	data *store.Data
+	data   *store.Data
+	logger *slog.Logger
 }
 
 // NewNotifyLogRepo creates the notify-log repo.
 func NewNotifyLogRepo(data *store.Data) payrepo.NotifyLogRepo {
-	return &notifyLogRepo{data: data}
+	return &notifyLogRepo{
+		data:   data,
+		logger: data.Logger.With(slog.String("component", "infra.pay.notify_log")),
+	}
+}
+
+// storeError is this repo's log-and-map (ADR 0007). A unique-violation on
+// the (channel, notify_id) index is not an unexpected failure — it is the
+// dedup contract, mapped silently at the call site.
+func (r *notifyLogRepo) storeError(ctx context.Context, operation string, err error) error {
+	return payStoreError(ctx, r.logger, operation, err)
 }
 
 // Insert records one notification write-once. The (channel, notify_id)
@@ -44,7 +56,7 @@ func (r *notifyLogRepo) Insert(ctx context.Context, n *entity.ChannelNotificatio
 		if ent.IsConstraintError(err) {
 			return false, nil
 		}
-		return false, err
+		return false, r.storeError(ctx, "pay.notify_log.insert", err)
 	}
 	return true, nil
 }
@@ -53,7 +65,11 @@ func (r *notifyLogRepo) Insert(ctx context.Context, n *entity.ChannelNotificatio
 // lost race against a concurrent writer is irrelevant — the flag is
 // diagnostic, the state advance's CAS is the guarantee.
 func (r *notifyLogRepo) MarkProcessed(ctx context.Context, id int64) error {
-	return r.data.DB.PayNotifyLog(ctx).UpdateOneID(id).
+	err := r.data.DB.PayNotifyLog(ctx).UpdateOneID(id).
 		SetProcessed(true).
 		Exec(ctx)
+	if err != nil {
+		return r.storeError(ctx, "pay.notify_log.mark_processed", err)
+	}
+	return nil
 }

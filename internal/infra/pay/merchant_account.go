@@ -2,6 +2,7 @@ package payinfra
 
 import (
 	"context"
+	"log/slog"
 
 	"glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
@@ -38,13 +39,23 @@ func toBizMerchant(po *ent.PayMerchantAccount) *payentity.MerchantAccount {
 type merchantAccountRepo struct {
 	data   *store.Data
 	cipher *crypt.Cipher
+	logger *slog.Logger
 }
 
 // NewMerchantAccountRepo creates the Merchant Account repo. The cipher
 // owns the config envelope at this boundary: writes seal Config whole,
 // LoadConfig opens it (ADR 0018).
 func NewMerchantAccountRepo(data *store.Data, cipher *crypt.Cipher) payrepo.MerchantAccountRepo {
-	return &merchantAccountRepo{data: data, cipher: cipher}
+	return &merchantAccountRepo{
+		data:   data,
+		cipher: cipher,
+		logger: data.Logger.With(slog.String("component", "infra.pay.merchant")),
+	}
+}
+
+// storeError is this repo's log-and-map (ADR 0007).
+func (r *merchantAccountRepo) storeError(ctx context.Context, operation string, err error) error {
+	return payStoreError(ctx, r.logger, operation, err)
 }
 
 func (r *merchantAccountRepo) NextID() int64 {
@@ -59,7 +70,25 @@ func (r *merchantAccountRepo) FindByID(ctx context.Context, id int64) (*payentit
 		if ent.IsNotFound(err) {
 			return nil, pay.ErrMerchantNotFound
 		}
-		return nil, err
+		return nil, r.storeError(ctx, "pay.merchant.find_by_id", err)
+	}
+	return toBizMerchant(po), nil
+}
+
+// FindByIDAny resolves one Merchant Account regardless of withdrawal —
+// the settlement paths (prepay, query, close, notify) must keep resolving
+// a withdrawn merchant's snapshot channel, while display and editing
+// paths stay strict (design §7: withdrawal never blocks in-flight
+// payments).
+func (r *merchantAccountRepo) FindByIDAny(ctx context.Context, id int64) (*payentity.MerchantAccount, error) {
+	po, err := r.data.DB.PayMerchantAccount(ctx).Query().
+		Where(entmerchant.IDEQ(id)).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, pay.ErrMerchantNotFound
+		}
+		return nil, r.storeError(ctx, "pay.merchant.find_by_id_any", err)
 	}
 	return toBizMerchant(po), nil
 }
@@ -79,7 +108,7 @@ func (r *merchantAccountRepo) List(ctx context.Context, opts ...payrepo.ListOpti
 		Limit(o.Limit).
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, r.storeError(ctx, "pay.merchant.list", err)
 	}
 	merchants := make([]*payentity.MerchantAccount, 0, len(pos))
 	for _, po := range pos {
@@ -139,7 +168,7 @@ func (r *merchantAccountRepo) Create(ctx context.Context, m *payentity.MerchantA
 		if ent.IsConstraintError(err) {
 			return nil, pay.ErrMerchantDuplicate
 		}
-		return nil, err
+		return nil, r.storeError(ctx, "pay.merchant.create", err)
 	}
 	return toBizMerchant(po), nil
 }
@@ -164,7 +193,7 @@ func (r *merchantAccountRepo) Update(ctx context.Context, m *payentity.MerchantA
 		if ent.IsConstraintError(err) {
 			return nil, pay.ErrMerchantDuplicate
 		}
-		return nil, err
+		return nil, r.storeError(ctx, "pay.merchant.update", err)
 	}
 	return toBizMerchant(po), nil
 }
@@ -177,7 +206,10 @@ func (r *merchantAccountRepo) UpdateStatus(ctx context.Context, id int64, status
 	if ent.IsNotFound(err) {
 		return pay.ErrMerchantNotFound
 	}
-	return err
+	if err != nil {
+		return r.storeError(ctx, "pay.merchant.update_status", err)
+	}
+	return nil
 }
 
 func (r *merchantAccountRepo) Delete(ctx context.Context, id, actorID int64) error {
@@ -187,7 +219,7 @@ func (r *merchantAccountRepo) Delete(ctx context.Context, id, actorID int64) err
 		SetUpdateBy(actorID).
 		Save(ctx)
 	if err != nil {
-		return err
+		return r.storeError(ctx, "pay.merchant.delete", err)
 	}
 	if n == 0 {
 		return pay.ErrMerchantNotFound

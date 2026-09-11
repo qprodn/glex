@@ -67,6 +67,10 @@ const (
 	// A Channel notification failed signature verification and was recorded
 	// unverified, then rejected (HTTP 400).
 	ErrorReason_CHANNEL_NOTIFY_INVALID ErrorReason = 13
+	// A pay-store operation failed unexpectedly — the raw database error is
+	// logged server-side and this sentinel crosses the boundary (ADR 0007,
+	// HTTP 503).
+	ErrorReason_PAY_STORE_UNAVAILABLE ErrorReason = 14
 )
 
 // Enum value maps for ErrorReason.
@@ -86,6 +90,7 @@ var (
 		11: "REFUND_EXCEED_LIMIT",
 		12: "CHANNEL_ERROR",
 		13: "CHANNEL_NOTIFY_INVALID",
+		14: "PAY_STORE_UNAVAILABLE",
 	}
 	ErrorReason_value = map[string]int32{
 		"ERROR_REASON_UNSPECIFIED": 0,
@@ -102,6 +107,7 @@ var (
 		"REFUND_EXCEED_LIMIT":      11,
 		"CHANNEL_ERROR":            12,
 		"CHANNEL_NOTIFY_INVALID":   13,
+		"PAY_STORE_UNAVAILABLE":    14,
 	}
 )
 
@@ -136,7 +142,7 @@ var File_pay_v1_error_reason_proto protoreflect.FileDescriptor
 
 const file_pay_v1_error_reason_proto_rawDesc = "" +
 	"\n" +
-	"\x19pay/v1/error_reason.proto\x12\x06pay.v1*\xdb\x02\n" +
+	"\x19pay/v1/error_reason.proto\x12\x06pay.v1*\xf6\x02\n" +
 	"\vErrorReason\x12\x1c\n" +
 	"\x18ERROR_REASON_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12MERCHANT_NOT_FOUND\x10\x01\x12\x14\n" +
@@ -152,7 +158,8 @@ const file_pay_v1_error_reason_proto_rawDesc = "" +
 	"\x12\x17\n" +
 	"\x13REFUND_EXCEED_LIMIT\x10\v\x12\x11\n" +
 	"\rCHANNEL_ERROR\x10\f\x12\x1a\n" +
-	"\x16CHANNEL_NOTIFY_INVALID\x10\rB\"\n" +
+	"\x16CHANNEL_NOTIFY_INVALID\x10\r\x12\x19\n" +
+	"\x15PAY_STORE_UNAVAILABLE\x10\x0eB\"\n" +
 	"\n" +
 	"api.pay.v1P\x01Z\x12glex/api/pay/v1;v1b\x06proto3"
 

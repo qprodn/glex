@@ -45,7 +45,11 @@ export type ErrorReason =
   | "CHANNEL_ERROR"
   // A Channel notification failed signature verification and was recorded
   // unverified, then rejected (HTTP 400).
-  | "CHANNEL_NOTIFY_INVALID";
+  | "CHANNEL_NOTIFY_INVALID"
+  // A pay-store operation failed unexpectedly — the raw database error is
+  // logged server-side and this sentinel crosses the boundary (ADR 0007,
+  // HTTP 503).
+  | "PAY_STORE_UNAVAILABLE";
 // MerchantAccount is one Channel Merchant Account (商户账号): the platform's
 // own collecting account at one Channel. The credential config is never
 // served — every response carries only config_masked, the write-time masked

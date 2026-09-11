@@ -2,6 +2,7 @@ package payinfra
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"glex/internal/domain/pay"
@@ -42,12 +43,21 @@ func toBizPayment(po *ent.PayPayment) *payentity.Payment {
 }
 
 type paymentRepo struct {
-	data *store.Data
+	data   *store.Data
+	logger *slog.Logger
 }
 
 // NewPaymentRepo creates the Payment repo.
 func NewPaymentRepo(data *store.Data) payrepo.PaymentRepo {
-	return &paymentRepo{data: data}
+	return &paymentRepo{
+		data:   data,
+		logger: data.Logger.With(slog.String("component", "infra.pay.payment")),
+	}
+}
+
+// storeError is this repo's log-and-map (ADR 0007).
+func (r *paymentRepo) storeError(ctx context.Context, operation string, err error) error {
+	return payStoreError(ctx, r.logger, operation, err)
 }
 
 func (r *paymentRepo) NextID() int64 {
@@ -62,7 +72,28 @@ func (r *paymentRepo) FindByID(ctx context.Context, id int64) (*payentity.Paymen
 		if ent.IsNotFound(err) {
 			return nil, pay.ErrPaymentNotFound
 		}
-		return nil, err
+		return nil, r.storeError(ctx, "pay.payment.find_by_id", err)
+	}
+	return toBizPayment(po), nil
+}
+
+// FindLatestByBizNo resolves the newest active Payment for one merchant's
+// Business Order Number — re-initiation keeps history, and the live row
+// is the newest one.
+func (r *paymentRepo) FindLatestByBizNo(ctx context.Context, merchantID int64, bizNo string) (*payentity.Payment, error) {
+	po, err := r.data.DB.PayPayment(ctx).Query().
+		Where(
+			entpayment.MerchantIDEQ(merchantID),
+			entpayment.BizNoEQ(bizNo),
+			entpayment.DeletedAtIsNil(),
+		).
+		Order(ent.Desc(entpayment.FieldID)).
+		First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, pay.ErrPaymentNotFound
+		}
+		return nil, r.storeError(ctx, "pay.payment.find_latest_by_biz_no", err)
 	}
 	return toBizPayment(po), nil
 }
@@ -82,7 +113,7 @@ func (r *paymentRepo) List(ctx context.Context, opts ...payrepo.ListOption) ([]*
 		Limit(o.Limit).
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, r.storeError(ctx, "pay.payment.list", err)
 	}
 	payments := make([]*payentity.Payment, 0, len(pos))
 	for _, po := range pos {
@@ -107,7 +138,7 @@ func (r *paymentRepo) Create(ctx context.Context, p *payentity.Payment) (*payent
 		SetUpdateBy(p.UpdateBy).
 		Save(ctx)
 	if err != nil {
-		return nil, err
+		return nil, r.storeError(ctx, "pay.payment.create", err)
 	}
 	return toBizPayment(po), nil
 }
@@ -117,7 +148,7 @@ func (r *paymentRepo) Create(ctx context.Context, p *payentity.Payment) (*payent
 // half. The count is informational; a concurrent notification losing the
 // race is a CAS no-op, not an error.
 func (r *paymentRepo) ClosePendingByBizNo(ctx context.Context, merchantID int64, bizNo string, actorID int64) (int, error) {
-	return r.data.DB.PayPayment(ctx).Update().
+	n, err := r.data.DB.PayPayment(ctx).Update().
 		Where(
 			entpayment.MerchantIDEQ(merchantID),
 			entpayment.BizNoEQ(bizNo),
@@ -127,6 +158,10 @@ func (r *paymentRepo) ClosePendingByBizNo(ctx context.Context, merchantID int64,
 		SetStatus(int16(payentity.PaymentClosed)).
 		SetUpdateBy(actorID).
 		Save(ctx)
+	if err != nil {
+		return 0, r.storeError(ctx, "pay.payment.close_pending_by_biz_no", err)
+	}
+	return n, nil
 }
 
 func (r *paymentRepo) SetChannelPayload(ctx context.Context, id int64, payload string) error {
@@ -136,7 +171,10 @@ func (r *paymentRepo) SetChannelPayload(ctx context.Context, id int64, payload s
 	if ent.IsNotFound(err) {
 		return pay.ErrPaymentNotFound
 	}
-	return err
+	if err != nil {
+		return r.storeError(ctx, "pay.payment.set_channel_payload", err)
+	}
+	return nil
 }
 
 func (r *paymentRepo) SetFailReason(ctx context.Context, id int64, reason string) error {
@@ -146,7 +184,10 @@ func (r *paymentRepo) SetFailReason(ctx context.Context, id int64, reason string
 	if ent.IsNotFound(err) {
 		return pay.ErrPaymentNotFound
 	}
-	return err
+	if err != nil {
+		return r.storeError(ctx, "pay.payment.set_fail_reason", err)
+	}
+	return nil
 }
 
 // pendingPaymentScope is the CAS guard shared by every transition: the row
@@ -178,7 +219,7 @@ func (r *paymentRepo) MarkPaid(ctx context.Context, id int64, capture payentity.
 	}
 	n, err := upd.Save(ctx)
 	if err != nil {
-		return false, err
+		return false, r.storeError(ctx, "pay.payment.mark_paid", err)
 	}
 	return n > 0, nil
 }
@@ -214,7 +255,7 @@ func (r *paymentRepo) BackfillPaidInfo(ctx context.Context, id int64, capture pa
 	}
 	n, err := upd.Save(ctx)
 	if err != nil {
-		return false, err
+		return false, r.storeError(ctx, "pay.payment.backfill_paid_info", err)
 	}
 	return n > 0, nil
 }
@@ -229,7 +270,7 @@ func (r *paymentRepo) MarkFailed(ctx context.Context, id int64, reason string) (
 	}
 	n, err := upd.Save(ctx)
 	if err != nil {
-		return false, err
+		return false, r.storeError(ctx, "pay.payment.mark_failed", err)
 	}
 	return n > 0, nil
 }
@@ -241,7 +282,7 @@ func (r *paymentRepo) MarkClosed(ctx context.Context, id int64) (bool, error) {
 		SetUpdateBy(systemActor).
 		Save(ctx)
 	if err != nil {
-		return false, err
+		return false, r.storeError(ctx, "pay.payment.mark_closed", err)
 	}
 	return n > 0, nil
 }
@@ -253,7 +294,7 @@ func (r *paymentRepo) MarkExpired(ctx context.Context, id int64) (bool, error) {
 		SetUpdateBy(systemActor).
 		Save(ctx)
 	if err != nil {
-		return false, err
+		return false, r.storeError(ctx, "pay.payment.mark_expired", err)
 	}
 	return n > 0, nil
 }
@@ -271,7 +312,7 @@ func (r *paymentRepo) AccumulateRefunded(ctx context.Context, id int64, amount i
 		AddRefundedAmount(amount).
 		Save(ctx)
 	if err != nil {
-		return false, err
+		return false, r.storeError(ctx, "pay.payment.accumulate_refunded", err)
 	}
 	return n > 0, nil
 }
@@ -280,10 +321,8 @@ func (r *paymentRepo) AccumulateRefunded(ctx context.Context, id int64, amount i
 // acting (ADR 0002 — 0 is the system).
 const systemActor = int64(0)
 
-// truncateReason bounds a channel-supplied reason to the column's length.
+// truncateReason bounds a channel-supplied reason to the column's length,
+// rune-safe (channel texts are frequently Chinese).
 func truncateReason(reason string) string {
-	if len(reason) <= 256 {
-		return reason
-	}
-	return reason[:256]
+	return truncateUTF8(reason, 256)
 }

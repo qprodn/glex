@@ -15,6 +15,10 @@ import (
 type PaymentRepo interface {
 	// FindByID resolves one active Payment.
 	FindByID(ctx context.Context, id int64) (*entity.Payment, error)
+	// FindLatestByBizNo resolves a merchant's newest active Payment for
+	// one Business Order Number — what a business caller reading a
+	// payment's outcome wants. NotFound when none exists.
+	FindLatestByBizNo(ctx context.Context, merchantID int64, bizNo string) (*entity.Payment, error)
 	List(ctx context.Context, opts ...ListOption) ([]*entity.Payment, error)
 	// Create inserts the row; the caller mints the ID (NextID) and owns
 	// any transaction.

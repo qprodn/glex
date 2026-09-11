@@ -53,4 +53,8 @@ var (
 	// ErrNotifyInvalid: a Channel notification failed signature
 	// verification and was recorded unverified, then rejected.
 	ErrNotifyInvalid = errors.BadRequest("CHANNEL_NOTIFY_INVALID", "channel notification failed verification")
+	// ErrPayStoreUnavailable: a pay-store operation failed unexpectedly
+	// (connectivity, deadlock) — the raw error is logged at the handling
+	// site and this sentinel crosses the boundary instead (ADR 0007).
+	ErrPayStoreUnavailable = errors.ServiceUnavailable("PAY_STORE_UNAVAILABLE", "payment store unavailable")
 )

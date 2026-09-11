@@ -15,6 +15,7 @@ import (
 	dictimpl "glex/internal/crossdomain/dict/impl"
 	fileimpl "glex/internal/crossdomain/file/impl"
 	orgimpl "glex/internal/crossdomain/org/impl"
+	payimpl "glex/internal/crossdomain/pay/impl"
 	userimpl "glex/internal/crossdomain/user/impl"
 	accessservice "glex/internal/domain/access/service"
 	auditservice "glex/internal/domain/audit/service"
@@ -74,6 +75,7 @@ var appModule = fx.Options(
 	dictimpl.Module,
 	fileimpl.Module,
 	orgimpl.Module,
+	payimpl.Module,
 	userimpl.Module,
 	// application
 	userapp.Module,

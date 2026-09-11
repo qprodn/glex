@@ -67,6 +67,17 @@ func (f *fakeRefundRepo) MarkFailed(ctx context.Context, id int64, reason string
 	return true, nil
 }
 
+// PendingRefundSum mirrors the SQL aggregate over in-flight refunds.
+func (f *fakeRefundRepo) PendingRefundSum(ctx context.Context, paymentID int64) (int64, error) {
+	var sum int64
+	for _, rf := range f.r {
+		if rf.PaymentID == paymentID && rf.Status == payentity.RefundPending {
+			sum += rf.Amount
+		}
+	}
+	return sum, nil
+}
+
 func (f *fakeRefundRepo) NextID() int64 { f.nextID++; return f.nextID }
 
 // scriptRefundGateway answers refunds synchronously and reports refund
@@ -208,6 +219,29 @@ func TestRefundExceedsCapRejected(t *testing.T) {
 	}
 	if _, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: 1}, 7); !errors.Is(err, pay.ErrRefundExceedLimit) {
 		t.Fatalf("err = %v, want ErrRefundExceedLimit", err)
+	}
+}
+
+// TestRefundPendingReservesCap pins the async-refund reservation: a
+// PENDING refund of 60 on a 100 payment blocks a second 60 until it
+// settles or fails — the create-time check counts in-flight amounts
+// (ticket 07).
+func TestRefundPendingReservesCap(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	svc, _, _, paymentID := newTestRefundService(t, gw)
+	first, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: 60}, 7)
+	if err != nil {
+		t.Fatalf("first refund: %v", err)
+	}
+	if _, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: 60}, 7); !errors.Is(err, pay.ErrRefundExceedLimit) {
+		t.Fatalf("err = %v, want ErrRefundExceedLimit while the first is PENDING", err)
+	}
+	// The channel fails the first refund: the reservation releases.
+	if _, err := svc.ApplyRefundState(context.Background(), first.ID, ChannelRefundState{State: payentity.RefundFailed, FailReason: "insufficient balance"}); err != nil {
+		t.Fatalf("apply failed state: %v", err)
+	}
+	if _, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: 60}, 7); err != nil {
+		t.Fatalf("retry after release: %v", err)
 	}
 }
 

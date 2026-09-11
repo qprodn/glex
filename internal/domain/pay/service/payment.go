@@ -39,6 +39,10 @@ type CreatePaymentInput struct {
 // CAS (terminal states irreversible, out-of-order receipts no-ops).
 type Payment interface {
 	Get(ctx context.Context, id int64) (*payentity.Payment, error)
+	// GetByBizNo resolves a merchant's newest Payment for a Business
+	// Order Number, settling it first when PENDING and expired — the
+	// caller reads an outcome, so the lazy-expiry rule applies here too.
+	GetByBizNo(ctx context.Context, merchantID int64, bizNo string) (*payentity.Payment, error)
 	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*payentity.Payment, error)
 	// Initiate validates the initiation against the Merchant Account,
 	// closes the merchant's still-pending payments for the Business Order
@@ -89,14 +93,20 @@ func NewPaymentService(
 // resolve prepares the merchant's gateway: find, decrypt, resolve. Every
 // channel-touching path funnels through here.
 func (s *paymentImpl) resolve(ctx context.Context, merchantID int64) (*payentity.MerchantAccount, ChannelGateway, error) {
-	m, err := s.merchants.FindByID(ctx, merchantID)
+	return resolveMerchantGateway(ctx, s.merchants, s.gateways, merchantID)
+}
+
+// resolveMerchantGateway is the shared find-decrypt-resolve seam for every
+// channel-touching path (payments, refunds, notification intake).
+func resolveMerchantGateway(ctx context.Context, merchants payrepo.MerchantAccountRepo, gateways GatewayRegistry, merchantID int64) (*payentity.MerchantAccount, ChannelGateway, error) {
+	m, err := merchants.FindByIDAny(ctx, merchantID)
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := s.merchants.LoadConfig(ctx, m); err != nil {
+	if err := merchants.LoadConfig(ctx, m); err != nil {
 		return nil, nil, err
 	}
-	gw, err := s.gateways.Resolve(ctx, m)
+	gw, err := gateways.Resolve(ctx, m)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -122,6 +132,28 @@ func (s *paymentImpl) Get(ctx context.Context, id int64) (*payentity.Payment, er
 		p, err = s.payments.FindByID(ctx, id)
 		if err != nil {
 			logx.Propagate(ctx, s.logger, "pay.svc.payment.get", err)
+			return nil, err
+		}
+	}
+	return p, nil
+}
+
+func (s *paymentImpl) GetByBizNo(ctx context.Context, merchantID int64, bizNo string) (*payentity.Payment, error) {
+	p, err := s.payments.FindLatestByBizNo(ctx, merchantID, bizNo)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "pay.svc.payment.get_by_biz_no", err)
+		return nil, err
+	}
+	if p.Status == payentity.PaymentPending && time.Now().After(p.ExpireTime) {
+		if _, err := s.settle(ctx, p); err != nil {
+			s.logger.Warn("settle on read failed; serving stored state",
+				slog.String("operation", "pay.svc.payment.get_by_biz_no"),
+				slog.Int64("payment_id", p.ID),
+				slog.Any("error", err))
+		}
+		p, err = s.payments.FindByID(ctx, p.ID)
+		if err != nil {
+			logx.Propagate(ctx, s.logger, "pay.svc.payment.get_by_biz_no", err)
 			return nil, err
 		}
 	}
