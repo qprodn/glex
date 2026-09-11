@@ -485,3 +485,9 @@ func TestApplyChannelStateBackfillsEvidence(t *testing.T) {
 		t.Fatalf("payment = %+v", stored)
 	}
 }
+
+// newFakeCipher builds the real credential cipher over the shared test
+// master key (the environment is set by the service test constructors).
+func newFakeCipher() *crypt.Cipher {
+	return crypt.New()
+}
