@@ -125,7 +125,7 @@ func (g *scriptRefundGateway) Refund(ctx context.Context, req RefundRequest) (Ch
 	return g.refundState, nil
 }
 
-func (g *scriptRefundGateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo string) (ChannelRefundState, error) {
+func (g *scriptRefundGateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo, paymentNo string) (ChannelRefundState, error) {
 	return g.Refund(ctx, RefundRequest{})
 }
 

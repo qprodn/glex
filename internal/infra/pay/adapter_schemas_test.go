@@ -43,8 +43,8 @@ func alipayValues(mode string) map[string]string {
 	if mode == "key" {
 		v["alipay_public_key"] = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA"
 	} else {
-		v["alipay_cert_sn"] = "7d0f90c1e1d1e1d1e1d1e1d1e1d1e1d1"
-		v["alipay_public_cert"] = "-----BEGIN CERTIFICATE-----\napp\n-----END CERTIFICATE-----"
+		v["app_public_cert"] = "-----BEGIN CERTIFICATE-----\napp\n-----END CERTIFICATE-----"
+		v["alipay_public_cert"] = "-----BEGIN CERTIFICATE-----\nalipay\n-----END CERTIFICATE-----"
 		v["alipay_root_cert"] = "-----BEGIN CERTIFICATE-----\nroot\n-----END CERTIFICATE-----"
 	}
 	return v

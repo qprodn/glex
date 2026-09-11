@@ -221,7 +221,7 @@ func (g *fakeChannelGateway) Refund(ctx context.Context, req RefundRequest) (Cha
 	return ChannelRefundState{}, nil
 }
 
-func (g *fakeChannelGateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo string) (ChannelRefundState, error) {
+func (g *fakeChannelGateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo, paymentNo string) (ChannelRefundState, error) {
 	return ChannelRefundState{}, nil
 }
 

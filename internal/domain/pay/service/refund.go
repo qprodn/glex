@@ -208,7 +208,7 @@ func (s *refundImpl) Query(ctx context.Context, id int64) (*payentity.Refund, er
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.query", err)
 		return nil, err
 	}
-	state, err := gw.QueryRefund(ctx, m, fmtPaymentNo(rf.ID))
+	state, err := gw.QueryRefund(ctx, m, fmtPaymentNo(rf.ID), fmtPaymentNo(rf.PaymentID))
 	if err != nil {
 		err = pay.ErrChannelError.WithCause(err)
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.query", err)
@@ -221,10 +221,10 @@ func (s *refundImpl) Query(ctx context.Context, id int64) (*payentity.Refund, er
 	return s.refunds.FindByID(ctx, id)
 }
 
-// ApplyRefundState advances one refund per channel-asserted truth. A
-// successful CAS adds to the payment's refunded sum — the sum and the
-// refund status move together, idempotently: a duplicate delivery loses
-// the CAS and never double-counts.
+// ApplyRefundState advances one refund per channel-asserted truth. The
+// settle and the payment's refunded-sum advance are one atomic repo write
+// — the sum moves exactly once with the status, and a duplicate delivery
+// loses the CAS and never double-counts.
 func (s *refundImpl) ApplyRefundState(ctx context.Context, refundNo int64, state ChannelRefundState) (bool, error) {
 	switch state.State {
 	case payentity.RefundSuccess:

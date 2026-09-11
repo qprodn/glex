@@ -12,9 +12,10 @@ import (
 
 // ConfigSchema describes an Alipay application's credential set. The two
 // modes share the app_id and the application private key and differ in how
-// Alipay's side is trusted: alipay_public_key for key mode, the
-// certificate trio for certificate mode (RequiredWhen drives both the
-// form's conditionality and the server-side validation).
+// Alipay's side is trusted: alipay_public_key for key mode, the certificate
+// trio (app public cert, Alipay public cert — the verification trust
+// anchor — and root cert) for certificate mode (RequiredWhen drives both
+// the form's conditionality and the server-side validation).
 func ConfigSchema() payentity.ChannelSchema {
 	return payentity.ChannelSchema{
 		Channel: payentity.ChannelAlipay,
@@ -62,21 +63,22 @@ func ConfigSchema() payentity.ChannelSchema {
 				Help:         "公钥模式必填：用于验签的支付宝公钥",
 			},
 			{
-				Name:         "alipay_cert_sn",
-				Label:        "支付宝公钥证书序列号",
-				Type:         payentity.FieldText,
-				Group:        "证书模式",
-				RequiredWhen: map[string]string{"mode": "cert"},
-				Help:         "证书模式必填：alipayCertSN（可由工具从公钥证书计算）",
-			},
-			{
-				Name:         "alipay_public_cert",
+				Name:         "app_public_cert",
 				Label:        "应用公钥证书",
 				Type:         payentity.FieldTextarea,
 				Secret:       true,
 				Group:        "证书模式",
 				RequiredWhen: map[string]string{"mode": "cert"},
 				Help:         "证书模式必填：应用公钥证书（appCertPublicKey.crt）全文",
+			},
+			{
+				Name:         "alipay_public_cert",
+				Label:        "支付宝公钥证书",
+				Type:         payentity.FieldTextarea,
+				Secret:       true,
+				Group:        "证书模式",
+				RequiredWhen: map[string]string{"mode": "cert"},
+				Help:         "证书模式必填：支付宝公钥证书（alipayCertPublicKey_RSA2.crt）全文——验签的信任锚",
 			},
 			{
 				Name:         "alipay_root_cert",

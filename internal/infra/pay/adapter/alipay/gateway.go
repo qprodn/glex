@@ -62,15 +62,19 @@ func newGateway(cfg map[string]string, opts ...adapter.GatewayOption) (payservic
 	client.Client = &http.Client{Timeout: timeout}
 	switch cfg["mode"] {
 	case "cert":
-		if err := client.LoadAppCertPublicKey(cfg["alipay_public_cert"]); err != nil {
+		// The certificate trio: the app public cert proves our identity,
+		// the Alipay public cert is the verification trust anchor (async
+		// notifications carry no serial to lazily bootstrap from), and
+		// the root cert anchors the chain.
+		if err := client.LoadAppCertPublicKey(cfg["app_public_cert"]); err != nil {
 			return nil, fmt.Errorf("alipay: load app public cert: %w", err)
+		}
+		if err := client.LoadAlipayCertPublicKey(cfg["alipay_public_cert"]); err != nil {
+			return nil, fmt.Errorf("alipay: load alipay public cert: %w", err)
 		}
 		if err := client.LoadAliPayRootCert(cfg["alipay_root_cert"]); err != nil {
 			return nil, fmt.Errorf("alipay: load root cert: %w", err)
 		}
-		// The Alipay public certificate is fetched lazily from the
-		// gateway by its serial (alipay_cert_sn) on first verification —
-		// the SDK's certificate rotation path.
 	default: // "key" — the schema default
 		if err := client.LoadAliPayPublicKey(cfg["alipay_public_key"]); err != nil {
 			return nil, fmt.Errorf("alipay: load alipay public key: %w", err)
@@ -178,10 +182,18 @@ func (g *gateway) Refund(ctx context.Context, req payservice.RefundRequest) (pay
 		return payservice.ChannelRefundState{}, err
 	}
 	if !rsp.IsSuccess() {
-		return payservice.ChannelRefundState{
-			State:      payentity.RefundFailed,
-			FailReason: fmt.Sprintf("%s: %s", rsp.SubCode, rsp.SubMsg),
-		}, nil
+		// A hard refusal can never succeed on a retry — fail terminally.
+		// Anything else (system errors, balance races, unknown codes)
+		// returns an error so the row stays Pending for an idempotent
+		// same-out_request_no retry: marking an unknown outcome Failed
+		// risks double-paying a refund that actually succeeded.
+		if isHardRefundRejection(rsp.SubCode) {
+			return payservice.ChannelRefundState{
+				State:      payentity.RefundFailed,
+				FailReason: fmt.Sprintf("%s: %s", rsp.SubCode, rsp.SubMsg),
+			}, nil
+		}
+		return payservice.ChannelRefundState{}, fmt.Errorf("alipay: refund outcome inconclusive (%s: %s)", rsp.SubCode, rsp.SubMsg)
 	}
 	// Synchronous settlement — FundChange "N" means the identical refund
 	// request was already processed, which is still a settled refund. The
@@ -194,22 +206,41 @@ func (g *gateway) Refund(ctx context.Context, req payservice.RefundRequest) (pay
 	}, nil
 }
 
-// QueryRefund asks the channel for the refund's true state.
-func (g *gateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo string) (payservice.ChannelRefundState, error) {
+// isHardRefundRejection reports whether the SubCode is a permanent refusal
+// the channel can never settle on a retry — the only outcomes a refund may
+// be terminally Failed on. Alipay's guidance for transient codes (system
+// errors, seller-balance races, status races) is to re-issue with the same
+// parameters, which the PENDING row preserves.
+func isHardRefundRejection(subCode string) bool {
+	switch subCode {
+	case "ACQ.TRADE_NOT_EXIST", "ACQ.TRADE_HAS_CLOSED", "ACQ.TRADE_NOT_OPEN",
+		"ACQ.REFUND_AMT_NOT_EQUAL", "ACQ.REFUND_NOT_ENOUGH", "ACQ.INVALID_PARAMETER":
+		return true
+	}
+	return strings.HasPrefix(subCode, "ACQ.PERMISSION_")
+}
+
+// QueryRefund asks the channel for the refund's true state. The API
+// requires the owning payment's out_trade_no alongside the out_request_no
+// — sending only the refund number is rejected as a parameter error by the
+// real gateway.
+func (g *gateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo, paymentNo string) (payservice.ChannelRefundState, error) {
 	var p alipay.TradeFastPayRefundQuery
+	p.OutTradeNo = paymentNo
 	p.OutRequestNo = refundNo
 	rsp, err := g.client.TradeFastPayRefundQuery(ctx, p)
 	if err != nil {
 		return payservice.ChannelRefundState{}, err
 	}
 	if !rsp.IsSuccess() {
+		// A refund the channel never accepted (or whose trade is unknown)
+		// is not an outcome — it may still be issued. Every other query
+		// failure is an error the caller retries: a query cannot assert a
+		// terminal state it did not observe.
 		if rsp.SubCode == "ACQ.REFUND_NOT_EXIST" || rsp.SubCode == "ACQ.TRADE_NOT_EXIST" {
 			return payservice.ChannelRefundState{State: payentity.RefundPending}, nil
 		}
-		return payservice.ChannelRefundState{
-			State:      payentity.RefundFailed,
-			FailReason: fmt.Sprintf("%s: %s", rsp.SubCode, rsp.SubMsg),
-		}, nil
+		return payservice.ChannelRefundState{}, fmt.Errorf("alipay: %s: %s", rsp.SubCode, rsp.SubMsg)
 	}
 	state := payservice.ChannelRefundState{State: payentity.RefundPending}
 	if rsp.RefundStatus == "REFUND_SUCCESS" {

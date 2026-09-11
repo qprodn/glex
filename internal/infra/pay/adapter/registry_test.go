@@ -109,7 +109,7 @@ func (f *fakeGateway) Refund(ctx context.Context, req payservice.RefundRequest) 
 	return payservice.ChannelRefundState{}, nil
 }
 
-func (f *fakeGateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo string) (payservice.ChannelRefundState, error) {
+func (f *fakeGateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo, paymentNo string) (payservice.ChannelRefundState, error) {
 	return payservice.ChannelRefundState{}, nil
 }
 

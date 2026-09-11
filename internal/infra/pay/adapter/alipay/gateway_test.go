@@ -57,9 +57,10 @@ type tradeState struct {
 }
 
 type refundState struct {
-	refunded bool
-	payTime  string
-	notExist bool
+	refunded     bool
+	payTime      string
+	notExist     bool
+	systemError  bool // the channel answers ACQ.SYSTEM_ERROR — an inconclusive outcome
 }
 
 func newFakeAlipay(t *testing.T) *fakeAlipay {
@@ -181,6 +182,9 @@ func (f *fakeAlipay) handleBiz(method, bizContent string) map[string]any {
 		if !ok || rf.notExist {
 			return bizError("ACQ.REFUND_AMT_NOT_EQUAL", "退款金额不一致")
 		}
+		if rf.systemError {
+			return bizError("ACQ.SYSTEM_ERROR", "系统异常")
+		}
 		fundChange := "Y"
 		if rf.refunded {
 			fundChange = "N" // repeat of an already-processed refund
@@ -188,6 +192,14 @@ func (f *fakeAlipay) handleBiz(method, bizContent string) map[string]any {
 		rf.refunded = true
 		return map[string]any{"code": "10000", "msg": "Success", "fund_change": fundChange, "out_request_no": outRequestNo}
 	case "alipay.trade.fastpay.refund.query":
+		// The real gateway rejects a query carrying no out_trade_no with
+		// a parameter error — the contract under test must too.
+		if _, ok := biz["out_trade_no"].(string); !ok || biz["out_trade_no"] == "" {
+			return bizError("ACQ.INVALID_PARAMETER", "参数错误")
+		}
+		if rf, ok := f.refunds[outRequestNo]; ok && rf.systemError {
+			return bizError("ACQ.SYSTEM_ERROR", "系统异常")
+		}
 		rf, ok := f.refunds[outRequestNo]
 		if !ok || rf.notExist {
 			return bizError("ACQ.TRADE_NOT_EXIST", "交易不存在")
@@ -420,7 +432,7 @@ func TestRefundSynchronousSettlement(t *testing.T) {
 	if err != nil || out.State != payentity.RefundSuccess {
 		t.Fatalf("repeat refund = %+v, err = %v", out, err)
 	}
-	// A channel-side failure returns a Failed state with the reason.
+	// A channel-side hard refusal returns a Failed state with the reason.
 	f.refunds["RF-2"] = &refundState{notExist: true}
 	out, err = gw.Refund(context.Background(), payservice.RefundRequest{
 		RefundNo: "RF-2", PaymentNo: "PAY-1", Total: 100, Amount: 1,
@@ -431,13 +443,21 @@ func TestRefundSynchronousSettlement(t *testing.T) {
 	if out.State != payentity.RefundFailed || out.FailReason == "" {
 		t.Fatalf("failed refund = %+v", out)
 	}
+	// An inconclusive outcome (system error) is an error — the row stays
+	// Pending for an idempotent same-number retry, never Failed.
+	f.refunds["RF-3"] = &refundState{systemError: true}
+	if _, err := gw.Refund(context.Background(), payservice.RefundRequest{
+		RefundNo: "RF-3", PaymentNo: "PAY-1", Total: 100, Amount: 1,
+	}); err == nil {
+		t.Fatal("inconclusive refund outcome did not error")
+	}
 }
 
 func TestQueryRefund(t *testing.T) {
 	f := newFakeAlipay(t)
 	gw := f.gateway(t)
 	f.refunds["RF-9"] = &refundState{refunded: true, payTime: "2026-09-11 10:30:00"}
-	state, err := gw.QueryRefund(context.Background(), nil, "RF-9")
+	state, err := gw.QueryRefund(context.Background(), nil, "RF-9", "PAY-9")
 	if err != nil {
 		t.Fatalf("query refund: %v", err)
 	}
@@ -449,9 +469,19 @@ func TestQueryRefund(t *testing.T) {
 	}
 	// Unknown refunds are pending, not errors.
 	f.refunds["RF-GHOST"] = &refundState{notExist: true}
-	state, err = gw.QueryRefund(context.Background(), nil, "RF-GHOST")
+	state, err = gw.QueryRefund(context.Background(), nil, "RF-GHOST", "PAY-9")
 	if err != nil || state.State != payentity.RefundPending {
 		t.Fatalf("ghost refund = %+v, err = %v", state, err)
+	}
+	// A query failure is an error, never a terminal Failed state — a
+	// query cannot assert an outcome it did not observe.
+	f.refunds["RF-ERR"] = &refundState{notExist: true, systemError: true}
+	if _, err := gw.QueryRefund(context.Background(), nil, "RF-ERR", "PAY-9"); err == nil {
+		t.Fatal("query failure settled the refund as Failed")
+	}
+	// Dropping the payment number is a parameter error at the real gateway.
+	if _, err := gw.QueryRefund(context.Background(), nil, "RF-9", ""); err == nil {
+		t.Fatal("query without out_trade_no accepted")
 	}
 }
 
@@ -519,14 +549,17 @@ func TestParseNotificationRejectsBadSignature(t *testing.T) {
 
 func TestCertModeGatewayBuilds(t *testing.T) {
 	f := newFakeAlipay(t)
-	appCert := selfSignedPEM(t, f.appKey)
-	rootCert := selfSignedPEM(t, f.alipayKey)
+	appCert := selfSignedPEM(t, f.appKey, 1)
+	// The Alipay-side trust anchor the cert branch must actually load —
+	// without it notifications carry no key material to verify against.
+	alipayCert := selfSignedPEM(t, f.alipayKey, 2)
+	rootCert := selfSignedPEM(t, f.alipayKey, 3)
 	gw, err := newGateway(map[string]string{
 		"app_id":             f.appID,
 		"mode":               "cert",
 		"app_private_key":    privateKeyPEM(t, f.appKey),
-		"alipay_cert_sn":     "cert-sn-not-used-at-build",
-		"alipay_public_cert": appCert,
+		"app_public_cert":    appCert,
+		"alipay_public_cert": alipayCert,
 		"alipay_root_cert":   rootCert,
 	}, adapter.WithBaseURL(f.gatewayHost))
 	if err != nil {
@@ -547,10 +580,10 @@ func formOf(m map[string]string) url.Values {
 	return values
 }
 
-func selfSignedPEM(t *testing.T, key *rsa.PrivateKey) string {
+func selfSignedPEM(t *testing.T, key *rsa.PrivateKey, serial int64) string {
 	t.Helper()
 	template := &x509.Certificate{
-		SerialNumber:          big.NewInt(1),
+		SerialNumber:          big.NewInt(serial),
 		Subject:               pkix.Name{CommonName: "fake-alipay-cert"},
 		NotBefore:             time.Now().Add(-time.Hour),
 		NotAfter:              time.Now().Add(24 * time.Hour),

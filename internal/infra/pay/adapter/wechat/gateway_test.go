@@ -521,7 +521,7 @@ func TestRefundAndQueryRefund(t *testing.T) {
 	if out.State != payentity.RefundPending {
 		t.Fatalf("processing refund state = %v, want Pending", out.State)
 	}
-	state, err := gw.QueryRefund(context.Background(), nil, "RF-1")
+	state, err := gw.QueryRefund(context.Background(), nil, "RF-1", "PAY-1")
 	if err != nil {
 		t.Fatalf("query refund: %v", err)
 	}
@@ -532,7 +532,7 @@ func TestRefundAndQueryRefund(t *testing.T) {
 	settled := refundFixture("RF-1", "PAY-1", "wx-refund-1", "wx-txn-1", "SUCCESS")
 	settled.SuccessTime = &refundedAt
 	f.refunds["RF-1"] = settled
-	state, err = gw.QueryRefund(context.Background(), nil, "RF-1")
+	state, err = gw.QueryRefund(context.Background(), nil, "RF-1", "PAY-1")
 	if err != nil {
 		t.Fatalf("query refund: %v", err)
 	}

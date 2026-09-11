@@ -212,8 +212,10 @@ func (g *gateway) Refund(ctx context.Context, req payservice.RefundRequest) (pay
 	return state, nil
 }
 
-// QueryRefund asks the channel for the refund's true state.
-func (g *gateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo string) (payservice.ChannelRefundState, error) {
+// QueryRefund asks the channel for the refund's true state. WeChat
+// resolves by out_refund_no alone; paymentNo exists on the seam for
+// channels whose query API requires it.
+func (g *gateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo, _ string) (payservice.ChannelRefundState, error) {
 	resp, _, err := g.refund.QueryByOutRefundNo(ctx, refunddomestic.QueryByOutRefundNoRequest{
 		OutRefundNo: sp(refundNo),
 	})

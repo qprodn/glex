@@ -97,8 +97,11 @@ type ChannelGateway interface {
 	// Refund requests one refund; synchronous channels return the settled
 	// state, asynchronous ones Pending.
 	Refund(ctx context.Context, req RefundRequest) (ChannelRefundState, error)
-	// QueryRefund asks the Channel for one Refund's true state.
-	QueryRefund(ctx context.Context, m *entity.MerchantAccount, refundNo string) (ChannelRefundState, error)
+	// QueryRefund asks the Channel for one Refund's true state. Alipay's
+	// refund query requires the owning payment's out_trade_no alongside
+	// the out_refund_no; channels that don't need it ignore the extra
+	// argument.
+	QueryRefund(ctx context.Context, m *entity.MerchantAccount, refundNo, paymentNo string) (ChannelRefundState, error)
 	// ParseNotification verifies the delivery's signature, decrypts and
 	// parses its payload into the canonical event. A verification or
 	// decryption failure returns an error — the caller records the
