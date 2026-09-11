@@ -7,6 +7,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -57,6 +58,9 @@ type RefundRequest struct {
 	Total          int64
 	Amount         int64
 	Reason         string
+	// NotifyURL is the absolute callback URL refund outcomes push to —
+	// /pay/notify/{channel}/{merchant_id} on this deployment.
+	NotifyURL string
 }
 
 // ChannelRefundState is the Channel's asserted Refund state.
@@ -79,7 +83,7 @@ type ChannelGateway interface {
 	// Query asks the Channel for one Payment's true state.
 	Query(ctx context.Context, m *entity.MerchantAccount, paymentNo string) (ChannelPaymentState, error)
 	// Close closes one Payment at the Channel. A "already paid" answer is
-	// an error the caller can recognize and flip into a query.
+	// ErrChannelAlreadyPaid — an error the caller flips into a query.
 	Close(ctx context.Context, m *entity.MerchantAccount, paymentNo string) error
 	// Refund requests one refund; synchronous channels return the settled
 	// state, asynchronous ones Pending.
@@ -95,6 +99,11 @@ type ChannelGateway interface {
 	// moves no money and leaves no Payment.
 	Probe(ctx context.Context, m *entity.MerchantAccount) error
 }
+
+// ErrChannelAlreadyPaid is returned by Close when the Channel reports the
+// payment already paid — the settlement path flips it into a query and
+// advances the Payment to PAID. It never crosses the wire directly.
+var ErrChannelAlreadyPaid = errors.New("pay: channel reports the payment already paid")
 
 // GatewayRegistry resolves a Merchant Account's decrypted config into a
 // cached ChannelGateway. Domain port; infra implementation. The cache key
