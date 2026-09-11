@@ -2,6 +2,7 @@ package pay
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -101,6 +102,14 @@ func (s *PayApplication) HandleChannelNotification(
 }
 
 // advance applies the verified event to its target row.
+//
+// The target is first bound to the merchant whose gateway verified the
+// delivery: signature verification only proves the channel signed an event
+// for notif.MerchantID's account — the asserted out_trade_no/out_refund_no
+// is attacker-choosable within that account — so a verified notification
+// must never settle another merchant's row. A mismatch is absorbed like the
+// unmatchable-target case: Warn, no advance, ACK (the evidence row keeps
+// the delivery for forensics).
 func (s *PayApplication) advance(ctx context.Context, notif *payentity.ChannelNotification) (bool, error) {
 	switch notif.Kind {
 	case payentity.NotifyKindPayment:
@@ -111,6 +120,25 @@ func (s *PayApplication) advance(ctx context.Context, notif *payentity.ChannelNo
 			s.logger.Warn("payment notification names an unmatchable target",
 				slog.String("operation", "pay.notify.advance"),
 				slog.String("target_no", notif.TargetNo))
+			return false, nil
+		}
+		p, err := s.payments.Get(ctx, targetNo)
+		if err != nil {
+			if errors.Is(err, pay.ErrPaymentNotFound) {
+				s.logger.Warn("payment notification names an unmatchable target",
+					slog.String("operation", "pay.notify.advance"),
+					slog.String("target_no", notif.TargetNo))
+				return false, nil
+			}
+			logx.Propagate(ctx, s.logger, "pay.notify.advance", err)
+			return false, err
+		}
+		if p.MerchantID != notif.MerchantID || p.Channel != notif.Channel {
+			s.logger.Warn("verified notification targets another merchant's payment",
+				slog.String("operation", "pay.notify.advance"),
+				slog.Int64("notify_merchant_id", notif.MerchantID),
+				slog.Int64("target_merchant_id", p.MerchantID),
+				slog.Int64("target_payment_id", p.ID))
 			return false, nil
 		}
 		return s.payments.ApplyChannelState(ctx, targetNo, payservice.ChannelPaymentState{
@@ -125,6 +153,25 @@ func (s *PayApplication) advance(ctx context.Context, notif *payentity.ChannelNo
 			s.logger.Warn("refund notification names an unmatchable target",
 				slog.String("operation", "pay.notify.advance"),
 				slog.String("target_no", notif.TargetNo))
+			return false, nil
+		}
+		rf, err := s.refunds.Get(ctx, targetNo)
+		if err != nil {
+			if errors.Is(err, pay.ErrRefundNotFound) {
+				s.logger.Warn("refund notification names an unmatchable target",
+					slog.String("operation", "pay.notify.advance"),
+					slog.String("target_no", notif.TargetNo))
+				return false, nil
+			}
+			logx.Propagate(ctx, s.logger, "pay.notify.advance", err)
+			return false, err
+		}
+		if rf.MerchantID != notif.MerchantID || rf.Channel != notif.Channel {
+			s.logger.Warn("verified notification targets another merchant's refund",
+				slog.String("operation", "pay.notify.advance"),
+				slog.Int64("notify_merchant_id", notif.MerchantID),
+				slog.Int64("target_merchant_id", rf.MerchantID),
+				slog.Int64("target_refund_id", rf.ID))
 			return false, nil
 		}
 		return s.refunds.ApplyRefundState(ctx, targetNo, payservice.ChannelRefundState{
