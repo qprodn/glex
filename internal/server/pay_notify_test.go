@@ -309,10 +309,6 @@ func (r *goldPaymentRepo) MarkExpired(ctx context.Context, id int64) (bool, erro
 	return false, nil
 }
 
-func (r *goldPaymentRepo) AccumulateRefunded(ctx context.Context, id int64, amount int64) (bool, error) {
-	return false, nil
-}
-
 func (r *goldPaymentRepo) NextID() int64 { return 800 }
 
 type goldNotifyRow struct {
@@ -546,6 +542,45 @@ func TestNotifyUnknownMerchantIs404(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+}
+
+func TestNotifyOversizedBodyIsRejected(t *testing.T) {
+	f := newGoldFixture(t)
+	handler := f.serve(t)
+	// One byte past the cap is refused before any parsing happens.
+	big := strings.Repeat("x", maxNotifyBodyBytes+1)
+	req := httptest.NewRequest("POST", "/pay/notify/wechat/42", strings.NewReader(big))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+	// Nothing was recorded — the delivery never reached the intake.
+	if got := len(f.notify.rows); got != 0 {
+		t.Fatalf("evidence rows = %d, want 0", got)
+	}
+	p, _ := f.payments.FindByID(context.Background(), 20260911000001)
+	if p.Status != payentity.PaymentPending {
+		t.Fatalf("oversized delivery changed state to %v", p.Status)
+	}
+}
+
+func TestNotifyBodyAtCapIsProcessedNotSized(t *testing.T) {
+	f := newGoldFixture(t)
+	handler := f.serve(t)
+	// A body exactly at the cap is read in full; it fails verification
+	// (garbage), which records unverified evidence — proving the size
+	// boundary itself did not reject it.
+	body := strings.Repeat("x", maxNotifyBodyBytes)
+	req := httptest.NewRequest("POST", "/pay/notify/wechat/42", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+	if got := len(f.notify.rows); got != 1 {
+		t.Fatalf("evidence rows = %d, want the unverified row", got)
 	}
 }
 

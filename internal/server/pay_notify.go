@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"io"
 	stdhttp "net/http"
 	"strconv"
@@ -47,17 +48,28 @@ func payNotifyInvalid(cause error) error {
 	return pay.ErrNotifyInvalid.WithCause(cause)
 }
 
+// maxNotifyBodyBytes bounds one channel push before it is read: the route
+// is deliberately public (the signature is the auth), nothing in the server
+// stack caps request bytes, and the raw body is persisted verbatim — an
+// uncapped read is a memory- and storage-exhaustion vector. WeChat v3 JSON
+// and Alipay form bodies are a few KiB; 64 KiB leaves generous headroom.
+const maxNotifyBodyBytes = 64 << 10
+
 func payNotifyHandler(app *payapp.PayApplication) khttp.HandlerFunc {
 	return func(ctx khttp.Context) error {
 		khttp.SetOperation(ctx, OperationPayServiceChannelNotification)
-		body, err := io.ReadAll(ctx.Request().Body)
-		if err != nil {
-			return payNotifyInvalid(err)
-		}
+		// Validate the path before paying for the body at all.
 		channel, ok := payentity.ChannelByCode(ctx.Vars().Get("channel"))
 		merchantID, parseErr := strconv.ParseInt(ctx.Vars().Get("merchant_id"), 10, 64)
 		if parseErr != nil || !ok {
 			return payNotifyInvalid(parseErr)
+		}
+		body, err := io.ReadAll(io.LimitReader(ctx.Request().Body, maxNotifyBodyBytes+1))
+		if err != nil {
+			return payNotifyInvalid(err)
+		}
+		if len(body) > maxNotifyBodyBytes {
+			return payNotifyInvalid(errNotifyBodyTooLarge)
 		}
 		h := ctx.Middleware(func(requestCtx context.Context, _ any) (any, error) {
 			return app.HandleChannelNotification(requestCtx, channel, merchantID, ctx.Header(), body)
@@ -78,3 +90,8 @@ func payNotifyHandler(app *payapp.PayApplication) khttp.HandlerFunc {
 		return nil
 	}
 }
+
+// errNotifyBodyTooLarge rejects an oversized delivery. A legitimate channel
+// push never approaches the cap, so there is nothing to retry into — the
+// 400 makes the channel give up on garbage traffic.
+var errNotifyBodyTooLarge = errors.New("notify body exceeds the size cap")
