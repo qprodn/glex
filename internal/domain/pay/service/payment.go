@@ -436,8 +436,18 @@ func (s *paymentImpl) settle(ctx context.Context, p *payentity.Payment) (bool, e
 	if state.State == payentity.PaymentPending && time.Now().After(p.ExpireTime) {
 		// Expired with no channel-side payment: close at the channel
 		// best-effort (the channel may have auto-closed already) and
-		// settle locally as EXPIRED.
-		if closeErr := gw.Close(ctx, m, fmtPaymentNo(p.ID)); closeErr != nil && !isChannelAlreadyPaid(closeErr) {
+		// settle locally as EXPIRED. An "already paid" close answer means
+		// the user paid between the Query and the Close — money was
+		// captured, so re-query and apply the channel's truth instead of
+		// forcing EXPIRED (captured funds must land as PAID, refundable).
+		if closeErr := gw.Close(ctx, m, fmtPaymentNo(p.ID)); closeErr != nil {
+			if isChannelAlreadyPaid(closeErr) {
+				paidState, queryErr := gw.Query(ctx, m, fmtPaymentNo(p.ID))
+				if queryErr != nil {
+					return false, queryErr
+				}
+				return s.ApplyChannelState(ctx, p.ID, paidState)
+			}
 			s.logger.Warn("channel close of expired payment failed; expiring locally",
 				slog.String("operation", "pay.svc.payment.settle"),
 				slog.Int64("payment_id", p.ID),

@@ -221,43 +221,67 @@ func (r *paymentRepo) MarkPaid(ctx context.Context, id int64, capture payentity.
 	if err != nil {
 		return false, r.storeError(ctx, "pay.payment.mark_paid", err)
 	}
+	if n == 0 {
+		// Zero rows is benign only when the row is already Paid. A PAID
+		// assertion on a Failed/Closed/Expired row means the channel
+		// captured money the ledger considers dead — surface it.
+		if po, qerr := r.data.DB.PayPayment(ctx).Query().
+			Where(entpayment.IDEQ(id)).
+			Only(ctx); qerr == nil && po.Status != int16(payentity.PaymentPaid) {
+			r.logger.WarnContext(ctx, "channel asserts PAID on a terminal payment",
+				slog.String("operation", "pay.payment.mark_paid"),
+				slog.Int64("payment_id", id),
+				slog.Int("stored_status", int(po.Status)))
+		}
+	}
 	return n > 0, nil
 }
 
 // BackfillPaidInfo completes payer evidence on an already-Paid row whose
 // earlier confirmation lacked it — the one allowed write to a Paid
-// payment besides the refund sum (design §5). Never overwrites a value.
+// payment besides the refund sum (design §5). The read-then-set fills
+// exactly the still-empty fields: ANDed per-field CAS predicates would let
+// one already-present field mask the others, and an all-empty capture
+// would build an update with no setters.
 func (r *paymentRepo) BackfillPaidInfo(ctx context.Context, id int64, capture payentity.PaidCapture) (bool, error) {
-	preds := []predicate.PayPayment{
-		entpayment.IDEQ(id),
-		entpayment.StatusEQ(int16(payentity.PaymentPaid)),
-		entpayment.DeletedAtIsNil(),
+	if capture.ChannelTradeNo == "" && capture.PayerID == "" && capture.PaidAt.IsZero() {
+		return false, nil
 	}
-	// Only the still-empty fields are backfilled; existing evidence stays.
-	if capture.ChannelTradeNo != "" {
-		preds = append(preds, entpayment.ChannelTradeNoIsNil())
-	}
-	if capture.PayerID != "" {
-		preds = append(preds, entpayment.PayerIDIsNil())
-	}
-	if !capture.PaidAt.IsZero() {
-		preds = append(preds, entpayment.PaidAtIsNil())
-	}
-	upd := r.data.DB.PayPayment(ctx).Update().Where(preds...)
-	if capture.ChannelTradeNo != "" {
-		upd.SetChannelTradeNo(capture.ChannelTradeNo)
-	}
-	if capture.PayerID != "" {
-		upd.SetPayerID(capture.PayerID)
-	}
-	if !capture.PaidAt.IsZero() {
-		upd.SetPaidAt(capture.PaidAt)
-	}
-	n, err := upd.Save(ctx)
+	po, err := r.data.DB.PayPayment(ctx).Query().
+		Where(
+			entpayment.IDEQ(id),
+			entpayment.StatusEQ(int16(payentity.PaymentPaid)),
+			entpayment.DeletedAtIsNil(),
+		).
+		Only(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return false, nil // not Paid (or gone) — nothing to backfill
+		}
 		return false, r.storeError(ctx, "pay.payment.backfill_paid_info", err)
 	}
-	return n > 0, nil
+	upd := r.data.DB.PayPayment(ctx).Update().
+		Where(entpayment.IDEQ(id), entpayment.DeletedAtIsNil())
+	changed := false
+	if capture.ChannelTradeNo != "" && po.ChannelTradeNo == "" {
+		upd.SetChannelTradeNo(capture.ChannelTradeNo)
+		changed = true
+	}
+	if capture.PayerID != "" && po.PayerID == "" {
+		upd.SetPayerID(capture.PayerID)
+		changed = true
+	}
+	if !capture.PaidAt.IsZero() && po.PaidAt == nil {
+		upd.SetPaidAt(capture.PaidAt)
+		changed = true
+	}
+	if !changed {
+		return false, nil // every field already present
+	}
+	if _, err := upd.Save(ctx); err != nil {
+		return false, r.storeError(ctx, "pay.payment.backfill_paid_info", err)
+	}
+	return true, nil
 }
 
 func (r *paymentRepo) MarkFailed(ctx context.Context, id int64, reason string) (bool, error) {

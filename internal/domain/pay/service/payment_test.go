@@ -169,6 +169,11 @@ type scriptGateway struct {
 	closeErr    error
 	closeCalled *int
 	resolveHits *int
+	// paidAfterClose, when set, is returned by every Query after the
+	// first Close attempt — scripting the Query → Close(already paid) →
+	// re-Query flip the settle and close paths run.
+	paidAfterClose *ChannelPaymentState
+	closeSeen      bool
 }
 
 func (g *scriptGateway) Channel() payentity.Channel { return payentity.ChannelWechat }
@@ -190,6 +195,9 @@ func (g *scriptGateway) Query(ctx context.Context, m *payentity.MerchantAccount,
 	if g.queryErr != nil {
 		return ChannelPaymentState{}, g.queryErr
 	}
+	if g.paidAfterClose != nil && g.closeSeen {
+		return *g.paidAfterClose, nil
+	}
 	return g.queryState, nil
 }
 
@@ -197,6 +205,7 @@ func (g *scriptGateway) Close(ctx context.Context, m *payentity.MerchantAccount,
 	if g.closeCalled != nil {
 		*g.closeCalled++
 	}
+	g.closeSeen = true
 	return g.closeErr
 }
 
@@ -388,6 +397,31 @@ func TestGetSettlesExpiredPaymentToExpired(t *testing.T) {
 	}
 	if closeCalls != 1 {
 		t.Fatalf("channel close called %d times, want 1", closeCalls)
+	}
+}
+
+func TestGetSettlesExpiredPaymentPaidBetweenQueryAndClose(t *testing.T) {
+	// The user paid between settle's Query and its Close: the close
+	// answers "already paid" and the flip-to-query must land PAID, never
+	// EXPIRED — captured money on a dead row is unrefundable.
+	paid := ChannelPaymentState{
+		State: payentity.PaymentPaid, ChannelTradeNo: "wx-txn-late",
+		PayerID: "openid-late", PaidAt: time.Now(), Amount: 100,
+	}
+	gw := &scriptGateway{
+		queryState:     ChannelPaymentState{State: payentity.PaymentPending},
+		closeErr:       ErrChannelAlreadyPaid,
+		paidAfterClose: &paid,
+	}
+	svc, repo, merchantID := newTestPaymentService(t, gw)
+	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	repo.p[p.ID].ExpireTime = time.Now().Add(-time.Minute)
+	out, err := svc.Get(context.Background(), p.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if out.Status != payentity.PaymentPaid || out.ChannelTradeNo != "wx-txn-late" {
+		t.Fatalf("settled payment = %+v, want PAID with the channel trade no", out)
 	}
 }
 
