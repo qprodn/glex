@@ -23,6 +23,7 @@ import (
 	dictservice "glex/internal/domain/dict/service"
 	fileservice "glex/internal/domain/file/service"
 	orgservice "glex/internal/domain/org/service"
+	payservice "glex/internal/domain/pay/service"
 	userservice "glex/internal/domain/user/service"
 	accessinfra "glex/internal/infra/access"
 	auditinfra "glex/internal/infra/audit"
@@ -68,6 +69,7 @@ var appModule = fx.Options(
 	dictservice.Module,
 	fileservice.Module,
 	orgservice.Module,
+	payservice.Module,
 	// crossdomain contract adapters
 	auditimpl.Module,
 	accessimpl.Module,

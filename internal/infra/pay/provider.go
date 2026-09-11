@@ -16,6 +16,7 @@ var Module = fx.Module("pay-infra",
 	fx.Provide(
 		NewCipher,
 		NewAdapterRegistry,
+		NewNotifyRateLimiter,
 		NewMerchantAccountRepo,
 		NewPaymentRepo,
 		NewRefundRepo,
