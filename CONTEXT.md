@@ -274,7 +274,9 @@ _Avoid_: 验证支付, test pay, ping.
 
 **Payment Completed** (支付完成事件):
 The Domain Event asserting a Payment has reached its paid terminal state,
-published by the pay module once the state change is durable. Subscribers
+published by the pay module's Channel Notification intake once the state
+change is durable (the query-settle and close-flip paths settle silently
+for now — absence of the event is not absence of payment). Subscribers
 treat it as a prompt to look at the Payment, never as proof for moving
 money — the Payment's own state stays the single money truth. It is the
 first fact on the pay module's Topic and the anchor use case of the

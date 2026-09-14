@@ -19,6 +19,11 @@ const EventTypePaymentCompleted = "payment.completed"
 // keys plus the channel-asserted evidence; subscribers treat it as a
 // prompt to look at the Payment, never as proof for moving money
 // (ADR 0022).
+//
+// Scope: today only the Channel Notification intake publishes this fact —
+// the query-settle, lazy-expiry-settle, and close-flip paths also land
+// PAID durably without an event. The coverage grows with the first real
+// subscriber; until then, absence of the event is not absence of payment.
 type PaymentCompletedEvent struct {
 	EventID        int64     `json:"event_id"`
 	OccurredAt     time.Time `json:"occurred_at"`

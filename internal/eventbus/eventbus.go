@@ -11,7 +11,9 @@ import "context"
 
 // Message is one delivered event body. Body is raw bytes; serialization is
 // the caller's concern — the JSON shape is the cross-module contract
-// (ADR 0022).
+// (ADR 0022). The same backing array is shared across every consumer
+// group on the topic and across retry attempts: handlers must treat Body
+// as read-only.
 type Message struct {
 	Topic string
 	Group string

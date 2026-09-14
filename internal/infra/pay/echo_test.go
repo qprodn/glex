@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	payentity "glex/internal/domain/pay/entity"
+	"glex/internal/eventbus"
 	eventbusinfra "glex/internal/infra/eventbus"
 	"glex/internal/infra/eventbus/impl/memory"
 )
@@ -47,11 +49,12 @@ func (h *logCapture) find(level slog.Level, msg string) (slog.Record, bool) {
 // The tracer bullet's end-to-end path (ADR 0022): a real
 // PaymentCompletedEvent's JSON goes through the real Bus to the echo
 // subscription, registered the way production registers it — via the
-// aggregation invoke, from the module's own subscription list.
+// aggregation invoke, from the module's own subscription.
 func TestEchoSubscriptionConsumesPaymentCompletedEndToEnd(t *testing.T) {
 	logs := &logCapture{}
 	bus := memory.NewBus(slog.New(logs), memory.WithQueueSize(4))
-	if err := eventbusinfra.RegisterSubscriptions(bus, NewEchoSubscriptions(slog.New(logs))); err != nil {
+	subs := []eventbus.Subscription{NewEchoSubscription(slog.New(logs))}
+	if err := eventbusinfra.RegisterSubscriptions(subs, bus); err != nil {
 		t.Fatalf("RegisterSubscriptions = %v", err)
 	}
 	bus.Start()
@@ -68,24 +71,37 @@ func TestEchoSubscriptionConsumesPaymentCompletedEndToEnd(t *testing.T) {
 		t.Fatalf("Send = %v", err)
 	}
 
+	// Info carries the discriminators only; the payload (which holds
+	// channel identifiers like payer_id) stays at Debug.
 	deadline := time.Now().Add(2 * time.Second)
 	for {
-		if rec, ok := logs.find(slog.LevelInfo, "event received"); ok {
-			var payload string
-			rec.Attrs(func(a slog.Attr) bool {
-				if a.Key == "payload" {
-					payload = a.Value.String()
-				}
-				return true
-			})
-			if want := `"type":"payment.completed"`; !strings.Contains(payload, want) {
-				t.Fatalf("echo payload = %s, want it to contain %s", payload, want)
+		if info, ok := logs.find(slog.LevelInfo, "event received"); ok {
+			if got, want := infoAttrs(&info, "payload_bytes"), strconv.Itoa(len(body)); got != want {
+				t.Fatalf("payload_bytes = %q, want %q", got, want)
 			}
-			return
+			break
 		}
 		if time.Now().After(deadline) {
 			t.Fatal("echo subscription never received the event")
 		}
 		time.Sleep(2 * time.Millisecond)
 	}
+	dbg, ok := logs.find(slog.LevelDebug, "event payload")
+	if !ok {
+		t.Fatal("payload was not logged at Debug")
+	}
+	if payload := infoAttrs(&dbg, "payload"); !strings.Contains(payload, `"type":"payment.completed"`) {
+		t.Fatalf("echo payload = %s, want it to contain the event type", payload)
+	}
+}
+
+func infoAttrs(r *slog.Record, key string) string {
+	var value string
+	r.Attrs(func(a slog.Attr) bool {
+		if a.Key == key {
+			value = a.Value.String()
+		}
+		return true
+	})
+	return value
 }

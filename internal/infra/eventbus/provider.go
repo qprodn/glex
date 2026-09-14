@@ -19,14 +19,16 @@ import (
 // Module contains the eventbus infra: the bus, its ConsumerService
 // binding, the producer factory, and the subscription registration
 // invoke. Subscription lists themselves are provided by the subscribing
-// modules into the "eventbus-subscriptions" value group.
+// modules into the "eventbus-subscriptions" value group — the invoke's
+// ParamTags and the providers' ResultTags must name the same group, which
+// the wiring test proves with the real modules.
 var Module = fx.Module("eventbus-infra",
 	fx.Provide(
 		NewBus,
 		func(b *memory.Bus) eventbus.ConsumerService { return b },
 		NewProducerFactory,
 	),
-	fx.Invoke(RegisterSubscriptions),
+	fx.Invoke(fx.Annotate(RegisterSubscriptions, fx.ParamTags(`group:"eventbus-subscriptions"`))),
 )
 
 // NewBus builds the bus and owns its lifecycle: the dispatch goroutines
@@ -51,8 +53,9 @@ type ProducerFactory func(topic string) eventbus.Producer
 func NewProducerFactory(b *memory.Bus) ProducerFactory { return b.Producer }
 
 // RegisterSubscriptions registers every provided subscription — the one
-// aggregation point (the composition-root rule, ADR 0022).
-func RegisterSubscriptions(svc eventbus.ConsumerService, subs []eventbus.Subscription) error {
+// aggregation point (the composition-root rule, ADR 0022). subs comes
+// first because the group ParamTags bind positionally.
+func RegisterSubscriptions(subs []eventbus.Subscription, svc eventbus.ConsumerService) error {
 	for _, s := range subs {
 		if err := svc.RegisterConsumer(s.NameServer, s.Topic, s.Group, s.Handler); err != nil {
 			return fmt.Errorf("eventbus: register %s/%s: %w", s.Topic, s.Group, err)

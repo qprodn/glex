@@ -25,6 +25,6 @@ var Module = fx.Module("pay-infra",
 		fx.Annotate(newCatalog, fx.As(new(payservice.ChannelCatalog))),
 		fx.Annotate(newGatewayRegistry, fx.As(new(payservice.GatewayRegistry))),
 		fx.Annotate(newConfigCipher, fx.As(new(payservice.ConfigCipher))),
-		fx.Annotate(NewEchoSubscriptions, fx.ResultTags(`group:"eventbus-subscriptions"`)),
+		fx.Annotate(NewEchoSubscription, fx.ResultTags(`group:"eventbus-subscriptions"`)),
 	),
 )
