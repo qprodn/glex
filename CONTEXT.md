@@ -272,6 +272,49 @@ A cheap authenticated Channel call made on demand to prove a Merchant
 Account's credentials work. It leaves no Payment and moves no money.
 _Avoid_: 验证支付, test pay, ping.
 
+**Payment Completed** (支付完成事件):
+The Domain Event asserting a Payment has reached its paid terminal state,
+published by the pay module once the state change is durable. Subscribers
+treat it as a prompt to look at the Payment, never as proof for moving
+money — the Payment's own state stays the single money truth. It is the
+first fact on the pay module's Topic and the anchor use case of the
+eventbus (ADR 0022).
+_Avoid_: 支付成功通知 (a Channel Notification is the Channel telling us;
+this is us telling subscribers), callback, webhook.
+
+### eventbus
+
+**Domain Event** (领域事件):
+A fact that has already happened in one module's records — a Payment
+reaching its paid state, say — published only after it is durably true, for
+any other module to react to. The publishing module does not know its
+subscribers; reaction never blocks the fact.
+_Avoid_: message, notification (that names a Channel Notification), callback.
+
+**Topic** (主题):
+The named destination, owned by the publishing module, where that module's
+Domain Events are published. Each module keeps few Topics and puts many
+Event Types in one.
+_Avoid_: queue, channel (taken — a payment Channel), exchange, stream.
+
+**Event Type** (事件类型):
+The discriminator naming which fact happened, carried inside a Topic; a
+subscriber decides relevance by it.
+_Avoid_: event name, kind, op type.
+
+**Consumer Group** (消费组):
+The named unit of subscription: each Consumer Group receives a Topic's
+Domain Events independently of every other group, in order within the
+group. Delivery is best-effort — handlers must tolerate both receiving the
+same event again and, after a restart, missing it.
+_Avoid_: subscriber, listener, worker.
+
+**Dead Letter Event** (死信事件):
+A Domain Event that exhausted its retry budget without being handled,
+recorded with its payload for inspection rather than retried forever — a
+record that something needs a person, not an error in the fact itself.
+_Avoid_: poison message, failed event.
+
 ### cross-module
 
 **Audit Fields** (审计字段):

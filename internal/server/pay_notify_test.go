@@ -29,9 +29,10 @@ import (
 	payentity "glex/internal/domain/pay/entity"
 	payrepo "glex/internal/domain/pay/repository"
 	payservice "glex/internal/domain/pay/service"
+	"glex/internal/eventbus"
 	"glex/internal/infra/pay/adapter"
-	"glex/internal/infra/pay/crypt"
 	"glex/internal/infra/pay/adapter/wechat"
+	"glex/internal/infra/pay/crypt"
 
 	khttp "github.com/go-kratos/kratos/v3/transport/http"
 )
@@ -407,6 +408,7 @@ func newGoldFixture(t *testing.T) *goldFixture {
 		refundSvc,
 		notificationSvc,
 		nil, nil,
+		noopEventProducer{},
 		&conf.Pay{NotifyBaseUrl: "https://pay.example.com"},
 		slog.New(slog.DiscardHandler),
 	)
@@ -594,3 +596,11 @@ func TestNotifyGarbagePathIs400(t *testing.T) {
 		t.Fatalf("status = %d, want 400", rec.Code)
 	}
 }
+
+// noopEventProducer stands in for the eventbus in the gold test: the
+// Payment Completed publish is best-effort and its content is asserted in
+// the application tests, so the integration path only needs it non-nil.
+type noopEventProducer struct{}
+
+func (noopEventProducer) Send(context.Context, []byte, ...eventbus.SendOpt) error        { return nil }
+func (noopEventProducer) BatchSend(context.Context, [][]byte, ...eventbus.SendOpt) error { return nil }

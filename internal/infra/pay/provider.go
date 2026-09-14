@@ -10,8 +10,9 @@ import (
 )
 
 // Module contains the pay persistence adapters: the Merchant Account,
-// Payment, Refund, and notify-log repos, the credential cipher, and the
-// channel adapter registry with its two port bindings.
+// Payment, Refund, and notify-log repos, the credential cipher, the
+// channel adapter registry with its two port bindings, and the module's
+// eventbus subscription list (ADR 0022).
 var Module = fx.Module("pay-infra",
 	fx.Provide(
 		NewCipher,
@@ -24,5 +25,6 @@ var Module = fx.Module("pay-infra",
 		fx.Annotate(newCatalog, fx.As(new(payservice.ChannelCatalog))),
 		fx.Annotate(newGatewayRegistry, fx.As(new(payservice.GatewayRegistry))),
 		fx.Annotate(newConfigCipher, fx.As(new(payservice.ConfigCipher))),
+		fx.Annotate(NewEchoSubscriptions, fx.ResultTags(`group:"eventbus-subscriptions"`)),
 	),
 )

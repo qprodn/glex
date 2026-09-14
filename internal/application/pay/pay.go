@@ -8,6 +8,7 @@ import (
 	"glex/internal/bizpkg"
 	"glex/internal/conf"
 	payservice "glex/internal/domain/pay/service"
+	"glex/internal/eventbus"
 	"glex/internal/lock"
 )
 
@@ -23,6 +24,7 @@ type PayApplication struct {
 	notifications payservice.Notification
 	tx            Transaction
 	locker        lock.Locker
+	events        eventbus.Producer
 	payConfig     *conf.Pay
 	logger        *slog.Logger
 }
@@ -35,6 +37,7 @@ func NewPayApplication(
 	notifications payservice.Notification,
 	tx Transaction,
 	locker lock.Locker,
+	events eventbus.Producer,
 	payConfig *conf.Pay,
 	logger *slog.Logger,
 ) *PayApplication {
@@ -45,6 +48,7 @@ func NewPayApplication(
 		notifications: notifications,
 		tx:            tx,
 		locker:        locker,
+		events:        events,
 		payConfig:     payConfig,
 		logger:        logger.With(slog.String("component", "application.pay")),
 	}

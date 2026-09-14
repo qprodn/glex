@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	payv1 "glex/api/pay/v1"
-	pay "glex/internal/domain/pay"
 	"glex/internal/conf"
+	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
 	payservice "glex/internal/domain/pay/service"
 	"glex/internal/lock"
@@ -71,6 +71,7 @@ func newTestPayApplication(locker *fakeLocker, payments *fakePaymentSvc) *PayApp
 		&fakeNotificationSvc{},
 		&fakeTx{},
 		locker,
+		&fakeEventProducer{},
 		&conf.Pay{NotifyBaseUrl: "https://pay.example.com"},
 		slog.New(slog.DiscardHandler),
 	)
@@ -79,6 +80,8 @@ func newTestPayApplication(locker *fakeLocker, payments *fakePaymentSvc) *PayApp
 type fakeRefundSvc struct{ payservice.Refund }
 
 type fakeNotificationSvc struct{ payservice.Notification }
+
+func (f *fakeNotificationSvc) NextID() int64 { return 1 }
 
 func TestCreatePaymentLocksAndPrepays(t *testing.T) {
 	locker := &fakeLocker{}

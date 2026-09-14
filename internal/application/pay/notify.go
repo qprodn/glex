@@ -2,6 +2,7 @@ package pay
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -101,6 +102,54 @@ func (s *PayApplication) HandleChannelNotification(
 	return &NotifyOutcome{Processed: processed, AckBody: ackBody(channel)}, nil
 }
 
+// advancePayment runs the payment advance and, when the transition into
+// the paid state actually landed, announces Payment Completed on the pay
+// topic (ADR 0022's tracer bullet).
+func (s *PayApplication) advancePayment(
+	ctx context.Context,
+	p *payentity.Payment,
+	notif *payentity.ChannelNotification,
+	targetNo int64,
+) (bool, error) {
+	advanced, err := s.payments.ApplyChannelState(ctx, targetNo, payservice.ChannelPaymentState{
+		State:          notif.PaymentState,
+		ChannelTradeNo: notif.ChannelTradeNo,
+		PayerID:        notif.PayerID,
+		PaidAt:         notif.PaidAt,
+		Amount:         notif.Amount,
+	})
+	if err != nil {
+		return false, err
+	}
+	if advanced && notif.PaymentState == payentity.PaymentPaid {
+		s.publishPaymentCompleted(ctx, p, notif)
+	}
+	return advanced, nil
+}
+
+// publishPaymentCompleted announces the completed payment on the pay
+// topic. Publishing is best-effort and never fails the notification
+// intake: the state change is already durable and the channel must still
+// be ACKed, so a lost publish is Warn-logged and accepted — the same
+// posture as the audit streams (ADR 0012, 0022).
+func (s *PayApplication) publishPaymentCompleted(ctx context.Context, p *payentity.Payment, notif *payentity.ChannelNotification) {
+	event := payentity.NewPaymentCompletedEvent(s.notifications.NextID(), p, notif)
+	body, err := json.Marshal(event)
+	if err != nil {
+		s.logger.Warn("payment completed event marshal failed",
+			slog.String("operation", "pay.notify.publish_completed"),
+			slog.Int64("payment_id", p.ID),
+			slog.Any("error", err))
+		return
+	}
+	if err := s.events.Send(ctx, body); err != nil {
+		s.logger.Warn("payment completed publish degraded",
+			slog.String("operation", "pay.notify.publish_completed"),
+			slog.Int64("payment_id", p.ID),
+			slog.Any("error", err))
+	}
+}
+
 // advance applies the verified event to its target row.
 //
 // The target is first bound to the merchant whose gateway verified the
@@ -141,13 +190,7 @@ func (s *PayApplication) advance(ctx context.Context, notif *payentity.ChannelNo
 				slog.Int64("target_payment_id", p.ID))
 			return false, nil
 		}
-		return s.payments.ApplyChannelState(ctx, targetNo, payservice.ChannelPaymentState{
-			State:          notif.PaymentState,
-			ChannelTradeNo: notif.ChannelTradeNo,
-			PayerID:        notif.PayerID,
-			PaidAt:         notif.PaidAt,
-			Amount:         notif.Amount,
-		})
+		return s.advancePayment(ctx, p, notif, targetNo)
 	case payentity.NotifyKindRefund:
 		targetNo, err := strconv.ParseInt(notif.TargetNo, 10, 64)
 		if err != nil {

@@ -23,12 +23,15 @@ import (
 	dictservice "glex/internal/domain/dict/service"
 	fileservice "glex/internal/domain/file/service"
 	orgservice "glex/internal/domain/org/service"
+	payentity "glex/internal/domain/pay/entity"
 	payservice "glex/internal/domain/pay/service"
 	userservice "glex/internal/domain/user/service"
+	"glex/internal/eventbus"
 	accessinfra "glex/internal/infra/access"
 	auditinfra "glex/internal/infra/audit"
 	authninfra "glex/internal/infra/authn"
 	dictinfra "glex/internal/infra/dict"
+	eventbusinfra "glex/internal/infra/eventbus"
 	fileinfra "glex/internal/infra/file"
 	lockerinfra "glex/internal/infra/locker"
 	orginfra "glex/internal/infra/org"
@@ -61,6 +64,7 @@ var appModule = fx.Options(
 	lockerinfra.Module,
 	orginfra.Module,
 	payinfra.Module,
+	eventbusinfra.Module,
 	// domain services
 	userservice.Module,
 	auditservice.Module,
@@ -101,5 +105,10 @@ var appModule = fx.Options(
 		// The notify route group's limiter, adapted to the server's
 		// net/http filter shape (ADR 0020).
 		func(l *payinfra.NotifyRateLimiter) server.NotifyLimiter { return l.Filter },
+		// The pay module's event publisher: the bus producer bound to the
+		// pay topic (ADR 0022).
+		func(f eventbusinfra.ProducerFactory) eventbus.Producer {
+			return f(payentity.TopicPayEvents)
+		},
 	),
 )
