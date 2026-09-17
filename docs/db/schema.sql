@@ -661,3 +661,83 @@ comment on column pay_notify_log.update_by is '更新者用户ID';
 comment on column pay_notify_log.created_at is '创建时间';
 comment on column pay_notify_log.updated_at is '更新时间';
 comment on column pay_notify_log.deleted_at is '软删除时间；NULL=未删除';
+
+create table if not exists job (
+    id              bigint        not null,
+    name            varchar(64)   not null,                 -- 展示名，活跃行内唯一
+    handler         varchar(128)  not null,                 -- 注册的任务执行器名（ADR 0023，行内不携带可执行文本）
+    cron            varchar(64)   not null,                 -- 5 字段 cron 表达式，统一在配置时区求值
+    args            text          not null default '',      -- 透传给执行器的参数
+    enabled         boolean       not null default true,    -- 暂停/恢复开关
+    timeout_seconds integer       not null default 60,      -- 单次运行超时（1–3600）
+    remark          varchar(255)  not null default '',
+    create_by       bigint        not null default 0,
+    update_by       bigint        not null default 0,
+    created_at      timestamptz   not null default now(),
+    updated_at      timestamptz   not null default now(),
+    deleted_at      timestamptz,                            -- 软删除；NULL=未删除
+    constraint job_pkey primary key (id)
+);
+
+-- 活跃行内名字唯一；撤下后名字可复用（ADR 0002 软删除）。
+create unique index if not exists job_name_active
+    on job (name)
+    where deleted_at is null;
+create index if not exists job_handler_active
+    on job (handler)
+    where deleted_at is null;
+
+comment on table job is '定时任务表（原生设计，ADR 0023；无 Quartz、无 invoke_target）';
+
+comment on column job.id is '主键ID（雪花）';
+comment on column job.name is '展示名；活跃行内唯一';
+comment on column job.handler is '任务执行器注册名；保存时对注册表现场校验';
+comment on column job.cron is '5 字段 cron 表达式（robfig ParseStandard 语法）；配置时区统一求值';
+comment on column job.args is '执行器参数，原样透传';
+comment on column job.enabled is 'true=参与调度；false=暂停（手动立即执行不受限）';
+comment on column job.timeout_seconds is '单次运行超时秒数（1–3600），建行时取配置默认值固化';
+comment on column job.remark is '备注';
+comment on column job.create_by is '创建者用户ID';
+comment on column job.update_by is '更新者用户ID';
+comment on column job.created_at is '创建时间';
+comment on column job.updated_at is '更新时间';
+comment on column job.deleted_at is '软删除时间；NULL=未删除';
+
+create table if not exists job_log (
+    id           bigint        not null,
+    job_id       bigint        not null,                    -- job 引用（无外键；任务撤下后日志仍可读）
+    handler      varchar(128)  not null,                    -- 触发时执行器快照
+    trigger      smallint      not null,                    -- 1 调度 2 手动 3 外部（预留，ADR 0023）
+    status       smallint      not null,                    -- 1 成功 2 失败（无“运行中”——行在完成时才落）
+    message      text          not null default '',         -- 运行摘要或错误（截断 2000）
+    started_at   timestamptz   not null,
+    duration_ms  bigint        not null,
+    create_by    bigint        not null default 0,          -- 触发均为系统驱动（含手动），恒为 0
+    update_by    bigint        not null default 0,
+    created_at   timestamptz   not null default now(),
+    updated_at   timestamptz   not null default now(),
+    deleted_at   timestamptz,                               -- 软删除；NULL=未删除
+    constraint job_log_pkey primary key (id)
+);
+
+create index if not exists job_log_job_created
+    on job_log (job_id, created_at)
+    where deleted_at is null;
+create index if not exists job_log_created
+    on job_log (created_at);
+
+comment on table job_log is '任务日志表（完成时一次写入，无更新路径，ADR 0023/0012 精神）';
+
+comment on column job_log.id is '主键ID（雪花）';
+comment on column job_log.job_id is '所属任务ID（无外键）';
+comment on column job_log.handler is '触发时执行器名快照；后续改 handler 不改写历史';
+comment on column job_log.trigger is '触发来源：1调度 2手动 3外部（预留）';
+comment on column job_log.status is '运行结果：1成功 2失败';
+comment on column job_log.message is '运行摘要或错误文本（截断 2000）';
+comment on column job_log.started_at is '运行开始时间';
+comment on column job_log.duration_ms is '运行时长（毫秒）';
+comment on column job_log.create_by is '创建者用户ID（系统驱动恒为0）';
+comment on column job_log.update_by is '更新者用户ID';
+comment on column job_log.created_at is '创建时间';
+comment on column job_log.updated_at is '更新时间';
+comment on column job_log.deleted_at is '软删除时间；NULL=未删除';

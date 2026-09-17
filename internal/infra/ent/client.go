@@ -15,6 +15,8 @@ import (
 	"glex/internal/infra/ent/dictdata"
 	"glex/internal/infra/ent/dicttype"
 	"glex/internal/infra/ent/file"
+	"glex/internal/infra/ent/job"
+	"glex/internal/infra/ent/joblog"
 	"glex/internal/infra/ent/loginlog"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/operlog"
@@ -50,6 +52,10 @@ type Client struct {
 	DictType *DictTypeClient
 	// File is the client for interacting with the File builders.
 	File *FileClient
+	// Job is the client for interacting with the Job builders.
+	Job *JobClient
+	// JobLog is the client for interacting with the JobLog builders.
+	JobLog *JobLogClient
 	// LoginLog is the client for interacting with the LoginLog builders.
 	LoginLog *LoginLogClient
 	// Menu is the client for interacting with the Menu builders.
@@ -91,6 +97,8 @@ func (c *Client) init() {
 	c.DictData = NewDictDataClient(c.config)
 	c.DictType = NewDictTypeClient(c.config)
 	c.File = NewFileClient(c.config)
+	c.Job = NewJobClient(c.config)
+	c.JobLog = NewJobLogClient(c.config)
 	c.LoginLog = NewLoginLogClient(c.config)
 	c.Menu = NewMenuClient(c.config)
 	c.OperLog = NewOperLogClient(c.config)
@@ -200,6 +208,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		DictData:           NewDictDataClient(cfg),
 		DictType:           NewDictTypeClient(cfg),
 		File:               NewFileClient(cfg),
+		Job:                NewJobClient(cfg),
+		JobLog:             NewJobLogClient(cfg),
 		LoginLog:           NewLoginLogClient(cfg),
 		Menu:               NewMenuClient(cfg),
 		OperLog:            NewOperLogClient(cfg),
@@ -236,6 +246,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		DictData:           NewDictDataClient(cfg),
 		DictType:           NewDictTypeClient(cfg),
 		File:               NewFileClient(cfg),
+		Job:                NewJobClient(cfg),
+		JobLog:             NewJobLogClient(cfg),
 		LoginLog:           NewLoginLogClient(cfg),
 		Menu:               NewMenuClient(cfg),
 		OperLog:            NewOperLogClient(cfg),
@@ -278,9 +290,9 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Dept, c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog,
-		c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment, c.PayRefund, c.Post,
-		c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
+		c.Dept, c.DictData, c.DictType, c.File, c.Job, c.JobLog, c.LoginLog, c.Menu,
+		c.OperLog, c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment, c.PayRefund,
+		c.Post, c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -290,9 +302,9 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Dept, c.DictData, c.DictType, c.File, c.LoginLog, c.Menu, c.OperLog,
-		c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment, c.PayRefund, c.Post,
-		c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
+		c.Dept, c.DictData, c.DictType, c.File, c.Job, c.JobLog, c.LoginLog, c.Menu,
+		c.OperLog, c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment, c.PayRefund,
+		c.Post, c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -309,6 +321,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.DictType.mutate(ctx, m)
 	case *FileMutation:
 		return c.File.mutate(ctx, m)
+	case *JobMutation:
+		return c.Job.mutate(ctx, m)
+	case *JobLogMutation:
+		return c.JobLog.mutate(ctx, m)
 	case *LoginLogMutation:
 		return c.LoginLog.mutate(ctx, m)
 	case *MenuMutation:
@@ -869,6 +885,272 @@ func (c *FileClient) mutate(ctx context.Context, m *FileMutation) (Value, error)
 		return (&FileDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown File mutation op: %q", m.Op())
+	}
+}
+
+// JobClient is a client for the Job schema.
+type JobClient struct {
+	config
+}
+
+// NewJobClient returns a client for the Job from the given config.
+func NewJobClient(c config) *JobClient {
+	return &JobClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `job.Hooks(f(g(h())))`.
+func (c *JobClient) Use(hooks ...Hook) {
+	c.hooks.Job = append(c.hooks.Job, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `job.Intercept(f(g(h())))`.
+func (c *JobClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Job = append(c.inters.Job, interceptors...)
+}
+
+// Create returns a builder for creating a Job entity.
+func (c *JobClient) Create() *JobCreate {
+	mutation := newJobMutation(c.config, OpCreate)
+	return &JobCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Job entities.
+func (c *JobClient) CreateBulk(builders ...*JobCreate) *JobCreateBulk {
+	return &JobCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *JobClient) MapCreateBulk(slice any, setFunc func(*JobCreate, int)) *JobCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &JobCreateBulk{err: fmt.Errorf("calling to JobClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*JobCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &JobCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Job.
+func (c *JobClient) Update() *JobUpdate {
+	mutation := newJobMutation(c.config, OpUpdate)
+	return &JobUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *JobClient) UpdateOne(_m *Job) *JobUpdateOne {
+	mutation := newJobMutation(c.config, OpUpdateOne, withJob(_m))
+	return &JobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *JobClient) UpdateOneID(id int64) *JobUpdateOne {
+	mutation := newJobMutation(c.config, OpUpdateOne, withJobID(id))
+	return &JobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Job.
+func (c *JobClient) Delete() *JobDelete {
+	mutation := newJobMutation(c.config, OpDelete)
+	return &JobDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *JobClient) DeleteOne(_m *Job) *JobDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *JobClient) DeleteOneID(id int64) *JobDeleteOne {
+	builder := c.Delete().Where(job.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &JobDeleteOne{builder}
+}
+
+// Query returns a query builder for Job.
+func (c *JobClient) Query() *JobQuery {
+	return &JobQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeJob},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Job entity by its id.
+func (c *JobClient) Get(ctx context.Context, id int64) (*Job, error) {
+	return c.Query().Where(job.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *JobClient) GetX(ctx context.Context, id int64) *Job {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *JobClient) Hooks() []Hook {
+	return c.hooks.Job
+}
+
+// Interceptors returns the client interceptors.
+func (c *JobClient) Interceptors() []Interceptor {
+	return c.inters.Job
+}
+
+func (c *JobClient) mutate(ctx context.Context, m *JobMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&JobCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&JobUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&JobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&JobDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Job mutation op: %q", m.Op())
+	}
+}
+
+// JobLogClient is a client for the JobLog schema.
+type JobLogClient struct {
+	config
+}
+
+// NewJobLogClient returns a client for the JobLog from the given config.
+func NewJobLogClient(c config) *JobLogClient {
+	return &JobLogClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `joblog.Hooks(f(g(h())))`.
+func (c *JobLogClient) Use(hooks ...Hook) {
+	c.hooks.JobLog = append(c.hooks.JobLog, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `joblog.Intercept(f(g(h())))`.
+func (c *JobLogClient) Intercept(interceptors ...Interceptor) {
+	c.inters.JobLog = append(c.inters.JobLog, interceptors...)
+}
+
+// Create returns a builder for creating a JobLog entity.
+func (c *JobLogClient) Create() *JobLogCreate {
+	mutation := newJobLogMutation(c.config, OpCreate)
+	return &JobLogCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of JobLog entities.
+func (c *JobLogClient) CreateBulk(builders ...*JobLogCreate) *JobLogCreateBulk {
+	return &JobLogCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *JobLogClient) MapCreateBulk(slice any, setFunc func(*JobLogCreate, int)) *JobLogCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &JobLogCreateBulk{err: fmt.Errorf("calling to JobLogClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*JobLogCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &JobLogCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for JobLog.
+func (c *JobLogClient) Update() *JobLogUpdate {
+	mutation := newJobLogMutation(c.config, OpUpdate)
+	return &JobLogUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *JobLogClient) UpdateOne(_m *JobLog) *JobLogUpdateOne {
+	mutation := newJobLogMutation(c.config, OpUpdateOne, withJobLog(_m))
+	return &JobLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *JobLogClient) UpdateOneID(id int64) *JobLogUpdateOne {
+	mutation := newJobLogMutation(c.config, OpUpdateOne, withJobLogID(id))
+	return &JobLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for JobLog.
+func (c *JobLogClient) Delete() *JobLogDelete {
+	mutation := newJobLogMutation(c.config, OpDelete)
+	return &JobLogDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *JobLogClient) DeleteOne(_m *JobLog) *JobLogDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *JobLogClient) DeleteOneID(id int64) *JobLogDeleteOne {
+	builder := c.Delete().Where(joblog.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &JobLogDeleteOne{builder}
+}
+
+// Query returns a query builder for JobLog.
+func (c *JobLogClient) Query() *JobLogQuery {
+	return &JobLogQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeJobLog},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a JobLog entity by its id.
+func (c *JobLogClient) Get(ctx context.Context, id int64) (*JobLog, error) {
+	return c.Query().Where(joblog.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *JobLogClient) GetX(ctx context.Context, id int64) *JobLog {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *JobLogClient) Hooks() []Hook {
+	return c.hooks.JobLog
+}
+
+// Interceptors returns the client interceptors.
+func (c *JobLogClient) Interceptors() []Interceptor {
+	return c.inters.JobLog
+}
+
+func (c *JobLogClient) mutate(ctx context.Context, m *JobLogMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&JobLogCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&JobLogUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&JobLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&JobLogDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown JobLog mutation op: %q", m.Op())
 	}
 }
 
@@ -2796,14 +3078,14 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Dept, DictData, DictType, File, LoginLog, Menu, OperLog, PayMerchantAccount,
-		PayNotifyLog, PayPayment, PayRefund, Post, Role, RoleMenu, User, UserPost,
-		UserRole []ent.Hook
+		Dept, DictData, DictType, File, Job, JobLog, LoginLog, Menu, OperLog,
+		PayMerchantAccount, PayNotifyLog, PayPayment, PayRefund, Post, Role, RoleMenu,
+		User, UserPost, UserRole []ent.Hook
 	}
 	inters struct {
-		Dept, DictData, DictType, File, LoginLog, Menu, OperLog, PayMerchantAccount,
-		PayNotifyLog, PayPayment, PayRefund, Post, Role, RoleMenu, User, UserPost,
-		UserRole []ent.Interceptor
+		Dept, DictData, DictType, File, Job, JobLog, LoginLog, Menu, OperLog,
+		PayMerchantAccount, PayNotifyLog, PayPayment, PayRefund, Post, Role, RoleMenu,
+		User, UserPost, UserRole []ent.Interceptor
 	}
 )
 

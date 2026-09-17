@@ -84,3 +84,16 @@ pay:
   notify_base_url: ""
   # 回调路由每商户每分钟限流，0 取内置默认（60）。
   notify_rate_limit_per_minute: 60
+
+job:
+  # 内置调度循环总开关（ADR 0023）：false 完全停止触发——外部调度器接管
+  # 之日改此处即可，其余不动。
+  enabled: true
+  # 调度循环间隔（秒），即触发粒度；0 取内置默认（10）。
+  tick_seconds: 10
+  # 任务行未单独设置超时的默认运行超时（秒），建行时写入行内；0 取内置
+  # 默认（60）。
+  default_timeout_seconds: 60
+  # 所有 cron 表达式求值的统一时区（IANA 名）——多副本必须一致，因此只来自
+  # 配置而非进程本地时区；空取内置默认（Asia/Shanghai）。
+  timezone: "Asia/Shanghai"

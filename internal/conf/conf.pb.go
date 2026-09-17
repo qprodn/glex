@@ -30,6 +30,7 @@ type Bootstrap struct {
 	File          *File                  `protobuf:"bytes,4,opt,name=file,proto3" json:"file,omitempty"`
 	User          *User                  `protobuf:"bytes,5,opt,name=user,proto3" json:"user,omitempty"`
 	Pay           *Pay                   `protobuf:"bytes,6,opt,name=pay,proto3" json:"pay,omitempty"`
+	Job           *Job                   `protobuf:"bytes,7,opt,name=job,proto3" json:"job,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -106,6 +107,94 @@ func (x *Bootstrap) GetPay() *Pay {
 	return nil
 }
 
+func (x *Bootstrap) GetJob() *Job {
+	if x != nil {
+		return x.Job
+	}
+	return nil
+}
+
+// Job configures the job module (ADR 0023): the built-in scheduling loop,
+// its granularity, and the timezone every cron expression is evaluated in.
+type Job struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Master switch for the built-in scheduling loop (ADR 0023). false stops
+	// firing entirely — the day an external scheduler takes over, flip this
+	// off and feed RunJob semantics instead; nothing else changes.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Scheduler tick interval in seconds — the firing granularity. 0 falls
+	// back to the built-in default (10).
+	TickSeconds uint32 `protobuf:"varint,2,opt,name=tick_seconds,json=tickSeconds,proto3" json:"tick_seconds,omitempty"`
+	// Per-run timeout in seconds for jobs whose row sets none; rows are
+	// stamped with it at create time. 0 falls back to the built-in default
+	// (60).
+	DefaultTimeoutSeconds uint32 `protobuf:"varint,3,opt,name=default_timeout_seconds,json=defaultTimeoutSeconds,proto3" json:"default_timeout_seconds,omitempty"`
+	// IANA name of the one timezone all cron expressions are evaluated in —
+	// replicas must agree, so it is config, never the process's local zone.
+	// Empty falls back to the built-in default (Asia/Shanghai).
+	Timezone      string `protobuf:"bytes,4,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Job) Reset() {
+	*x = Job{}
+	mi := &file_conf_conf_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Job) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Job) ProtoMessage() {}
+
+func (x *Job) ProtoReflect() protoreflect.Message {
+	mi := &file_conf_conf_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Job.ProtoReflect.Descriptor instead.
+func (*Job) Descriptor() ([]byte, []int) {
+	return file_conf_conf_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Job) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *Job) GetTickSeconds() uint32 {
+	if x != nil {
+		return x.TickSeconds
+	}
+	return 0
+}
+
+func (x *Job) GetDefaultTimeoutSeconds() uint32 {
+	if x != nil {
+		return x.DefaultTimeoutSeconds
+	}
+	return 0
+}
+
+func (x *Job) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
+	}
+	return ""
+}
+
 // Pay configures the pay module: where channels push their notifications
 // and how hard the notify endpoints throttle.
 type Pay struct {
@@ -124,7 +213,7 @@ type Pay struct {
 
 func (x *Pay) Reset() {
 	*x = Pay{}
-	mi := &file_conf_conf_proto_msgTypes[1]
+	mi := &file_conf_conf_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -136,7 +225,7 @@ func (x *Pay) String() string {
 func (*Pay) ProtoMessage() {}
 
 func (x *Pay) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[1]
+	mi := &file_conf_conf_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -149,7 +238,7 @@ func (x *Pay) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Pay.ProtoReflect.Descriptor instead.
 func (*Pay) Descriptor() ([]byte, []int) {
-	return file_conf_conf_proto_rawDescGZIP(), []int{1}
+	return file_conf_conf_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Pay) GetNotifyBaseUrl() string {
@@ -186,7 +275,7 @@ type Auth struct {
 
 func (x *Auth) Reset() {
 	*x = Auth{}
-	mi := &file_conf_conf_proto_msgTypes[2]
+	mi := &file_conf_conf_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -198,7 +287,7 @@ func (x *Auth) String() string {
 func (*Auth) ProtoMessage() {}
 
 func (x *Auth) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[2]
+	mi := &file_conf_conf_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -211,7 +300,7 @@ func (x *Auth) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Auth.ProtoReflect.Descriptor instead.
 func (*Auth) Descriptor() ([]byte, []int) {
-	return file_conf_conf_proto_rawDescGZIP(), []int{2}
+	return file_conf_conf_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Auth) GetFixedLifetime() *durationpb.Duration {
@@ -273,7 +362,7 @@ type Server struct {
 
 func (x *Server) Reset() {
 	*x = Server{}
-	mi := &file_conf_conf_proto_msgTypes[3]
+	mi := &file_conf_conf_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -285,7 +374,7 @@ func (x *Server) String() string {
 func (*Server) ProtoMessage() {}
 
 func (x *Server) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[3]
+	mi := &file_conf_conf_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -298,7 +387,7 @@ func (x *Server) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Server.ProtoReflect.Descriptor instead.
 func (*Server) Descriptor() ([]byte, []int) {
-	return file_conf_conf_proto_rawDescGZIP(), []int{3}
+	return file_conf_conf_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Server) GetHttp() *Server_HTTP {
@@ -325,7 +414,7 @@ type Data struct {
 
 func (x *Data) Reset() {
 	*x = Data{}
-	mi := &file_conf_conf_proto_msgTypes[4]
+	mi := &file_conf_conf_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -337,7 +426,7 @@ func (x *Data) String() string {
 func (*Data) ProtoMessage() {}
 
 func (x *Data) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[4]
+	mi := &file_conf_conf_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -350,7 +439,7 @@ func (x *Data) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Data.ProtoReflect.Descriptor instead.
 func (*Data) Descriptor() ([]byte, []int) {
-	return file_conf_conf_proto_rawDescGZIP(), []int{4}
+	return file_conf_conf_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Data) GetDatabase() *Data_Database {
@@ -389,7 +478,7 @@ type File struct {
 
 func (x *File) Reset() {
 	*x = File{}
-	mi := &file_conf_conf_proto_msgTypes[5]
+	mi := &file_conf_conf_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -401,7 +490,7 @@ func (x *File) String() string {
 func (*File) ProtoMessage() {}
 
 func (x *File) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[5]
+	mi := &file_conf_conf_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -414,7 +503,7 @@ func (x *File) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use File.ProtoReflect.Descriptor instead.
 func (*File) Descriptor() ([]byte, []int) {
-	return file_conf_conf_proto_rawDescGZIP(), []int{5}
+	return file_conf_conf_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *File) GetS3() *File_S3 {
@@ -459,7 +548,7 @@ type User struct {
 
 func (x *User) Reset() {
 	*x = User{}
-	mi := &file_conf_conf_proto_msgTypes[6]
+	mi := &file_conf_conf_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -471,7 +560,7 @@ func (x *User) String() string {
 func (*User) ProtoMessage() {}
 
 func (x *User) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[6]
+	mi := &file_conf_conf_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -484,7 +573,7 @@ func (x *User) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use User.ProtoReflect.Descriptor instead.
 func (*User) Descriptor() ([]byte, []int) {
-	return file_conf_conf_proto_rawDescGZIP(), []int{6}
+	return file_conf_conf_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *User) GetInitPassword() string {
@@ -504,7 +593,7 @@ type Auth_LoginCounter struct {
 
 func (x *Auth_LoginCounter) Reset() {
 	*x = Auth_LoginCounter{}
-	mi := &file_conf_conf_proto_msgTypes[7]
+	mi := &file_conf_conf_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -516,7 +605,7 @@ func (x *Auth_LoginCounter) String() string {
 func (*Auth_LoginCounter) ProtoMessage() {}
 
 func (x *Auth_LoginCounter) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[7]
+	mi := &file_conf_conf_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -529,7 +618,7 @@ func (x *Auth_LoginCounter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Auth_LoginCounter.ProtoReflect.Descriptor instead.
 func (*Auth_LoginCounter) Descriptor() ([]byte, []int) {
-	return file_conf_conf_proto_rawDescGZIP(), []int{2, 0}
+	return file_conf_conf_proto_rawDescGZIP(), []int{3, 0}
 }
 
 func (x *Auth_LoginCounter) GetMaxFailures() uint32 {
@@ -557,7 +646,7 @@ type Server_HTTP struct {
 
 func (x *Server_HTTP) Reset() {
 	*x = Server_HTTP{}
-	mi := &file_conf_conf_proto_msgTypes[8]
+	mi := &file_conf_conf_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -569,7 +658,7 @@ func (x *Server_HTTP) String() string {
 func (*Server_HTTP) ProtoMessage() {}
 
 func (x *Server_HTTP) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[8]
+	mi := &file_conf_conf_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -582,7 +671,7 @@ func (x *Server_HTTP) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Server_HTTP.ProtoReflect.Descriptor instead.
 func (*Server_HTTP) Descriptor() ([]byte, []int) {
-	return file_conf_conf_proto_rawDescGZIP(), []int{3, 0}
+	return file_conf_conf_proto_rawDescGZIP(), []int{4, 0}
 }
 
 func (x *Server_HTTP) GetNetwork() string {
@@ -617,7 +706,7 @@ type Server_GRPC struct {
 
 func (x *Server_GRPC) Reset() {
 	*x = Server_GRPC{}
-	mi := &file_conf_conf_proto_msgTypes[9]
+	mi := &file_conf_conf_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -629,7 +718,7 @@ func (x *Server_GRPC) String() string {
 func (*Server_GRPC) ProtoMessage() {}
 
 func (x *Server_GRPC) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[9]
+	mi := &file_conf_conf_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -642,7 +731,7 @@ func (x *Server_GRPC) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Server_GRPC.ProtoReflect.Descriptor instead.
 func (*Server_GRPC) Descriptor() ([]byte, []int) {
-	return file_conf_conf_proto_rawDescGZIP(), []int{3, 1}
+	return file_conf_conf_proto_rawDescGZIP(), []int{4, 1}
 }
 
 func (x *Server_GRPC) GetNetwork() string {
@@ -676,7 +765,7 @@ type Data_Database struct {
 
 func (x *Data_Database) Reset() {
 	*x = Data_Database{}
-	mi := &file_conf_conf_proto_msgTypes[10]
+	mi := &file_conf_conf_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -688,7 +777,7 @@ func (x *Data_Database) String() string {
 func (*Data_Database) ProtoMessage() {}
 
 func (x *Data_Database) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[10]
+	mi := &file_conf_conf_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -701,7 +790,7 @@ func (x *Data_Database) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Data_Database.ProtoReflect.Descriptor instead.
 func (*Data_Database) Descriptor() ([]byte, []int) {
-	return file_conf_conf_proto_rawDescGZIP(), []int{4, 0}
+	return file_conf_conf_proto_rawDescGZIP(), []int{5, 0}
 }
 
 func (x *Data_Database) GetDriver() string {
@@ -730,7 +819,7 @@ type Data_Redis struct {
 
 func (x *Data_Redis) Reset() {
 	*x = Data_Redis{}
-	mi := &file_conf_conf_proto_msgTypes[11]
+	mi := &file_conf_conf_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -742,7 +831,7 @@ func (x *Data_Redis) String() string {
 func (*Data_Redis) ProtoMessage() {}
 
 func (x *Data_Redis) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[11]
+	mi := &file_conf_conf_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -755,7 +844,7 @@ func (x *Data_Redis) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Data_Redis.ProtoReflect.Descriptor instead.
 func (*Data_Redis) Descriptor() ([]byte, []int) {
-	return file_conf_conf_proto_rawDescGZIP(), []int{4, 1}
+	return file_conf_conf_proto_rawDescGZIP(), []int{5, 1}
 }
 
 func (x *Data_Redis) GetNetwork() string {
@@ -808,7 +897,7 @@ type File_S3 struct {
 
 func (x *File_S3) Reset() {
 	*x = File_S3{}
-	mi := &file_conf_conf_proto_msgTypes[12]
+	mi := &file_conf_conf_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -820,7 +909,7 @@ func (x *File_S3) String() string {
 func (*File_S3) ProtoMessage() {}
 
 func (x *File_S3) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[12]
+	mi := &file_conf_conf_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -833,7 +922,7 @@ func (x *File_S3) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use File_S3.ProtoReflect.Descriptor instead.
 func (*File_S3) Descriptor() ([]byte, []int) {
-	return file_conf_conf_proto_rawDescGZIP(), []int{5, 0}
+	return file_conf_conf_proto_rawDescGZIP(), []int{6, 0}
 }
 
 func (x *File_S3) GetEndpoint() string {
@@ -897,14 +986,20 @@ var File_conf_conf_proto protoreflect.FileDescriptor
 const file_conf_conf_proto_rawDesc = "" +
 	"\n" +
 	"\x0fconf/conf.proto\x12\n" +
-	"kratos.api\x1a\x1egoogle/protobuf/duration.proto\"\xf2\x01\n" +
+	"kratos.api\x1a\x1egoogle/protobuf/duration.proto\"\x95\x02\n" +
 	"\tBootstrap\x12*\n" +
 	"\x06server\x18\x01 \x01(\v2\x12.kratos.api.ServerR\x06server\x12$\n" +
 	"\x04data\x18\x02 \x01(\v2\x10.kratos.api.DataR\x04data\x12$\n" +
 	"\x04auth\x18\x03 \x01(\v2\x10.kratos.api.AuthR\x04auth\x12$\n" +
 	"\x04file\x18\x04 \x01(\v2\x10.kratos.api.FileR\x04file\x12$\n" +
 	"\x04user\x18\x05 \x01(\v2\x10.kratos.api.UserR\x04user\x12!\n" +
-	"\x03pay\x18\x06 \x01(\v2\x0f.kratos.api.PayR\x03pay\"m\n" +
+	"\x03pay\x18\x06 \x01(\v2\x0f.kratos.api.PayR\x03pay\x12!\n" +
+	"\x03job\x18\a \x01(\v2\x0f.kratos.api.JobR\x03job\"\x96\x01\n" +
+	"\x03Job\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12!\n" +
+	"\ftick_seconds\x18\x02 \x01(\rR\vtickSeconds\x126\n" +
+	"\x17default_timeout_seconds\x18\x03 \x01(\rR\x15defaultTimeoutSeconds\x12\x1a\n" +
+	"\btimezone\x18\x04 \x01(\tR\btimezone\"m\n" +
 	"\x03Pay\x12&\n" +
 	"\x0fnotify_base_url\x18\x01 \x01(\tR\rnotifyBaseUrl\x12>\n" +
 	"\x1cnotify_rate_limit_per_minute\x18\x02 \x01(\rR\x18notifyRateLimitPerMinute\"\xc1\x04\n" +
@@ -974,49 +1069,51 @@ func file_conf_conf_proto_rawDescGZIP() []byte {
 	return file_conf_conf_proto_rawDescData
 }
 
-var file_conf_conf_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_conf_conf_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_conf_conf_proto_goTypes = []any{
 	(*Bootstrap)(nil),           // 0: kratos.api.Bootstrap
-	(*Pay)(nil),                 // 1: kratos.api.Pay
-	(*Auth)(nil),                // 2: kratos.api.Auth
-	(*Server)(nil),              // 3: kratos.api.Server
-	(*Data)(nil),                // 4: kratos.api.Data
-	(*File)(nil),                // 5: kratos.api.File
-	(*User)(nil),                // 6: kratos.api.User
-	(*Auth_LoginCounter)(nil),   // 7: kratos.api.Auth.LoginCounter
-	(*Server_HTTP)(nil),         // 8: kratos.api.Server.HTTP
-	(*Server_GRPC)(nil),         // 9: kratos.api.Server.GRPC
-	(*Data_Database)(nil),       // 10: kratos.api.Data.Database
-	(*Data_Redis)(nil),          // 11: kratos.api.Data.Redis
-	(*File_S3)(nil),             // 12: kratos.api.File.S3
-	(*durationpb.Duration)(nil), // 13: google.protobuf.Duration
+	(*Job)(nil),                 // 1: kratos.api.Job
+	(*Pay)(nil),                 // 2: kratos.api.Pay
+	(*Auth)(nil),                // 3: kratos.api.Auth
+	(*Server)(nil),              // 4: kratos.api.Server
+	(*Data)(nil),                // 5: kratos.api.Data
+	(*File)(nil),                // 6: kratos.api.File
+	(*User)(nil),                // 7: kratos.api.User
+	(*Auth_LoginCounter)(nil),   // 8: kratos.api.Auth.LoginCounter
+	(*Server_HTTP)(nil),         // 9: kratos.api.Server.HTTP
+	(*Server_GRPC)(nil),         // 10: kratos.api.Server.GRPC
+	(*Data_Database)(nil),       // 11: kratos.api.Data.Database
+	(*Data_Redis)(nil),          // 12: kratos.api.Data.Redis
+	(*File_S3)(nil),             // 13: kratos.api.File.S3
+	(*durationpb.Duration)(nil), // 14: google.protobuf.Duration
 }
 var file_conf_conf_proto_depIdxs = []int32{
-	3,  // 0: kratos.api.Bootstrap.server:type_name -> kratos.api.Server
-	4,  // 1: kratos.api.Bootstrap.data:type_name -> kratos.api.Data
-	2,  // 2: kratos.api.Bootstrap.auth:type_name -> kratos.api.Auth
-	5,  // 3: kratos.api.Bootstrap.file:type_name -> kratos.api.File
-	6,  // 4: kratos.api.Bootstrap.user:type_name -> kratos.api.User
-	1,  // 5: kratos.api.Bootstrap.pay:type_name -> kratos.api.Pay
-	13, // 6: kratos.api.Auth.fixed_lifetime:type_name -> google.protobuf.Duration
-	13, // 7: kratos.api.Auth.idle_lifetime:type_name -> google.protobuf.Duration
-	7,  // 8: kratos.api.Auth.username_login_counter:type_name -> kratos.api.Auth.LoginCounter
-	7,  // 9: kratos.api.Auth.source_ip_login_counter:type_name -> kratos.api.Auth.LoginCounter
-	8,  // 10: kratos.api.Server.http:type_name -> kratos.api.Server.HTTP
-	9,  // 11: kratos.api.Server.grpc:type_name -> kratos.api.Server.GRPC
-	10, // 12: kratos.api.Data.database:type_name -> kratos.api.Data.Database
-	11, // 13: kratos.api.Data.redis:type_name -> kratos.api.Data.Redis
-	12, // 14: kratos.api.File.s3:type_name -> kratos.api.File.S3
-	13, // 15: kratos.api.Auth.LoginCounter.window:type_name -> google.protobuf.Duration
-	13, // 16: kratos.api.Server.HTTP.timeout:type_name -> google.protobuf.Duration
-	13, // 17: kratos.api.Server.GRPC.timeout:type_name -> google.protobuf.Duration
-	13, // 18: kratos.api.Data.Redis.read_timeout:type_name -> google.protobuf.Duration
-	13, // 19: kratos.api.Data.Redis.write_timeout:type_name -> google.protobuf.Duration
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	4,  // 0: kratos.api.Bootstrap.server:type_name -> kratos.api.Server
+	5,  // 1: kratos.api.Bootstrap.data:type_name -> kratos.api.Data
+	3,  // 2: kratos.api.Bootstrap.auth:type_name -> kratos.api.Auth
+	6,  // 3: kratos.api.Bootstrap.file:type_name -> kratos.api.File
+	7,  // 4: kratos.api.Bootstrap.user:type_name -> kratos.api.User
+	2,  // 5: kratos.api.Bootstrap.pay:type_name -> kratos.api.Pay
+	1,  // 6: kratos.api.Bootstrap.job:type_name -> kratos.api.Job
+	14, // 7: kratos.api.Auth.fixed_lifetime:type_name -> google.protobuf.Duration
+	14, // 8: kratos.api.Auth.idle_lifetime:type_name -> google.protobuf.Duration
+	8,  // 9: kratos.api.Auth.username_login_counter:type_name -> kratos.api.Auth.LoginCounter
+	8,  // 10: kratos.api.Auth.source_ip_login_counter:type_name -> kratos.api.Auth.LoginCounter
+	9,  // 11: kratos.api.Server.http:type_name -> kratos.api.Server.HTTP
+	10, // 12: kratos.api.Server.grpc:type_name -> kratos.api.Server.GRPC
+	11, // 13: kratos.api.Data.database:type_name -> kratos.api.Data.Database
+	12, // 14: kratos.api.Data.redis:type_name -> kratos.api.Data.Redis
+	13, // 15: kratos.api.File.s3:type_name -> kratos.api.File.S3
+	14, // 16: kratos.api.Auth.LoginCounter.window:type_name -> google.protobuf.Duration
+	14, // 17: kratos.api.Server.HTTP.timeout:type_name -> google.protobuf.Duration
+	14, // 18: kratos.api.Server.GRPC.timeout:type_name -> google.protobuf.Duration
+	14, // 19: kratos.api.Data.Redis.read_timeout:type_name -> google.protobuf.Duration
+	14, // 20: kratos.api.Data.Redis.write_timeout:type_name -> google.protobuf.Duration
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_conf_conf_proto_init() }
@@ -1030,7 +1127,7 @@ func file_conf_conf_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_conf_conf_proto_rawDesc), len(file_conf_conf_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

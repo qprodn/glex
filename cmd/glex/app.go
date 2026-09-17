@@ -33,6 +33,7 @@ import (
 	dictinfra "glex/internal/infra/dict"
 	eventbusinfra "glex/internal/infra/eventbus"
 	fileinfra "glex/internal/infra/file"
+	jobinfra "glex/internal/infra/job"
 	lockerinfra "glex/internal/infra/locker"
 	orginfra "glex/internal/infra/org"
 	payinfra "glex/internal/infra/pay"
@@ -65,6 +66,7 @@ var appModule = fx.Options(
 	orginfra.Module,
 	payinfra.Module,
 	eventbusinfra.Module,
+	jobinfra.Module,
 	// domain services
 	userservice.Module,
 	auditservice.Module,

@@ -127,6 +127,83 @@ var (
 			},
 		},
 	}
+	// JobColumns holds the columns for the "job" table.
+	JobColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "name", Type: field.TypeString, Size: 64},
+		{Name: "handler", Type: field.TypeString, Size: 128},
+		{Name: "cron", Type: field.TypeString, Size: 64},
+		{Name: "args", Type: field.TypeString, Size: 2147483647, Default: ""},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "timeout_seconds", Type: field.TypeInt32, Default: 60, SchemaType: map[string]string{"postgres": "integer"}},
+		{Name: "remark", Type: field.TypeString, Default: ""},
+	}
+	// JobTable holds the schema information for the "job" table.
+	JobTable = &schema.Table{
+		Name:       "job",
+		Columns:    JobColumns,
+		PrimaryKey: []*schema.Column{JobColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "job_name",
+				Unique:  true,
+				Columns: []*schema.Column{JobColumns[6]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+			{
+				Name:    "job_handler",
+				Unique:  false,
+				Columns: []*schema.Column{JobColumns[7]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+		},
+	}
+	// JobLogColumns holds the columns for the "job_log" table.
+	JobLogColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "job_id", Type: field.TypeInt64},
+		{Name: "handler", Type: field.TypeString, Size: 128},
+		{Name: "trigger", Type: field.TypeInt16},
+		{Name: "status", Type: field.TypeInt16},
+		{Name: "message", Type: field.TypeString, Size: 2147483647, Default: ""},
+		{Name: "started_at", Type: field.TypeTime},
+		{Name: "duration_ms", Type: field.TypeInt64},
+	}
+	// JobLogTable holds the schema information for the "job_log" table.
+	JobLogTable = &schema.Table{
+		Name:       "job_log",
+		Columns:    JobLogColumns,
+		PrimaryKey: []*schema.Column{JobLogColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "joblog_job_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{JobLogColumns[6], JobLogColumns[3]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+			{
+				Name:    "joblog_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{JobLogColumns[3]},
+			},
+		},
+	}
 	// SysLoginLogColumns holds the columns for the "sys_login_log" table.
 	SysLoginLogColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -593,6 +670,8 @@ var (
 		SysDictDataTable,
 		SysDictTypeTable,
 		SysFileTable,
+		JobTable,
+		JobLogTable,
 		SysLoginLogTable,
 		SysMenuTable,
 		SysOperLogTable,
@@ -621,6 +700,12 @@ func init() {
 	}
 	SysFileTable.Annotation = &entsql.Annotation{
 		Table: "sys_file",
+	}
+	JobTable.Annotation = &entsql.Annotation{
+		Table: "job",
+	}
+	JobLogTable.Annotation = &entsql.Annotation{
+		Table: "job_log",
 	}
 	SysLoginLogTable.Annotation = &entsql.Annotation{
 		Table: "sys_login_log",

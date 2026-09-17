@@ -3,7 +3,8 @@
 The domain concerned with **who can operate the system, the navigation they see,
 how their identity is established, the controlled vocabularies the back office
 renders choices from, the organization structure it groups people by, the
-files it stores, and the payments it collects**. It is organized as six modules in one service: **user**
+files it stores, the payments it collects, and the recurring work it
+schedules**. It is organized as six modules in one service: **user**
 (System User accounts), **org** (organization structure — departments, posts,
 and post assignments), **access** (authorization — roles, menus, grants, and
 permission resolution), **authn** (authentication — credentials, login
@@ -15,7 +16,9 @@ RuoYi-Vue-Plus's `sys_user`, `sys_dept`, `sys_post`, `sys_menu`, `sys_role`,
 file module continues that lineage with its own `sys_file` (RuoYi's `sys_oss`,
 renamed). A seventh module, **pay** (payment — the Channel Merchant Accounts
 the back office configures and the payments and refunds collected through
-them), is designed natively for glex rather than ported.
+them), and an eighth module, **job** (scheduled tasks — the Scheduled Jobs the
+back office configures and the Job Executors they fire), are designed natively
+for glex rather than ported.
 
 ## Language
 
@@ -283,6 +286,39 @@ first fact on the pay module's Topic and the anchor use case of the
 eventbus (ADR 0022).
 _Avoid_: 支付成功通知 (a Channel Notification is the Channel telling us;
 this is us telling subscribers), callback, webhook.
+
+### job
+
+**Scheduled Job** (定时任务):
+A back-office-configured recurring firing of one Job Executor on a 5-field cron
+schedule, in the one configured scheduler timezone (ADR 0023). A job row names
+its executor by its registered handler string — validated against the live
+registry at save time — and never carries executable text. Firing is
+best-effort: one occurrence runs at most once across replicas (a Redis fire
+claim keyed by the scheduled moment), runs of the same job never overlap
+(a per-job run lock), and occurrences missed while the process was down are
+never backfilled. Pausing stops future firings; a run already in flight
+finishes.
+_Avoid_: 定时器, task (too generic), cron job (the expression is one field of
+it), quartz, misfire policy.
+
+**Job Executor** (任务执行器):
+The named Go handler a Scheduled Job fires — registered in code by the module
+owning the work and referenced by name from job rows, never resolved by
+reflecting on operator input (ADR 0023). Its Run receives the job's args
+verbatim and must tolerate the same firing happening twice and a firing never
+happening — the same discipline eventbus handlers carry. The Name/Run shape is
+deliberately the shape external schedulers bind, which is what keeps them a
+config-flip away.
+_Avoid_: invoke target, bean, worker, runner.
+
+**Job Log** (任务日志):
+The record of one completed firing: trigger (scheduled, manual, or the reserved
+external), outcome, summary or error text, start time, and duration. A row is
+written once at completion — there is no running state and no update path —
+and is afterwards only queried or withdrawn, the write-once spirit of the
+audit streams (ADR 0012) without their transport provenance.
+_Avoid_: execution history, run record, 任务记录.
 
 ### eventbus
 

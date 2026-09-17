@@ -12,6 +12,27 @@ message Bootstrap {
   File file = 4;
   User user = 5;
   Pay pay = 6;
+  Job job = 7;
+}
+
+// Job configures the job module (ADR 0023): the built-in scheduling loop,
+// its granularity, and the timezone every cron expression is evaluated in.
+message Job {
+  // Master switch for the built-in scheduling loop (ADR 0023). false stops
+  // firing entirely — the day an external scheduler takes over, flip this
+  // off and feed RunJob semantics instead; nothing else changes.
+  bool enabled = 1;
+  // Scheduler tick interval in seconds — the firing granularity. 0 falls
+  // back to the built-in default (10).
+  uint32 tick_seconds = 2;
+  // Per-run timeout in seconds for jobs whose row sets none; rows are
+  // stamped with it at create time. 0 falls back to the built-in default
+  // (60).
+  uint32 default_timeout_seconds = 3;
+  // IANA name of the one timezone all cron expressions are evaluated in —
+  // replicas must agree, so it is config, never the process's local zone.
+  // Empty falls back to the built-in default (Asia/Shanghai).
+  string timezone = 4;
 }
 
 // Pay configures the pay module: where channels push their notifications

@@ -99,6 +99,16 @@ func (db *Database) File(ctx context.Context) *FileClient {
 	return db.loadClient(ctx).File
 }
 
+// Job is the client for interacting with the Job builders.
+func (db *Database) Job(ctx context.Context) *JobClient {
+	return db.loadClient(ctx).Job
+}
+
+// JobLog is the client for interacting with the JobLog builders.
+func (db *Database) JobLog(ctx context.Context) *JobLogClient {
+	return db.loadClient(ctx).JobLog
+}
+
 // LoginLog is the client for interacting with the LoginLog builders.
 func (db *Database) LoginLog(ctx context.Context) *LoginLogClient {
 	return db.loadClient(ctx).LoginLog

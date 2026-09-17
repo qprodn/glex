@@ -22,6 +22,10 @@ type Tx struct {
 	DictType *DictTypeClient
 	// File is the client for interacting with the File builders.
 	File *FileClient
+	// Job is the client for interacting with the Job builders.
+	Job *JobClient
+	// JobLog is the client for interacting with the JobLog builders.
+	JobLog *JobLogClient
 	// LoginLog is the client for interacting with the LoginLog builders.
 	LoginLog *LoginLogClient
 	// Menu is the client for interacting with the Menu builders.
@@ -183,6 +187,8 @@ func (tx *Tx) init() {
 	tx.DictData = NewDictDataClient(tx.config)
 	tx.DictType = NewDictTypeClient(tx.config)
 	tx.File = NewFileClient(tx.config)
+	tx.Job = NewJobClient(tx.config)
+	tx.JobLog = NewJobLogClient(tx.config)
 	tx.LoginLog = NewLoginLogClient(tx.config)
 	tx.Menu = NewMenuClient(tx.config)
 	tx.OperLog = NewOperLogClient(tx.config)

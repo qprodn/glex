@@ -7,6 +7,8 @@ import (
 	"glex/internal/infra/ent/dictdata"
 	"glex/internal/infra/ent/dicttype"
 	"glex/internal/infra/ent/file"
+	"glex/internal/infra/ent/job"
+	"glex/internal/infra/ent/joblog"
 	"glex/internal/infra/ent/loginlog"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/operlog"
@@ -168,6 +170,88 @@ func init() {
 	fileDescSuffix := fileFields[2].Descriptor()
 	// file.DefaultSuffix holds the default value on creation for the suffix field.
 	file.DefaultSuffix = fileDescSuffix.Default.(string)
+	jobMixin := schema.Job{}.Mixin()
+	jobMixinFields0 := jobMixin[0].Fields()
+	_ = jobMixinFields0
+	jobFields := schema.Job{}.Fields()
+	_ = jobFields
+	// jobDescCreateBy is the schema descriptor for create_by field.
+	jobDescCreateBy := jobMixinFields0[0].Descriptor()
+	// job.DefaultCreateBy holds the default value on creation for the create_by field.
+	job.DefaultCreateBy = jobDescCreateBy.Default.(int64)
+	// jobDescUpdateBy is the schema descriptor for update_by field.
+	jobDescUpdateBy := jobMixinFields0[1].Descriptor()
+	// job.DefaultUpdateBy holds the default value on creation for the update_by field.
+	job.DefaultUpdateBy = jobDescUpdateBy.Default.(int64)
+	// jobDescCreatedAt is the schema descriptor for created_at field.
+	jobDescCreatedAt := jobMixinFields0[2].Descriptor()
+	// job.DefaultCreatedAt holds the default value on creation for the created_at field.
+	job.DefaultCreatedAt = jobDescCreatedAt.Default.(func() time.Time)
+	// jobDescUpdatedAt is the schema descriptor for updated_at field.
+	jobDescUpdatedAt := jobMixinFields0[3].Descriptor()
+	// job.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	job.DefaultUpdatedAt = jobDescUpdatedAt.Default.(func() time.Time)
+	// job.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	job.UpdateDefaultUpdatedAt = jobDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// jobDescName is the schema descriptor for name field.
+	jobDescName := jobFields[1].Descriptor()
+	// job.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	job.NameValidator = jobDescName.Validators[0].(func(string) error)
+	// jobDescHandler is the schema descriptor for handler field.
+	jobDescHandler := jobFields[2].Descriptor()
+	// job.HandlerValidator is a validator for the "handler" field. It is called by the builders before save.
+	job.HandlerValidator = jobDescHandler.Validators[0].(func(string) error)
+	// jobDescCron is the schema descriptor for cron field.
+	jobDescCron := jobFields[3].Descriptor()
+	// job.CronValidator is a validator for the "cron" field. It is called by the builders before save.
+	job.CronValidator = jobDescCron.Validators[0].(func(string) error)
+	// jobDescArgs is the schema descriptor for args field.
+	jobDescArgs := jobFields[4].Descriptor()
+	// job.DefaultArgs holds the default value on creation for the args field.
+	job.DefaultArgs = jobDescArgs.Default.(string)
+	// jobDescEnabled is the schema descriptor for enabled field.
+	jobDescEnabled := jobFields[5].Descriptor()
+	// job.DefaultEnabled holds the default value on creation for the enabled field.
+	job.DefaultEnabled = jobDescEnabled.Default.(bool)
+	// jobDescTimeoutSeconds is the schema descriptor for timeout_seconds field.
+	jobDescTimeoutSeconds := jobFields[6].Descriptor()
+	// job.DefaultTimeoutSeconds holds the default value on creation for the timeout_seconds field.
+	job.DefaultTimeoutSeconds = jobDescTimeoutSeconds.Default.(int32)
+	// jobDescRemark is the schema descriptor for remark field.
+	jobDescRemark := jobFields[7].Descriptor()
+	// job.DefaultRemark holds the default value on creation for the remark field.
+	job.DefaultRemark = jobDescRemark.Default.(string)
+	joblogMixin := schema.JobLog{}.Mixin()
+	joblogMixinFields0 := joblogMixin[0].Fields()
+	_ = joblogMixinFields0
+	joblogFields := schema.JobLog{}.Fields()
+	_ = joblogFields
+	// joblogDescCreateBy is the schema descriptor for create_by field.
+	joblogDescCreateBy := joblogMixinFields0[0].Descriptor()
+	// joblog.DefaultCreateBy holds the default value on creation for the create_by field.
+	joblog.DefaultCreateBy = joblogDescCreateBy.Default.(int64)
+	// joblogDescUpdateBy is the schema descriptor for update_by field.
+	joblogDescUpdateBy := joblogMixinFields0[1].Descriptor()
+	// joblog.DefaultUpdateBy holds the default value on creation for the update_by field.
+	joblog.DefaultUpdateBy = joblogDescUpdateBy.Default.(int64)
+	// joblogDescCreatedAt is the schema descriptor for created_at field.
+	joblogDescCreatedAt := joblogMixinFields0[2].Descriptor()
+	// joblog.DefaultCreatedAt holds the default value on creation for the created_at field.
+	joblog.DefaultCreatedAt = joblogDescCreatedAt.Default.(func() time.Time)
+	// joblogDescUpdatedAt is the schema descriptor for updated_at field.
+	joblogDescUpdatedAt := joblogMixinFields0[3].Descriptor()
+	// joblog.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	joblog.DefaultUpdatedAt = joblogDescUpdatedAt.Default.(func() time.Time)
+	// joblog.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	joblog.UpdateDefaultUpdatedAt = joblogDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// joblogDescHandler is the schema descriptor for handler field.
+	joblogDescHandler := joblogFields[2].Descriptor()
+	// joblog.HandlerValidator is a validator for the "handler" field. It is called by the builders before save.
+	joblog.HandlerValidator = joblogDescHandler.Validators[0].(func(string) error)
+	// joblogDescMessage is the schema descriptor for message field.
+	joblogDescMessage := joblogFields[5].Descriptor()
+	// joblog.DefaultMessage holds the default value on creation for the message field.
+	joblog.DefaultMessage = joblogDescMessage.Default.(string)
 	loginlogMixin := schema.LoginLog{}.Mixin()
 	loginlogMixinFields0 := loginlogMixin[0].Fields()
 	_ = loginlogMixinFields0

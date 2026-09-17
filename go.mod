@@ -19,6 +19,7 @@ require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/mileusna/useragent v1.3.5
 	github.com/redis/go-redis/v9 v9.19.0
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/sa-tokens/sa-token-go/core v0.2.3
 	github.com/smartwalle/alipay/v3 v3.2.31
 	github.com/wechatpay-apiv3/wechatpay-go v0.2.18
