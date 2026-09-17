@@ -27,6 +27,9 @@ import (
 type Jobs interface {
 	Get(ctx context.Context, id int64) (*jobentity.Job, error)
 	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*jobentity.Job, error)
+	// ListEnabled returns every active enabled job — the scheduler loop's
+	// scan read (ADR 0023).
+	ListEnabled(ctx context.Context) ([]*jobentity.Job, error)
 	// Create validates the job — including cron parse and handler residency
 	// against the live registry — and persists it.
 	Create(ctx context.Context, j *jobentity.Job) (*jobentity.Job, error)
@@ -101,6 +104,15 @@ func (s *jobsImpl) List(ctx context.Context, filter filtering.Filter, orderBy or
 	)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "job.svc.list", err)
+		return nil, err
+	}
+	return js, nil
+}
+
+func (s *jobsImpl) ListEnabled(ctx context.Context) ([]*jobentity.Job, error) {
+	js, err := s.jobs.ListEnabled(ctx)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "job.svc.list_enabled", err)
 		return nil, err
 	}
 	return js, nil

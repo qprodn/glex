@@ -1,6 +1,6 @@
 # 03 调度 runtime:tick 循环、fire 认领锁、fx lifecycle
 
-状态:todo — 依赖 02
+状态:done
 
 - `internal/infra/job/runtime.go`:
   - fx Lifecycle 启停(镜像 eventbus NewBus:OnStart 起 goroutine,
