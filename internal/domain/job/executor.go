@@ -38,6 +38,14 @@ type Registry struct {
 	executors map[string]Executor
 }
 
+// RunLockKey is the per-job no-overlap lock key (ADR 0003 key convention,
+// ADR 0023 semantics). The domain service's Fire holds it for every run;
+// the application's manual-run probe acquires it fail-fast to surface
+// JOB_BUSY synchronously. One owner of the format, two callers.
+func RunLockKey(id int64) string {
+	return fmt.Sprintf("job:run:%d", id)
+}
+
 // NewRegistry returns an empty Registry.
 func NewRegistry() *Registry {
 	return &Registry{executors: make(map[string]Executor)}

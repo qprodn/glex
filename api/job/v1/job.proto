@@ -1,0 +1,272 @@
+syntax = "proto3";
+
+package job.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/field_mask.proto";
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "glex/api/job/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.job.v1";
+
+// Job is a Scheduled Job (定时任务, ADR 0023): a recurring firing of one
+// registered Job Executor on a 5-field cron schedule, evaluated in the one
+// configured scheduler timezone. The handler must name a registered
+// executor at save time; the row never carries executable text.
+message Job {
+  // Snowflake ID. Server-assigned on create.
+  int64 job_id = 1;
+  // Display name, unique among active jobs. Required, non-blank.
+  string name = 2;
+  // Registered executor name (e.g. "pay.expire-sweep"). Required; validated
+  // against the live registry on create and update.
+  string handler = 3;
+  // 5-field cron expression (robfig ParseStandard syntax, descriptors
+  // included). Required.
+  string cron = 4;
+  // Opaque executor argument, passed verbatim to Run.
+  string args = 5;
+  // false pauses the schedule; a run already in flight finishes. Manual
+  // runs are allowed on paused jobs.
+  bool enabled = 6;
+  // Per-run timeout in seconds (1-3600). Server stamps the configured
+  // default when the create request leaves it unset.
+  int32 timeout_seconds = 7;
+  string remark = 8;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  int64 create_by = 9;
+  int64 update_by = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// JobSet is a page of jobs.
+message JobSet {
+  repeated Job jobs = 1;
+  // Opaque token for the next page; empty when on the last page.
+  string next_page_token = 2;
+}
+
+// Trigger says who asked for one firing (ADR 0023).
+enum Trigger {
+  // Unset; never returned.
+  TRIGGER_UNSPECIFIED = 0;
+  // The scheduler loop fired the job's cron occurrence.
+  TRIGGER_SCHEDULED = 1;
+  // An operator pressed run-now.
+  TRIGGER_MANUAL = 2;
+  // An external scheduler called in through the replacement path; reserved,
+  // nothing sets it yet.
+  TRIGGER_EXTERNAL = 3;
+}
+
+// RunStatus is one firing's terminal outcome — there is no "running"
+// value: a Job Log row appears only at completion.
+enum RunStatus {
+  // Unset; never returned.
+  RUN_STATUS_UNSPECIFIED = 0;
+  RUN_SUCCESS = 1;
+  RUN_FAILURE = 2;
+}
+
+// JobLog is the record of one completed firing (任务日志, ADR 2023):
+// written once at completion, queried and withdrawn, never updated.
+message JobLog {
+  // Snowflake ID.
+  int64 job_log_id = 1;
+  // The fired job. The job's withdrawal keeps its logs readable as
+  // history.
+  int64 job_id = 2;
+  // Snapshot of the job's handler at fire time.
+  string handler = 3;
+  Trigger trigger = 4;
+  RunStatus status = 5;
+  // Run summary or error text (bounded).
+  string message = 6;
+  google.protobuf.Timestamp started_at = 7;
+  // Run duration in milliseconds.
+  int64 duration_ms = 8;
+  int64 create_by = 9;
+  int64 update_by = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// JobLogSet is a page of job logs.
+message JobLogSet {
+  repeated JobLog job_logs = 1;
+  // Opaque token for the next page; empty when on the last page.
+  string next_page_token = 2;
+}
+
+// Executor names one registered Job Executor (ADR 0023) — the save-time
+// validation's registry, surfaced for the console's handler picker.
+message Executor {
+  string name = 1;
+}
+
+// ExecutorSet is the registered executor list, sorted by name.
+message ExecutorSet {
+  repeated Executor executors = 1;
+}
+
+// JobService is the scheduled-task management service (ADR 2023). Job Log
+// rows are write-once at completion: there is no update RPC.
+service JobService {
+  // CreateJob creates a new job. name, handler, cron, and timeout are
+  // validated; handler must name a registered executor.
+  rpc CreateJob(CreateJobRequest) returns (Job) {
+    option (google.api.http) = {
+      post: "/monitor/jobs"
+      body: "job"
+    };
+  }
+  // GetJob retrieves a job by id.
+  rpc GetJob(GetJobRequest) returns (Job) {
+    option (google.api.http) = {
+      get: "/monitor/jobs/{job_id}"
+    };
+  }
+  // ListJobs lists jobs with AIP filter/order/page-token.
+  rpc ListJobs(ListJobsRequest) returns (JobSet) {
+    option (google.api.http) = {
+      get: "/monitor/jobs"
+    };
+  }
+  // UpdateJob partially updates a job (field-mask); every write revalidates
+  // handler residency and the cron expression.
+  rpc UpdateJob(UpdateJobRequest) returns (Job) {
+    option (google.api.http) = {
+      patch: "/monitor/jobs/{job.job_id}"
+      body: "job"
+    };
+  }
+  // DeleteJob soft-deletes a job by id. In-flight runs finish; no new
+  // firing happens afterwards.
+  rpc DeleteJob(DeleteJobRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/monitor/jobs/{job_id}"
+    };
+  }
+  // SetJobEnabled resumes (true) or pauses (false) a job's schedule.
+  rpc SetJobEnabled(SetJobEnabledRequest) returns (Job) {
+    option (google.api.http) = {
+      post: "/monitor/jobs/{job_id}/enabled"
+      body: "*"
+    };
+  }
+  // RunJob fires one manual run now, asynchronously: the call returns as
+  // soon as the run is dispatched and the outcome lands as a Job Log row.
+  // Allowed on paused jobs; a run already in flight returns JOB_BUSY.
+  rpc RunJob(RunJobRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/monitor/jobs/{job_id}/run"
+    };
+  }
+  // ListJobLogs lists job logs with AIP filter/order/page-token.
+  rpc ListJobLogs(ListJobLogsRequest) returns (JobLogSet) {
+    option (google.api.http) = {
+      get: "/monitor/job-logs"
+    };
+  }
+  // GetJobLog retrieves one log row by id.
+  rpc GetJobLog(GetJobLogRequest) returns (JobLog) {
+    option (google.api.http) = {
+      get: "/monitor/job-logs/{job_log_id}"
+    };
+  }
+  // DeleteJobLog withdraws one log row (history cleanup, never record
+  // editing).
+  rpc DeleteJobLog(DeleteJobLogRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/monitor/job-logs/{job_log_id}"
+    };
+  }
+  // ListJobExecutors returns the registered executor names, sorted — the
+  // handler picker's source of truth.
+  rpc ListJobExecutors(ListJobExecutorsRequest) returns (ExecutorSet) {
+    option (google.api.http) = {
+      get: "/monitor/job-executors"
+    };
+  }
+}
+
+message CreateJobRequest {
+  // Required. The job to create. timeout_seconds left unset is stamped
+  // with the configured default.
+  Job job = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetJobRequest {
+  // Required. The id of the job to retrieve.
+  int64 job_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListJobsRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `name` (e.g. `name="支付单过期扫描"`)
+  //   * `handler` (e.g. `handler="pay.expire-sweep"`)
+  //   * `enabled` (e.g. `enabled=true`)
+  string filter = 3;
+  // Optional. AIP-132 order, e.g. `job_id`.
+  string order_by = 4;
+}
+
+message UpdateJobRequest {
+  // Required. The job to update. job_id identifies the record.
+  Job job = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. Mask of fields to update.
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteJobRequest {
+  // Required. The id of the job to delete.
+  int64 job_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message SetJobEnabledRequest {
+  // Required. The id of the job to resume or pause.
+  int64 job_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. true resumes the schedule, false pauses it.
+  bool enabled = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message RunJobRequest {
+  // Required. The id of the job to fire once, now.
+  int64 job_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListJobLogsRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `job_id` (e.g. `job_id=123`)
+  //   * `handler` (e.g. `handler="pay.expire-sweep"`)
+  //   * `trigger` (e.g. `trigger=1`)
+  //   * `status` (e.g. `status=2`)
+  //   * `created_at` (e.g. `created_at>"2026-09-17T00:00:00Z"`)
+  string filter = 3;
+  // Optional. AIP-132 order, e.g. `created_at desc`.
+  string order_by = 4;
+}
+
+message GetJobLogRequest {
+  // Required. The id of the log row to retrieve.
+  int64 job_log_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteJobLogRequest {
+  // Required. The id of the log row to withdraw.
+  int64 job_log_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListJobExecutorsRequest {}

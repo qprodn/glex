@@ -8,6 +8,7 @@ import (
 	authnv1 "glex/api/authn/v1"
 	dictv1 "glex/api/dict/v1"
 	filev1 "glex/api/file/v1"
+	jobv1 "glex/api/job/v1"
 	orgv1 "glex/api/org/v1"
 	payv1 "glex/api/pay/v1"
 	userv1 "glex/api/user/v1"
@@ -123,6 +124,21 @@ func authRoutes() map[string]authmw.Route {
 		payv1.OperationPayServiceGetRefund:                   {Permission: "pay:refund:list"},
 		payv1.OperationPayServiceListRefunds:                 {Permission: "pay:refund:list"},
 		payv1.OperationPayServiceQueryRefund:                 {Permission: "pay:refund:query"},
+
+		// job: scheduled-task console and run history (ADR 0023). The
+		// executor listing rides the list permission — it exists to power
+		// the job form.
+		jobv1.OperationJobServiceCreateJob:       {Permission: "monitor:job:create"},
+		jobv1.OperationJobServiceGetJob:          {Permission: "monitor:job:list"},
+		jobv1.OperationJobServiceListJobs:        {Permission: "monitor:job:list"},
+		jobv1.OperationJobServiceUpdateJob:       {Permission: "monitor:job:update"},
+		jobv1.OperationJobServiceDeleteJob:       {Permission: "monitor:job:remove"},
+		jobv1.OperationJobServiceSetJobEnabled:   {Permission: "monitor:job:update"},
+		jobv1.OperationJobServiceRunJob:          {Permission: "monitor:job:run"},
+		jobv1.OperationJobServiceListJobLogs:     {Permission: "monitor:joblog:list"},
+		jobv1.OperationJobServiceGetJobLog:       {Permission: "monitor:joblog:list"},
+		jobv1.OperationJobServiceDeleteJobLog:    {Permission: "monitor:joblog:remove"},
+		jobv1.OperationJobServiceListJobExecutors: {Permission: "monitor:job:list"},
 	}
 }
 

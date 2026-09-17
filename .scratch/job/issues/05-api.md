@@ -1,6 +1,6 @@
 # 05 job API + 应用层
 
-状态:todo — 依赖 02(CRUD 就绪即可并行于 03/04)
+状态:done
 
 - `api/job/v1/job.proto` + `error_reason.proto`:JobService
   (Create/Get/List/Update/Delete/SetJobEnabled/RunJob/ListJobLogs/

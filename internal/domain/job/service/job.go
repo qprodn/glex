@@ -175,7 +175,7 @@ func (s *jobsImpl) ListExecutors() []string {
 // for long runs and cancels this context if the lock is definitively lost.
 func (s *jobsImpl) Fire(ctx context.Context, j *jobentity.Job, trigger jobentity.Trigger) error {
 	startedAt := time.Now()
-	err := s.locker.WithLock(ctx, fmt.Sprintf("job:run:%d", j.ID),
+	err := s.locker.WithLock(ctx, job.RunLockKey(j.ID),
 		func(ctx context.Context) error {
 			return s.runAndRecord(ctx, j, trigger, startedAt)
 		},

@@ -6,6 +6,7 @@ import (
 	authnapp "glex/internal/application/authn"
 	dictapp "glex/internal/application/dict"
 	fileapp "glex/internal/application/file"
+	jobapp "glex/internal/application/job"
 	orgapp "glex/internal/application/org"
 	payapp "glex/internal/application/pay"
 	userapp "glex/internal/application/user"
@@ -53,7 +54,8 @@ import (
 // satisfies all of them (the file module declares no Transaction — its
 // writes are single-row statements and its byte leg is non-transactional;
 // audit joins none either — its rows are single-row records minted outside
-// any business transaction, ADR 0012).
+// any business transaction, ADR 0012; and neither does job — its writes
+// are single-row statements too).
 var appModule = fx.Options(
 	// infrastructure
 	store.Module,
@@ -96,6 +98,7 @@ var appModule = fx.Options(
 	fileapp.Module,
 	orgapp.Module,
 	payapp.Module,
+	jobapp.Module,
 	// transport
 	server.Module,
 	fx.Provide(newApp),

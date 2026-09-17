@@ -1370,6 +1370,276 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/access.v1.UserRoles'
+    /monitor/job-executors:
+        get:
+            tags:
+                - JobService
+            description: |-
+                ListJobExecutors returns the registered executor names, sorted — the
+                 handler picker's source of truth.
+            operationId: JobService_ListJobExecutors
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/job.v1.ExecutorSet'
+    /monitor/job-logs:
+        get:
+            tags:
+                - JobService
+            description: ListJobLogs lists job logs with AIP filter/order/page-token.
+            operationId: JobService_ListJobLogs
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `job_id` (e.g. `job_id=123`)
+                       * `handler` (e.g. `handler="pay.expire-sweep"`)
+                       * `trigger` (e.g. `trigger=1`)
+                       * `status` (e.g. `status=2`)
+                       * `created_at` (e.g. `created_at>"2026-09-17T00:00:00Z"`)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: Optional. AIP-132 order, e.g. `created_at desc`.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/job.v1.JobLogSet'
+    /monitor/job-logs/{jobLogId}:
+        get:
+            tags:
+                - JobService
+            description: GetJobLog retrieves one log row by id.
+            operationId: JobService_GetJobLog
+            parameters:
+                - name: jobLogId
+                  in: path
+                  description: Required. The id of the log row to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/job.v1.JobLog'
+        delete:
+            tags:
+                - JobService
+            description: |-
+                DeleteJobLog withdraws one log row (history cleanup, never record
+                 editing).
+            operationId: JobService_DeleteJobLog
+            parameters:
+                - name: jobLogId
+                  in: path
+                  description: Required. The id of the log row to withdraw.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /monitor/jobs:
+        get:
+            tags:
+                - JobService
+            description: ListJobs lists jobs with AIP filter/order/page-token.
+            operationId: JobService_ListJobs
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `name` (e.g. `name="支付单过期扫描"`)
+                       * `handler` (e.g. `handler="pay.expire-sweep"`)
+                       * `enabled` (e.g. `enabled=true`)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: Optional. AIP-132 order, e.g. `job_id`.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/job.v1.JobSet'
+        post:
+            tags:
+                - JobService
+            description: |-
+                CreateJob creates a new job. name, handler, cron, and timeout are
+                 validated; handler must name a registered executor.
+            operationId: JobService_CreateJob
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/job.v1.Job'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/job.v1.Job'
+    /monitor/jobs/{job.job_id}:
+        patch:
+            tags:
+                - JobService
+            description: |-
+                UpdateJob partially updates a job (field-mask); every write revalidates
+                 handler residency and the cron expression.
+            operationId: JobService_UpdateJob
+            parameters:
+                - name: job.job_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: updateMask
+                  in: query
+                  description: Required. Mask of fields to update.
+                  schema:
+                    type: string
+                    format: field-mask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/job.v1.Job'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/job.v1.Job'
+    /monitor/jobs/{jobId}:
+        get:
+            tags:
+                - JobService
+            description: GetJob retrieves a job by id.
+            operationId: JobService_GetJob
+            parameters:
+                - name: jobId
+                  in: path
+                  description: Required. The id of the job to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/job.v1.Job'
+        delete:
+            tags:
+                - JobService
+            description: |-
+                DeleteJob soft-deletes a job by id. In-flight runs finish; no new
+                 firing happens afterwards.
+            operationId: JobService_DeleteJob
+            parameters:
+                - name: jobId
+                  in: path
+                  description: Required. The id of the job to delete.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /monitor/jobs/{jobId}/enabled:
+        post:
+            tags:
+                - JobService
+            description: SetJobEnabled resumes (true) or pauses (false) a job's schedule.
+            operationId: JobService_SetJobEnabled
+            parameters:
+                - name: jobId
+                  in: path
+                  description: Required. The id of the job to resume or pause.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/job.v1.SetJobEnabledRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/job.v1.Job'
+    /monitor/jobs/{jobId}/run:
+        post:
+            tags:
+                - JobService
+            description: |-
+                RunJob fires one manual run now, asynchronously: the call returns as
+                 soon as the run is dispatched and the outcome lands as a Job Log row.
+                 Allowed on paused jobs; a run already in flight returns JOB_BUSY.
+            operationId: JobService_RunJob
+            parameters:
+                - name: jobId
+                  in: path
+                  description: Required. The id of the job to fire once, now.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
     /monitor/login_logs:
         get:
             tags:
@@ -2654,6 +2924,149 @@ components:
                     type: string
                     description: Opaque token for the next page; empty when on the last page.
             description: StoredFileSet is a page of stored files.
+        job.v1.Executor:
+            type: object
+            properties:
+                name:
+                    type: string
+            description: |-
+                Executor names one registered Job Executor (ADR 0023) — the save-time
+                 validation's registry, surfaced for the console's handler picker.
+        job.v1.ExecutorSet:
+            type: object
+            properties:
+                executors:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/job.v1.Executor'
+            description: ExecutorSet is the registered executor list, sorted by name.
+        job.v1.Job:
+            type: object
+            properties:
+                jobId:
+                    type: string
+                    description: Snowflake ID. Server-assigned on create.
+                name:
+                    type: string
+                    description: Display name, unique among active jobs. Required, non-blank.
+                handler:
+                    type: string
+                    description: |-
+                        Registered executor name (e.g. "pay.expire-sweep"). Required; validated
+                         against the live registry on create and update.
+                cron:
+                    type: string
+                    description: |-
+                        5-field cron expression (robfig ParseStandard syntax, descriptors
+                         included). Required.
+                args:
+                    type: string
+                    description: Opaque executor argument, passed verbatim to Run.
+                enabled:
+                    type: boolean
+                    description: |-
+                        false pauses the schedule; a run already in flight finishes. Manual
+                         runs are allowed on paused jobs.
+                timeoutSeconds:
+                    type: integer
+                    description: |-
+                        Per-run timeout in seconds (1-3600). Server stamps the configured
+                         default when the create request leaves it unset.
+                    format: int32
+                remark:
+                    type: string
+                createBy:
+                    type: string
+                    description: 'Audit: who created/updated. Filled from the authenticated identity.'
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                Job is a Scheduled Job (定时任务, ADR 0023): a recurring firing of one
+                 registered Job Executor on a 5-field cron schedule, evaluated in the one
+                 configured scheduler timezone. The handler must name a registered
+                 executor at save time; the row never carries executable text.
+        job.v1.JobLog:
+            type: object
+            properties:
+                jobLogId:
+                    type: string
+                    description: Snowflake ID.
+                jobId:
+                    type: string
+                    description: |-
+                        The fired job. The job's withdrawal keeps its logs readable as
+                         history.
+                handler:
+                    type: string
+                    description: Snapshot of the job's handler at fire time.
+                trigger:
+                    type: integer
+                    format: enum
+                status:
+                    type: integer
+                    format: enum
+                message:
+                    type: string
+                    description: Run summary or error text (bounded).
+                startedAt:
+                    type: string
+                    format: date-time
+                durationMs:
+                    type: string
+                    description: Run duration in milliseconds.
+                createBy:
+                    type: string
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                JobLog is the record of one completed firing (任务日志, ADR 2023):
+                 written once at completion, queried and withdrawn, never updated.
+        job.v1.JobLogSet:
+            type: object
+            properties:
+                jobLogs:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/job.v1.JobLog'
+                nextPageToken:
+                    type: string
+                    description: Opaque token for the next page; empty when on the last page.
+            description: JobLogSet is a page of job logs.
+        job.v1.JobSet:
+            type: object
+            properties:
+                jobs:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/job.v1.Job'
+                nextPageToken:
+                    type: string
+                    description: Opaque token for the next page; empty when on the last page.
+            description: JobSet is a page of jobs.
+        job.v1.SetJobEnabledRequest:
+            required:
+                - jobId
+                - enabled
+            type: object
+            properties:
+                jobId:
+                    type: string
+                    description: Required. The id of the job to resume or pause.
+                enabled:
+                    type: boolean
+                    description: Required. true resumes the schedule, false pauses it.
         org.v1.Dept:
             type: object
             properties:
@@ -3460,6 +3873,10 @@ tags:
          google.api.http annotation and their gRPC counterparts intentionally stay
          Unimplemented: relaying up to 100 MiB through one gRPC message would mean
          raising the 4 MiB default limit for no benefit.
+    - name: JobService
+      description: |-
+        JobService is the scheduled-task management service (ADR 2023). Job Log
+         rows are write-once at completion: there is no update RPC.
     - name: LoginLogService
       description: |-
         LoginLogService is the read/withdraw view over recorded sign-ins and

@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package job.v1;
+
+option go_package = "glex/api/job/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.job.v1";
+
+// ErrorReason is the stable vocabulary for the `reason` field of the error
+// body. Values are wire-visible: protojson encodes them as their names, so
+// clients branch on the name (e.g. "JOB_HANDLER_UNKNOWN") rather than on an
+// HTTP status. The integer tags are internal to the enum; only the names
+// cross the wire.
+enum ErrorReason {
+  // Unset. Never returned; reserved by proto3 for the zero value.
+  ERROR_REASON_UNSPECIFIED = 0;
+
+  // Job reasons (JobService).
+  // The requested job does not exist (or is soft-deleted).
+  JOB_NOT_FOUND = 1;
+  // The name already exists among active jobs.
+  JOB_NAME_CONFLICT = 2;
+  // name is blank or too long, or timeout_seconds is outside 1-3600.
+  JOB_INVALID = 3;
+  // cron is not a valid 5-field expression.
+  JOB_CRON_INVALID = 4;
+  // handler names no registered executor (ADR 0023).
+  JOB_HANDLER_UNKNOWN = 5;
+  // A run of this job is still in flight (HTTP 409).
+  JOB_BUSY = 6;
+
+  // Job Log reasons (JobService).
+  // The requested log row does not exist (or is soft-deleted).
+  JOB_LOG_NOT_FOUND = 7;
+}
