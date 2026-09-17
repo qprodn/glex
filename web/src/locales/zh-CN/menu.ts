@@ -9,6 +9,8 @@ export default {
   "menu.monitor.online": "在线会话",
   "menu.monitor.operlog": "操作日志",
   "menu.monitor.loginlog": "登录日志",
+  "menu.monitor.job": "定时任务",
+  "menu.monitor.joblog": "任务日志",
   "menu.pay.merchant": "商户管理",
   "menu.pay.payment": "支付单",
   "menu.pay.refund": "退款单",

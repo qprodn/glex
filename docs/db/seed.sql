@@ -383,6 +383,36 @@ values (1000000000000000340, 1000000000000000101, 1000000000000000400, 0, 0),
        (1000000000000000352, 1000000000000000101, 1000000000000000432, 0, 0)
 on conflict do nothing;
 
+-- ---------------------------------------------------------------------------
+-- 定时任务（监控目录下两页 + 按钮，ADR 0023）
+-- perms 与 auth_routes.go 一一对应；图标走 @ant-design/icons 运行时解析
+-- （schedule/history）。
+-- ---------------------------------------------------------------------------
+
+insert into sys_menu (id, menu_name, parent_id, order_num, path, component, menu_type, perms, icon, create_by, update_by)
+values (1000000000000000440, '定时任务', 1000000000000000260, 4, 'job', 'monitor/job/index', 2, 'monitor:job:list', 'schedule', 0, 0),
+       (1000000000000000445, '任务日志', 1000000000000000260, 5, 'joblog', 'monitor/joblog/index', 2, 'monitor:joblog:list', 'history', 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, menu_type, perms, create_by, update_by)
+values (1000000000000000441, '任务新增', 1000000000000000440, 1, 3, 'monitor:job:create', 0, 0),
+       (1000000000000000442, '任务修改', 1000000000000000440, 2, 3, 'monitor:job:update', 0, 0),
+       (1000000000000000443, '任务删除', 1000000000000000440, 3, 3, 'monitor:job:remove', 0, 0),
+       (1000000000000000444, '立即执行', 1000000000000000440, 4, 3, 'monitor:job:run', 0, 0),
+       (1000000000000000446, '日志删除', 1000000000000000445, 1, 3, 'monitor:joblog:remove', 0, 0)
+on conflict do nothing;
+
+-- superadmin 追加定时任务全部菜单
+insert into sys_role_menu (id, role_id, menu_id, create_by, update_by)
+values (1000000000000000447, 1000000000000000101, 1000000000000000440, 0, 0),
+       (1000000000000000448, 1000000000000000101, 1000000000000000441, 0, 0),
+       (1000000000000000449, 1000000000000000101, 1000000000000000442, 0, 0),
+       (1000000000000000450, 1000000000000000101, 1000000000000000443, 0, 0),
+       (1000000000000000451, 1000000000000000101, 1000000000000000444, 0, 0),
+       (1000000000000000452, 1000000000000000101, 1000000000000000445, 0, 0),
+       (1000000000000000453, 1000000000000000101, 1000000000000000446, 0, 0)
+on conflict do nothing;
+
 -- 定时任务（ADR 0023）：支付过期扫描——懒结算的主动补充，分钟级收敛。
 insert into job (id, name, handler, cron, args, enabled, timeout_seconds, remark, create_by, update_by)
 values (1000000000000000500, '支付单过期扫描', 'pay.expire-sweep', '* * * * *', '', true, 120,

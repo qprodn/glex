@@ -1,6 +1,6 @@
 # 06 web 页面 + 菜单种子
 
-状态:todo — 依赖 05
+状态:done
 
 - `web/src/pages/monitor/job/`:index.tsx(ProTable:启停开关、立即执行、
   删除)+ JobFormModal(handler 下拉来自 ListJobExecutors、cron 输入

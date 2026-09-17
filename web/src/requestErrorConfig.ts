@@ -18,6 +18,10 @@ const reasonMessageId: Record<string, string> = {
   DICT_TYPE_CONFLICT: "pages.error.dictTypeConflict",
   DICT_TYPE_IN_USE: "pages.error.dictTypeInUse",
   DICT_ENTRY_CONFLICT: "pages.error.dictEntryConflict",
+  JOB_NAME_CONFLICT: "pages.error.jobNameConflict",
+  JOB_CRON_INVALID: "pages.error.jobCronInvalid",
+  JOB_HANDLER_UNKNOWN: "pages.error.jobHandlerUnknown",
+  JOB_BUSY: "pages.error.jobBusy",
 };
 
 /**
