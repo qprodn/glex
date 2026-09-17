@@ -551,6 +551,10 @@ create index if not exists payment_created_at
     on pay_payment (created_at);
 create index if not exists payment_channel_trade_no
     on pay_payment (channel_trade_no);
+-- 过期扫描的候选集：仍 PENDING 且已过期的行（ADR 0023）。
+create index if not exists payment_expire_pending
+    on pay_payment (expire_time)
+    where deleted_at is null and status = 1;
 
 comment on table pay_payment is '支付单表（统一收单；状态推进一律 CAS，终态不可逆）';
 

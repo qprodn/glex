@@ -383,4 +383,10 @@ values (1000000000000000340, 1000000000000000101, 1000000000000000400, 0, 0),
        (1000000000000000352, 1000000000000000101, 1000000000000000432, 0, 0)
 on conflict do nothing;
 
+-- 定时任务（ADR 0023）：支付过期扫描——懒结算的主动补充，分钟级收敛。
+insert into job (id, name, handler, cron, args, enabled, timeout_seconds, remark, create_by, update_by)
+values (1000000000000000500, '支付单过期扫描', 'pay.expire-sweep', '* * * * *', '', true, 120,
+        '收敛已过期的 PENDING 支付单（主动过期，ADR 0023）', 0, 0)
+on conflict do nothing;
+
 commit;

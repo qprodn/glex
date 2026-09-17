@@ -98,6 +98,29 @@ func (r *paymentRepo) FindLatestByBizNo(ctx context.Context, merchantID int64, b
 	return toBizPayment(po), nil
 }
 
+// ListPendingExpired scans the sweep candidates off the partial
+// expire_time index (ADR 0023): still-Pending rows past their expiry, id
+// ascending so a bounded batch always resumes from the oldest.
+func (r *paymentRepo) ListPendingExpired(ctx context.Context, before time.Time, limit int) ([]*payentity.Payment, error) {
+	pos, err := r.data.DB.PayPayment(ctx).Query().
+		Where(
+			entpayment.DeletedAtIsNil(),
+			entpayment.StatusEQ(int16(payentity.PaymentPending)),
+			entpayment.ExpireTimeLT(before),
+		).
+		Order(ent.Asc(entpayment.FieldID)).
+		Limit(limit).
+		All(ctx)
+	if err != nil {
+		return nil, r.storeError(ctx, "pay.payment.list_pending_expired", err)
+	}
+	payments := make([]*payentity.Payment, 0, len(pos))
+	for _, po := range pos {
+		payments = append(payments, toBizPayment(po))
+	}
+	return payments, nil
+}
+
 func (r *paymentRepo) List(ctx context.Context, opts ...payrepo.ListOption) ([]*payentity.Payment, error) {
 	o := payrepo.ListOptions{Limit: 20}
 	for _, opt := range opts {

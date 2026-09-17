@@ -432,6 +432,14 @@ var (
 				Unique:  false,
 				Columns: []*schema.Column{PayPaymentColumns[14]},
 			},
+			{
+				Name:    "paypayment_expire_time",
+				Unique:  false,
+				Columns: []*schema.Column{PayPaymentColumns[19]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL AND status = 1",
+				},
+			},
 		},
 	}
 	// PayRefundColumns holds the columns for the "pay_refund" table.

@@ -258,6 +258,10 @@ func (r *goldPaymentRepo) List(ctx context.Context, opts ...payrepo.ListOption) 
 	return nil, nil
 }
 
+func (r *goldPaymentRepo) ListPendingExpired(ctx context.Context, before time.Time, limit int) ([]*payentity.Payment, error) {
+	return nil, nil
+}
+
 func (r *goldPaymentRepo) Create(ctx context.Context, p *payentity.Payment) (*payentity.Payment, error) {
 	cp := *p
 	r.p[p.ID] = &cp

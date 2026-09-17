@@ -58,7 +58,8 @@ func (PayPayment) Fields() []ent.Field {
 		field.Int64("refunded_amount").Default(0),
 		field.String("fail_reason").MaxLen(256).Optional(),
 		// Initiation time + the configured expiry window (default 30min).
-		// Expiry is judged lazily on settlement paths, never by a cron.
+		// Expiry is judged lazily on settlement paths and converged
+		// proactively by the expire sweep (ADR 0023).
 		field.Time("expire_time"),
 		field.Time("paid_at").Optional().Nillable(),
 	}
@@ -73,8 +74,9 @@ func (PayPayment) Annotations() []entschema.Annotation {
 
 // Indexes serves the settlement paths: initiation looks up a merchant's
 // pending rows per Business Order Number; the console filters by status and
-// time; notifications and queries resolve by the channel's trade number.
-// None of them is unique — re-initiation keeps history.
+// time; notifications and queries resolve by the channel's trade number;
+// the expire sweep scans pending rows past expiry (ADR 0023). None of them
+// is unique — re-initiation keeps history.
 func (PayPayment) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("merchant_id", "biz_no").
@@ -82,5 +84,7 @@ func (PayPayment) Indexes() []ent.Index {
 		index.Fields("status"),
 		index.Fields("created_at"),
 		index.Fields("channel_trade_no"),
+		index.Fields("expire_time").
+			Annotations(entsql.IndexWhere("deleted_at IS NULL AND status = 1")),
 	}
 }

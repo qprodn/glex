@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"glex/internal/domain/pay/entity"
 )
@@ -19,6 +20,10 @@ type PaymentRepo interface {
 	// one Business Order Number — what a business caller reading a
 	// payment's outcome wants. NotFound when none exists.
 	FindLatestByBizNo(ctx context.Context, merchantID int64, bizNo string) (*entity.Payment, error)
+	// ListPendingExpired returns up to limit still-Pending Payments whose
+	// expiry has passed, id ascending — the expire-sweep's candidate set
+	// (ADR 0023). Batched so one sweep run bounds its channel calls.
+	ListPendingExpired(ctx context.Context, before time.Time, limit int) ([]*entity.Payment, error)
 	List(ctx context.Context, opts ...ListOption) ([]*entity.Payment, error)
 	// Create inserts the row; the caller mints the ID (NextID) and owns
 	// any transaction.

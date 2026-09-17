@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"sort"
 	"testing"
 	"time"
 
@@ -58,6 +59,28 @@ func (f *fakePaymentRepo) FindLatestByBizNo(ctx context.Context, merchantID int6
 
 func (f *fakePaymentRepo) List(ctx context.Context, opts ...payrepo.ListOption) ([]*payentity.Payment, error) {
 	return nil, nil
+}
+
+// ListPendingExpired mirrors the infra scan: still-Pending rows past their
+// expiry, id ascending, bounded.
+func (f *fakePaymentRepo) ListPendingExpired(ctx context.Context, before time.Time, limit int) ([]*payentity.Payment, error) {
+	ids := make([]int64, 0, len(f.p))
+	for id := range f.p {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	var out []*payentity.Payment
+	for _, id := range ids {
+		p := f.p[id]
+		if p.Status == payentity.PaymentPending && p.ExpireTime.Before(before) {
+			cp := *p
+			out = append(out, &cp)
+			if len(out) >= limit {
+				break
+			}
+		}
+	}
+	return out, nil
 }
 
 func (f *fakePaymentRepo) Create(ctx context.Context, p *payentity.Payment) (*payentity.Payment, error) {
@@ -567,4 +590,73 @@ func TestApplyChannelStateRejectsAmountMismatch(t *testing.T) {
 // master key (the environment is set by the service test constructors).
 func newFakeCipher() *crypt.Cipher {
 	return crypt.New()
+}
+
+func TestSweepExpiredSettlesOnlyExpiredPending(t *testing.T) {
+	var closeCalls int
+	gw := &scriptGateway{
+		queryState:  ChannelPaymentState{State: payentity.PaymentPending},
+		closeCalled: &closeCalls,
+	}
+	svc, repo, merchantID := newTestPaymentService(t, gw)
+	inA := initiateInput(merchantID)
+	inA.BizNo = "ORDER-A"
+	inB := initiateInput(merchantID)
+	inB.BizNo = "ORDER-B"
+	inL := initiateInput(merchantID)
+	inL.BizNo = "ORDER-LIVE"
+	expiredA, _ := svc.Initiate(context.Background(), inA, 7)
+	expiredB, _ := svc.Initiate(context.Background(), inB, 7)
+	live, _ := svc.Initiate(context.Background(), inL, 7)
+	repo.p[expiredA.ID].ExpireTime = time.Now().Add(-time.Hour)
+	repo.p[expiredB.ID].ExpireTime = time.Now().Add(-time.Minute)
+	// `live` keeps its future expiry.
+
+	settled, err := svc.SweepExpired(context.Background(), 50)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if settled != 2 {
+		t.Fatalf("settled = %d, want 2", settled)
+	}
+	for _, id := range []int64{expiredA.ID, expiredB.ID} {
+		if p := repo.p[id]; p.Status != payentity.PaymentExpired {
+			t.Fatalf("payment %d status = %v, want EXPIRED", id, p.Status)
+		}
+	}
+	if p := repo.p[live.ID]; p.Status != payentity.PaymentPending {
+		t.Fatalf("unexpired payment was swept: status = %v", p.Status)
+	}
+	if closeCalls != 2 {
+		t.Fatalf("channel close called %d times, want 2", closeCalls)
+	}
+}
+
+func TestSweepExpiredContinuesPastFailure(t *testing.T) {
+	gw := &scriptGateway{
+		queryState: ChannelPaymentState{State: payentity.PaymentPending},
+	}
+	svc, repo, merchantID := newTestPaymentService(t, gw)
+	good, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	repo.p[good.ID].ExpireTime = time.Now().Add(-time.Hour)
+
+	// A candidate whose merchant no longer resolves — settle fails for it,
+	// the batch must still settle the healthy row.
+	bad := &payentity.Payment{
+		ID: 999999, MerchantID: 424242, Channel: payentity.ChannelWechat,
+		BizNo: "b", Subject: "s", Amount: 100, Status: payentity.PaymentPending,
+		ExpireTime: time.Now().Add(-time.Hour),
+	}
+	repo.p[bad.ID] = bad
+
+	settled, err := svc.SweepExpired(context.Background(), 50)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if settled != 1 {
+		t.Fatalf("settled = %d, want 1", settled)
+	}
+	if p := repo.p[good.ID]; p.Status != payentity.PaymentExpired {
+		t.Fatalf("healthy candidate not settled: %v", p.Status)
+	}
 }

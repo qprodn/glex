@@ -1,6 +1,6 @@
 # 04 pay 过期扫描执行器 + 种子任务
 
-状态:todo — 依赖 03(执行器组已可装配)
+状态:done
 
 - pay repo 增 `ListPendingExpired(ctx, before, limit)`(id 升序);
   `pay_payment` 增 partial 索引
