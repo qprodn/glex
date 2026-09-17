@@ -14,5 +14,15 @@ var Module = fx.Module("job-infra",
 		NewJobLogRepo,
 		NewSchedulerRuntime,
 	),
-	fx.Invoke(fx.Annotate(RegisterExecutors, fx.ParamTags(`group:"job-executors"`))),
+	fx.Invoke(
+		fx.Annotate(RegisterExecutors, fx.ParamTags(`group:"job-executors"`)),
+		anchorRuntime,
+	),
 )
+
+// anchorRuntime forces fx to construct the SchedulerRuntime so its
+// lifecycle hook registers. fx builds only what something depends on, and
+// the runtime deliberately has no dependents — without this invoke the
+// loop silently never starts (found by live smoke: the hook is the side
+// effect, the type is the anchor).
+func anchorRuntime(*SchedulerRuntime) {}
