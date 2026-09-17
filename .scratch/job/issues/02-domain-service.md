@@ -1,6 +1,6 @@
 # 02 job 域服务:CRUD 校验、Fire(锁/超时/panic 恢复)、日志
 
-状态:todo — 依赖 01
+状态:done
 
 - `internal/domain/job/service/job.go`:`Jobs` 接口 + 实现。
   - CRUD:Create/Update 校验 name/timeout(ErrJobInvalid)、cron
