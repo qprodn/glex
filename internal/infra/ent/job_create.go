@@ -282,8 +282,18 @@ func (_c *JobCreate) check() error {
 	if _, ok := _c.mutation.TimeoutSeconds(); !ok {
 		return &ValidationError{Name: "timeout_seconds", err: errors.New(`ent: missing required field "Job.timeout_seconds"`)}
 	}
+	if v, ok := _c.mutation.TimeoutSeconds(); ok {
+		if err := job.TimeoutSecondsValidator(v); err != nil {
+			return &ValidationError{Name: "timeout_seconds", err: fmt.Errorf(`ent: validator failed for field "Job.timeout_seconds": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Remark(); !ok {
 		return &ValidationError{Name: "remark", err: errors.New(`ent: missing required field "Job.remark"`)}
+	}
+	if v, ok := _c.mutation.Remark(); ok {
+		if err := job.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "Job.remark": %w`, err)}
+		}
 	}
 	return nil
 }

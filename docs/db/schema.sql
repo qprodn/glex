@@ -684,10 +684,10 @@ create table if not exists job (
 );
 
 -- 活跃行内名字唯一；撤下后名字可复用（ADR 0002 软删除）。
-create unique index if not exists job_name_active
+create unique index if not exists job_name
     on job (name)
     where deleted_at is null;
-create index if not exists job_handler_active
+create index if not exists job_handler
     on job (handler)
     where deleted_at is null;
 
@@ -724,10 +724,10 @@ create table if not exists job_log (
     constraint job_log_pkey primary key (id)
 );
 
-create index if not exists job_log_job_created
+create index if not exists joblog_job_id_created_at
     on job_log (job_id, created_at)
     where deleted_at is null;
-create index if not exists job_log_created
+create index if not exists joblog_created_at
     on job_log (created_at);
 
 comment on table job_log is '任务日志表（完成时一次写入，无更新路径，ADR 0023/0012 精神）';

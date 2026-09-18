@@ -271,6 +271,16 @@ func (_u *JobUpdate) check() error {
 			return &ValidationError{Name: "cron", err: fmt.Errorf(`ent: validator failed for field "Job.cron": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.TimeoutSeconds(); ok {
+		if err := job.TimeoutSecondsValidator(v); err != nil {
+			return &ValidationError{Name: "timeout_seconds", err: fmt.Errorf(`ent: validator failed for field "Job.timeout_seconds": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Remark(); ok {
+		if err := job.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "Job.remark": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -611,6 +621,16 @@ func (_u *JobUpdateOne) check() error {
 	if v, ok := _u.mutation.Cron(); ok {
 		if err := job.CronValidator(v); err != nil {
 			return &ValidationError{Name: "cron", err: fmt.Errorf(`ent: validator failed for field "Job.cron": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.TimeoutSeconds(); ok {
+		if err := job.TimeoutSecondsValidator(v); err != nil {
+			return &ValidationError{Name: "timeout_seconds", err: fmt.Errorf(`ent: validator failed for field "Job.timeout_seconds": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Remark(); ok {
+		if err := job.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "Job.remark": %w`, err)}
 		}
 	}
 	return nil

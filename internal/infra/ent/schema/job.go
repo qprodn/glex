@@ -42,10 +42,12 @@ func (Job) Fields() []ent.Field {
 		field.Bool("enabled").Default(true),
 		// Per-run timeout; 1–3600. The row's default is the config default
 		// resolved at create time, so later config changes leave existing
-		// jobs explicit.
+		// jobs explicit. The Min/Max run in the generated builders as
+		// defense-in-depth behind the domain service's validation.
 		field.Int32("timeout_seconds").Default(60).
+			Min(1).Max(3600).
 			SchemaType(map[string]string{dialect.Postgres: "integer"}),
-		field.String("remark").Default(""),
+		field.String("remark").Default("").MaxLen(255),
 	}
 }
 

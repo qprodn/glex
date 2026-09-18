@@ -217,10 +217,28 @@ func init() {
 	jobDescTimeoutSeconds := jobFields[6].Descriptor()
 	// job.DefaultTimeoutSeconds holds the default value on creation for the timeout_seconds field.
 	job.DefaultTimeoutSeconds = jobDescTimeoutSeconds.Default.(int32)
+	// job.TimeoutSecondsValidator is a validator for the "timeout_seconds" field. It is called by the builders before save.
+	job.TimeoutSecondsValidator = func() func(int32) error {
+		validators := jobDescTimeoutSeconds.Validators
+		fns := [...]func(int32) error{
+			validators[0].(func(int32) error),
+			validators[1].(func(int32) error),
+		}
+		return func(timeout_seconds int32) error {
+			for _, fn := range fns {
+				if err := fn(timeout_seconds); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
 	// jobDescRemark is the schema descriptor for remark field.
 	jobDescRemark := jobFields[7].Descriptor()
 	// job.DefaultRemark holds the default value on creation for the remark field.
 	job.DefaultRemark = jobDescRemark.Default.(string)
+	// job.RemarkValidator is a validator for the "remark" field. It is called by the builders before save.
+	job.RemarkValidator = jobDescRemark.Validators[0].(func(string) error)
 	joblogMixin := schema.JobLog{}.Mixin()
 	joblogMixinFields0 := joblogMixin[0].Fields()
 	_ = joblogMixinFields0

@@ -91,8 +91,12 @@ var (
 	DefaultEnabled bool
 	// DefaultTimeoutSeconds holds the default value on creation for the "timeout_seconds" field.
 	DefaultTimeoutSeconds int32
+	// TimeoutSecondsValidator is a validator for the "timeout_seconds" field. It is called by the builders before save.
+	TimeoutSecondsValidator func(int32) error
 	// DefaultRemark holds the default value on creation for the "remark" field.
 	DefaultRemark string
+	// RemarkValidator is a validator for the "remark" field. It is called by the builders before save.
+	RemarkValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the Job queries.

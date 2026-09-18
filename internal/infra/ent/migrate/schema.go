@@ -141,7 +141,7 @@ var (
 		{Name: "args", Type: field.TypeString, Size: 2147483647, Default: ""},
 		{Name: "enabled", Type: field.TypeBool, Default: true},
 		{Name: "timeout_seconds", Type: field.TypeInt32, Default: 60, SchemaType: map[string]string{"postgres": "integer"}},
-		{Name: "remark", Type: field.TypeString, Default: ""},
+		{Name: "remark", Type: field.TypeString, Size: 255, Default: ""},
 	}
 	// JobTable holds the schema information for the "job" table.
 	JobTable = &schema.Table{
