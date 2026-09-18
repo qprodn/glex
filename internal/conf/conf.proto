@@ -96,6 +96,12 @@ message Data {
   }
   Database database = 1;
   Redis redis = 2;
+  // This replica's snowflake node number (0–1023). Every ID every module
+  // mints shares one node; replicas must hold distinct numbers or two of
+  // them can mint the same ID in the same millisecond (duplicate PK). 0
+  // falls back to the built-in default (1) — the historical
+  // single-instance value; set distinct values before running replicas.
+  uint32 snowflake_node = 3;
 }
 
 // File configures the file module: one S3-compatible endpoint with static

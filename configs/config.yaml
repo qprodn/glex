@@ -15,6 +15,10 @@ data:
     addr: 127.0.0.1:6379
     read_timeout: 0.2s
     write_timeout: 0.2s
+  # 本副本的雪花节点号（0–1023，全模块共享一个节点）。多副本必须互异，
+  # 否则两个副本同毫秒可能铸造相同 ID（主键冲突）；0 取内置默认 1（单实例
+  # 历史值）。
+  snowflake_node: 1
 file:
   s3:
     # Local dev example (MinIO). Supply real credentials through a

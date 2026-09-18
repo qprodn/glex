@@ -405,9 +405,15 @@ func (x *Server) GetGrpc() *Server_GRPC {
 }
 
 type Data struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Database      *Data_Database         `protobuf:"bytes,1,opt,name=database,proto3" json:"database,omitempty"`
-	Redis         *Data_Redis            `protobuf:"bytes,2,opt,name=redis,proto3" json:"redis,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Database *Data_Database         `protobuf:"bytes,1,opt,name=database,proto3" json:"database,omitempty"`
+	Redis    *Data_Redis            `protobuf:"bytes,2,opt,name=redis,proto3" json:"redis,omitempty"`
+	// This replica's snowflake node number (0–1023). Every ID every module
+	// mints shares one node; replicas must hold distinct numbers or two of
+	// them can mint the same ID in the same millisecond (duplicate PK). 0
+	// falls back to the built-in default (1) — the historical
+	// single-instance value; set distinct values before running replicas.
+	SnowflakeNode uint32 `protobuf:"varint,3,opt,name=snowflake_node,json=snowflakeNode,proto3" json:"snowflake_node,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -454,6 +460,13 @@ func (x *Data) GetRedis() *Data_Redis {
 		return x.Redis
 	}
 	return nil
+}
+
+func (x *Data) GetSnowflakeNode() uint32 {
+	if x != nil {
+		return x.SnowflakeNode
+	}
+	return 0
 }
 
 // File configures the file module: one S3-compatible endpoint with static
@@ -1024,10 +1037,11 @@ const file_conf_conf_proto_rawDesc = "" +
 	"\x04GRPC\x12\x18\n" +
 	"\anetwork\x18\x01 \x01(\tR\anetwork\x12\x12\n" +
 	"\x04addr\x18\x02 \x01(\tR\x04addr\x123\n" +
-	"\atimeout\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\atimeout\"\xdd\x02\n" +
+	"\atimeout\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\atimeout\"\x84\x03\n" +
 	"\x04Data\x125\n" +
 	"\bdatabase\x18\x01 \x01(\v2\x19.kratos.api.Data.DatabaseR\bdatabase\x12,\n" +
-	"\x05redis\x18\x02 \x01(\v2\x16.kratos.api.Data.RedisR\x05redis\x1a:\n" +
+	"\x05redis\x18\x02 \x01(\v2\x16.kratos.api.Data.RedisR\x05redis\x12%\n" +
+	"\x0esnowflake_node\x18\x03 \x01(\rR\rsnowflakeNode\x1a:\n" +
 	"\bDatabase\x12\x16\n" +
 	"\x06driver\x18\x01 \x01(\tR\x06driver\x12\x16\n" +
 	"\x06source\x18\x02 \x01(\tR\x06source\x1a\xb3\x01\n" +

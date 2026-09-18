@@ -15,6 +15,7 @@ import (
 	"glex/internal/conf"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/migrate"
+	"glex/internal/infra/snowflake"
 )
 
 // The generated ent client opens the "postgres" dialect, and pgx's stdlib
@@ -55,9 +56,20 @@ type dataResourceCloser interface {
 
 // NewData creates a new Data instance. The ent client keeps owning the
 // connection pool (and the cleanup closes it); Data exposes it only through
-// the transaction-aware Database wrapper.
+// the transaction-aware Database wrapper. It also installs the process's
+// snowflake node — every module's ID minting delegates to it, so the
+// configured node number must be distinct per replica (ADR 0002's ID
+// convention; the collision path is real under the job scheduler's
+// symmetric replicas).
 func NewData(c *conf.Data, logger *slog.Logger) (*Data, func(), error) {
 	logger = logger.With(slog.String("component", "infra.store"))
+	node := int64(c.GetSnowflakeNode())
+	if node == 0 {
+		node = 1
+	}
+	if err := snowflake.Init(node); err != nil {
+		return nil, nil, fmt.Errorf("init snowflake node: %w", err)
+	}
 	client, err := ent.Open(c.Database.Driver, c.Database.Source)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)

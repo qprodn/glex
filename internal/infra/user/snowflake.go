@@ -1,14 +1,11 @@
 package userinfra
 
-import sf "github.com/bwmarrin/snowflake"
+import "glex/internal/infra/snowflake"
 
-// snowflakeNode generates globally-unique, sortable IDs. Node 1 is hardcoded
-// for now (single dev instance); make this configurable before running multiple
-// instances. NewNode fails only for a node number outside 0–1023, which the
-// constant 1 cannot be, so the discarded error is unreachable.
-var snowflakeNode, _ = sf.NewNode(1)
-
-// newSnowflakeID returns a new snowflake ID for a user.
+// newSnowflakeID returns a new snowflake ID for this module's records. The
+// node itself lives in the shared snowflake package, installed once from
+// config — replicas must hold distinct node numbers there (the old
+// per-package hardcoded node 1 was a cross-replica collision path).
 func newSnowflakeID() int64 {
-	return snowflakeNode.Generate().Int64()
+	return snowflake.NewID()
 }
