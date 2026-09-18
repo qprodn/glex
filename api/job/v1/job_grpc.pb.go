@@ -37,7 +37,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// JobService is the scheduled-task management service (ADR 2023). Job Log
+// JobService is the scheduled-task management service (ADR 0023). Job Log
 // rows are write-once at completion: there is no update RPC.
 type JobServiceClient interface {
 	// CreateJob creates a new job. name, handler, cron, and timeout are
@@ -193,7 +193,7 @@ func (c *jobServiceClient) ListJobExecutors(ctx context.Context, in *ListJobExec
 // All implementations must embed UnimplementedJobServiceServer
 // for forward compatibility.
 //
-// JobService is the scheduled-task management service (ADR 2023). Job Log
+// JobService is the scheduled-task management service (ADR 0023). Job Log
 // rows are write-once at completion: there is no update RPC.
 type JobServiceServer interface {
 	// CreateJob creates a new job. name, handler, cron, and timeout are

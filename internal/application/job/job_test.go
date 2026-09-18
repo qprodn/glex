@@ -134,7 +134,7 @@ func TestCreateJobStampsDefaultTimeout(t *testing.T) {
 	svc := newFakeJobsSvc()
 	app := newApp(svc, &probeLocker{})
 	out, err := app.CreateJob(context.Background(), &jobv1.CreateJobRequest{
-		Job: &jobv1.Job{Name: "sweep", Handler: "pay.expire-sweep", Cron: "* * * * *", Enabled: true},
+		Job: &jobv1.Job{Name: "sweep", Handler: "pay.expire-sweep", Cron: "* * * * *", Enabled: boolPtr(true)},
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
@@ -151,7 +151,7 @@ func TestCreateJobKeepsStatedTimeout(t *testing.T) {
 	svc := newFakeJobsSvc()
 	app := newApp(svc, &probeLocker{})
 	out, err := app.CreateJob(context.Background(), &jobv1.CreateJobRequest{
-		Job: &jobv1.Job{Name: "sweep", Handler: "pay.expire-sweep", Cron: "* * * * *", Enabled: true, TimeoutSeconds: 120},
+		Job: &jobv1.Job{Name: "sweep", Handler: "pay.expire-sweep", Cron: "* * * * *", Enabled: boolPtr(true), TimeoutSeconds: 120},
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
@@ -233,3 +233,23 @@ func TestListJobExecutors(t *testing.T) {
 		t.Fatalf("executors = %+v", set.GetExecutors())
 	}
 }
+
+func TestCreateJobEnabledDefaultsTrue(t *testing.T) {
+	svc := newFakeJobsSvc()
+	app := newApp(svc, &probeLocker{})
+	// enabled deliberately left unset — the optional marker's whole point.
+	out, err := app.CreateJob(context.Background(), &jobv1.CreateJobRequest{
+		Job: &jobv1.Job{Name: "sweep", Handler: "pay.expire-sweep", Cron: "* * * * *"},
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if !out.GetEnabled() {
+		t.Fatalf("unset enabled must stamp true, got paused")
+	}
+	if svc.created[0].Enabled != true {
+		t.Fatalf("persisted enabled = %v, want true", svc.created[0].Enabled)
+	}
+}
+
+func boolPtr(v bool) *bool { return &v }

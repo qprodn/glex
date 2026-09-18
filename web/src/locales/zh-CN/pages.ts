@@ -231,6 +231,7 @@ export default {
   "pages.pay.refund.created": "退款已提交：{status}（¥{amount}）",
   "pages.pay.refund.badNo": "请输入有效的支付单号",
   "pages.pay.refund.cap": "累计退款不能超过已付金额",
+  "pages.pay.refund.queried": "已向渠道查询并推进状态",
   "pages.job.name": "任务名称",
   "pages.job.handler": "执行器",
   "pages.job.handlerHint": "来自代码注册表，保存时校验（ADR 0023）",

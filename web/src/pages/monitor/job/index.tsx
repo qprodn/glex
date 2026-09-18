@@ -56,8 +56,15 @@ const JobList: React.FC = () => {
   };
 
   const toggleEnabled = async (record: Job, enabled: boolean) => {
-    await services.job.SetJobEnabled({ jobId: record.jobId, enabled });
-    message.success(intl.formatMessage({ id: "common.saved", defaultMessage: "保存成功" }));
+    try {
+      await services.job.SetJobEnabled({ jobId: record.jobId, enabled });
+      message.success(intl.formatMessage({ id: "common.saved", defaultMessage: "保存成功" }));
+    } catch {
+      // The global errorHandler already toasted; swallow so the Switch's
+      // onChange does not leak an unhandled rejection (the reload below
+      // restores the row's real state).
+      return;
+    }
     actionRef.current?.reload();
   };
 

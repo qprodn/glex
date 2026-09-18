@@ -62,8 +62,11 @@ export type Job = {
   // Opaque executor argument, passed verbatim to Run.
   args: string | undefined;
   // false pauses the schedule; a run already in flight finishes. Manual
-  // runs are allowed on paused jobs.
-  enabled: boolean | undefined;
+  // runs are allowed on paused jobs. On CreateJob, unset is stamped true
+  // (new jobs fire by default) — proto3 bools carry no presence, so the
+  // optional marker is what lets the server tell "left unset" from an
+  // explicit pause-at-create.
+  enabled?: boolean;
   // Per-run timeout in seconds (1-3600). Server stamps the configured
   // default when the create request leaves it unset.
   timeoutSeconds: number | undefined;
@@ -87,7 +90,7 @@ export type JobSet = {
   nextPageToken: string | undefined;
 };
 
-// JobLog is the record of one completed firing (任务日志, ADR 2023):
+// JobLog is the record of one completed firing (任务日志, ADR 0023):
 // written once at completion, queried and withdrawn, never updated.
 export type JobLog = {
   // Snowflake ID.
@@ -153,7 +156,7 @@ export type ListJobsRequest = {
   // * `handler` (e.g. `handler="pay.expire-sweep"`)
   // * `enabled` (e.g. `enabled=true`)
   filter: string | undefined;
-  // Optional. AIP-132 order, e.g. `job_id`.
+  // Optional. AIP-132 order on a job column, e.g. `id`.
   orderBy: string | undefined;
 };
 
@@ -162,7 +165,9 @@ export type UpdateJobRequest = {
   //
   // Behaviors: REQUIRED
   job: Job | undefined;
-  // Required. Mask of fields to update.
+  // Required. Mask of fields to update. Supported paths: name, handler,
+  // cron, args, timeout_seconds, remark. enabled is not updatable here —
+  // it moves only through SetJobEnabled.
   //
   // Behaviors: REQUIRED
   updateMask: wellKnownFieldMask | undefined;
@@ -254,7 +259,7 @@ export type DeleteJobLogRequest = {
 export type ListJobExecutorsRequest = {
 };
 
-// JobService is the scheduled-task management service (ADR 2023). Job Log
+// JobService is the scheduled-task management service (ADR 0023). Job Log
 // rows are write-once at completion: there is no update RPC.
 export interface JobService {
   // CreateJob creates a new job. name, handler, cron, and timeout are

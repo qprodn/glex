@@ -58,7 +58,10 @@ const JobFormModal: React.FC<JobFormModalProps> = ({ open, record, onClose }) =>
               timeoutSeconds: record?.timeoutSeconds,
               remark: record?.remark,
             }
-          : { timeoutSeconds: 60, enabled: true }
+          // timeout deliberately has no prefill: leaving it empty lets the
+          // server stamp the deployment's configured default instead of
+          // hardcoding 60 in a second place.
+          : { enabled: true }
       }
       modalProps={{ destroyOnHidden: true, onCancel: () => onClose(false) }}
       onFinish={async (values) => {
@@ -114,6 +117,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({ open, record, onClose }) =>
       <ProFormTextArea
         name="args"
         label={intl.formatMessage({ id: "pages.job.args", defaultMessage: "参数" })}
+        fieldProps={{ maxLength: 4096 }}
         extra={intl.formatMessage({
           id: "pages.job.argsHint",
           defaultMessage: "原样透传给执行器",

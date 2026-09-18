@@ -37,15 +37,19 @@ const defaultTimeoutSeconds = 60
 // run.
 const runDispatchSlack = 30 * time.Second
 
-// convertJob maps a jobentity.Job DO to the proto Job DTO.
+// convertJob maps a jobentity.Job DO to the proto Job DTO. enabled is
+// optional on the wire (create distinguishes unset from an explicit
+// pause); every stored row has a definite value, so the pointer is always
+// set on the way out.
 func convertJob(j *jobentity.Job) *jobv1.Job {
+	enabled := j.Enabled
 	return &jobv1.Job{
 		JobId:          j.ID,
 		Name:           j.Name,
 		Handler:        j.Handler,
 		Cron:           j.Cron,
 		Args:           j.Args,
-		Enabled:        j.Enabled,
+		Enabled:        &enabled,
 		TimeoutSeconds: j.TimeoutSeconds,
 		Remark:         j.Remark,
 		CreateBy:       j.CreateBy,
@@ -131,19 +135,25 @@ func (s *JobApplication) defaultTimeout() int32 {
 }
 
 // CreateJob creates a job; handler residency and cron parse are validated
-// by the domain service.
+// by the domain service. An unset enabled (the optional marker) is stamped
+// true — a client that leaves the switch out means "fire by default", not
+// "pause silently" (ADR 0023's console contract).
 func (s *JobApplication) CreateJob(ctx context.Context, req *jobv1.CreateJobRequest) (*jobv1.Job, error) {
 	in := req.GetJob()
 	timeout := in.GetTimeoutSeconds()
 	if timeout == 0 {
 		timeout = s.defaultTimeout()
 	}
+	enabled := true
+	if in.Enabled != nil {
+		enabled = in.GetEnabled()
+	}
 	j := &jobentity.Job{
 		Name:           in.GetName(),
 		Handler:        in.GetHandler(),
 		Cron:           in.GetCron(),
 		Args:           in.GetArgs(),
-		Enabled:        in.GetEnabled(),
+		Enabled:        enabled,
 		TimeoutSeconds: timeout,
 		Remark:         in.GetRemark(),
 	}

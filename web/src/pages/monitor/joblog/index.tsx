@@ -10,6 +10,7 @@ import {
 } from "@ant-design/pro-components";
 import { Access, useAccess, useIntl } from "@umijs/max";
 import { App, Button, Descriptions, Drawer, Modal, Space, Tag, Typography } from "antd";
+import dayjs from "dayjs";
 import React, { useRef, useState } from "react";
 
 const triggerLabel = (intl: ReturnType<typeof useIntl>, trigger: JobLog["trigger"]) => {
@@ -217,7 +218,7 @@ const JobLogList: React.FC = () => {
               {statusTag(detail.status)}
             </Descriptions.Item>
             <Descriptions.Item label={intl.formatMessage({ id: "pages.joblog.startedAt", defaultMessage: "开始时间" })}>
-              {detail.startedAt}
+              {detail.startedAt ? dayjs(detail.startedAt).format("YYYY-MM-DD HH:mm:ss") : "-"}
             </Descriptions.Item>
             <Descriptions.Item label={intl.formatMessage({ id: "pages.joblog.duration", defaultMessage: "耗时" })}>
               {detail.durationMs ?? 0} ms

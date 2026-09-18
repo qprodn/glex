@@ -154,8 +154,11 @@ type Job struct {
 	// Opaque executor argument, passed verbatim to Run.
 	Args string `protobuf:"bytes,5,opt,name=args,proto3" json:"args,omitempty"`
 	// false pauses the schedule; a run already in flight finishes. Manual
-	// runs are allowed on paused jobs.
-	Enabled bool `protobuf:"varint,6,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// runs are allowed on paused jobs. On CreateJob, unset is stamped true
+	// (new jobs fire by default) — proto3 bools carry no presence, so the
+	// optional marker is what lets the server tell "left unset" from an
+	// explicit pause-at-create.
+	Enabled *bool `protobuf:"varint,6,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
 	// Per-run timeout in seconds (1-3600). Server stamps the configured
 	// default when the create request leaves it unset.
 	TimeoutSeconds int32  `protobuf:"varint,7,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
@@ -235,8 +238,8 @@ func (x *Job) GetArgs() string {
 }
 
 func (x *Job) GetEnabled() bool {
-	if x != nil {
-		return x.Enabled
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
 	}
 	return false
 }
@@ -337,7 +340,7 @@ func (x *JobSet) GetNextPageToken() string {
 	return ""
 }
 
-// JobLog is the record of one completed firing (任务日志, ADR 2023):
+// JobLog is the record of one completed firing (任务日志, ADR 0023):
 // written once at completion, queried and withdrawn, never updated.
 type JobLog struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -724,7 +727,7 @@ type ListJobsRequest struct {
 	//   - `handler` (e.g. `handler="pay.expire-sweep"`)
 	//   - `enabled` (e.g. `enabled=true`)
 	Filter string `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty"`
-	// Optional. AIP-132 order, e.g. `job_id`.
+	// Optional. AIP-132 order on a job column, e.g. `id`.
 	OrderBy       string `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -792,7 +795,9 @@ type UpdateJobRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Required. The job to update. job_id identifies the record.
 	Job *Job `protobuf:"bytes,1,opt,name=job,proto3" json:"job,omitempty"`
-	// Required. Mask of fields to update.
+	// Required. Mask of fields to update. Supported paths: name, handler,
+	// cron, args, timeout_seconds, remark. enabled is not updatable here —
+	// it moves only through SetJobEnabled.
 	UpdateMask    *fieldmaskpb.FieldMask `protobuf:"bytes,2,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1193,14 +1198,14 @@ var File_job_v1_job_proto protoreflect.FileDescriptor
 
 const file_job_v1_job_proto_rawDesc = "" +
 	"\n" +
-	"\x10job/v1/job.proto\x12\x06job.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\"\xfd\x02\n" +
+	"\x10job/v1/job.proto\x12\x06job.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\"\x8e\x03\n" +
 	"\x03Job\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\x03R\x05jobId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
 	"\ahandler\x18\x03 \x01(\tR\ahandler\x12\x12\n" +
 	"\x04cron\x18\x04 \x01(\tR\x04cron\x12\x12\n" +
-	"\x04args\x18\x05 \x01(\tR\x04args\x12\x18\n" +
-	"\aenabled\x18\x06 \x01(\bR\aenabled\x12'\n" +
+	"\x04args\x18\x05 \x01(\tR\x04args\x12\x1d\n" +
+	"\aenabled\x18\x06 \x01(\bH\x00R\aenabled\x88\x01\x01\x12'\n" +
 	"\x0ftimeout_seconds\x18\a \x01(\x05R\x0etimeoutSeconds\x12\x16\n" +
 	"\x06remark\x18\b \x01(\tR\x06remark\x12\x1b\n" +
 	"\tcreate_by\x18\t \x01(\x03R\bcreateBy\x12\x1b\n" +
@@ -1209,7 +1214,9 @@ const file_job_v1_job_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"Q\n" +
+	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtB\n" +
+	"\n" +
+	"\b_enabled\"Q\n" +
 	"\x06JobSet\x12\x1f\n" +
 	"\x04jobs\x18\x01 \x03(\v2\v.job.v1.JobR\x04jobs\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xd3\x03\n" +
@@ -1384,6 +1391,7 @@ func file_job_v1_job_proto_init() {
 	if File_job_v1_job_proto != nil {
 		return
 	}
+	file_job_v1_job_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
