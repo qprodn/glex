@@ -21,9 +21,11 @@ type PaymentRepo interface {
 	// payment's outcome wants. NotFound when none exists.
 	FindLatestByBizNo(ctx context.Context, merchantID int64, bizNo string) (*entity.Payment, error)
 	// ListPendingExpired returns up to limit still-Pending Payments whose
-	// expiry has passed, id ascending — the expire-sweep's candidate set
-	// (ADR 0023). Batched so one sweep run bounds its channel calls.
-	ListPendingExpired(ctx context.Context, before time.Time, limit int) ([]*entity.Payment, error)
+	// expiry has passed, id ascending from afterID (0 = from the oldest) —
+	// the expire-sweep's candidate set (ADR 0023). The cursor lets one
+	// sweep run page past rows that permanently fail to settle, so a
+	// poisoned head cannot monopolize every batch.
+	ListPendingExpired(ctx context.Context, before time.Time, afterID int64, limit int) ([]*entity.Payment, error)
 	List(ctx context.Context, opts ...ListOption) ([]*entity.Payment, error)
 	// Create inserts the row; the caller mints the ID (NextID) and owns
 	// any transaction.

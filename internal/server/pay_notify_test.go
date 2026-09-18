@@ -258,7 +258,7 @@ func (r *goldPaymentRepo) List(ctx context.Context, opts ...payrepo.ListOption) 
 	return nil, nil
 }
 
-func (r *goldPaymentRepo) ListPendingExpired(ctx context.Context, before time.Time, limit int) ([]*payentity.Payment, error) {
+func (r *goldPaymentRepo) ListPendingExpired(ctx context.Context, before time.Time, afterID int64, limit int) ([]*payentity.Payment, error) {
 	return nil, nil
 }
 

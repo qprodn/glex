@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -62,11 +63,13 @@ func (f *fakePaymentRepo) List(ctx context.Context, opts ...payrepo.ListOption) 
 }
 
 // ListPendingExpired mirrors the infra scan: still-Pending rows past their
-// expiry, id ascending, bounded.
-func (f *fakePaymentRepo) ListPendingExpired(ctx context.Context, before time.Time, limit int) ([]*payentity.Payment, error) {
+// expiry, id ascending from afterID, bounded.
+func (f *fakePaymentRepo) ListPendingExpired(ctx context.Context, before time.Time, afterID int64, limit int) ([]*payentity.Payment, error) {
 	ids := make([]int64, 0, len(f.p))
 	for id := range f.p {
-		ids = append(ids, id)
+		if id > afterID {
+			ids = append(ids, id)
+		}
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	var out []*payentity.Payment
@@ -658,5 +661,44 @@ func TestSweepExpiredContinuesPastFailure(t *testing.T) {
 	}
 	if p := repo.p[good.ID]; p.Status != payentity.PaymentExpired {
 		t.Fatalf("healthy candidate not settled: %v", p.Status)
+	}
+}
+
+func TestSweepExpiredPagesPastPoisonedHead(t *testing.T) {
+	gw := &scriptGateway{queryState: ChannelPaymentState{State: payentity.PaymentPending}}
+	svc, repo, merchantID := newTestPaymentService(t, gw)
+	// A healthy expired row sits behind two poisoned ones (unresolvable
+	// merchant); with limit=2 the first batch is fully poisoned and the
+	// cursor must page the run forward to the healthy row.
+	good, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	repo.p[good.ID].ExpireTime = time.Now().Add(-time.Hour)
+	for i, id := range []int64{999001, 999002} {
+		repo.p[id] = &payentity.Payment{
+			ID: id, MerchantID: 424242, Channel: payentity.ChannelWechat,
+			BizNo: fmt.Sprintf("bad-%d", i), Subject: "s", Amount: 100,
+			Status: payentity.PaymentPending, ExpireTime: time.Now().Add(-time.Hour),
+		}
+	}
+	settled, err := svc.SweepExpired(context.Background(), 2)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if settled != 1 {
+		t.Fatalf("settled = %d, want 1 (the healthy row behind the poisoned head)", settled)
+	}
+	if p := repo.p[good.ID]; p.Status != payentity.PaymentExpired {
+		t.Fatalf("healthy row not settled: %v", p.Status)
+	}
+}
+
+func TestSweepExpiredStopsOnDeadContext(t *testing.T) {
+	gw := &scriptGateway{queryState: ChannelPaymentState{State: payentity.PaymentPending}}
+	svc, repo, merchantID := newTestPaymentService(t, gw)
+	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	repo.p[p.ID].ExpireTime = time.Now().Add(-time.Hour)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := svc.SweepExpired(ctx, 50); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want context.Canceled surfaced, not masked as success", err)
 	}
 }

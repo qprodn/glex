@@ -55,8 +55,8 @@ type Payment interface {
 	// with the reason — no payable illusion survives (ticket 05).
 	Prepay(ctx context.Context, id int64, notifyBaseURL string) (*payentity.Payment, error)
 	// Query is the explicit settlement path: it asks the channel for the
-		// payment's true state and advances by CAS — the fallback when
-		// callbacks are lost.
+	// payment's true state and advances by CAS — the fallback when
+	// callbacks are lost.
 	Query(ctx context.Context, id int64) (*payentity.Payment, error)
 	// SweepExpired proactively converges up to limit still-Pending payments
 	// whose expiry has passed — the expire sweep's body (ADR 0023). One
@@ -306,31 +306,50 @@ func (s *paymentImpl) Query(ctx context.Context, id int64) (*payentity.Payment, 
 // SweepExpired is the expire sweep's body (ADR 0023): proactive
 // convergence of the lazy settlement paths — a payment nobody reads still
 // reaches its terminal state. Candidates settle through the same settle()
-// the read paths use, already-paid race included; one bad row must not
-// starve the rest, so per-row failures Warn and the batch continues. A PAID
-// landing here still publishes no PaymentCompleted — the documented
-// contract holds: query-settle settles silently, absence of the event is
-// not absence of payment.
+// the read paths use, already-paid race included. Per-row failures Warn and
+// the run pages past them (IDGT cursor): a poisoned head — rows that fail
+// permanently, e.g. a merchant that no longer resolves — must not
+// monopolize every batch, and the page budget bounds one run's channel
+// traffic at pages×limit. A dead context (run timeout, lock loss) stops
+// the sweep and propagates, so the job log records the interruption
+// instead of masking it as success. A PAID landing here still publishes no
+// PaymentCompleted — the documented contract holds: query-settle settles
+// silently, absence of the event is not absence of payment.
 func (s *paymentImpl) SweepExpired(ctx context.Context, limit int) (int, error) {
-	candidates, err := s.payments.ListPendingExpired(ctx, time.Now(), limit)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "pay.svc.payment.sweep_expired", err)
-		return 0, err
-	}
+	const sweepPageBudget = 10
 	settled := 0
-	for _, p := range candidates {
-		if _, err := s.settle(ctx, p); err != nil {
-			// Degraded, not propagated: the sweep continues and the lazy
-			// paths still heal this row on its next read (ADR 0007's
-			// handling site; a Warn, because the sweep's own outcome is
-			// unaffected).
-			s.logger.Warn("expire sweep could not settle a payment; lazy paths still heal it",
-				slog.String("operation", "pay.svc.payment.sweep_expired"),
-				slog.Int64("payment_id", p.ID),
-				slog.Any("error", err))
-			continue
+	var after int64
+	for page := 0; page < sweepPageBudget && settled < limit; page++ {
+		candidates, err := s.payments.ListPendingExpired(ctx, time.Now(), after, limit)
+		if err != nil {
+			logx.Propagate(ctx, s.logger, "pay.svc.payment.sweep_expired", err)
+			return settled, err
 		}
-		settled++
+		if len(candidates) == 0 {
+			return settled, nil
+		}
+		for _, p := range candidates {
+			after = p.ID
+			if err := ctx.Err(); err != nil {
+				// The run itself is dead (timeout or lock loss): stop
+				// without Warn-flooding the remaining rows and let the
+				// interrupted run land as a failure in its job log.
+				logx.Propagate(ctx, s.logger, "pay.svc.payment.sweep_expired", err)
+				return settled, err
+			}
+			if _, err := s.settle(ctx, p); err != nil {
+				// Degraded, not propagated: the sweep continues and the
+				// lazy paths still heal this row on its next read (ADR
+				// 0007's handling site; a Warn, because the sweep's own
+				// outcome is unaffected).
+				s.logger.Warn("expire sweep could not settle a payment; lazy paths still heal it",
+					slog.String("operation", "pay.svc.payment.sweep_expired"),
+					slog.Int64("payment_id", p.ID),
+					slog.Any("error", err))
+				continue
+			}
+			settled++
+		}
 	}
 	return settled, nil
 }
