@@ -51,8 +51,11 @@ type Jobs interface {
 	// panicking executor, and recording the completed run as a Job Log row.
 	// It does not check enabled — the scheduler fires only enabled rows,
 	// manual run-now is allowed on paused jobs by design. Busy returns
-	// ErrJobBusy; everything else either lands a log row or reports the
-	// failure to record one.
+	// ErrJobBusy. A definitively lost run lock (renewal failure, ADR 0003)
+	// returns lock.ErrLockLost verbatim after the interrupted run's failure
+	// row has landed — the lock contract's own sentinel, the same
+	// pass-through pay's application layer practices. Everything else
+	// either lands a log row or reports the failure to record one.
 	Fire(ctx context.Context, j *jobentity.Job, trigger jobentity.Trigger) error
 
 	GetLog(ctx context.Context, id int64) (*jobentity.JobLog, error)
@@ -226,11 +229,10 @@ func (s *jobsImpl) runAndRecord(ctx context.Context, j *jobentity.Job, trigger j
 	logCtx, cancelLog := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
 	defer cancelLog()
 	if _, err := s.logs.Create(logCtx, entry); err != nil {
-		// The run happened but its record did not — that is worth an error
-		// to the caller, logged once here.
-		err = fmt.Errorf("record job log: %w", err)
-		logx.Propagate(ctx, s.logger, "job.svc.fire", err)
-		return err
+		// The run happened but its record did not. Fire's method boundary
+		// owns this breadcrumb (ADR 0011) — propagating here too would log
+		// the same failure twice.
+		return fmt.Errorf("record job log: %w", err)
 	}
 	return nil
 }
@@ -247,12 +249,16 @@ func (s *jobsImpl) execute(ctx context.Context, executor job.Executor, j *jobent
 	return executor.Run(ctx, j.Args)
 }
 
-// truncateMessage bounds what a run contributes to its log row.
+// truncateMessage bounds what a run contributes to its log row — by runes,
+// never bytes: byte slicing can split a multi-byte UTF-8 sequence mid-rune,
+// and PostgreSQL rejects the invalid bytes on insert, losing the completed
+// run's record over a truncation detail (pay's truncateUTF8 precedent).
 func truncateMessage(msg string) string {
-	if len(msg) <= jobentity.MaxMessageLen {
+	runes := []rune(msg)
+	if len(runes) <= jobentity.MaxMessageLen {
 		return msg
 	}
-	return msg[:jobentity.MaxMessageLen]
+	return string(runes[:jobentity.MaxMessageLen])
 }
 
 // --- Job Log (任务日志) ---

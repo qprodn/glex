@@ -137,13 +137,16 @@ func (r *SchedulerRuntime) tick(ctx context.Context, lastFired map[int64]time.Ti
 	}
 }
 
-// dispatchDue computes the occurrence to fire for one job, if any. The
-// basis is the later of the stored row's updated_at (an edit re-anchors the
+// dispatchDue computes the occurrences to fire for one job. The basis is
+// the later of the stored row's updated_at (an edit re-anchors the
 // schedule) and this replica's last dispatched occurrence; occurrences
 // older than the fire grace (2× the tick interval — downtime, a stalled
-// tick) are skipped permanently, never backfilled (ADR 0023). lastFired is
-// marked before dispatch so an overlapping tick cannot double-send the same
-// occurrence.
+// tick) are skipped permanently, never backfilled (ADR 0023). Every
+// within-grace due occurrence dispatches — the grace window itself bounds
+// the fan-out, so a job whose period is shorter than the tick (or a tick
+// configured longer than a minute) does not silently under-fire. lastFired
+// is marked before each dispatch so an overlapping tick cannot double-send
+// the same occurrence.
 func (r *SchedulerRuntime) dispatchDue(ctx context.Context, j *jobentity.Job, now time.Time, lastFired map[int64]time.Time) {
 	sched, err := j.Schedule()
 	if err != nil {
@@ -171,14 +174,20 @@ func (r *SchedulerRuntime) dispatchDue(ctx context.Context, j *jobentity.Job, no
 		}
 		lastFired[j.ID] = next
 		r.dispatch(ctx, j, next)
-		return
+		next = sched.Next(next)
 	}
 }
 
 // dispatch claims the occurrence across replicas (job:fire:<id>:<epoch>,
 // ADR 0023 — the run lock alone cannot dedup a fast finisher against a
 // late ticker) and fires in the background so one long run never starves
-// the loop. Either lock being busy consumes the occurrence quietly.
+// the loop. The claim is held until the occurrence leaves every replica's
+// grace window: WithLock releases when its fn returns, and a claim dying
+// with the run would let a later ticker — whose lastFired never recorded
+// the occurrence — re-acquire the now-free claim and fire the same
+// occurrence twice. Either lock being busy consumes the occurrence
+// quietly. Shutdown cancels the loop context and ends the hold at once, so
+// Stop waits at most one grace window.
 func (r *SchedulerRuntime) dispatch(ctx context.Context, j *jobentity.Job, occurrence time.Time) {
 	r.wg.Add(1)
 	go func() {
@@ -187,7 +196,14 @@ func (r *SchedulerRuntime) dispatch(ctx context.Context, j *jobentity.Job, occur
 		ttl := time.Duration(j.TimeoutSeconds)*time.Second + fireClaimTTLSlack
 		err := r.locker.WithLock(ctx, claim,
 			func(ctx context.Context) error {
-				return r.jobs.Fire(ctx, j, jobentity.TriggerScheduled)
+				runErr := r.jobs.Fire(ctx, j, jobentity.TriggerScheduled)
+				if hold := time.Until(occurrence.Add(2 * r.interval)); hold > 0 {
+					select {
+					case <-time.After(hold):
+					case <-ctx.Done():
+					}
+				}
+				return runErr
 			},
 			lock.WithTTL(ttl),
 		)

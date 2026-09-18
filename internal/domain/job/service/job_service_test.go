@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
@@ -475,3 +477,23 @@ var (
 	_                       = filtering.Filter{}
 	_                       = ordering.OrderBy{}
 )
+
+func TestFireTruncatesRunesNotBytes(t *testing.T) {
+	h := newHarness(t)
+	// 2500 CJK runes = 7500 bytes: byte-slicing at 2000 would split a rune
+	// and PostgreSQL would reject the insert; rune-slicing keeps 2000 whole
+	// characters.
+	h.exec.err = fmt.Errorf("%s", strings.Repeat("支", 2500))
+	created, _ := h.svc.Create(context.Background(), validJob())
+	_ = h.svc.Fire(context.Background(), created, jobentity.TriggerScheduled)
+	rows, _ := h.logs.List(context.Background())
+	if len(rows) != 1 {
+		t.Fatalf("log rows = %d, want 1", len(rows))
+	}
+	if got := []rune(rows[0].Message); len(got) != jobentity.MaxMessageLen {
+		t.Fatalf("runes = %d, want %d", len(got), jobentity.MaxMessageLen)
+	}
+	if !utf8.ValidString(rows[0].Message) {
+		t.Fatalf("truncated message is not valid UTF-8")
+	}
+}

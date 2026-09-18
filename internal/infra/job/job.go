@@ -134,7 +134,9 @@ func (r *jobRepo) ListEnabled(ctx context.Context) ([]*jobentity.Job, error) {
 }
 
 // CreateJob inserts the job row; the partial unique index on name is the
-// race-proof backstop behind the service's friendly pre-check.
+// race-proof backstop behind the service's friendly pre-check. A constraint
+// hit is that backstop firing — an expected business condition mapped
+// silently to the module's conflict sentinel (ADR 0007), never a 503.
 func (r *jobRepo) Create(ctx context.Context, j *jobentity.Job) (*jobentity.Job, error) {
 	po, err := r.data.DB.Job(ctx).Create().
 		SetID(newSnowflakeID()).
@@ -149,13 +151,18 @@ func (r *jobRepo) Create(ctx context.Context, j *jobentity.Job) (*jobentity.Job,
 		SetUpdateBy(j.UpdateBy).
 		Save(ctx)
 	if err != nil {
+		if ent.IsConstraintError(err) {
+			return nil, job.ErrJobNameConflict
+		}
 		return nil, jobStoreError(ctx, r.logger, "job.create", err)
 	}
 	return toBizJob(po), nil
 }
 
 // UpdateJob applies the updatable fields; enabled moves through SetEnabled,
-// never here, so the pause switch cannot ride along a content edit.
+// never here, so the pause switch cannot ride along a content edit. A name
+// collision caught by the partial unique index maps to the conflict
+// sentinel, the create path's stance.
 func (r *jobRepo) Update(ctx context.Context, j *jobentity.Job) (*jobentity.Job, error) {
 	po, err := r.data.DB.Job(ctx).UpdateOneID(j.ID).
 		SetName(j.Name).
@@ -169,6 +176,9 @@ func (r *jobRepo) Update(ctx context.Context, j *jobentity.Job) (*jobentity.Job,
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return nil, job.ErrJobNotFound
+		}
+		if ent.IsConstraintError(err) {
+			return nil, job.ErrJobNameConflict
 		}
 		return nil, jobStoreError(ctx, r.logger, "job.update", err)
 	}
