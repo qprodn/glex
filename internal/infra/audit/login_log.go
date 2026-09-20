@@ -89,10 +89,10 @@ func (r *loginLogRepo) Create(ctx context.Context, l *auditentity.LoginLog) (*au
 
 // Delete withdraws the record (ADR 0002): the row stays as audit history of
 // the withdrawal itself.
-func (r *loginLogRepo) Delete(ctx context.Context, id, actorID int64) error {
-	err := r.data.DB.LoginLog(ctx).UpdateOneID(id).
+func (r *loginLogRepo) Delete(ctx context.Context, req auditrepo.DeleteRequest) error {
+	err := r.data.DB.LoginLog(ctx).UpdateOneID(req.ID).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {

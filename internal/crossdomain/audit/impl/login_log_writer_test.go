@@ -9,6 +9,7 @@ import (
 
 	domainaudit "glex/internal/domain/audit"
 	auditentity "glex/internal/domain/audit/entity"
+	auditservice "glex/internal/domain/audit/service"
 	"glex/pkg/listq"
 )
 
@@ -33,7 +34,7 @@ func (s *fakeAuditService) ListOperLogs(context.Context, listq.Query) ([]*audite
 	return nil, errors.New("not used")
 }
 
-func (s *fakeAuditService) DeleteOperLog(context.Context, int64, int64) error {
+func (s *fakeAuditService) DeleteOperLog(context.Context, auditservice.DeleteRequest) error {
 	return errors.New("not used")
 }
 
@@ -46,7 +47,7 @@ func (s *fakeAuditService) ListLoginLogs(context.Context, listq.Query) ([]*audit
 	return nil, errors.New("not used")
 }
 
-func (s *fakeAuditService) DeleteLoginLog(context.Context, int64, int64) error {
+func (s *fakeAuditService) DeleteLoginLog(context.Context, auditservice.DeleteRequest) error {
 	return errors.New("not used")
 }
 

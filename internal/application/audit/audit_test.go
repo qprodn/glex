@@ -12,6 +12,7 @@ import (
 	auditv1 "glex/api/audit/v1"
 	"glex/internal/domain/audit"
 	auditentity "glex/internal/domain/audit/entity"
+	auditservice "glex/internal/domain/audit/service"
 	"glex/pkg/listq"
 )
 
@@ -37,8 +38,8 @@ func (s *fakeAuditService) ListOperLogs(context.Context, listq.Query) ([]*audite
 	return s.operLogs, s.err
 }
 
-func (s *fakeAuditService) DeleteOperLog(_ context.Context, id int64, _ int64) error {
-	s.deleted = append(s.deleted, id)
+func (s *fakeAuditService) DeleteOperLog(_ context.Context, req auditservice.DeleteRequest) error {
+	s.deleted = append(s.deleted, req.ID)
 	return s.err
 }
 
@@ -50,8 +51,8 @@ func (s *fakeAuditService) ListLoginLogs(context.Context, listq.Query) ([]*audit
 	return s.loginLogs, s.err
 }
 
-func (s *fakeAuditService) DeleteLoginLog(_ context.Context, id int64, _ int64) error {
-	s.deleted = append(s.deleted, id)
+func (s *fakeAuditService) DeleteLoginLog(_ context.Context, req auditservice.DeleteRequest) error {
+	s.deleted = append(s.deleted, req.ID)
 	return s.err
 }
 

@@ -9,6 +9,7 @@ import (
 
 	"glex/internal/domain/audit"
 	"glex/internal/domain/audit/entity"
+	"glex/internal/domain/audit/repository"
 	"glex/pkg/listq"
 
 	"github.com/go-kratos/kratos/v3/errors"
@@ -64,12 +65,12 @@ func (r *fakeOperLogRepo) Create(_ context.Context, o *entity.OperLog) (*entity.
 	return o, nil
 }
 
-func (r *fakeOperLogRepo) Delete(_ context.Context, id, _ int64) error {
-	if _, ok := r.byID[id]; !ok {
+func (r *fakeOperLogRepo) Delete(_ context.Context, req repository.DeleteRequest) error {
+	if _, ok := r.byID[req.ID]; !ok {
 		return audit.ErrOperLogNotFound
 	}
-	delete(r.byID, id)
-	r.deleted = append(r.deleted, id)
+	delete(r.byID, req.ID)
+	r.deleted = append(r.deleted, req.ID)
 	return nil
 }
 
@@ -89,8 +90,8 @@ func (r *fakeLoginLogRepo) Create(_ context.Context, l *entity.LoginLog) (*entit
 	return l, nil
 }
 
-func (r *fakeLoginLogRepo) Delete(_ context.Context, id, _ int64) error {
-	r.deleted = append(r.deleted, id)
+func (r *fakeLoginLogRepo) Delete(_ context.Context, req repository.DeleteRequest) error {
+	r.deleted = append(r.deleted, req.ID)
 	return nil
 }
 
@@ -137,13 +138,13 @@ func TestDeleteOperLogWithdrawsAndPropagatesNotFound(t *testing.T) {
 	svc := NewAuditService(operLogs, &fakeLoginLogRepo{}, testLogger())
 	created, _ := svc.CreateOperLog(t.Context(), &entity.OperLog{Operation: "/op", Status: audit.StatusSuccess})
 
-	if err := svc.DeleteOperLog(t.Context(), created.ID, 7); err != nil {
+	if err := svc.DeleteOperLog(t.Context(), DeleteRequest{ID: created.ID, ActorID: 7}); err != nil {
 		t.Fatalf("DeleteOperLog: %v", err)
 	}
 	if len(operLogs.deleted) != 1 || operLogs.deleted[0] != created.ID {
 		t.Fatalf("deleted = %v, want [%d]", operLogs.deleted, created.ID)
 	}
-	if err := svc.DeleteOperLog(t.Context(), 999, 7); !errors.Is(err, audit.ErrOperLogNotFound) {
+	if err := svc.DeleteOperLog(t.Context(), DeleteRequest{ID: 999, ActorID: 7}); !errors.Is(err, audit.ErrOperLogNotFound) {
 		t.Fatalf("missing id: err = %v, want ErrOperLogNotFound", err)
 	}
 }

@@ -7,6 +7,14 @@ import (
 	"glex/pkg/listq"
 )
 
+// DeleteRequest carries one withdrawal (ADR 0002): the row to withdraw and
+// the actor performing it. Both repositories delete identically, so the two
+// Delete methods share this one struct (ADR 0025).
+type DeleteRequest struct {
+	ID      int64
+	ActorID int64
+}
+
 // OperLogRepo is the persistence port for Oper Logs (ADR 0005): the audit
 // domain service is its only consumer.
 type OperLogRepo interface {
@@ -15,7 +23,7 @@ type OperLogRepo interface {
 	// Create inserts the record. Rows are write-once; no update exists.
 	Create(ctx context.Context, o *entity.OperLog) (*entity.OperLog, error)
 	// Delete withdraws the record (ADR 0002).
-	Delete(ctx context.Context, id, actorID int64) error
+	Delete(ctx context.Context, req DeleteRequest) error
 }
 
 // LoginLogRepo is the persistence port for Login Logs (ADR 0005).
@@ -24,5 +32,5 @@ type LoginLogRepo interface {
 	// Create inserts the record. Rows are write-once; no update exists.
 	Create(ctx context.Context, l *entity.LoginLog) (*entity.LoginLog, error)
 	// Delete withdraws the record (ADR 0002).
-	Delete(ctx context.Context, id, actorID int64) error
+	Delete(ctx context.Context, req DeleteRequest) error
 }

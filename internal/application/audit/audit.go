@@ -137,7 +137,7 @@ func (s *AuditApplication) GetOperLog(ctx context.Context, req *auditv1.GetOperL
 
 // DeleteOperLog withdraws one recorded operation by id (ADR 0002).
 func (s *AuditApplication) DeleteOperLog(ctx context.Context, req *auditv1.DeleteOperLogRequest) (*emptypb.Empty, error) {
-	if err := s.svc.DeleteOperLog(ctx, req.GetOperLogId(), bizpkg.AuditActor(ctx)); err != nil {
+	if err := s.svc.DeleteOperLog(ctx, auditservice.DeleteRequest{ID: req.GetOperLogId(), ActorID: bizpkg.AuditActor(ctx)}); err != nil {
 		logx.Propagate(ctx, s.logger, "audit.delete_oper_log", err)
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func (s *AuditApplication) ListLoginLogs(ctx context.Context, req *auditv1.ListL
 
 // DeleteLoginLog withdraws one recorded sign-in by id (ADR 0002).
 func (s *AuditApplication) DeleteLoginLog(ctx context.Context, req *auditv1.DeleteLoginLogRequest) (*emptypb.Empty, error) {
-	if err := s.svc.DeleteLoginLog(ctx, req.GetLoginLogId(), bizpkg.AuditActor(ctx)); err != nil {
+	if err := s.svc.DeleteLoginLog(ctx, auditservice.DeleteRequest{ID: req.GetLoginLogId(), ActorID: bizpkg.AuditActor(ctx)}); err != nil {
 		logx.Propagate(ctx, s.logger, "audit.delete_login_log", err)
 		return nil, err
 	}

@@ -20,16 +20,16 @@ type OperLog struct {
 	IPAddr       string
 	// Request is the redacted request payload (protojson); a placeholder
 	// when marshaling itself fails (ADR 0012).
-	Request    string
-	Status     int8
-	Reason     string
-	ErrMsg     string
-	LatencyMS  int64
-	RequestID  string
-	CreateBy   int64
-	UpdateBy   int64
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	Request   string
+	Status    int8
+	Reason    string
+	ErrMsg    string
+	LatencyMS int64
+	RequestID string
+	CreateBy  int64
+	UpdateBy  int64
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // Validate enforces the invariants a recorded OperLog must satisfy: a

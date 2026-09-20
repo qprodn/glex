@@ -10,6 +10,15 @@ import (
 	"glex/pkg/logx"
 )
 
+// DeleteRequest carries one withdrawal (ADR 0002): the record id and the
+// actor performing the withdrawal. The Oper Log and Login Log withdrawal
+// paths delete identically, so the two Delete methods share this one struct
+// (ADR 0025).
+type DeleteRequest struct {
+	ID      int64
+	ActorID int64
+}
+
 // Audit is the audit domain service behind the monitor log endpoints: the
 // only path to the Oper Log and Login Log reads, writes, and withdrawals
 // (ADR 0005). Recording methods are called by the capture sites — the
@@ -24,13 +33,13 @@ type Audit interface {
 	GetOperLog(ctx context.Context, id int64) (*entity.OperLog, error)
 	ListOperLogs(ctx context.Context, q listq.Query) ([]*entity.OperLog, error)
 	// DeleteOperLog withdraws one operation record (ADR 0002).
-	DeleteOperLog(ctx context.Context, id, actorID int64) error
+	DeleteOperLog(ctx context.Context, req DeleteRequest) error
 
 	// CreateLoginLog validates and persists one sign-in/session-end record.
 	CreateLoginLog(ctx context.Context, l *entity.LoginLog) (*entity.LoginLog, error)
 	ListLoginLogs(ctx context.Context, q listq.Query) ([]*entity.LoginLog, error)
 	// DeleteLoginLog withdraws one sign-in record (ADR 0002).
-	DeleteLoginLog(ctx context.Context, id, actorID int64) error
+	DeleteLoginLog(ctx context.Context, req DeleteRequest) error
 }
 
 type auditImpl struct {
@@ -82,8 +91,8 @@ func (s *auditImpl) ListOperLogs(ctx context.Context, q listq.Query) ([]*entity.
 	return os, nil
 }
 
-func (s *auditImpl) DeleteOperLog(ctx context.Context, id, actorID int64) error {
-	if err := s.operLogs.Delete(ctx, id, actorID); err != nil {
+func (s *auditImpl) DeleteOperLog(ctx context.Context, req DeleteRequest) error {
+	if err := s.operLogs.Delete(ctx, repository.DeleteRequest{ID: req.ID, ActorID: req.ActorID}); err != nil {
 		logx.Propagate(ctx, s.logger, "audit.svc.delete_oper_log", err)
 		return err
 	}
@@ -114,8 +123,8 @@ func (s *auditImpl) ListLoginLogs(ctx context.Context, q listq.Query) ([]*entity
 	return ls, nil
 }
 
-func (s *auditImpl) DeleteLoginLog(ctx context.Context, id, actorID int64) error {
-	if err := s.loginLogs.Delete(ctx, id, actorID); err != nil {
+func (s *auditImpl) DeleteLoginLog(ctx context.Context, req DeleteRequest) error {
+	if err := s.loginLogs.Delete(ctx, repository.DeleteRequest{ID: req.ID, ActorID: req.ActorID}); err != nil {
 		logx.Propagate(ctx, s.logger, "audit.svc.delete_login_log", err)
 		return err
 	}
