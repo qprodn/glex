@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"glex/internal/domain/job/entity"
+	"glex/pkg/listq"
 )
 
 // JobRepo is the repository interface for Scheduled Jobs (the inversion
@@ -12,7 +13,7 @@ type JobRepo interface {
 	FindByID(ctx context.Context, id int64) (*entity.Job, error)
 	// FindByName resolves the display-name uniqueness pre-check.
 	FindByName(ctx context.Context, name string) (*entity.Job, error)
-	List(ctx context.Context, opts ...ListOption) ([]*entity.Job, error)
+	List(ctx context.Context, q listq.Query) ([]*entity.Job, error)
 	// ListEnabled returns every active enabled job — the scheduler loop's
 	// scan read. A dedicated method rather than a filter keeps that path
 	// free of AIP-160 parsing on every tick.
@@ -34,7 +35,7 @@ type JobRepo interface {
 // JobLogRepo is the repository interface for Job Logs.
 type JobLogRepo interface {
 	FindByID(ctx context.Context, id int64) (*entity.JobLog, error)
-	List(ctx context.Context, opts ...ListOption) ([]*entity.JobLog, error)
+	List(ctx context.Context, q listq.Query) ([]*entity.JobLog, error)
 	// Create records one completed firing. It is the only write a log row
 	// ever takes — there is no update path (ADR 0023).
 	Create(ctx context.Context, l *entity.JobLog) (*entity.JobLog, error)

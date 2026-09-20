@@ -8,10 +8,8 @@ import (
 	"glex/internal/domain/access"
 	"glex/internal/domain/access/entity"
 	"glex/internal/domain/access/repository"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
-
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 )
 
 // Role is the access domain service behind the role endpoints: the only path
@@ -21,7 +19,7 @@ import (
 // a method returns to its caller first logs its Warn breadcrumb (ADR 0011).
 type Role interface {
 	Get(ctx context.Context, id int64) (*entity.Role, error)
-	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.Role, error)
+	List(ctx context.Context, q listq.Query) ([]*entity.Role, error)
 	// Create validates the role and its initial Menu Grant and persists both.
 	Create(ctx context.Context, r *entity.Role, menuIDs []int64) (*entity.Role, error)
 	// Update validates the change (shape, uniqueness, disable guard) and
@@ -67,13 +65,8 @@ func (s *roleImpl) Get(ctx context.Context, id int64) (*entity.Role, error) {
 	return r, nil
 }
 
-func (s *roleImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.Role, error) {
-	rs, err := s.roles.ListRoles(ctx,
-		repository.ListFilter(filter),
-		repository.ListOrderBy(orderBy),
-		repository.ListLimit(limit),
-		repository.ListOffset(offset),
-	)
+func (s *roleImpl) List(ctx context.Context, q listq.Query) ([]*entity.Role, error) {
+	rs, err := s.roles.ListRoles(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.list_roles", err)
 		return nil, err

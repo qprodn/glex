@@ -5,12 +5,10 @@ import (
 	"errors"
 	"log/slog"
 
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
-
 	"glex/internal/domain/org"
 	"glex/internal/domain/org/entity"
 	"glex/internal/domain/org/repository"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
 )
 
@@ -22,7 +20,7 @@ import (
 // returns to its caller first logs its Warn breadcrumb (ADR 0011).
 type Post interface {
 	Get(ctx context.Context, id int64) (*entity.Post, error)
-	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int, deptIDs []int64) ([]*entity.Post, error)
+	List(ctx context.Context, q listq.Query, deptIDs []int64) ([]*entity.Post, error)
 	// Create validates the post (shape, department exists, name per dept and
 	// code globally unique) and persists it.
 	Create(ctx context.Context, p *entity.Post) (*entity.Post, error)
@@ -61,14 +59,8 @@ func (s *postImpl) Get(ctx context.Context, id int64) (*entity.Post, error) {
 	return p, nil
 }
 
-func (s *postImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int, deptIDs []int64) ([]*entity.Post, error) {
-	ps, err := s.posts.ListPosts(ctx,
-		repository.ListFilter(filter),
-		repository.ListOrderBy(orderBy),
-		repository.ListLimit(limit),
-		repository.ListOffset(offset),
-		repository.ListDeptIDs(deptIDs),
-	)
+func (s *postImpl) List(ctx context.Context, q listq.Query, deptIDs []int64) ([]*entity.Post, error) {
+	ps, err := s.posts.ListPosts(ctx, q, deptIDs)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.list_posts", err)
 		return nil, err

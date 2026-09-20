@@ -12,6 +12,7 @@ import (
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/post"
 	"glex/internal/infra/store"
+	"glex/pkg/listq"
 )
 
 // toBizPost maps an ent Post PO to a orgentity.Post DO.
@@ -87,23 +88,19 @@ func (r *postRepo) FindByPostCode(ctx context.Context, code string) (*orgentity.
 	return toBizPost(po), nil
 }
 
-func (r *postRepo) ListPosts(ctx context.Context, opts ...orgrepo.ListOption) ([]*orgentity.Post, error) {
-	o := orgrepo.ListOptions{Limit: 20}
-	for _, opt := range opts {
-		opt(&o)
-	}
-	q := r.data.DB.Post(ctx).Query().
+func (r *postRepo) ListPosts(ctx context.Context, q listq.Query, deptIDs []int64) ([]*orgentity.Post, error) {
+	query := r.data.DB.Post(ctx).Query().
 		Where(
 			post.DeletedAtIsNil(),
-			ents.ApplyFilter(o.Filter),
+			ents.ApplyFilter(q.Filter),
 		)
-	if len(o.DeptIDs) > 0 {
-		q = q.Where(post.DeptIDIn(o.DeptIDs...))
+	if len(deptIDs) > 0 {
+		query = query.Where(post.DeptIDIn(deptIDs...))
 	}
-	pos, err := q.
-		Order(ents.ApplyOrderBy(o.OrderBy)).
-		Offset(o.Offset).
-		Limit(o.Limit).
+	pos, err := query.
+		Order(ents.ApplyOrderBy(q.OrderBy)).
+		Offset(q.Offset).
+		Limit(q.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, orgStoreError(ctx, r.logger, "org.post.list", err)

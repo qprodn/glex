@@ -16,6 +16,7 @@ import (
 	"glex/internal/infra/ent/user"
 	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
+	"glex/pkg/listq"
 )
 
 // toBiz maps an ent User PO to a userentity.User DO. The credential column is
@@ -131,23 +132,19 @@ func (r *userRepo) FindByPhoneNumber(ctx context.Context, phone string) (*useren
 	return toBiz(po), nil
 }
 
-func (r *userRepo) ListUsers(ctx context.Context, opts ...userrepo.ListOption) ([]*userentity.User, error) {
-	o := userrepo.ListOptions{Limit: 20}
-	for _, opt := range opts {
-		opt(&o)
-	}
-	q := r.data.DB.User(ctx).Query().
+func (r *userRepo) ListUsers(ctx context.Context, q listq.Query, deptIDs []int64) ([]*userentity.User, error) {
+	query := r.data.DB.User(ctx).Query().
 		Where(
 			user.DeletedAtIsNil(),
-			ents.ApplyFilter(o.Filter),
+			ents.ApplyFilter(q.Filter),
 		)
-	if len(o.DeptIDs) > 0 {
-		q = q.Where(user.DeptIDIn(o.DeptIDs...))
+	if len(deptIDs) > 0 {
+		query = query.Where(user.DeptIDIn(deptIDs...))
 	}
-	pos, err := q.
-		Order(ents.ApplyOrderBy(o.OrderBy)).
-		Offset(o.Offset).
-		Limit(o.Limit).
+	pos, err := query.
+		Order(ents.ApplyOrderBy(q.OrderBy)).
+		Offset(q.Offset).
+		Limit(q.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, userStoreError(ctx, r.logger, "user.list", err)

@@ -7,6 +7,7 @@ import (
 	"glex/internal/domain/access"
 	"glex/internal/domain/access/entity"
 	"glex/internal/domain/access/repository"
+	"glex/pkg/listq"
 
 	"github.com/go-kratos/kratos/v3/errors"
 )
@@ -66,7 +67,7 @@ func (r *fakeRoleRepo) FindByRoleKey(_ context.Context, roleKey string) (*entity
 	return ro, nil
 }
 
-func (r *fakeRoleRepo) ListRoles(context.Context, ...repository.ListOption) ([]*entity.Role, error) {
+func (r *fakeRoleRepo) ListRoles(context.Context, listq.Query) ([]*entity.Role, error) {
 	return nil, nil
 }
 

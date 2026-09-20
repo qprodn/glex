@@ -13,11 +13,11 @@ import (
 	fileentity "glex/internal/domain/file/entity"
 	fileservice "glex/internal/domain/file/service"
 	"glex/internal/domain/file/storage"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
-	"go.einride.tech/aip/pagination"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -206,41 +206,25 @@ func (s *FileApplication) BatchGetFiles(ctx context.Context, req *filev1.BatchGe
 
 // ListFiles lists stored files with AIP-160 filter, AIP-132 order, and
 // page-token pagination. Default order: newest first.
-func (s *FileApplication) ListFiles(ctx context.Context, req *filev1.ListFilesRequest) (*filev1.StoredFileSet, error) {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
+// fileListSpec is this module's list fact (ADR 0024): filterable
+// idents plus the file listing order.
+var fileListSpec = listq.Spec{
+	Idents: []filtering.DeclarationOption{
 		filtering.DeclareIdent("original_name", filtering.TypeString),
 		filtering.DeclareIdent("suffix", filtering.TypeString),
 		filtering.DeclareIdent("mime_type", filtering.TypeString),
 		filtering.DeclareIdent("create_by", filtering.TypeInt),
-	)
+	},
+	DefaultOrder: []ordering.Field{{Path: "id", Desc: true}}, // 
+}
+
+func (s *FileApplication) ListFiles(ctx context.Context, req *filev1.ListFilesRequest) (*filev1.StoredFileSet, error) {
+	q, page, err := listq.Parse(req, fileListSpec)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "file.list_files", err)
 		return nil, err
 	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "file.list_files", err)
-		return nil, err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "file.list_files", err)
-		return nil, err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "file.list_files", err)
-		return nil, err
-	}
-	if len(orderBy.Fields) == 0 {
-		// Default order: newest first — a file listing's natural order.
-		orderBy.Fields = []ordering.Field{{Path: "id", Desc: true}}
-	}
-	if req.GetPageSize() <= 0 {
-		req.PageSize = 20
-	}
-	files, err := s.svc.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
+	files, err := s.svc.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "file.list_files", err)
 		return nil, err
@@ -251,9 +235,7 @@ func (s *FileApplication) ListFiles(ctx context.Context, req *filev1.ListFilesRe
 		s.fillURL(ctx, out, f)
 		set.Files = append(set.Files, out)
 	}
-	if len(files) >= int(req.GetPageSize()) {
-		set.NextPageToken = pageToken.Next(req).String()
-	}
+	set.NextPageToken = page.NextToken(len(files))
 	return set, nil
 }
 

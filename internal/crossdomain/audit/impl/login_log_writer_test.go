@@ -9,8 +9,7 @@ import (
 
 	domainaudit "glex/internal/domain/audit"
 	auditentity "glex/internal/domain/audit/entity"
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
+	"glex/pkg/listq"
 )
 
 // The login-log crossdomain adapter tests: the flat model snapshot maps onto
@@ -30,7 +29,7 @@ func (s *fakeAuditService) GetOperLog(context.Context, int64) (*auditentity.Oper
 	return nil, errors.New("not used")
 }
 
-func (s *fakeAuditService) ListOperLogs(context.Context, filtering.Filter, ordering.OrderBy, int, int) ([]*auditentity.OperLog, error) {
+func (s *fakeAuditService) ListOperLogs(context.Context, listq.Query) ([]*auditentity.OperLog, error) {
 	return nil, errors.New("not used")
 }
 
@@ -43,7 +42,7 @@ func (s *fakeAuditService) CreateLoginLog(_ context.Context, l *auditentity.Logi
 	return l, s.err
 }
 
-func (s *fakeAuditService) ListLoginLogs(context.Context, filtering.Filter, ordering.OrderBy, int, int) ([]*auditentity.LoginLog, error) {
+func (s *fakeAuditService) ListLoginLogs(context.Context, listq.Query) ([]*auditentity.LoginLog, error) {
 	return nil, errors.New("not used")
 }
 

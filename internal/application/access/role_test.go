@@ -10,9 +10,7 @@ import (
 	accessentity "glex/internal/domain/access/entity"
 	authnentity "glex/internal/domain/authn/entity"
 	authnservice "glex/internal/domain/authn/service"
-
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
+	"glex/pkg/listq"
 )
 
 // fakeRoleService is a hand-rolled accessservice.Role fake for the
@@ -69,11 +67,11 @@ func (f *fakeRoleService) Get(_ context.Context, _ int64) (*accessentity.Role, e
 	return f.get, nil
 }
 
-func (f *fakeRoleService) List(_ context.Context, _ filtering.Filter, _ ordering.OrderBy, limit, offset int) ([]*accessentity.Role, error) {
+func (f *fakeRoleService) List(_ context.Context, q listq.Query) ([]*accessentity.Role, error) {
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
-	f.listLimit, f.listOffset = limit, offset
+	f.listLimit, f.listOffset = q.Limit, q.Offset
 	return f.list, nil
 }
 

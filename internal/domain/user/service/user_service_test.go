@@ -7,6 +7,7 @@ import (
 	"glex/internal/domain/user"
 	"glex/internal/domain/user/entity"
 	"glex/internal/domain/user/repository"
+	"glex/pkg/listq"
 
 	"github.com/go-kratos/kratos/v3/errors"
 )
@@ -72,7 +73,7 @@ func (r *fakeUserRepo) FindByPhoneNumber(_ context.Context, phone string) (*enti
 	return u, nil
 }
 
-func (r *fakeUserRepo) ListUsers(context.Context, ...repository.ListOption) ([]*entity.User, error) {
+func (r *fakeUserRepo) ListUsers(context.Context, listq.Query, []int64) ([]*entity.User, error) {
 	return nil, nil
 }
 

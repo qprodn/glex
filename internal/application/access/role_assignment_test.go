@@ -9,9 +9,7 @@ import (
 	accessv1 "glex/api/access/v1"
 	accessentity "glex/internal/domain/access/entity"
 	accessservice "glex/internal/domain/access/service"
-
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
+	"glex/pkg/listq"
 )
 
 // fakeRoleAssignmentService is a hand-rolled accessservice.RoleAssignment
@@ -57,8 +55,8 @@ func (f *fakeRoleAssignmentService) ReplaceForUser(ctx context.Context, userID i
 	return f.replacement, nil
 }
 
-func (f *fakeRoleAssignmentService) ListRoleUsers(_ context.Context, roleID int64, _ filtering.Filter, _ ordering.OrderBy, limit, offset int) ([]*accessentity.RoleUser, error) {
-	f.usersRoleID, f.usersLimit, f.usersOffset = roleID, limit, offset
+func (f *fakeRoleAssignmentService) ListRoleUsers(_ context.Context, roleID int64, q listq.Query) ([]*accessentity.RoleUser, error) {
+	f.usersRoleID, f.usersLimit, f.usersOffset = roleID, q.Limit, q.Offset
 	if f.usersErr != nil {
 		return nil, f.usersErr
 	}

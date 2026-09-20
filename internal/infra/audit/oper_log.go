@@ -13,6 +13,7 @@ import (
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/operlog"
 	"glex/internal/infra/store"
+	"glex/pkg/listq"
 )
 
 // toBizOperLog maps an ent OperLog PO to an auditentity.OperLog DO.
@@ -80,19 +81,15 @@ func (r *operLogRepo) FindByID(ctx context.Context, id int64) (*auditentity.Oper
 	return toBizOperLog(po), nil
 }
 
-func (r *operLogRepo) List(ctx context.Context, opts ...auditrepo.ListOption) ([]*auditentity.OperLog, error) {
-	o := auditrepo.ListOptions{Limit: 20}
-	for _, opt := range opts {
-		opt(&o)
-	}
+func (r *operLogRepo) List(ctx context.Context, q listq.Query) ([]*auditentity.OperLog, error) {
 	pos, err := r.data.DB.OperLog(ctx).Query().
 		Where(
 			operlog.DeletedAtIsNil(),
-			ents.ApplyFilter(o.Filter),
+			ents.ApplyFilter(q.Filter),
 		).
-		Order(ents.ApplyOrderBy(o.OrderBy)).
-		Offset(o.Offset).
-		Limit(o.Limit).
+		Order(ents.ApplyOrderBy(q.OrderBy)).
+		Offset(q.Offset).
+		Limit(q.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, auditStoreError(ctx, r.logger, "audit.oper_log.list", err)

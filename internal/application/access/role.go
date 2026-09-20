@@ -9,12 +9,12 @@ import (
 	"glex/internal/crossdomain/authn"
 	accessentity "glex/internal/domain/access/entity"
 	accessservice "glex/internal/domain/access/service"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
 
 	"go.einride.tech/aip/fieldmask"
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
-	"go.einride.tech/aip/pagination"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -109,41 +109,24 @@ func (s *RoleApplication) GetRole(ctx context.Context, req *accessv1.GetRoleRequ
 
 // ListRoles lists roles with AIP-160 filter, AIP-132 order, and page-token
 // pagination.
-func (s *RoleApplication) ListRoles(ctx context.Context, req *accessv1.ListRolesRequest) (*accessv1.RoleSet, error) {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
+// roleListSpec is this module's list fact (ADR 0024): filterable
+// idents plus the role listing order.
+var roleListSpec = listq.Spec{
+	Idents: []filtering.DeclarationOption{
 		filtering.DeclareIdent("role_name", filtering.TypeString),
 		filtering.DeclareIdent("role_key", filtering.TypeString),
 		filtering.DeclareIdent("status", filtering.TypeInt),
-	)
+	},
+	DefaultOrder: []ordering.Field{{Path: "role_sort"}, {Path: "id"}}, // 
+}
+
+func (s *RoleApplication) ListRoles(ctx context.Context, req *accessv1.ListRolesRequest) (*accessv1.RoleSet, error) {
+	q, page, err := listq.Parse(req, roleListSpec)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.list_roles", err)
 		return nil, err
 	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "access.list_roles", err)
-		return nil, err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "access.list_roles", err)
-		return nil, err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "access.list_roles", err)
-		return nil, err
-	}
-	if len(orderBy.Fields) == 0 {
-		// Default order: display order, then id as a stable tie-break for
-		// page-token pagination.
-		orderBy.Fields = []ordering.Field{{Path: "role_sort"}, {Path: "id"}}
-	}
-	if req.GetPageSize() <= 0 {
-		req.PageSize = 20
-	}
-	roles, err := s.svc.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
+	roles, err := s.svc.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.list_roles", err)
 		return nil, err
@@ -152,9 +135,7 @@ func (s *RoleApplication) ListRoles(ctx context.Context, req *accessv1.ListRoles
 	for _, r := range roles {
 		set.Roles = append(set.Roles, convertRole(r))
 	}
-	if len(roles) >= int(req.GetPageSize()) {
-		set.NextPageToken = pageToken.Next(req).String()
-	}
+	set.NextPageToken = page.NextToken(len(roles))
 	return set, nil
 }
 

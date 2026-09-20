@@ -11,10 +11,8 @@ import (
 	"glex/internal/domain/file/entity"
 	"glex/internal/domain/file/repository"
 	"glex/internal/domain/file/storage"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
-
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 )
 
 // File is the file domain service behind the file endpoints: the only path
@@ -30,7 +28,7 @@ type File interface {
 	// withdrawn ids are absent from the result (batch semantics — callers
 	// render what resolved).
 	BatchGet(ctx context.Context, ids []int64) ([]*entity.StoredFile, error)
-	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.StoredFile, error)
+	List(ctx context.Context, q listq.Query) ([]*entity.StoredFile, error)
 	// Accept validates the upload, mints the Stored Key, streams the bytes
 	// to storage while computing the Content Fingerprint, then records the
 	// row. A row failure after the bytes landed leaves an orphan object —
@@ -84,13 +82,8 @@ func (s *fileImpl) BatchGet(ctx context.Context, ids []int64) ([]*entity.StoredF
 	return fs, nil
 }
 
-func (s *fileImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.StoredFile, error) {
-	fs, err := s.files.List(ctx,
-		repository.ListFilter(filter),
-		repository.ListOrderBy(orderBy),
-		repository.ListLimit(limit),
-		repository.ListOffset(offset),
-	)
+func (s *fileImpl) List(ctx context.Context, q listq.Query) ([]*entity.StoredFile, error) {
+	fs, err := s.files.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "file.svc.list", err)
 		return nil, err

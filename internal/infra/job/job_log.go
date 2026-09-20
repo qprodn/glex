@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/go-kratos/aip-go/ents"
+	"glex/internal/domain/job"
 	jobentity "glex/internal/domain/job/entity"
 	jobrepo "glex/internal/domain/job/repository"
-	"glex/internal/domain/job"
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/joblog"
 	"glex/internal/infra/store"
+	"glex/pkg/listq"
 )
 
 // toBizJobLog maps an ent JobLog PO to a jobentity.JobLog DO.
@@ -58,19 +59,15 @@ func (r *jobLogRepo) FindByID(ctx context.Context, id int64) (*jobentity.JobLog,
 	return toBizJobLog(po), nil
 }
 
-func (r *jobLogRepo) List(ctx context.Context, opts ...jobrepo.ListOption) ([]*jobentity.JobLog, error) {
-	o := jobrepo.ListOptions{Limit: 20}
-	for _, opt := range opts {
-		opt(&o)
-	}
+func (r *jobLogRepo) List(ctx context.Context, q listq.Query) ([]*jobentity.JobLog, error) {
 	pos, err := r.data.DB.JobLog(ctx).Query().
 		Where(
 			joblog.DeletedAtIsNil(),
-			ents.ApplyFilter(o.Filter),
+			ents.ApplyFilter(q.Filter),
 		).
-		Order(ents.ApplyOrderBy(o.OrderBy)).
-		Offset(o.Offset).
-		Limit(o.Limit).
+		Order(ents.ApplyOrderBy(q.OrderBy)).
+		Offset(q.Offset).
+		Limit(q.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, jobStoreError(ctx, r.logger, "job.log.list", err)

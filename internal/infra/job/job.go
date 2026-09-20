@@ -16,6 +16,7 @@ import (
 	"glex/internal/infra/ent"
 	jobtab "glex/internal/infra/ent/job"
 	"glex/internal/infra/store"
+	"glex/pkg/listq"
 )
 
 // toBizJob maps an ent Job PO to a jobentity.Job DO.
@@ -92,19 +93,15 @@ func (r *jobRepo) FindByName(ctx context.Context, name string) (*jobentity.Job, 
 	return toBizJob(po), nil
 }
 
-func (r *jobRepo) List(ctx context.Context, opts ...jobrepo.ListOption) ([]*jobentity.Job, error) {
-	o := jobrepo.ListOptions{Limit: 20}
-	for _, opt := range opts {
-		opt(&o)
-	}
+func (r *jobRepo) List(ctx context.Context, q listq.Query) ([]*jobentity.Job, error) {
 	pos, err := r.data.DB.Job(ctx).Query().
 		Where(
 			jobtab.DeletedAtIsNil(),
-			ents.ApplyFilter(o.Filter),
+			ents.ApplyFilter(q.Filter),
 		).
-		Order(ents.ApplyOrderBy(o.OrderBy)).
-		Offset(o.Offset).
-		Limit(o.Limit).
+		Order(ents.ApplyOrderBy(q.OrderBy)).
+		Offset(q.Offset).
+		Limit(q.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, jobStoreError(ctx, r.logger, "job.list", err)

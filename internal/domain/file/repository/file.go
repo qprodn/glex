@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"glex/internal/domain/file/entity"
+	"glex/pkg/listq"
 )
 
 // FileRepo is the repository interface for Stored File rows (the inversion
@@ -16,7 +17,7 @@ type FileRepo interface {
 	// semantics: unknown or withdrawn ids are simply absent from the
 	// result — callers render what resolved.
 	FindByIDs(ctx context.Context, ids []int64) ([]*entity.StoredFile, error)
-	List(ctx context.Context, opts ...ListOption) ([]*entity.StoredFile, error)
+	List(ctx context.Context, q listq.Query) ([]*entity.StoredFile, error)
 	// Create inserts the row. The ID is minted up front (NextID) so the
 	// Stored Key and the row correlate; the caller owns any transaction.
 	Create(ctx context.Context, f *entity.StoredFile) (*entity.StoredFile, error)

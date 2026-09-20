@@ -8,11 +8,11 @@ import (
 	"glex/internal/bizpkg"
 	auditentity "glex/internal/domain/audit/entity"
 	auditservice "glex/internal/domain/audit/service"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
-	"go.einride.tech/aip/pagination"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -92,43 +92,27 @@ func NewAuditApplication(svc auditservice.Audit, logger *slog.Logger) *AuditAppl
 	}
 }
 
-// ListOperLogs lists recorded operations with AIP-160 filter, AIP-132
-// order, and page-token pagination. Newest first by default — a monitor
-// read.
-func (s *AuditApplication) ListOperLogs(ctx context.Context, req *auditv1.ListOperLogsRequest) (*auditv1.OperLogSet, error) {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
+// operLogListSpec is this module's list fact (ADR 0024).
+var operLogListSpec = listq.Spec{
+	Idents: []filtering.DeclarationOption{
 		filtering.DeclareIdent("operation", filtering.TypeString),
 		filtering.DeclareIdent("oper_user_name", filtering.TypeString),
 		filtering.DeclareIdent("ipaddr", filtering.TypeString),
 		filtering.DeclareIdent("status", filtering.TypeInt),
-	)
+	},
+	DefaultOrder: []ordering.Field{{Path: "created_at", Desc: true}, {Path: "id", Desc: true}},
+}
+
+// ListOperLogs lists recorded operations with AIP-160 filter, AIP-132
+// order, and page-token pagination. Newest first by default — a monitor
+// read.
+func (s *AuditApplication) ListOperLogs(ctx context.Context, req *auditv1.ListOperLogsRequest) (*auditv1.OperLogSet, error) {
+	q, page, err := listq.Parse(req, operLogListSpec)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "audit.list_oper_logs", err)
 		return nil, err
 	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "audit.list_oper_logs", err)
-		return nil, err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "audit.list_oper_logs", err)
-		return nil, err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "audit.list_oper_logs", err)
-		return nil, err
-	}
-	if len(orderBy.Fields) == 0 {
-		orderBy.Fields = []ordering.Field{{Path: "created_at", Desc: true}, {Path: "id", Desc: true}}
-	}
-	if req.GetPageSize() <= 0 {
-		req.PageSize = 20
-	}
-	logs, err := s.svc.ListOperLogs(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
+	logs, err := s.svc.ListOperLogs(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "audit.list_oper_logs", err)
 		return nil, err
@@ -137,9 +121,7 @@ func (s *AuditApplication) ListOperLogs(ctx context.Context, req *auditv1.ListOp
 	for _, o := range logs {
 		set.OperLogs = append(set.OperLogs, convertOperLog(o))
 	}
-	if len(logs) >= int(req.GetPageSize()) {
-		set.NextPageToken = pageToken.Next(req).String()
-	}
+	set.NextPageToken = page.NextToken(len(logs))
 	return set, nil
 }
 
@@ -162,41 +144,25 @@ func (s *AuditApplication) DeleteOperLog(ctx context.Context, req *auditv1.Delet
 	return &emptypb.Empty{}, nil
 }
 
-// ListLoginLogs lists recorded sign-ins with AIP-160 filter, AIP-132
-// order, and page-token pagination. Newest first by default.
-func (s *AuditApplication) ListLoginLogs(ctx context.Context, req *auditv1.ListLoginLogsRequest) (*auditv1.LoginLogSet, error) {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
+// loginLogListSpec is this module's list fact (ADR 0024).
+var loginLogListSpec = listq.Spec{
+	Idents: []filtering.DeclarationOption{
 		filtering.DeclareIdent("user_name", filtering.TypeString),
 		filtering.DeclareIdent("ipaddr", filtering.TypeString),
 		filtering.DeclareIdent("status", filtering.TypeInt),
-	)
+	},
+	DefaultOrder: []ordering.Field{{Path: "created_at", Desc: true}, {Path: "id", Desc: true}},
+}
+
+// ListLoginLogs lists recorded sign-ins with AIP-160 filter, AIP-132
+// order, and page-token pagination. Newest first by default.
+func (s *AuditApplication) ListLoginLogs(ctx context.Context, req *auditv1.ListLoginLogsRequest) (*auditv1.LoginLogSet, error) {
+	q, page, err := listq.Parse(req, loginLogListSpec)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "audit.list_login_logs", err)
 		return nil, err
 	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "audit.list_login_logs", err)
-		return nil, err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "audit.list_login_logs", err)
-		return nil, err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "audit.list_login_logs", err)
-		return nil, err
-	}
-	if len(orderBy.Fields) == 0 {
-		orderBy.Fields = []ordering.Field{{Path: "created_at", Desc: true}, {Path: "id", Desc: true}}
-	}
-	if req.GetPageSize() <= 0 {
-		req.PageSize = 20
-	}
-	logs, err := s.svc.ListLoginLogs(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
+	logs, err := s.svc.ListLoginLogs(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "audit.list_login_logs", err)
 		return nil, err
@@ -205,9 +171,7 @@ func (s *AuditApplication) ListLoginLogs(ctx context.Context, req *auditv1.ListL
 	for _, l := range logs {
 		set.LoginLogs = append(set.LoginLogs, convertLoginLog(l))
 	}
-	if len(logs) >= int(req.GetPageSize()) {
-		set.NextPageToken = pageToken.Next(req).String()
-	}
+	set.NextPageToken = page.NextToken(len(logs))
 	return set, nil
 }
 

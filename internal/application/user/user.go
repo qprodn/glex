@@ -17,12 +17,12 @@ import (
 	userdomain "glex/internal/domain/user"
 	userentity "glex/internal/domain/user/entity"
 	userservice "glex/internal/domain/user/service"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
 
 	"go.einride.tech/aip/fieldmask"
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
-	"go.einride.tech/aip/pagination"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -104,16 +104,16 @@ func (s *UserApplication) resolveAvatarURLs(ctx context.Context, ids []int64) ma
 type UserApplication struct {
 	userv1.UnimplementedUserServiceServer
 
-	svc         userservice.User
-	credentials authn.CredentialWriter
-	depts       org.DeptReader
-	avatars     file.URLResolver
-	importFiles file.ContentReader
-	dicts       dict.VocabularyReader
+	svc          userservice.User
+	credentials  authn.CredentialWriter
+	depts        org.DeptReader
+	avatars      file.URLResolver
+	importFiles  file.ContentReader
+	dicts        dict.VocabularyReader
 	initPassword string
-	tx          Transaction
-	revoker     authn.SessionRevoker
-	logger      *slog.Logger
+	tx           Transaction
+	revoker      authn.SessionRevoker
+	logger       *slog.Logger
 }
 
 // NewUserApplication creates a UserApplication. svc is the System User domain
@@ -244,31 +244,27 @@ func (s *UserApplication) GetInfo(ctx context.Context, _ *emptypb.Empty) (*userv
 	}, nil
 }
 
+// userListSpec is this module's list fact (ADR 0024): filterable idents
+// plus the listing order — newest first, pinned here because the old
+// stanza left requests without an order at the database's mercy.
+var userListSpec = listq.Spec{
+	Idents: []filtering.DeclarationOption{
+		filtering.DeclareIdent("user_name", filtering.TypeString),
+		filtering.DeclareIdent("email", filtering.TypeString),
+		filtering.DeclareIdent("phone_number", filtering.TypeString),
+		filtering.DeclareIdent("status", filtering.TypeInt),
+		filtering.DeclareIdent("created_at", filtering.TypeTimestamp),
+	},
+	DefaultOrder: []ordering.Field{{Path: "id", Desc: true}},
+}
+
 // ListUsers lists users with AIP-160 filter, AIP-132 order, and page-token
 // pagination.
 func (s *UserApplication) ListUsers(ctx context.Context, req *userv1.ListUsersRequest) (*userv1.UserSet, error) {
-	declarations, err := userFilterDeclarations()
+	q, page, err := listq.Parse(req, userListSpec)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "user.list_users", err)
 		return nil, err
-	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "user.list_users", err)
-		return nil, err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "user.list_users", err)
-		return nil, err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "user.list_users", err)
-		return nil, err
-	}
-	if req.GetPageSize() <= 0 {
-		req.PageSize = 20
 	}
 	var deptIDs []int64
 	if req.GetDeptId() != 0 {
@@ -278,7 +274,7 @@ func (s *UserApplication) ListUsers(ctx context.Context, req *userv1.ListUsersRe
 			return nil, err
 		}
 	}
-	users, err := s.svc.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset), deptIDs)
+	users, err := s.svc.List(ctx, q, deptIDs)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "user.list_users", err)
 		return nil, err
@@ -288,9 +284,7 @@ func (s *UserApplication) ListUsers(ctx context.Context, req *userv1.ListUsersRe
 		set.Users = append(set.Users, convertUser(u))
 	}
 	s.fillAvatarURLs(ctx, set.Users...)
-	if len(users) >= int(req.GetPageSize()) {
-		set.NextPageToken = pageToken.Next(req).String()
-	}
+	set.NextPageToken = page.NextToken(len(users))
 	return set, nil
 }
 

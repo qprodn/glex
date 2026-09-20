@@ -17,6 +17,7 @@ import (
 	"glex/internal/infra/ent/rolemenu"
 	"glex/internal/infra/ent/user"
 	"glex/internal/infra/ent/userrole"
+	"glex/pkg/listq"
 )
 
 // toBizRole maps an ent Role PO to a accessentity.Role DO.
@@ -88,19 +89,15 @@ func (r *roleRepo) FindByRoleKey(ctx context.Context, roleKey string) (*accessen
 	return toBizRole(po), nil
 }
 
-func (r *roleRepo) ListRoles(ctx context.Context, opts ...accessrepo.ListOption) ([]*accessentity.Role, error) {
-	o := accessrepo.ListOptions{Limit: 20}
-	for _, opt := range opts {
-		opt(&o)
-	}
+func (r *roleRepo) ListRoles(ctx context.Context, q listq.Query) ([]*accessentity.Role, error) {
 	pos, err := r.data.DB.Role(ctx).Query().
 		Where(
 			role.DeletedAtIsNil(),
-			ents.ApplyFilter(o.Filter),
+			ents.ApplyFilter(q.Filter),
 		).
-		Order(ents.ApplyOrderBy(o.OrderBy)).
-		Offset(o.Offset).
-		Limit(o.Limit).
+		Order(ents.ApplyOrderBy(q.OrderBy)).
+		Offset(q.Offset).
+		Limit(q.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, accessStoreError(ctx, r.logger, "access.role.list", err)

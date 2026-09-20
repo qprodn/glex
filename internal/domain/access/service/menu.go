@@ -68,10 +68,7 @@ func (s *menuImpl) Get(ctx context.Context, id int64) (*entity.Menu, error) {
 }
 
 func (s *menuImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy) ([]*entity.Menu, error) {
-	ms, err := s.menus.ListMenus(ctx,
-		repository.ListFilter(filter),
-		repository.ListOrderBy(orderBy),
-	)
+	ms, err := s.menus.ListMenus(ctx, filter, orderBy)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.list_menus", err)
 		return nil, err

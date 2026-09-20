@@ -11,6 +11,7 @@ import (
 	"glex/internal/infra/ent"
 	entfile "glex/internal/infra/ent/file"
 	"glex/internal/infra/store"
+	"glex/pkg/listq"
 )
 
 // toBizFile maps an ent File PO to a fileentity.StoredFile DO.
@@ -76,19 +77,15 @@ func (r *fileRepo) FindByIDs(ctx context.Context, ids []int64) ([]*fileentity.St
 	return files, nil
 }
 
-func (r *fileRepo) List(ctx context.Context, opts ...filerepo.ListOption) ([]*fileentity.StoredFile, error) {
-	o := filerepo.ListOptions{Limit: 20}
-	for _, opt := range opts {
-		opt(&o)
-	}
+func (r *fileRepo) List(ctx context.Context, q listq.Query) ([]*fileentity.StoredFile, error) {
 	pos, err := r.data.DB.File(ctx).Query().
 		Where(
 			entfile.DeletedAtIsNil(),
-			ents.ApplyFilter(o.Filter),
+			ents.ApplyFilter(q.Filter),
 		).
-		Order(ents.ApplyOrderBy(o.OrderBy)).
-		Offset(o.Offset).
-		Limit(o.Limit).
+		Order(ents.ApplyOrderBy(q.OrderBy)).
+		Offset(q.Offset).
+		Limit(q.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, err

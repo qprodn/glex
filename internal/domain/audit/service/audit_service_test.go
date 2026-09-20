@@ -9,11 +9,9 @@ import (
 
 	"glex/internal/domain/audit"
 	"glex/internal/domain/audit/entity"
-	"glex/internal/domain/audit/repository"
+	"glex/pkg/listq"
 
 	"github.com/go-kratos/kratos/v3/errors"
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 )
 
 func testLogger() *slog.Logger {
@@ -54,7 +52,7 @@ func (r *fakeOperLogRepo) FindByID(_ context.Context, id int64) (*entity.OperLog
 	return o, nil
 }
 
-func (r *fakeOperLogRepo) List(context.Context, ...repository.ListOption) ([]*entity.OperLog, error) {
+func (r *fakeOperLogRepo) List(context.Context, listq.Query) ([]*entity.OperLog, error) {
 	return nil, r.listErr
 }
 
@@ -81,7 +79,7 @@ type fakeLoginLogRepo struct {
 	deleted []int64
 }
 
-func (r *fakeLoginLogRepo) List(context.Context, ...repository.ListOption) ([]*entity.LoginLog, error) {
+func (r *fakeLoginLogRepo) List(context.Context, listq.Query) ([]*entity.LoginLog, error) {
 	return nil, nil
 }
 
@@ -155,7 +153,7 @@ func TestListOperLogsPropagatesStoreFailures(t *testing.T) {
 	operLogs.listErr = audit.ErrAuditStoreUnavailable
 	svc := NewAuditService(operLogs, &fakeLoginLogRepo{}, testLogger())
 
-	_, err := svc.ListOperLogs(t.Context(), filtering.Filter{}, ordering.OrderBy{}, 20, 0)
+	_, err := svc.ListOperLogs(t.Context(), listq.Query{Limit: 20})
 	if !errors.Is(err, audit.ErrAuditStoreUnavailable) {
 		t.Fatalf("ListOperLogs: err = %v, want ErrAuditStoreUnavailable", err)
 	}

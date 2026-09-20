@@ -7,10 +7,8 @@ import (
 	"glex/internal/domain/access"
 	"glex/internal/domain/access/entity"
 	"glex/internal/domain/access/repository"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
-
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 )
 
 // RoleAssignment is the access domain service behind the Role Assignment
@@ -30,7 +28,7 @@ type RoleAssignment interface {
 	ReplaceForUser(ctx context.Context, userID int64, roleIDs []int64, actorID int64) (*RoleAssignmentReplacement, error)
 	// ListRoleUsers lists the active users assigned the role, gated on the
 	// role existing, matching the given filter/order/offset/limit.
-	ListRoleUsers(ctx context.Context, roleID int64, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.RoleUser, error)
+	ListRoleUsers(ctx context.Context, roleID int64, q listq.Query) ([]*entity.RoleUser, error)
 }
 
 // RoleAssignmentReplacement is the ReplaceForUser result.
@@ -99,17 +97,12 @@ func (s *roleAssignmentImpl) ReplaceForUser(ctx context.Context, userID int64, r
 	return &RoleAssignmentReplacement{Assignments: assignments, AffectedUserIDs: affected}, nil
 }
 
-func (s *roleAssignmentImpl) ListRoleUsers(ctx context.Context, roleID int64, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.RoleUser, error) {
+func (s *roleAssignmentImpl) ListRoleUsers(ctx context.Context, roleID int64, q listq.Query) ([]*entity.RoleUser, error) {
 	if _, err := s.roles.FindByID(ctx, roleID); err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.list_role_users", err)
 		return nil, err
 	}
-	users, err := s.userRoles.ListRoleUsers(ctx, roleID,
-		repository.ListFilter(filter),
-		repository.ListOrderBy(orderBy),
-		repository.ListLimit(limit),
-		repository.ListOffset(offset),
-	)
+	users, err := s.userRoles.ListRoleUsers(ctx, roleID, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.list_role_users", err)
 		return nil, err

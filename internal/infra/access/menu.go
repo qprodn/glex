@@ -18,6 +18,8 @@ import (
 	"glex/internal/infra/ent/rolemenu"
 	"glex/internal/infra/ent/user"
 	"glex/internal/infra/ent/userrole"
+	"go.einride.tech/aip/filtering"
+	"go.einride.tech/aip/ordering"
 )
 
 // toBizMenu maps an ent Menu PO to a accessentity.Menu DO. Children is left nil — the
@@ -99,14 +101,10 @@ func (r *menuRepo) HasChildren(ctx context.Context, id int64) (bool, error) {
 // ListMenus returns the non-deleted menus as a flat list. It does not apply
 // offset/limit: menus are a small, tree-shaped set and ListMenus serves the
 // whole tree. Final sibling ordering is applied by access.buildTree.
-func (r *menuRepo) ListMenus(ctx context.Context, opts ...accessrepo.ListOption) ([]*accessentity.Menu, error) {
-	o := accessrepo.ListOptions{}
-	for _, opt := range opts {
-		opt(&o)
-	}
+func (r *menuRepo) ListMenus(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy) ([]*accessentity.Menu, error) {
 	pos, err := r.data.DB.Menu(ctx).Query().
-		Where(menu.DeletedAtIsNil(), ents.ApplyFilter(o.Filter)).
-		Order(ents.ApplyOrderBy(o.OrderBy)).
+		Where(menu.DeletedAtIsNil(), ents.ApplyFilter(filter)).
+		Order(ents.ApplyOrderBy(orderBy)).
 		All(ctx)
 	if err != nil {
 		return nil, accessStoreError(ctx, r.logger, "access.menu.list", err)

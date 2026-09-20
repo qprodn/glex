@@ -18,12 +18,12 @@ import (
 	jobentity "glex/internal/domain/job/entity"
 	jobservice "glex/internal/domain/job/service"
 	"glex/internal/lock"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
 
 	"go.einride.tech/aip/fieldmask"
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
-	"go.einride.tech/aip/pagination"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -177,41 +177,37 @@ func (s *JobApplication) GetJob(ctx context.Context, req *jobv1.GetJobRequest) (
 	return convertJob(j), nil
 }
 
-// ListJobs lists jobs with AIP-160 filter, AIP-132 order, and page-token
-// pagination.
-func (s *JobApplication) ListJobs(ctx context.Context, req *jobv1.ListJobsRequest) (*jobv1.JobSet, error) {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
+// jobListSpec is this module's list fact (ADR 0024).
+var jobListSpec = listq.Spec{
+	Idents: []filtering.DeclarationOption{
 		filtering.DeclareIdent("name", filtering.TypeString),
 		filtering.DeclareIdent("handler", filtering.TypeString),
 		filtering.DeclareIdent("enabled", filtering.TypeBool),
-	)
+	},
+	DefaultOrder: []ordering.Field{{Path: "id"}},
+}
+
+// jobLogListSpec is this module's list fact (ADR 0024).
+var jobLogListSpec = listq.Spec{
+	Idents: []filtering.DeclarationOption{
+		filtering.DeclareIdent("job_id", filtering.TypeInt),
+		filtering.DeclareIdent("handler", filtering.TypeString),
+		filtering.DeclareIdent("trigger", filtering.TypeInt),
+		filtering.DeclareIdent("status", filtering.TypeInt),
+		filtering.DeclareIdent("created_at", filtering.TypeTimestamp),
+	},
+	DefaultOrder: []ordering.Field{{Path: "created_at", Desc: true}},
+}
+
+// ListJobs lists jobs with AIP-160 filter, AIP-132 order, and page-token
+// pagination.
+func (s *JobApplication) ListJobs(ctx context.Context, req *jobv1.ListJobsRequest) (*jobv1.JobSet, error) {
+	q, page, err := listq.Parse(req, jobListSpec)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "job.list_jobs", err)
 		return nil, err
 	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "job.list_jobs", err)
-		return nil, err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "job.list_jobs", err)
-		return nil, err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "job.list_jobs", err)
-		return nil, err
-	}
-	if len(orderBy.Fields) == 0 {
-		orderBy.Fields = []ordering.Field{{Path: "id"}}
-	}
-	if req.GetPageSize() <= 0 {
-		req.PageSize = 20
-	}
-	jobs, err := s.svc.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
+	jobs, err := s.svc.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "job.list_jobs", err)
 		return nil, err
@@ -220,9 +216,7 @@ func (s *JobApplication) ListJobs(ctx context.Context, req *jobv1.ListJobsReques
 	for _, j := range jobs {
 		set.Jobs = append(set.Jobs, convertJob(j))
 	}
-	if len(jobs) >= int(req.GetPageSize()) {
-		set.NextPageToken = pageToken.Next(req).String()
-	}
+	set.NextPageToken = page.NextToken(len(jobs))
 	return set, nil
 }
 
@@ -310,40 +304,12 @@ func (s *JobApplication) RunJob(ctx context.Context, req *jobv1.RunJobRequest) (
 // ListJobLogs lists job logs with AIP filter/order/page-token, newest
 // first by default.
 func (s *JobApplication) ListJobLogs(ctx context.Context, req *jobv1.ListJobLogsRequest) (*jobv1.JobLogSet, error) {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
-		filtering.DeclareIdent("job_id", filtering.TypeInt),
-		filtering.DeclareIdent("handler", filtering.TypeString),
-		filtering.DeclareIdent("trigger", filtering.TypeInt),
-		filtering.DeclareIdent("status", filtering.TypeInt),
-		filtering.DeclareIdent("created_at", filtering.TypeTimestamp),
-	)
+	q, page, err := listq.Parse(req, jobLogListSpec)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "job.list_job_logs", err)
 		return nil, err
 	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "job.list_job_logs", err)
-		return nil, err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "job.list_job_logs", err)
-		return nil, err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "job.list_job_logs", err)
-		return nil, err
-	}
-	if len(orderBy.Fields) == 0 {
-		orderBy.Fields = []ordering.Field{{Path: "created_at", Desc: true}}
-	}
-	if req.GetPageSize() <= 0 {
-		req.PageSize = 20
-	}
-	logs, err := s.svc.ListLogs(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
+	logs, err := s.svc.ListLogs(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "job.list_job_logs", err)
 		return nil, err
@@ -352,9 +318,7 @@ func (s *JobApplication) ListJobLogs(ctx context.Context, req *jobv1.ListJobLogs
 	for _, l := range logs {
 		set.JobLogs = append(set.JobLogs, convertJobLog(l))
 	}
-	if len(logs) >= int(req.GetPageSize()) {
-		set.NextPageToken = pageToken.Next(req).String()
-	}
+	set.NextPageToken = page.NextToken(len(logs))
 	return set, nil
 }
 

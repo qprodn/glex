@@ -14,17 +14,15 @@ import (
 	"glex/internal/domain/user"
 	"glex/internal/domain/user/entity"
 	"glex/internal/domain/user/repository"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
-
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 )
 
 // User is the System User domain service behind the user endpoints: the only
 // path to the System User reads and writes (ADR 0005).
 type User interface {
 	Get(ctx context.Context, id int64) (*entity.User, error)
-	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int, deptIDs []int64) ([]*entity.User, error)
+	List(ctx context.Context, q listq.Query, deptIDs []int64) ([]*entity.User, error)
 	// Create validates uniqueness against active rows and persists the user.
 	Create(ctx context.Context, u *entity.User) (*entity.User, error)
 	// Update validates uniqueness (excluding self) and persists the change,
@@ -61,14 +59,8 @@ func (s *userImpl) Get(ctx context.Context, id int64) (*entity.User, error) {
 	return u, nil
 }
 
-func (s *userImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int, deptIDs []int64) ([]*entity.User, error) {
-	users, err := s.users.ListUsers(ctx,
-		repository.ListFilter(filter),
-		repository.ListOrderBy(orderBy),
-		repository.ListLimit(limit),
-		repository.ListOffset(offset),
-		repository.ListDeptIDs(deptIDs),
-	)
+func (s *userImpl) List(ctx context.Context, q listq.Query, deptIDs []int64) ([]*entity.User, error) {
+	users, err := s.users.ListUsers(ctx, q, deptIDs)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "user.svc.list", err)
 		return nil, err

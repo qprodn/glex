@@ -6,14 +6,13 @@ import (
 	"errors"
 	"log/slog"
 
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 	"strings"
 	"testing"
 
 	auditv1 "glex/api/audit/v1"
 	"glex/internal/domain/audit"
 	auditentity "glex/internal/domain/audit/entity"
+	"glex/pkg/listq"
 )
 
 // fakeAuditService stands in for the audit domain service: it answers list
@@ -34,7 +33,7 @@ func (s *fakeAuditService) GetOperLog(context.Context, int64) (*auditentity.Oper
 	return nil, errors.New("not used")
 }
 
-func (s *fakeAuditService) ListOperLogs(context.Context, filtering.Filter, ordering.OrderBy, int, int) ([]*auditentity.OperLog, error) {
+func (s *fakeAuditService) ListOperLogs(context.Context, listq.Query) ([]*auditentity.OperLog, error) {
 	return s.operLogs, s.err
 }
 
@@ -47,7 +46,7 @@ func (s *fakeAuditService) CreateLoginLog(context.Context, *auditentity.LoginLog
 	return nil, errors.New("not used")
 }
 
-func (s *fakeAuditService) ListLoginLogs(context.Context, filtering.Filter, ordering.OrderBy, int, int) ([]*auditentity.LoginLog, error) {
+func (s *fakeAuditService) ListLoginLogs(context.Context, listq.Query) ([]*auditentity.LoginLog, error) {
 	return s.loginLogs, s.err
 }
 

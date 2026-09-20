@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"glex/internal/domain/user/entity"
+	"glex/pkg/listq"
 )
 
 // UserRepo is the repository interface for system users (the inversion seam
@@ -15,7 +16,7 @@ type UserRepo interface {
 	FindByUserName(ctx context.Context, userName string) (*entity.User, error)
 	FindByEmail(ctx context.Context, email string) (*entity.User, error)
 	FindByPhoneNumber(ctx context.Context, phone string) (*entity.User, error)
-	ListUsers(ctx context.Context, opts ...ListOption) ([]*entity.User, error)
+	ListUsers(ctx context.Context, q listq.Query, deptIDs []int64) ([]*entity.User, error)
 	CreateUser(ctx context.Context, u *entity.User) (*entity.User, error)
 	// UpdateUser returns the persisted record with its pre-image. The
 	// Application service owns its transaction and session revocation.

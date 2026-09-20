@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"glex/internal/domain/access/entity"
+	"glex/pkg/listq"
 )
 
 // UserRoleRepo is the repository interface for user↔role links (the inversion
@@ -26,7 +27,7 @@ type UserRoleRepo interface {
 	ReplaceUserRoles(ctx context.Context, userID int64, roleIDs []int64, actorID int64) ([]int64, error)
 	// ListRoleUsers lists the active users assigned the role, matching the
 	// given options (filter/order/offset/limit).
-	ListRoleUsers(ctx context.Context, roleID int64, opts ...ListOption) ([]*entity.RoleUser, error)
+	ListRoleUsers(ctx context.Context, roleID int64, q listq.Query) ([]*entity.RoleUser, error)
 	// CountUserRoles counts the active users assigned the role — the guard
 	// behind "a role with users cannot be deleted or disabled" (RuoYi:
 	// 已分配，不能删除/禁用).

@@ -16,6 +16,7 @@ import (
 	"glex/internal/domain/file/entity"
 	"glex/internal/domain/file/repository"
 	"glex/internal/domain/file/storage"
+	"glex/pkg/listq"
 )
 
 // fakeFileRepo is an in-memory repository.FileRepo for testing the file
@@ -56,7 +57,7 @@ func (r *fakeFileRepo) FindByIDs(_ context.Context, ids []int64) ([]*entity.Stor
 	return fs, nil
 }
 
-func (r *fakeFileRepo) List(context.Context, ...repository.ListOption) ([]*entity.StoredFile, error) {
+func (r *fakeFileRepo) List(context.Context, listq.Query) ([]*entity.StoredFile, error) {
 	return nil, nil
 }
 

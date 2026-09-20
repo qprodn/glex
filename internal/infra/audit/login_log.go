@@ -12,6 +12,7 @@ import (
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/loginlog"
 	"glex/internal/infra/store"
+	"glex/pkg/listq"
 )
 
 // toBizLoginLog maps an ent LoginLog PO to an auditentity.LoginLog DO.
@@ -45,19 +46,15 @@ func NewLoginLogRepo(data *store.Data) auditrepo.LoginLogRepo {
 	}
 }
 
-func (r *loginLogRepo) List(ctx context.Context, opts ...auditrepo.ListOption) ([]*auditentity.LoginLog, error) {
-	o := auditrepo.ListOptions{Limit: 20}
-	for _, opt := range opts {
-		opt(&o)
-	}
+func (r *loginLogRepo) List(ctx context.Context, q listq.Query) ([]*auditentity.LoginLog, error) {
 	pos, err := r.data.DB.LoginLog(ctx).Query().
 		Where(
 			loginlog.DeletedAtIsNil(),
-			ents.ApplyFilter(o.Filter),
+			ents.ApplyFilter(q.Filter),
 		).
-		Order(ents.ApplyOrderBy(o.OrderBy)).
-		Offset(o.Offset).
-		Limit(o.Limit).
+		Order(ents.ApplyOrderBy(q.OrderBy)).
+		Offset(q.Offset).
+		Limit(q.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, auditStoreError(ctx, r.logger, "audit.login_log.list", err)

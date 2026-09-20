@@ -6,7 +6,9 @@ import (
 
 	"glex/internal/domain/access"
 	"glex/internal/domain/access/entity"
-	"glex/internal/domain/access/repository"
+
+	"go.einride.tech/aip/filtering"
+	"go.einride.tech/aip/ordering"
 
 	"github.com/go-kratos/kratos/v3/errors"
 )
@@ -63,7 +65,7 @@ func (r *fakeMenuRepo) ListByIDs(_ context.Context, ids []int64) ([]*entity.Menu
 	return out, nil
 }
 
-func (r *fakeMenuRepo) ListMenus(context.Context, ...repository.ListOption) ([]*entity.Menu, error) {
+func (r *fakeMenuRepo) ListMenus(context.Context, filtering.Filter, ordering.OrderBy) ([]*entity.Menu, error) {
 	out := make([]*entity.Menu, 0, len(r.byID))
 	for _, m := range r.byID {
 		out = append(out, m)

@@ -7,6 +7,8 @@ import (
 	"context"
 
 	"glex/internal/domain/access/entity"
+	"go.einride.tech/aip/filtering"
+	"go.einride.tech/aip/ordering"
 )
 
 // MenuRepo is the repository interface for menus (the inversion seam declared
@@ -18,7 +20,7 @@ type MenuRepo interface {
 	// ListByIDs returns the menus with the given ids that exist and are not
 	// soft-deleted (used to validate Menu Grants).
 	ListByIDs(ctx context.Context, ids []int64) ([]*entity.Menu, error)
-	ListMenus(ctx context.Context, opts ...ListOption) ([]*entity.Menu, error)
+	ListMenus(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy) ([]*entity.Menu, error)
 	// LoadRouteAccess freshly reads the System User's active Role Assignments,
 	// their Menu Grants, and every active Directory/Menu. Button nodes are not
 	// included in ActiveMenus.

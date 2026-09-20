@@ -9,9 +9,8 @@ import (
 	orgv1 "glex/api/org/v1"
 	orgentity "glex/internal/domain/org/entity"
 	orgservice "glex/internal/domain/org/service"
+	"glex/pkg/listq"
 
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
@@ -44,7 +43,7 @@ func (f *fakePostService) Get(_ context.Context, _ int64) (*orgentity.Post, erro
 	return f.get, nil
 }
 
-func (f *fakePostService) List(context.Context, filtering.Filter, ordering.OrderBy, int, int, []int64) ([]*orgentity.Post, error) {
+func (f *fakePostService) List(context.Context, listq.Query, []int64) ([]*orgentity.Post, error) {
 	return nil, nil
 }
 

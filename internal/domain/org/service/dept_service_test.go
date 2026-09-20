@@ -9,6 +9,7 @@ import (
 	"glex/internal/domain/org"
 	"glex/internal/domain/org/entity"
 	"glex/internal/domain/org/repository"
+	"glex/pkg/listq"
 )
 
 // fakeDeptRepo is an in-memory repository.DeptRepo for testing the dept
@@ -164,7 +165,7 @@ func (r *fakePostRepo) FindByPostCode(_ context.Context, code string) (*entity.P
 	return nil, org.ErrPostNotFound
 }
 
-func (r *fakePostRepo) ListPosts(context.Context, ...repository.ListOption) ([]*entity.Post, error) {
+func (r *fakePostRepo) ListPosts(context.Context, listq.Query, []int64) ([]*entity.Post, error) {
 	return nil, nil
 }
 

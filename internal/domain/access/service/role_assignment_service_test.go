@@ -6,11 +6,9 @@ import (
 
 	"glex/internal/domain/access"
 	"glex/internal/domain/access/entity"
-	"glex/internal/domain/access/repository"
+	"glex/pkg/listq"
 
 	"github.com/go-kratos/kratos/v3/errors"
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 )
 
 // fakeUserRoleRepo is an in-memory repository.UserRoleRepo for testing the
@@ -53,7 +51,7 @@ func (r *fakeUserRoleRepo) ReplaceUserRoles(_ context.Context, userID int64, rol
 	return []int64{userID}, nil
 }
 
-func (r *fakeUserRoleRepo) ListRoleUsers(context.Context, int64, ...repository.ListOption) ([]*entity.RoleUser, error) {
+func (r *fakeUserRoleRepo) ListRoleUsers(context.Context, int64, listq.Query) ([]*entity.RoleUser, error) {
 	return nil, nil
 }
 
@@ -196,7 +194,7 @@ func TestListRoleUsers_RoleNotFound(t *testing.T) {
 
 	// The fake repo ignores the filter/order payload; the role gate is what
 	// the test exercises.
-	_, err := svc.ListRoleUsers(context.Background(), 99, filtering.Filter{}, ordering.OrderBy{}, 20, 0)
+	_, err := svc.ListRoleUsers(context.Background(), 99, listq.Query{Limit: 20})
 	if !errors.Is(err, access.ErrRoleNotFound) {
 		t.Fatalf("expected ErrRoleNotFound, got %v", err)
 	}

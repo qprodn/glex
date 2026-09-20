@@ -15,6 +15,7 @@ import (
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/user"
 	"glex/internal/infra/ent/userrole"
+	"glex/pkg/listq"
 )
 
 // userRoleRepo implements accessrepo.UserRoleRepo over the sys_user_role link
@@ -163,20 +164,16 @@ func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleI
 // ListRoleUsers lists the active users assigned the role, applying the given
 // list options (filter/order/offset/limit). The role's existence is checked
 // by RoleAssignmentUsecase.
-func (r *userRoleRepo) ListRoleUsers(ctx context.Context, roleID int64, opts ...accessrepo.ListOption) ([]*accessentity.RoleUser, error) {
-	o := accessrepo.ListOptions{Limit: 20}
-	for _, opt := range opts {
-		opt(&o)
-	}
+func (r *userRoleRepo) ListRoleUsers(ctx context.Context, roleID int64, q listq.Query) ([]*accessentity.RoleUser, error) {
 	pos, err := r.data.DB.User(ctx).Query().
 		Where(
 			user.DeletedAtIsNil(),
 			user.HasRoleAssignmentsWith(userrole.RoleIDEQ(roleID), userrole.DeletedAtIsNil()),
-			ents.ApplyFilter(o.Filter),
+			ents.ApplyFilter(q.Filter),
 		).
-		Order(ents.ApplyOrderBy(o.OrderBy)).
-		Offset(o.Offset).
-		Limit(o.Limit).
+		Order(ents.ApplyOrderBy(q.OrderBy)).
+		Offset(q.Offset).
+		Limit(q.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, accessStoreError(ctx, r.logger, "access.role_assignment.list_users", err)

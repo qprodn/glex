@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"glex/internal/domain/org/entity"
+	"glex/pkg/listq"
 )
 
 // PostRepo is the repository interface for posts (the inversion seam
@@ -18,7 +19,7 @@ type PostRepo interface {
 	FindByPostCode(ctx context.Context, code string) (*entity.Post, error)
 	// ListPosts lists posts matching the options (filter/order/offset/limit
 	// plus the department-subtree restriction).
-	ListPosts(ctx context.Context, opts ...ListOption) ([]*entity.Post, error)
+	ListPosts(ctx context.Context, q listq.Query, deptIDs []int64) ([]*entity.Post, error)
 	// ListByIDs returns the active posts bearing the given ids (soft-deleted
 	// excluded) — the assignment-validation read. Order follows the ids.
 	ListByIDs(ctx context.Context, ids []int64) ([]*entity.Post, error)

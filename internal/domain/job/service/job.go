@@ -10,13 +10,11 @@ import (
 	"log/slog"
 	"time"
 
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
-
 	"glex/internal/domain/job"
 	jobentity "glex/internal/domain/job/entity"
 	"glex/internal/domain/job/repository"
 	"glex/internal/lock"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
 )
 
@@ -26,7 +24,7 @@ import (
 // returns to its caller first logs its Warn breadcrumb (ADR 0011).
 type Jobs interface {
 	Get(ctx context.Context, id int64) (*jobentity.Job, error)
-	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*jobentity.Job, error)
+	List(ctx context.Context, q listq.Query) ([]*jobentity.Job, error)
 	// ListEnabled returns every active enabled job — the scheduler loop's
 	// scan read (ADR 0023).
 	ListEnabled(ctx context.Context) ([]*jobentity.Job, error)
@@ -59,7 +57,7 @@ type Jobs interface {
 	Fire(ctx context.Context, j *jobentity.Job, trigger jobentity.Trigger) error
 
 	GetLog(ctx context.Context, id int64) (*jobentity.JobLog, error)
-	ListLogs(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*jobentity.JobLog, error)
+	ListLogs(ctx context.Context, q listq.Query) ([]*jobentity.JobLog, error)
 	// DeleteLog soft-deletes one log row — history cleanup, never record
 	// editing (ADR 0023).
 	DeleteLog(ctx context.Context, id, actorID int64) error
@@ -98,13 +96,8 @@ func (s *jobsImpl) Get(ctx context.Context, id int64) (*jobentity.Job, error) {
 	return j, nil
 }
 
-func (s *jobsImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*jobentity.Job, error) {
-	js, err := s.jobs.List(ctx,
-		repository.ListFilter(filter),
-		repository.ListOrderBy(orderBy),
-		repository.ListLimit(limit),
-		repository.ListOffset(offset),
-	)
+func (s *jobsImpl) List(ctx context.Context, q listq.Query) ([]*jobentity.Job, error) {
+	js, err := s.jobs.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "job.svc.list", err)
 		return nil, err
@@ -272,13 +265,8 @@ func (s *jobsImpl) GetLog(ctx context.Context, id int64) (*jobentity.JobLog, err
 	return l, nil
 }
 
-func (s *jobsImpl) ListLogs(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*jobentity.JobLog, error) {
-	ls, err := s.logs.List(ctx,
-		repository.ListFilter(filter),
-		repository.ListOrderBy(orderBy),
-		repository.ListLimit(limit),
-		repository.ListOffset(offset),
-	)
+func (s *jobsImpl) ListLogs(ctx context.Context, q listq.Query) ([]*jobentity.JobLog, error) {
+	ls, err := s.logs.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "job.svc.list_logs", err)
 		return nil, err

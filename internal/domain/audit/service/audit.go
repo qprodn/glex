@@ -6,10 +6,8 @@ import (
 
 	"glex/internal/domain/audit/entity"
 	"glex/internal/domain/audit/repository"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
-
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 )
 
 // Audit is the audit domain service behind the monitor log endpoints: the
@@ -24,13 +22,13 @@ type Audit interface {
 	// CreateOperLog validates and persists one operation record.
 	CreateOperLog(ctx context.Context, o *entity.OperLog) (*entity.OperLog, error)
 	GetOperLog(ctx context.Context, id int64) (*entity.OperLog, error)
-	ListOperLogs(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.OperLog, error)
+	ListOperLogs(ctx context.Context, q listq.Query) ([]*entity.OperLog, error)
 	// DeleteOperLog withdraws one operation record (ADR 0002).
 	DeleteOperLog(ctx context.Context, id, actorID int64) error
 
 	// CreateLoginLog validates and persists one sign-in/session-end record.
 	CreateLoginLog(ctx context.Context, l *entity.LoginLog) (*entity.LoginLog, error)
-	ListLoginLogs(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.LoginLog, error)
+	ListLoginLogs(ctx context.Context, q listq.Query) ([]*entity.LoginLog, error)
 	// DeleteLoginLog withdraws one sign-in record (ADR 0002).
 	DeleteLoginLog(ctx context.Context, id, actorID int64) error
 }
@@ -75,13 +73,8 @@ func (s *auditImpl) GetOperLog(ctx context.Context, id int64) (*entity.OperLog, 
 	return o, nil
 }
 
-func (s *auditImpl) ListOperLogs(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.OperLog, error) {
-	os, err := s.operLogs.List(ctx,
-		repository.ListFilter(filter),
-		repository.ListOrderBy(orderBy),
-		repository.ListLimit(limit),
-		repository.ListOffset(offset),
-	)
+func (s *auditImpl) ListOperLogs(ctx context.Context, q listq.Query) ([]*entity.OperLog, error) {
+	os, err := s.operLogs.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "audit.svc.list_oper_logs", err)
 		return nil, err
@@ -112,13 +105,8 @@ func (s *auditImpl) CreateLoginLog(ctx context.Context, l *entity.LoginLog) (*en
 	return created, nil
 }
 
-func (s *auditImpl) ListLoginLogs(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.LoginLog, error) {
-	ls, err := s.loginLogs.List(ctx,
-		repository.ListFilter(filter),
-		repository.ListOrderBy(orderBy),
-		repository.ListLimit(limit),
-		repository.ListOffset(offset),
-	)
+func (s *auditImpl) ListLoginLogs(ctx context.Context, q listq.Query) ([]*entity.LoginLog, error) {
+	ls, err := s.loginLogs.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "audit.svc.list_login_logs", err)
 		return nil, err

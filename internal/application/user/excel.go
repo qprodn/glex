@@ -13,6 +13,7 @@ import (
 	userdomain "glex/internal/domain/user"
 	userentity "glex/internal/domain/user/entity"
 	"glex/pkg/excelx"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
 
 	kerrors "github.com/go-kratos/kratos/v3/errors"
@@ -396,7 +397,7 @@ func (s *UserApplication) listForExport(ctx context.Context, req *userv1.ExportU
 			return nil, err
 		}
 	}
-	users, err := s.svc.List(ctx, filter, orderBy, exportRowCap+1, 0, deptIDs)
+	users, err := s.svc.List(ctx, listq.Query{Filter: filter, OrderBy: orderBy, Limit: exportRowCap + 1}, deptIDs)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "user.list_for_export", err)
 		return nil, err
@@ -476,12 +477,6 @@ func userOrder(req ordering.Request) (ordering.OrderBy, error) {
 }
 
 func userFilterDeclarations() (*filtering.Declarations, error) {
-	return filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
-		filtering.DeclareIdent("user_name", filtering.TypeString),
-		filtering.DeclareIdent("email", filtering.TypeString),
-		filtering.DeclareIdent("phone_number", filtering.TypeString),
-		filtering.DeclareIdent("status", filtering.TypeInt),
-		filtering.DeclareIdent("created_at", filtering.TypeTimestamp),
-	)
+	// One ident list: the export filter derives from the list Spec.
+	return filtering.NewDeclarations(append([]filtering.DeclarationOption{filtering.DeclareStandardFunctions()}, userListSpec.Idents...)...)
 }

@@ -8,12 +8,12 @@ import (
 	"glex/internal/bizpkg"
 	orgentity "glex/internal/domain/org/entity"
 	orgservice "glex/internal/domain/org/service"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
 
 	"go.einride.tech/aip/fieldmask"
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
-	"go.einride.tech/aip/pagination"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -65,40 +65,23 @@ func NewPostApplication(svc orgservice.Post, depts orgservice.Dept, tx Transacti
 // ListPosts lists posts with AIP-160 filter, AIP-132 order, and page-token
 // pagination. A non-zero dept_id restricts the listing to that department's
 // subtree, resolved server-side by the department domain service.
-func (s *PostApplication) ListPosts(ctx context.Context, req *orgv1.ListPostsRequest) (*orgv1.PostSet, error) {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
+// postListSpec is this module's list fact (ADR 0024): filterable
+// idents plus the post listing order.
+var postListSpec = listq.Spec{
+	Idents: []filtering.DeclarationOption{
 		filtering.DeclareIdent("post_code", filtering.TypeString),
 		filtering.DeclareIdent("post_name", filtering.TypeString),
 		filtering.DeclareIdent("status", filtering.TypeInt),
 		filtering.DeclareIdent("dept_id", filtering.TypeInt),
-	)
+	},
+	DefaultOrder: []ordering.Field{{Path: "post_sort"}, {Path: "id"}}, // 
+}
+
+func (s *PostApplication) ListPosts(ctx context.Context, req *orgv1.ListPostsRequest) (*orgv1.PostSet, error) {
+	q, page, err := listq.Parse(req, postListSpec)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "org.list_posts", err)
 		return nil, err
-	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "org.list_posts", err)
-		return nil, err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "org.list_posts", err)
-		return nil, err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "org.list_posts", err)
-		return nil, err
-	}
-	if len(orderBy.Fields) == 0 {
-		// Default order: display order, then id as a stable tie-break for
-		// page-token pagination.
-		orderBy.Fields = []ordering.Field{{Path: "post_sort"}, {Path: "id"}}
-	}
-	if req.GetPageSize() <= 0 {
-		req.PageSize = 20
 	}
 	var deptIDs []int64
 	if req.GetDeptId() != 0 {
@@ -108,7 +91,7 @@ func (s *PostApplication) ListPosts(ctx context.Context, req *orgv1.ListPostsReq
 			return nil, err
 		}
 	}
-	posts, err := s.svc.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset), deptIDs)
+	posts, err := s.svc.List(ctx, q, deptIDs)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "org.list_posts", err)
 		return nil, err
@@ -117,9 +100,7 @@ func (s *PostApplication) ListPosts(ctx context.Context, req *orgv1.ListPostsReq
 	for _, p := range posts {
 		set.Posts = append(set.Posts, convertPost(p))
 	}
-	if len(posts) >= int(req.GetPageSize()) {
-		set.NextPageToken = pageToken.Next(req).String()
-	}
+	set.NextPageToken = page.NextToken(len(posts))
 	return set, nil
 }
 

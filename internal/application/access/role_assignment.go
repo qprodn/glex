@@ -10,11 +10,11 @@ import (
 	"glex/internal/crossdomain/authn"
 	accessentity "glex/internal/domain/access/entity"
 	accessservice "glex/internal/domain/access/service"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
-	"go.einride.tech/aip/pagination"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -92,6 +92,16 @@ func NewRoleAssignmentApplication(svc accessservice.RoleAssignment, revoker auth
 // ListUserRoles returns every active role with its assigned flag for the
 // user (the assign dialog's data in one call). The user must exist (and not
 // be soft-deleted).
+// roleUserListSpec is this module's list fact (ADR 0024): filterable
+// idents plus the assignment listing order.
+var roleUserListSpec = listq.Spec{
+	Idents: []filtering.DeclarationOption{
+		filtering.DeclareIdent("user_name", filtering.TypeString),
+		filtering.DeclareIdent("status", filtering.TypeInt),
+	},
+	DefaultOrder: []ordering.Field{{Path: "id"}}, // 
+}
+
 func (s *RoleAssignmentApplication) ListUserRoles(ctx context.Context, req *accessv1.ListUserRolesRequest) (*accessv1.UserRoles, error) {
 	assignments, err := s.svc.ListForUser(ctx, req.GetUserId())
 	if err != nil {
@@ -127,38 +137,12 @@ func (s *RoleAssignmentApplication) UpdateUserRoles(ctx context.Context, req *ac
 // filter, AIP-132 order, and page-token pagination (same shape as
 // ListUsers).
 func (s *RoleAssignmentApplication) ListRoleUsers(ctx context.Context, req *accessv1.ListRoleUsersRequest) (*userv1.UserSet, error) {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
-		filtering.DeclareIdent("user_name", filtering.TypeString),
-		filtering.DeclareIdent("status", filtering.TypeInt),
-	)
+	q, page, err := listq.Parse(req, roleUserListSpec)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.list_role_users", err)
 		return nil, err
 	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "access.list_role_users", err)
-		return nil, err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "access.list_role_users", err)
-		return nil, err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "access.list_role_users", err)
-		return nil, err
-	}
-	if len(orderBy.Fields) == 0 {
-		// Default order: id as a stable tie-break for page-token pagination.
-		orderBy.Fields = []ordering.Field{{Path: "id"}}
-	}
-	if req.GetPageSize() <= 0 {
-		req.PageSize = 20
-	}
-	users, err := s.svc.ListRoleUsers(ctx, req.GetRoleId(), filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
+	users, err := s.svc.ListRoleUsers(ctx, req.GetRoleId(), q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.list_role_users", err)
 		return nil, err
@@ -167,8 +151,6 @@ func (s *RoleAssignmentApplication) ListRoleUsers(ctx context.Context, req *acce
 	for _, u := range users {
 		set.Users = append(set.Users, convertRoleUser(u))
 	}
-	if len(users) >= int(req.GetPageSize()) {
-		set.NextPageToken = pageToken.Next(req).String()
-	}
+	set.NextPageToken = page.NextToken(len(users))
 	return set, nil
 }

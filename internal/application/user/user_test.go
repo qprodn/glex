@@ -18,10 +18,9 @@ import (
 	userservice "glex/internal/domain/user/service"
 
 	userv1 "glex/api/user/v1"
+	"glex/pkg/listq"
 
 	"github.com/go-kratos/kratos/v3/errors"
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
@@ -104,17 +103,17 @@ func (s *fakeUserService) Get(_ context.Context, id int64) (*userentity.User, er
 	return u, nil
 }
 
-func (s *fakeUserService) List(_ context.Context, _ filtering.Filter, _ ordering.OrderBy, limit, offset int, _ []int64) ([]*userentity.User, error) {
-	s.lastListCall.limit = limit
-	s.lastListCall.offset = offset
-	if offset >= len(s.list) {
+func (s *fakeUserService) List(_ context.Context, q listq.Query, _ []int64) ([]*userentity.User, error) {
+	s.lastListCall.limit = q.Limit
+	s.lastListCall.offset = q.Offset
+	if q.Offset >= len(s.list) {
 		return nil, nil
 	}
 	end := len(s.list)
-	if limit > 0 && offset+limit < end {
-		end = offset + limit
+	if q.Limit > 0 && q.Offset+q.Limit < end {
+		end = q.Offset + q.Limit
 	}
-	return append([]*userentity.User(nil), s.list[offset:end]...), nil
+	return append([]*userentity.User(nil), s.list[q.Offset:end]...), nil
 }
 
 func (s *fakeUserService) Create(_ context.Context, u *userentity.User) (*userentity.User, error) {
