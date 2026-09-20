@@ -89,15 +89,17 @@ func (r *Registry) Schemas() []payentity.ChannelSchema {
 	return schemas
 }
 
-// Schema returns one channel's schema; false for unadopted channels.
-func (r *Registry) Schema(channel payentity.Channel) (payentity.ChannelSchema, bool) {
+// Schema returns one channel's schema; the module's unadopted sentinel for
+// channels with no registered adapter (ADR 0025 — the sentinel over the
+// zero value, never a bool flag).
+func (r *Registry) Schema(channel payentity.Channel) (payentity.ChannelSchema, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	f, ok := r.factories[channel]
 	if !ok {
-		return payentity.ChannelSchema{}, false
+		return payentity.ChannelSchema{}, pay.ErrChannelNotAdopted
 	}
-	return f.Schema(), true
+	return f.Schema(), nil
 }
 
 // Adopted reports whether the channel has a registered adapter.

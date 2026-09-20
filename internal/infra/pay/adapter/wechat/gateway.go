@@ -144,9 +144,9 @@ func (g *gateway) Prepay(ctx context.Context, req payservice.PrepayRequest) (pay
 
 // Query asks the channel for the payment's true state, normalized to the
 // module's status vocabulary.
-func (g *gateway) Query(ctx context.Context, m *payentity.MerchantAccount, paymentNo string) (payservice.ChannelPaymentState, error) {
+func (g *gateway) Query(ctx context.Context, req payservice.QueryRequest) (payservice.ChannelPaymentState, error) {
 	resp, _, err := g.native.QueryOrderByOutTradeNo(ctx, native.QueryOrderByOutTradeNoRequest{
-		OutTradeNo: sp(paymentNo),
+		OutTradeNo: sp(req.PaymentNo),
 		Mchid:      sp(g.mchID),
 	})
 	if err != nil {
@@ -173,9 +173,9 @@ func (g *gateway) Query(ctx context.Context, m *payentity.MerchantAccount, payme
 
 // Close closes the order; an already-paid answer surfaces as
 // ErrChannelAlreadyPaid so the settlement path can flip into a query.
-func (g *gateway) Close(ctx context.Context, m *payentity.MerchantAccount, paymentNo string) error {
+func (g *gateway) Close(ctx context.Context, req payservice.CloseRequest) error {
 	_, err := g.native.CloseOrder(ctx, native.CloseOrderRequest{
-		OutTradeNo: sp(paymentNo),
+		OutTradeNo: sp(req.PaymentNo),
 		Mchid:      sp(g.mchID),
 	})
 	if err == nil {
@@ -213,11 +213,11 @@ func (g *gateway) Refund(ctx context.Context, req payservice.RefundRequest) (pay
 }
 
 // QueryRefund asks the channel for the refund's true state. WeChat
-// resolves by out_refund_no alone; paymentNo exists on the seam for
-// channels whose query API requires it.
-func (g *gateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo, _ string) (payservice.ChannelRefundState, error) {
+// resolves by out_refund_no alone; the payment number exists on the seam
+// for channels whose query API requires it.
+func (g *gateway) QueryRefund(ctx context.Context, req payservice.RefundQueryRequest) (payservice.ChannelRefundState, error) {
 	resp, _, err := g.refund.QueryByOutRefundNo(ctx, refunddomestic.QueryByOutRefundNoRequest{
-		OutRefundNo: sp(refundNo),
+		OutRefundNo: sp(req.RefundNo),
 	})
 	if err != nil {
 		return payservice.ChannelRefundState{}, mapAPIError(err)
@@ -234,7 +234,8 @@ func (g *gateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount,
 // normalizes it into the canonical event. Any verification or decryption
 // failure is an error — the caller records the unverified evidence and
 // rejects (ADR 0020).
-func (g *gateway) ParseNotification(ctx context.Context, m *payentity.MerchantAccount, headers http.Header, body []byte) (payentity.ChannelNotification, error) {
+func (g *gateway) ParseNotification(ctx context.Context, req payservice.NotificationRequest) (payentity.ChannelNotification, error) {
+	headers, body := req.Headers, req.Body
 	// Route on the (still unverified) event type purely to pick the
 	// content type; the handler re-verifies the signature over the full
 	// body before anything is trusted.

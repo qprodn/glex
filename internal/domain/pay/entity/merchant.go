@@ -52,19 +52,21 @@ func (c Channel) Label() string {
 	return ""
 }
 
-// ChannelByCode resolves a stable code back to the Channel.
-func ChannelByCode(code string) (Channel, bool) {
+// ChannelByCode resolves a stable code back to the Channel. The zero
+// Channel means unknown — Valid() distinguishes it (ADR 0025: missing is
+// the zero value, never a bool flag).
+func ChannelByCode(code string) Channel {
 	switch strings.ToLower(code) {
 	case "wechat":
-		return ChannelWechat, true
+		return ChannelWechat
 	case "alipay":
-		return ChannelAlipay, true
+		return ChannelAlipay
 	case "unionpay":
-		return ChannelUnionPay, true
+		return ChannelUnionPay
 	case "stripe":
-		return ChannelStripe, true
+		return ChannelStripe
 	}
-	return 0, false
+	return 0
 }
 
 // MerchantStatus is the Merchant Account switch: disabled accounts cannot

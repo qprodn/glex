@@ -11,13 +11,32 @@ import (
 	"glex/pkg/logx"
 )
 
-// CreateRefundInput is what a refund initiation states. The caller holds
+// CreateRefundRequest is what a refund initiation states: the refund's
+// shape plus the actor stamped into the audit fields. The caller holds
 // the payment-scoped lock (pay:refund:{payment_id}) so the cap check and
 // the insert are serialized against other refunds of the same payment.
-type CreateRefundInput struct {
+type CreateRefundRequest struct {
 	PaymentID int64
 	Amount    int64
 	Reason    string
+	// ActorID stamps create_by/update_by (0 = the system itself, ADR 0002).
+	ActorID int64
+}
+
+// PrepayRefundRequest is one freshly-recorded refund's channel call: the
+// refund and the deployment's notify base URL the callback route is built
+// from.
+type PrepayRefundRequest struct {
+	ID int64
+	// NotifyBaseURL prefixes /pay/notify/{channel}/{merchant_id}.
+	NotifyBaseURL string
+}
+
+// ApplyRefundStateRequest is one channel-asserted refund state to apply to
+// one refund — the notify path's entry.
+type ApplyRefundStateRequest struct {
+	RefundNo int64
+	State    ChannelRefundState
 }
 
 // Refund is the refund domain service: the only path to Refund rows. The
@@ -30,11 +49,11 @@ type Refund interface {
 	// Create validates the cap and records the PENDING refund. The channel
 	// call happens in PrepayRefund afterwards so a synchronous channel
 	// answer settles the row immediately (design §5).
-	Create(ctx context.Context, in *CreateRefundInput, actorID int64) (*payentity.Refund, error)
+	Create(ctx context.Context, req CreateRefundRequest) (*payentity.Refund, error)
 	// PrepayRefund asks the channel to move the money for one freshly
 	// recorded refund. WeChat answers PENDING (the callback settles);
 	// Alipay's synchronous answer settles here and now.
-	PrepayRefund(ctx context.Context, id int64, notifyBaseURL string) (*payentity.Refund, error)
+	PrepayRefund(ctx context.Context, req PrepayRefundRequest) (*payentity.Refund, error)
 	// Query is the explicit settlement path for refunds whose callbacks
 	// were lost.
 	Query(ctx context.Context, id int64) (*payentity.Refund, error)
@@ -42,7 +61,7 @@ type Refund interface {
 	// the notify path's entry. Every success adds to the payment's
 	// refunded sum; the bool is false when the CAS found the refund
 	// already settled (duplicate delivery, no-op by design).
-	ApplyRefundState(ctx context.Context, refundNo int64, state ChannelRefundState) (bool, error)
+	ApplyRefundState(ctx context.Context, req ApplyRefundStateRequest) (bool, error)
 }
 
 type refundImpl struct {
@@ -88,13 +107,13 @@ func (s *refundImpl) List(ctx context.Context, q listq.Query) ([]*payentity.Refu
 	return rs, nil
 }
 
-func (s *refundImpl) Create(ctx context.Context, in *CreateRefundInput, actorID int64) (*payentity.Refund, error) {
-	if in.PaymentID <= 0 || in.Amount <= 0 || len(in.Reason) > 256 {
+func (s *refundImpl) Create(ctx context.Context, req CreateRefundRequest) (*payentity.Refund, error) {
+	if req.PaymentID <= 0 || req.Amount <= 0 || len(req.Reason) > 256 {
 		err := pay.ErrPaymentInvalid
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.create", err)
 		return nil, err
 	}
-	p, err := s.payments.FindByID(ctx, in.PaymentID)
+	p, err := s.payments.FindByID(ctx, req.PaymentID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.create", err)
 		return nil, err
@@ -114,7 +133,7 @@ func (s *refundImpl) Create(ctx context.Context, in *CreateRefundInput, actorID 
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.create", err)
 		return nil, err
 	}
-	if p.RefundedAmount+pending+in.Amount > p.Amount {
+	if p.RefundedAmount+pending+req.Amount > p.Amount {
 		err = pay.ErrRefundExceedLimit
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.create", err)
 		return nil, err
@@ -124,11 +143,11 @@ func (s *refundImpl) Create(ctx context.Context, in *CreateRefundInput, actorID 
 		PaymentID:  p.ID,
 		MerchantID: p.MerchantID,
 		Channel:    p.Channel,
-		Amount:     in.Amount,
-		Reason:     in.Reason,
+		Amount:     req.Amount,
+		Reason:     req.Reason,
 		Status:     payentity.RefundPending,
-		CreateBy:   actorID,
-		UpdateBy:   actorID,
+		CreateBy:   req.ActorID,
+		UpdateBy:   req.ActorID,
 	}
 	created, err := s.refunds.Create(ctx, rf)
 	if err != nil {
@@ -138,7 +157,8 @@ func (s *refundImpl) Create(ctx context.Context, in *CreateRefundInput, actorID 
 	return created, nil
 }
 
-func (s *refundImpl) PrepayRefund(ctx context.Context, id int64, notifyBaseURL string) (*payentity.Refund, error) {
+func (s *refundImpl) PrepayRefund(ctx context.Context, req PrepayRefundRequest) (*payentity.Refund, error) {
+	id := req.ID
 	rf, err := s.refunds.FindByID(ctx, id)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.prepay", err)
@@ -147,7 +167,7 @@ func (s *refundImpl) PrepayRefund(ctx context.Context, id int64, notifyBaseURL s
 	if rf.Status != payentity.RefundPending {
 		return rf, nil
 	}
-	m, gw, err := s.resolve(ctx, rf.MerchantID)
+	resolved, err := s.resolve(ctx, rf.MerchantID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.prepay", err)
 		return nil, err
@@ -160,22 +180,22 @@ func (s *refundImpl) PrepayRefund(ctx context.Context, id int64, notifyBaseURL s
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.prepay", err)
 		return nil, err
 	}
-	state, err := gw.Refund(ctx, RefundRequest{
-		Merchant:       m,
+	state, err := resolved.Gateway.Refund(ctx, RefundRequest{
+		Merchant:       resolved.Merchant,
 		RefundNo:       fmtPaymentNo(rf.ID),
 		PaymentNo:      fmtPaymentNo(rf.PaymentID),
 		ChannelTradeNo: payment.ChannelTradeNo,
 		Total:          payment.Amount,
 		Amount:         rf.Amount,
 		Reason:         rf.Reason,
-		NotifyURL:      notifyURL(notifyBaseURL, rf.Channel, rf.MerchantID),
+		NotifyURL:      notifyURL(req.NotifyBaseURL, rf.Channel, rf.MerchantID),
 	})
 	if err != nil {
 		err = pay.ErrChannelError.WithCause(err)
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.prepay", err)
 		return nil, err
 	}
-	if _, err := s.ApplyRefundState(ctx, rf.ID, state); err != nil {
+	if _, err := s.ApplyRefundState(ctx, ApplyRefundStateRequest{RefundNo: rf.ID, State: state}); err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.prepay", err)
 		return nil, err
 	}
@@ -196,18 +216,22 @@ func (s *refundImpl) Query(ctx context.Context, id int64) (*payentity.Refund, er
 	if rf.Status != payentity.RefundPending {
 		return rf, nil
 	}
-	m, gw, err := s.resolve(ctx, rf.MerchantID)
+	resolved, err := s.resolve(ctx, rf.MerchantID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.query", err)
 		return nil, err
 	}
-	state, err := gw.QueryRefund(ctx, m, fmtPaymentNo(rf.ID), fmtPaymentNo(rf.PaymentID))
+	state, err := resolved.Gateway.QueryRefund(ctx, RefundQueryRequest{
+		Merchant:  resolved.Merchant,
+		RefundNo:  fmtPaymentNo(rf.ID),
+		PaymentNo: fmtPaymentNo(rf.PaymentID),
+	})
 	if err != nil {
 		err = pay.ErrChannelError.WithCause(err)
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.query", err)
 		return nil, err
 	}
-	if _, err := s.ApplyRefundState(ctx, rf.ID, state); err != nil {
+	if _, err := s.ApplyRefundState(ctx, ApplyRefundStateRequest{RefundNo: rf.ID, State: state}); err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.query", err)
 		return nil, err
 	}
@@ -218,7 +242,8 @@ func (s *refundImpl) Query(ctx context.Context, id int64) (*payentity.Refund, er
 // settle and the payment's refunded-sum advance are one atomic repo write
 // — the sum moves exactly once with the status, and a duplicate delivery
 // loses the CAS and never double-counts.
-func (s *refundImpl) ApplyRefundState(ctx context.Context, refundNo int64, state ChannelRefundState) (bool, error) {
+func (s *refundImpl) ApplyRefundState(ctx context.Context, req ApplyRefundStateRequest) (bool, error) {
+	refundNo, state := req.RefundNo, req.State
 	switch state.State {
 	case payentity.RefundSuccess:
 		rf, err := s.refunds.FindByID(ctx, refundNo)
@@ -240,14 +265,20 @@ func (s *refundImpl) ApplyRefundState(ctx context.Context, refundNo int64, state
 		}
 		// The settle and the refunded-sum advance are one atomic unit in
 		// the repo — the sum moves exactly once with the status.
-		advanced, err := s.refunds.MarkSuccess(ctx, refundNo, rf.PaymentID, rf.Amount, state.ChannelRefundNo, state.RefundedAt)
+		advanced, err := s.refunds.MarkSuccess(ctx, payrepo.MarkRefundSuccessRequest{
+			ID:              refundNo,
+			PaymentID:       rf.PaymentID,
+			Amount:          rf.Amount,
+			ChannelRefundNo: state.ChannelRefundNo,
+			RefundedAt:      state.RefundedAt,
+		})
 		if err != nil {
 			logx.Propagate(ctx, s.logger, "pay.svc.refund.apply_state", err)
 			return false, err
 		}
 		return advanced, nil
 	case payentity.RefundFailed:
-		advanced, err := s.refunds.MarkFailed(ctx, refundNo, state.FailReason)
+		advanced, err := s.refunds.MarkFailed(ctx, payrepo.MarkRefundFailedRequest{ID: refundNo, Reason: state.FailReason})
 		if err != nil {
 			logx.Propagate(ctx, s.logger, "pay.svc.refund.apply_state", err)
 			return false, err
@@ -258,7 +289,7 @@ func (s *refundImpl) ApplyRefundState(ctx context.Context, refundNo int64, state
 	}
 }
 
-func (s *refundImpl) resolve(ctx context.Context, merchantID int64) (*payentity.MerchantAccount, ChannelGateway, error) {
+func (s *refundImpl) resolve(ctx context.Context, merchantID int64) (*ResolvedGateway, error) {
 	return resolveMerchantGateway(ctx, s.merchants, s.gateways, merchantID)
 }
 

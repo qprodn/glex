@@ -44,18 +44,22 @@ func convertRefund(r *payentity.Refund) *payv1.Refund {
 // sum. WeChat refunds return PENDING (the callback settles); Alipay's
 // synchronous answer settles immediately.
 func (s *PayApplication) CreateRefund(ctx context.Context, req *payv1.CreateRefundRequest) (*payv1.Refund, error) {
-	in := &payservice.CreateRefundInput{
+	in := payservice.CreateRefundRequest{
 		PaymentID: req.GetPaymentId(),
 		Amount:    req.GetAmount(),
 		Reason:    req.GetReason(),
+		ActorID:   s.actor(ctx),
 	}
 	var out *payentity.Refund
 	err := s.locker.WithLock(ctx, fmt.Sprintf("pay:refund:%d", in.PaymentID), func(ctx context.Context) error {
-		created, err := s.refunds.Create(ctx, in, s.actor(ctx))
+		created, err := s.refunds.Create(ctx, in)
 		if err != nil {
 			return err
 		}
-		out, err = s.refunds.PrepayRefund(ctx, created.ID, s.payConfig.GetNotifyBaseUrl())
+		out, err = s.refunds.PrepayRefund(ctx, payservice.PrepayRefundRequest{
+			ID:            created.ID,
+			NotifyBaseURL: s.payConfig.GetNotifyBaseUrl(),
+		})
 		return err
 	})
 	if err != nil {

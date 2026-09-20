@@ -36,6 +36,39 @@ type PrepayResult struct {
 	ChannelPayload string
 }
 
+// QueryRequest is one unified payment-state query call.
+type QueryRequest struct {
+	// Merchant carries the decrypted config (Config must be populated).
+	Merchant  *entity.MerchantAccount
+	PaymentNo string // the Payment number — the Channel's out_trade_no
+}
+
+// CloseRequest is one unified channel-side close call.
+type CloseRequest struct {
+	// Merchant carries the decrypted config (Config must be populated).
+	Merchant  *entity.MerchantAccount
+	PaymentNo string // the Payment number — the Channel's out_trade_no
+}
+
+// RefundQueryRequest is one unified refund-state query call. Alipay's
+// refund query requires the owning payment's out_trade_no alongside the
+// out_refund_no; channels that don't need it ignore the extra field.
+type RefundQueryRequest struct {
+	// Merchant carries the decrypted config (Config must be populated).
+	Merchant  *entity.MerchantAccount
+	RefundNo  string // the Refund number — the Channel's out_refund_no
+	PaymentNo string // the Payment number — the Channel's out_trade_no
+}
+
+// NotificationRequest is one channel delivery: the merchant whose gateway
+// verifies it plus the raw HTTP evidence.
+type NotificationRequest struct {
+	// Merchant carries the decrypted config (Config must be populated).
+	Merchant *entity.MerchantAccount
+	Headers  http.Header
+	Body     []byte
+}
+
 // ChannelPaymentState is the Channel's asserted Payment state, already
 // normalized to the module's own status vocabulary.
 type ChannelPaymentState struct {
@@ -90,23 +123,20 @@ type ChannelGateway interface {
 	// Prepay creates the channel-side order for one Payment.
 	Prepay(ctx context.Context, req PrepayRequest) (PrepayResult, error)
 	// Query asks the Channel for one Payment's true state.
-	Query(ctx context.Context, m *entity.MerchantAccount, paymentNo string) (ChannelPaymentState, error)
+	Query(ctx context.Context, req QueryRequest) (ChannelPaymentState, error)
 	// Close closes one Payment at the Channel. A "already paid" answer is
 	// ErrChannelAlreadyPaid — an error the caller flips into a query.
-	Close(ctx context.Context, m *entity.MerchantAccount, paymentNo string) error
+	Close(ctx context.Context, req CloseRequest) error
 	// Refund requests one refund; synchronous channels return the settled
 	// state, asynchronous ones Pending.
 	Refund(ctx context.Context, req RefundRequest) (ChannelRefundState, error)
-	// QueryRefund asks the Channel for one Refund's true state. Alipay's
-	// refund query requires the owning payment's out_trade_no alongside
-	// the out_refund_no; channels that don't need it ignore the extra
-	// argument.
-	QueryRefund(ctx context.Context, m *entity.MerchantAccount, refundNo, paymentNo string) (ChannelRefundState, error)
+	// QueryRefund asks the Channel for one Refund's true state.
+	QueryRefund(ctx context.Context, req RefundQueryRequest) (ChannelRefundState, error)
 	// ParseNotification verifies the delivery's signature, decrypts and
 	// parses its payload into the canonical event. A verification or
 	// decryption failure returns an error — the caller records the
 	// unverified evidence and rejects.
-	ParseNotification(ctx context.Context, m *entity.MerchantAccount, headers http.Header, body []byte) (entity.ChannelNotification, error)
+	ParseNotification(ctx context.Context, req NotificationRequest) (entity.ChannelNotification, error)
 	// Probe runs the Connectivity Test: one cheap authenticated call that
 	// moves no money and leaves no Payment.
 	Probe(ctx context.Context, m *entity.MerchantAccount) error
@@ -135,8 +165,10 @@ type GatewayRegistry interface {
 type ChannelCatalog interface {
 	// Schemas lists every registered channel's schema.
 	Schemas() []entity.ChannelSchema
-	// Schema returns one channel's schema.
-	Schema(channel entity.Channel) (entity.ChannelSchema, bool)
+	// Schema returns one channel's schema; a channel with no registered
+	// adapter fails with the module's unadopted sentinel (ADR 0025 —
+	// missing is the sentinel over the zero value, never a bool flag).
+	Schema(channel entity.Channel) (entity.ChannelSchema, error)
 	// Adopted reports whether the channel has a registered adapter and can
 	// collect.
 	Adopted(channel entity.Channel) bool

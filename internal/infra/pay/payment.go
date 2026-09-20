@@ -81,11 +81,11 @@ func (r *paymentRepo) FindByID(ctx context.Context, id int64) (*payentity.Paymen
 // FindLatestByBizNo resolves the newest active Payment for one merchant's
 // Business Order Number — re-initiation keeps history, and the live row
 // is the newest one.
-func (r *paymentRepo) FindLatestByBizNo(ctx context.Context, merchantID int64, bizNo string) (*payentity.Payment, error) {
+func (r *paymentRepo) FindLatestByBizNo(ctx context.Context, req payrepo.FindLatestByBizNoRequest) (*payentity.Payment, error) {
 	po, err := r.data.DB.PayPayment(ctx).Query().
 		Where(
-			entpayment.MerchantIDEQ(merchantID),
-			entpayment.BizNoEQ(bizNo),
+			entpayment.MerchantIDEQ(req.MerchantID),
+			entpayment.BizNoEQ(req.BizNo),
 			entpayment.DeletedAtIsNil(),
 		).
 		Order(ent.Desc(entpayment.FieldID)).
@@ -103,16 +103,16 @@ func (r *paymentRepo) FindLatestByBizNo(ctx context.Context, merchantID int64, b
 // expire_time index (ADR 0023): still-Pending rows past their expiry, id
 // ascending from afterID so a bounded batch always resumes from the oldest
 // and one run can page past permanently failing rows.
-func (r *paymentRepo) ListPendingExpired(ctx context.Context, before time.Time, afterID int64, limit int) ([]*payentity.Payment, error) {
+func (r *paymentRepo) ListPendingExpired(ctx context.Context, req payrepo.ListPendingExpiredRequest) ([]*payentity.Payment, error) {
 	pos, err := r.data.DB.PayPayment(ctx).Query().
 		Where(
 			entpayment.DeletedAtIsNil(),
 			entpayment.StatusEQ(int16(payentity.PaymentPending)),
-			entpayment.ExpireTimeLT(before),
-			entpayment.IDGT(afterID),
+			entpayment.ExpireTimeLT(req.Before),
+			entpayment.IDGT(req.AfterID),
 		).
 		Order(ent.Asc(entpayment.FieldID)).
-		Limit(limit).
+		Limit(req.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, r.storeError(ctx, "pay.payment.list_pending_expired", err)
@@ -169,16 +169,16 @@ func (r *paymentRepo) Create(ctx context.Context, p *payentity.Payment) (*payent
 // Business Order Number in one statement — the re-initiation rule's bulk
 // half. The count is informational; a concurrent notification losing the
 // race is a CAS no-op, not an error.
-func (r *paymentRepo) ClosePendingByBizNo(ctx context.Context, merchantID int64, bizNo string, actorID int64) (int, error) {
+func (r *paymentRepo) ClosePendingByBizNo(ctx context.Context, req payrepo.ClosePendingByBizNoRequest) (int, error) {
 	n, err := r.data.DB.PayPayment(ctx).Update().
 		Where(
-			entpayment.MerchantIDEQ(merchantID),
-			entpayment.BizNoEQ(bizNo),
+			entpayment.MerchantIDEQ(req.MerchantID),
+			entpayment.BizNoEQ(req.BizNo),
 			entpayment.StatusEQ(int16(payentity.PaymentPending)),
 			entpayment.DeletedAtIsNil(),
 		).
 		SetStatus(int16(payentity.PaymentClosed)).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Save(ctx)
 	if err != nil {
 		return 0, r.storeError(ctx, "pay.payment.close_pending_by_biz_no", err)
@@ -186,9 +186,9 @@ func (r *paymentRepo) ClosePendingByBizNo(ctx context.Context, merchantID int64,
 	return n, nil
 }
 
-func (r *paymentRepo) SetChannelPayload(ctx context.Context, id int64, payload string) error {
-	err := r.data.DB.PayPayment(ctx).UpdateOneID(id).
-		SetChannelPayload(payload).
+func (r *paymentRepo) SetChannelPayload(ctx context.Context, req payrepo.SetChannelPayloadRequest) error {
+	err := r.data.DB.PayPayment(ctx).UpdateOneID(req.ID).
+		SetChannelPayload(req.Payload).
 		Exec(ctx)
 	if ent.IsNotFound(err) {
 		return pay.ErrPaymentNotFound
@@ -199,9 +199,9 @@ func (r *paymentRepo) SetChannelPayload(ctx context.Context, id int64, payload s
 	return nil
 }
 
-func (r *paymentRepo) SetFailReason(ctx context.Context, id int64, reason string) error {
-	err := r.data.DB.PayPayment(ctx).UpdateOneID(id).
-		SetFailReason(reason).
+func (r *paymentRepo) SetFailReason(ctx context.Context, req payrepo.SetFailReasonRequest) error {
+	err := r.data.DB.PayPayment(ctx).UpdateOneID(req.ID).
+		SetFailReason(req.Reason).
 		Exec(ctx)
 	if ent.IsNotFound(err) {
 		return pay.ErrPaymentNotFound
@@ -223,7 +223,9 @@ func pendingPaymentScope(id int64) []predicate.PayPayment {
 	}
 }
 
-func (r *paymentRepo) MarkPaid(ctx context.Context, id int64, capture payentity.PaidCapture) (bool, error) {
+func (r *paymentRepo) MarkPaid(ctx context.Context, req payrepo.MarkPaidRequest) (bool, error) {
+	id := req.ID
+	capture := req.Capture
 	paidAt := capture.PaidAt
 	if paidAt.IsZero() {
 		paidAt = time.Now()
@@ -265,7 +267,9 @@ func (r *paymentRepo) MarkPaid(ctx context.Context, id int64, capture payentity.
 // exactly the still-empty fields: ANDed per-field CAS predicates would let
 // one already-present field mask the others, and an all-empty capture
 // would build an update with no setters.
-func (r *paymentRepo) BackfillPaidInfo(ctx context.Context, id int64, capture payentity.PaidCapture) (bool, error) {
+func (r *paymentRepo) BackfillPaidInfo(ctx context.Context, req payrepo.BackfillPaidInfoRequest) (bool, error) {
+	id := req.ID
+	capture := req.Capture
 	if capture.ChannelTradeNo == "" && capture.PayerID == "" && capture.PaidAt.IsZero() {
 		return false, nil
 	}
@@ -306,13 +310,13 @@ func (r *paymentRepo) BackfillPaidInfo(ctx context.Context, id int64, capture pa
 	return true, nil
 }
 
-func (r *paymentRepo) MarkFailed(ctx context.Context, id int64, reason string) (bool, error) {
+func (r *paymentRepo) MarkFailed(ctx context.Context, req payrepo.MarkPaymentFailedRequest) (bool, error) {
 	upd := r.data.DB.PayPayment(ctx).Update().
-		Where(pendingPaymentScope(id)...).
+		Where(pendingPaymentScope(req.ID)...).
 		SetStatus(int16(payentity.PaymentFailed)).
 		SetUpdateBy(systemActor)
-	if reason != "" {
-		upd.SetFailReason(truncateReason(reason))
+	if req.Reason != "" {
+		upd.SetFailReason(truncateReason(req.Reason))
 	}
 	n, err := upd.Save(ctx)
 	if err != nil {

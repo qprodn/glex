@@ -12,21 +12,52 @@ import (
 	"glex/pkg/logx"
 )
 
-// CreateInput is what a merchant-create use case states.
-type CreateInput struct {
+// CreateRequest is what a merchant-create use case states: the account's
+// shape plus the actor stamped into the audit fields.
+type CreateRequest struct {
 	Channel payentity.Channel
 	Name    string
 	Config  map[string]string
 	Remark  string
+	// ActorID stamps create_by/update_by (0 = the system itself, ADR 0002).
+	ActorID int64
 }
 
-// UpdateInput is what a merchant-update use case states. Secret config
-// values left blank keep their stored values (schema semantics, ADR 0021).
-type UpdateInput struct {
+// UpdateRequest is what a merchant-update use case states: the editable
+// fields plus the actor. Secret config values left blank keep their stored
+// values (schema semantics, ADR 0021).
+type UpdateRequest struct {
 	ID     int64
 	Name   string
 	Config map[string]string
 	Remark string
+	// ActorID stamps update_by (0 = the system itself, ADR 0002).
+	ActorID int64
+}
+
+// ChangeStatusRequest is one enable-switch flip: the account, the new
+// status, and the actor stamped into the audit fields.
+type ChangeStatusRequest struct {
+	ID     int64
+	Status payentity.MerchantStatus
+	// ActorID stamps update_by (0 = the system itself, ADR 0002).
+	ActorID int64
+}
+
+// WithdrawRequest is one Merchant Account withdrawal: the account and the
+// actor stamped into the audit fields.
+type WithdrawRequest struct {
+	ID int64
+	// ActorID stamps update_by (0 = the system itself, ADR 0002).
+	ActorID int64
+}
+
+// ResolvedGateway is one merchant's resolved channel intake: the account
+// with its config decrypted and the gateway built from it (ADR 0025 — the
+// resolved pair rides one result struct).
+type ResolvedGateway struct {
+	Merchant *payentity.MerchantAccount
+	Gateway  ChannelGateway
 }
 
 // ProbeOutcome is one Connectivity Test's result: ok plus a human-readable
@@ -46,15 +77,15 @@ type Merchant interface {
 	List(ctx context.Context, q listq.Query) ([]*payentity.MerchantAccount, error)
 	// Create validates the config against the channel schema, seals it,
 	// and records the account (enabled).
-	Create(ctx context.Context, in *CreateInput, actorID int64) (*payentity.MerchantAccount, error)
+	Create(ctx context.Context, req CreateRequest) (*payentity.MerchantAccount, error)
 	// Update replaces the display fields and the whole config form, with
 	// blank secret fields keeping their stored values.
-	Update(ctx context.Context, in *UpdateInput, actorID int64) (*payentity.MerchantAccount, error)
+	Update(ctx context.Context, req UpdateRequest) (*payentity.MerchantAccount, error)
 	// ChangeStatus flips the enable switch; disabling takes the merchant's
 	// cached gateways out of service.
-	ChangeStatus(ctx context.Context, id int64, status payentity.MerchantStatus, actorID int64) (*payentity.MerchantAccount, error)
+	ChangeStatus(ctx context.Context, req ChangeStatusRequest) (*payentity.MerchantAccount, error)
 	// Withdraw soft-deletes the account and drops its cached gateways.
-	Withdraw(ctx context.Context, id, actorID int64) error
+	Withdraw(ctx context.Context, req WithdrawRequest) error
 	// Probe runs the Connectivity Test through the merchant's gateway.
 	Probe(ctx context.Context, id int64) (*ProbeOutcome, error)
 	// Schemas lists every adopted channel's config schema.
@@ -65,7 +96,7 @@ type Merchant interface {
 	// gateway — the shared intake for channel-touching paths outside
 	// merchant CRUD (notification intake today). The config decryption
 	// failure surfaces as the module's master-key/crypto sentinels.
-	ResolveGateway(ctx context.Context, merchantID int64) (*payentity.MerchantAccount, ChannelGateway, error)
+	ResolveGateway(ctx context.Context, merchantID int64) (*ResolvedGateway, error)
 }
 
 type merchantImpl struct {
@@ -111,38 +142,38 @@ func (s *merchantImpl) List(ctx context.Context, q listq.Query) ([]*payentity.Me
 	return ms, nil
 }
 
-func (s *merchantImpl) Create(ctx context.Context, in *CreateInput, actorID int64) (*payentity.MerchantAccount, error) {
-	if err := validateDisplayName(in.Name); err != nil {
+func (s *merchantImpl) Create(ctx context.Context, req CreateRequest) (*payentity.MerchantAccount, error) {
+	if err := validateDisplayName(req.Name); err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.create", err)
 		return nil, err
 	}
-	if len(in.Remark) > 500 {
+	if len(req.Remark) > 500 {
 		err := pay.ErrMerchantInvalid
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.create", err)
 		return nil, err
 	}
-	if !s.catalog.Adopted(in.Channel) {
+	if !s.catalog.Adopted(req.Channel) {
 		err := pay.ErrChannelNotAdopted
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.create", err)
 		return nil, err
 	}
-	cleaned, err := s.catalog.ValidateConfig(in.Channel, in.Config)
+	cleaned, err := s.catalog.ValidateConfig(req.Channel, req.Config)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.create", err)
 		return nil, err
 	}
 	m := &payentity.MerchantAccount{
 		ID:           s.merchants.NextID(),
-		Channel:      in.Channel,
-		Name:         in.Name,
+		Channel:      req.Channel,
+		Name:         req.Name,
 		Status:       payentity.MerchantEnabled,
 		Config:       cleaned,
-		ConfigMasked: s.catalog.MaskConfig(in.Channel, cleaned),
+		ConfigMasked: s.catalog.MaskConfig(req.Channel, cleaned),
 		ConfigDigest: s.cipher.Digest(cleaned),
 		KeyVersion:   1,
-		Remark:       in.Remark,
-		CreateBy:     actorID,
-		UpdateBy:     actorID,
+		Remark:       req.Remark,
+		CreateBy:     req.ActorID,
+		UpdateBy:     req.ActorID,
 	}
 	created, err := s.merchants.Create(ctx, m)
 	if err != nil {
@@ -152,17 +183,17 @@ func (s *merchantImpl) Create(ctx context.Context, in *CreateInput, actorID int6
 	return created, nil
 }
 
-func (s *merchantImpl) Update(ctx context.Context, in *UpdateInput, actorID int64) (*payentity.MerchantAccount, error) {
-	if err := validateDisplayName(in.Name); err != nil {
+func (s *merchantImpl) Update(ctx context.Context, req UpdateRequest) (*payentity.MerchantAccount, error) {
+	if err := validateDisplayName(req.Name); err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.update", err)
 		return nil, err
 	}
-	if len(in.Remark) > 500 {
+	if len(req.Remark) > 500 {
 		err := pay.ErrMerchantInvalid
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.update", err)
 		return nil, err
 	}
-	m, err := s.merchants.FindByID(ctx, in.ID)
+	m, err := s.merchants.FindByID(ctx, req.ID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.update", err)
 		return nil, err
@@ -178,54 +209,55 @@ func (s *merchantImpl) Update(ctx context.Context, in *UpdateInput, actorID int6
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.update", err)
 		return nil, err
 	}
-	schema, ok := s.catalog.Schema(m.Channel)
-	if !ok {
-		err = pay.ErrChannelNotAdopted
+	schema, err := s.catalog.Schema(m.Channel)
+	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.update", err)
 		return nil, err
 	}
-	merged := mergeBlankSecrets(schema, m.Config, in.Config)
+	merged := mergeBlankSecrets(schema, m.Config, req.Config)
 	cleaned, err := s.catalog.ValidateConfig(m.Channel, merged)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.update", err)
 		return nil, err
 	}
-	m.Name = in.Name
-	m.Remark = in.Remark
+	m.Name = req.Name
+	m.Remark = req.Remark
 	m.Config = cleaned
 	m.ConfigMasked = s.catalog.MaskConfig(m.Channel, cleaned)
 	m.ConfigDigest = s.cipher.Digest(cleaned)
-	updated, err := s.merchants.Update(ctx, m, actorID)
+	updated, err := s.merchants.Update(ctx, payrepo.UpdateMerchantRequest{Merchant: m, ActorID: req.ActorID})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.update", err)
 		return nil, err
 	}
 	// The old config's gateways are dead the moment the new one is stored.
-	s.gateways.Invalidate(in.ID)
+	s.gateways.Invalidate(req.ID)
 	return updated, nil
 }
 
-func (s *merchantImpl) ChangeStatus(ctx context.Context, id int64, status payentity.MerchantStatus, actorID int64) (*payentity.MerchantAccount, error) {
-	if status != payentity.MerchantEnabled && status != payentity.MerchantDisabled {
+func (s *merchantImpl) ChangeStatus(ctx context.Context, req ChangeStatusRequest) (*payentity.MerchantAccount, error) {
+	if req.Status != payentity.MerchantEnabled && req.Status != payentity.MerchantDisabled {
 		err := pay.ErrMerchantInvalid
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.change_status", err)
 		return nil, err
 	}
-	if err := s.merchants.UpdateStatus(ctx, id, status, actorID); err != nil {
+	if err := s.merchants.UpdateStatus(ctx, payrepo.UpdateMerchantStatusRequest{
+		ID: req.ID, Status: req.Status, ActorID: req.ActorID,
+	}); err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.change_status", err)
 		return nil, err
 	}
 	// Disabled or re-enabled, the cached gateways start from scratch.
-	s.gateways.Invalidate(id)
-	return s.Get(ctx, id)
+	s.gateways.Invalidate(req.ID)
+	return s.Get(ctx, req.ID)
 }
 
-func (s *merchantImpl) Withdraw(ctx context.Context, id, actorID int64) error {
-	if err := s.merchants.Delete(ctx, id, actorID); err != nil {
+func (s *merchantImpl) Withdraw(ctx context.Context, req WithdrawRequest) error {
+	if err := s.merchants.Delete(ctx, payrepo.DeleteMerchantRequest{ID: req.ID, ActorID: req.ActorID}); err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.withdraw", err)
 		return err
 	}
-	s.gateways.Invalidate(id)
+	s.gateways.Invalidate(req.ID)
 	return nil
 }
 
@@ -264,17 +296,17 @@ func (s *merchantImpl) Probe(ctx context.Context, id int64) (*ProbeOutcome, erro
 	return outcome, nil
 }
 
-func (s *merchantImpl) ResolveGateway(ctx context.Context, merchantID int64) (*payentity.MerchantAccount, ChannelGateway, error) {
+func (s *merchantImpl) ResolveGateway(ctx context.Context, merchantID int64) (*ResolvedGateway, error) {
 	// Settlement paths resolve past withdrawal: a withdrawn merchant's
 	// in-flight payments still settle on its snapshot channel (design §7),
 	// while display and editing paths keep the strict lookup. The shared
 	// seam logs its own breadcrumbs; the wrapping op names this site.
-	m, gw, err := resolveMerchantGateway(ctx, s.merchants, s.gateways, merchantID)
+	resolved, err := resolveMerchantGateway(ctx, s.merchants, s.gateways, merchantID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.resolve_gateway", err)
-		return nil, nil, err
+		return nil, err
 	}
-	return m, gw, nil
+	return resolved, nil
 }
 
 func (s *merchantImpl) Schemas() []payentity.ChannelSchema {

@@ -42,18 +42,18 @@ func (m *MockPaymentReader) EXPECT() *MockPaymentReaderMockRecorder {
 }
 
 // GetByBizNo mocks base method.
-func (m *MockPaymentReader) GetByBizNo(ctx context.Context, merchantID int64, bizNo string) (*model.Payment, error) {
+func (m *MockPaymentReader) GetByBizNo(ctx context.Context, req *model.GetByBizNoRequest) (*model.Payment, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetByBizNo", ctx, merchantID, bizNo)
+	ret := m.ctrl.Call(m, "GetByBizNo", ctx, req)
 	ret0, _ := ret[0].(*model.Payment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetByBizNo indicates an expected call of GetByBizNo.
-func (mr *MockPaymentReaderMockRecorder) GetByBizNo(ctx, merchantID, bizNo any) *gomock.Call {
+func (mr *MockPaymentReaderMockRecorder) GetByBizNo(ctx, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByBizNo", reflect.TypeOf((*MockPaymentReader)(nil).GetByBizNo), ctx, merchantID, bizNo)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByBizNo", reflect.TypeOf((*MockPaymentReader)(nil).GetByBizNo), ctx, req)
 }
 
 // GetPayment mocks base method.

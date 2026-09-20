@@ -7,6 +7,28 @@ import (
 	"glex/pkg/listq"
 )
 
+// UpdateMerchantRequest is one editable-fields rewrite: the account with its
+// resealed config and the actor stamped into the audit fields.
+type UpdateMerchantRequest struct {
+	Merchant *entity.MerchantAccount
+	ActorID  int64
+}
+
+// UpdateMerchantStatusRequest is one enable-switch flip: the account, the
+// new status, and the actor stamped into the audit fields.
+type UpdateMerchantStatusRequest struct {
+	ID      int64
+	Status  entity.MerchantStatus
+	ActorID int64
+}
+
+// DeleteMerchantRequest is one withdrawal (ADR 0002): the account to
+// soft-delete and the actor stamped into the audit fields.
+type DeleteMerchantRequest struct {
+	ID      int64
+	ActorID int64
+}
+
 // MerchantAccountRepo is the repository interface for Merchant Account rows
 // (the inversion seam declared in domain, implemented in infra). The repo
 // boundary owns the config envelope: writes encrypt Config whole (ADR 0018)
@@ -28,13 +50,14 @@ type MerchantAccountRepo interface {
 	// Create inserts the row: Config is encrypted whole; ConfigMasked and
 	// ConfigDigest must be set by the caller (they are schema-derived).
 	Create(ctx context.Context, m *entity.MerchantAccount) (*entity.MerchantAccount, error)
-	// Update rewrites the editable fields — name, config (encrypted whole
-	// with fresh masked echo and digest), remark. Audit stamps actorID.
-	Update(ctx context.Context, m *entity.MerchantAccount, actorID int64) (*entity.MerchantAccount, error)
-	// UpdateStatus flips the enable switch and stamps actorID.
-	UpdateStatus(ctx context.Context, id int64, status entity.MerchantStatus, actorID int64) error
-	// Delete soft-deletes the row, stamping actorID (ADR 0002).
-	Delete(ctx context.Context, id, actorID int64) error
+	// Update rewrites req.Merchant's editable fields — name, config
+	// (encrypted whole with fresh masked echo and digest), remark —
+	// stamping req.ActorID.
+	Update(ctx context.Context, req UpdateMerchantRequest) (*entity.MerchantAccount, error)
+	// UpdateStatus flips the enable switch and stamps req.ActorID.
+	UpdateStatus(ctx context.Context, req UpdateMerchantStatusRequest) error
+	// Delete soft-deletes the row, stamping req.ActorID (ADR 0002).
+	Delete(ctx context.Context, req DeleteMerchantRequest) error
 	// NextID mints the snowflake row ID.
 	NextID() int64
 }

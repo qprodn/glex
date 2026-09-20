@@ -8,6 +8,25 @@ import (
 	"glex/pkg/listq"
 )
 
+// MarkRefundSuccessRequest is one refund's settlement evidence: the Refund,
+// its owning Payment, the settled amount, the Channel's refund number, and
+// the settlement time (zero = now) — the tuple the settle-and-accumulate
+// write carries.
+type MarkRefundSuccessRequest struct {
+	ID              int64
+	PaymentID       int64
+	Amount          int64
+	ChannelRefundNo string
+	RefundedAt      time.Time
+}
+
+// MarkRefundFailedRequest is one Refund's Pending → Failed CAS with the
+// reason.
+type MarkRefundFailedRequest struct {
+	ID     int64
+	Reason string
+}
+
 // RefundRepo is the repository interface for Refund rows. State advances
 // are CAS from Pending (bool false = already settled — a duplicate or
 // out-of-order receipt, a no-op by design).
@@ -24,9 +43,9 @@ type RefundRepo interface {
 	// understated sum would let the cap check admit more than was paid.
 	// RefundedAt zero value means "now"; bool false means the CAS lost
 	// (a duplicate delivery) and nothing moved.
-	MarkSuccess(ctx context.Context, id, paymentID, amount int64, channelRefundNo string, refundedAt time.Time) (bool, error)
+	MarkSuccess(ctx context.Context, req MarkRefundSuccessRequest) (bool, error)
 	// MarkFailed CASes Pending → Failed with the reason.
-	MarkFailed(ctx context.Context, id int64, reason string) (bool, error)
+	MarkFailed(ctx context.Context, req MarkRefundFailedRequest) (bool, error)
 	// PendingRefundSum sums the amounts of a payment's still-Pending
 	// refunds — the in-flight reservations the cap check must count
 	// alongside the settled sum (ticket 07: async refunds must reserve

@@ -24,6 +24,16 @@ type NotifyOutcome struct {
 	AckBody   string
 }
 
+// ChannelNotificationRequest is one channel delivery handed to the
+// intake: the route's resolved channel and merchant plus the raw HTTP
+// evidence (ADR 0025 — the delivery rides one request struct).
+type ChannelNotificationRequest struct {
+	Channel    payentity.Channel
+	MerchantID int64
+	Headers    http.Header
+	Body       []byte
+}
+
 // HandleChannelNotification runs the intake pipeline: resolve the
 // merchant from the path (404 when unknown — disabled or withdrawn
 // merchants still resolve, their in-flight payments settle), verify the
@@ -34,22 +44,24 @@ type NotifyOutcome struct {
 // the (channel, notify_id) dedup absorbs the loop.
 func (s *PayApplication) HandleChannelNotification(
 	ctx context.Context,
-	channel payentity.Channel,
-	merchantID int64,
-	headers http.Header,
-	body []byte,
+	req *ChannelNotificationRequest,
 ) (*NotifyOutcome, error) {
+	channel, merchantID, headers, body := req.Channel, req.MerchantID, req.Headers, req.Body
 	if !channel.Valid() {
 		err := pay.ErrNotifyInvalid
 		logx.Propagate(ctx, s.logger, "pay.notify.intake", err)
 		return nil, err
 	}
-	m, gw, err := s.merchants.ResolveGateway(ctx, merchantID)
+	resolved, err := s.merchants.ResolveGateway(ctx, merchantID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.notify.intake", err)
 		return nil, err
 	}
-	notif, parseErr := gw.ParseNotification(ctx, m, headers, body)
+	notif, parseErr := resolved.Gateway.ParseNotification(ctx, payservice.NotificationRequest{
+		Merchant: resolved.Merchant,
+		Headers:  headers,
+		Body:     body,
+	})
 	notif.MerchantID = merchantID
 	notif.ID = s.notifications.NextID()
 	if len(notif.SignHeaders) == 0 {
@@ -111,12 +123,15 @@ func (s *PayApplication) advancePayment(
 	notif *payentity.ChannelNotification,
 	targetNo int64,
 ) (bool, error) {
-	advanced, err := s.payments.ApplyChannelState(ctx, targetNo, payservice.ChannelPaymentState{
-		State:          notif.PaymentState,
-		ChannelTradeNo: notif.ChannelTradeNo,
-		PayerID:        notif.PayerID,
-		PaidAt:         notif.PaidAt,
-		Amount:         notif.Amount,
+	advanced, err := s.payments.ApplyChannelState(ctx, payservice.ApplyChannelStateRequest{
+		PaymentNo: targetNo,
+		State: payservice.ChannelPaymentState{
+			State:          notif.PaymentState,
+			ChannelTradeNo: notif.ChannelTradeNo,
+			PayerID:        notif.PayerID,
+			PaidAt:         notif.PaidAt,
+			Amount:         notif.Amount,
+		},
 	})
 	if err != nil {
 		return false, err
@@ -218,11 +233,14 @@ func (s *PayApplication) advance(ctx context.Context, notif *payentity.ChannelNo
 				slog.Int64("target_refund_id", rf.ID))
 			return false, nil
 		}
-		return s.refunds.ApplyRefundState(ctx, targetNo, payservice.ChannelRefundState{
-			State:           notif.RefundState,
-			ChannelRefundNo: notif.ChannelTradeNo,
-			RefundedAt:      notif.RefundedAt,
-			RefundAmount:    notif.RefundAmount,
+		return s.refunds.ApplyRefundState(ctx, payservice.ApplyRefundStateRequest{
+			RefundNo: targetNo,
+			State: payservice.ChannelRefundState{
+				State:           notif.RefundState,
+				ChannelRefundNo: notif.ChannelTradeNo,
+				RefundedAt:      notif.RefundedAt,
+				RefundAmount:    notif.RefundAmount,
+			},
 		})
 	default:
 		s.logger.Warn("verified notification carries an unknown kind",

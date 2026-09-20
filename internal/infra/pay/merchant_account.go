@@ -170,7 +170,8 @@ func (r *merchantAccountRepo) Create(ctx context.Context, m *payentity.MerchantA
 	return toBizMerchant(po), nil
 }
 
-func (r *merchantAccountRepo) Update(ctx context.Context, m *payentity.MerchantAccount, actorID int64) (*payentity.MerchantAccount, error) {
+func (r *merchantAccountRepo) Update(ctx context.Context, req payrepo.UpdateMerchantRequest) (*payentity.MerchantAccount, error) {
+	m := req.Merchant
 	token, err := r.sealConfig(m.Config)
 	if err != nil {
 		return nil, err
@@ -181,7 +182,7 @@ func (r *merchantAccountRepo) Update(ctx context.Context, m *payentity.MerchantA
 		SetConfigMasked(m.ConfigMasked).
 		SetConfigDigest(m.ConfigDigest).
 		SetRemark(m.Remark).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -195,10 +196,10 @@ func (r *merchantAccountRepo) Update(ctx context.Context, m *payentity.MerchantA
 	return toBizMerchant(po), nil
 }
 
-func (r *merchantAccountRepo) UpdateStatus(ctx context.Context, id int64, status payentity.MerchantStatus, actorID int64) error {
-	err := r.data.DB.PayMerchantAccount(ctx).UpdateOneID(id).
-		SetStatus(int16(status)).
-		SetUpdateBy(actorID).
+func (r *merchantAccountRepo) UpdateStatus(ctx context.Context, req payrepo.UpdateMerchantStatusRequest) error {
+	err := r.data.DB.PayMerchantAccount(ctx).UpdateOneID(req.ID).
+		SetStatus(int16(req.Status)).
+		SetUpdateBy(req.ActorID).
 		Exec(ctx)
 	if ent.IsNotFound(err) {
 		return pay.ErrMerchantNotFound
@@ -209,11 +210,11 @@ func (r *merchantAccountRepo) UpdateStatus(ctx context.Context, id int64, status
 	return nil
 }
 
-func (r *merchantAccountRepo) Delete(ctx context.Context, id, actorID int64) error {
+func (r *merchantAccountRepo) Delete(ctx context.Context, req payrepo.DeleteMerchantRequest) error {
 	n, err := r.data.DB.PayMerchantAccount(ctx).Update().
-		Where(entmerchant.IDEQ(id), entmerchant.DeletedAtIsNil()).
+		Where(entmerchant.IDEQ(req.ID), entmerchant.DeletedAtIsNil()).
 		SetDeletedAt(deletedAt()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Save(ctx)
 	if err != nil {
 		return r.storeError(ctx, "pay.merchant.delete", err)

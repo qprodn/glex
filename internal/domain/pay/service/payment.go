@@ -22,14 +22,48 @@ const defaultExpireMinutes = 30
 // maxExpireMinutes caps one payment's validity window.
 const maxExpireMinutes = 24 * 60
 
-// CreatePaymentInput is what an initiation use case states.
-type CreatePaymentInput struct {
+// CreatePaymentRequest is what an initiation use case states: the payment's
+// shape plus the actor stamped into the audit fields.
+type CreatePaymentRequest struct {
 	MerchantID    int64
 	BizNo         string
 	Subject       string
 	Amount        int64
 	PayMethod     payentity.PayMethod
 	ExpireMinutes int32
+	// ActorID stamps create_by/update_by (0 = the system itself, ADR 0002).
+	ActorID int64
+}
+
+// GetByBizNoRequest names one merchant's Business Order Number — the pair
+// a newest-Payment-by-outcome read resolves.
+type GetByBizNoRequest struct {
+	MerchantID int64
+	BizNo      string
+}
+
+// PrepayPaymentRequest is one freshly-recorded PENDING payment's channel
+// prepay: the payment and the deployment's notify base URL the callback
+// route is built from.
+type PrepayPaymentRequest struct {
+	ID int64
+	// NotifyBaseURL prefixes /pay/notify/{channel}/{merchant_id}.
+	NotifyBaseURL string
+}
+
+// ClosePaymentRequest is one manual close: the payment and the actor
+// stamped into the audit fields.
+type ClosePaymentRequest struct {
+	ID int64
+	// ActorID stamps update_by (0 = the system itself, ADR 0002).
+	ActorID int64
+}
+
+// ApplyChannelStateRequest is one channel-asserted payment state to apply
+// to one payment — the notify path's entry (ticket 06).
+type ApplyChannelStateRequest struct {
+	PaymentNo int64
+	State     ChannelPaymentState
 }
 
 // Payment is the payment domain service: the only path to Payment rows and
@@ -40,18 +74,18 @@ type Payment interface {
 	// GetByBizNo resolves a merchant's newest Payment for a Business
 	// Order Number, settling it first when PENDING and expired — the
 	// caller reads an outcome, so the lazy-expiry rule applies here too.
-	GetByBizNo(ctx context.Context, merchantID int64, bizNo string) (*payentity.Payment, error)
+	GetByBizNo(ctx context.Context, req GetByBizNoRequest) (*payentity.Payment, error)
 	List(ctx context.Context, q listq.Query) ([]*payentity.Payment, error)
 	// Initiate validates the initiation against the Merchant Account,
 	// closes the merchant's still-pending payments for the Business Order
 	// Number, and records the new PENDING payment. The caller owns the
 	// prepay lock and the ambient transaction (close + insert is one
 	// indivisible batch); the channel prepay runs afterwards, outside it.
-	Initiate(ctx context.Context, in *CreatePaymentInput, actorID int64) (*payentity.Payment, error)
+	Initiate(ctx context.Context, req CreatePaymentRequest) (*payentity.Payment, error)
 	// Prepay contacts the channel for one freshly-recorded PENDING payment
 	// and backfills the QR payload; a channel rejection fails the payment
 	// with the reason — no payable illusion survives (ticket 05).
-	Prepay(ctx context.Context, id int64, notifyBaseURL string) (*payentity.Payment, error)
+	Prepay(ctx context.Context, req PrepayPaymentRequest) (*payentity.Payment, error)
 	// Query is the explicit settlement path: it asks the channel for the
 	// payment's true state and advances by CAS — the fallback when
 	// callbacks are lost.
@@ -64,11 +98,11 @@ type Payment interface {
 	// Close manually closes a PENDING payment. A channel "already paid"
 	// answer flips into a query and settles PAID; late close intents on
 	// terminal payments are no-ops.
-	Close(ctx context.Context, id int64, actorID int64) (*payentity.Payment, error)
+	Close(ctx context.Context, req ClosePaymentRequest) (*payentity.Payment, error)
 	// ApplyChannelState advances one payment per channel-asserted state —
 	// the notify path's entry (ticket 06). The bool is false when the CAS
 	// found the payment already settled (duplicate or out-of-order).
-	ApplyChannelState(ctx context.Context, paymentNo int64, state ChannelPaymentState) (bool, error)
+	ApplyChannelState(ctx context.Context, req ApplyChannelStateRequest) (bool, error)
 }
 
 type paymentImpl struct {
@@ -95,25 +129,25 @@ func NewPaymentService(
 
 // resolve prepares the merchant's gateway: find, decrypt, resolve. Every
 // channel-touching path funnels through here.
-func (s *paymentImpl) resolve(ctx context.Context, merchantID int64) (*payentity.MerchantAccount, ChannelGateway, error) {
+func (s *paymentImpl) resolve(ctx context.Context, merchantID int64) (*ResolvedGateway, error) {
 	return resolveMerchantGateway(ctx, s.merchants, s.gateways, merchantID)
 }
 
 // resolveMerchantGateway is the shared find-decrypt-resolve seam for every
 // channel-touching path (payments, refunds, notification intake).
-func resolveMerchantGateway(ctx context.Context, merchants payrepo.MerchantAccountRepo, gateways GatewayRegistry, merchantID int64) (*payentity.MerchantAccount, ChannelGateway, error) {
+func resolveMerchantGateway(ctx context.Context, merchants payrepo.MerchantAccountRepo, gateways GatewayRegistry, merchantID int64) (*ResolvedGateway, error) {
 	m, err := merchants.FindByIDAny(ctx, merchantID)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if err := merchants.LoadConfig(ctx, m); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	gw, err := gateways.Resolve(ctx, m)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return m, gw, nil
+	return &ResolvedGateway{Merchant: m, Gateway: gw}, nil
 }
 
 func (s *paymentImpl) Get(ctx context.Context, id int64) (*payentity.Payment, error) {
@@ -141,8 +175,8 @@ func (s *paymentImpl) Get(ctx context.Context, id int64) (*payentity.Payment, er
 	return p, nil
 }
 
-func (s *paymentImpl) GetByBizNo(ctx context.Context, merchantID int64, bizNo string) (*payentity.Payment, error) {
-	p, err := s.payments.FindLatestByBizNo(ctx, merchantID, bizNo)
+func (s *paymentImpl) GetByBizNo(ctx context.Context, req GetByBizNoRequest) (*payentity.Payment, error) {
+	p, err := s.payments.FindLatestByBizNo(ctx, payrepo.FindLatestByBizNoRequest{MerchantID: req.MerchantID, BizNo: req.BizNo})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.payment.get_by_biz_no", err)
 		return nil, err
@@ -172,21 +206,21 @@ func (s *paymentImpl) List(ctx context.Context, q listq.Query) ([]*payentity.Pay
 	return ps, nil
 }
 
-func (s *paymentImpl) Initiate(ctx context.Context, in *CreatePaymentInput, actorID int64) (*payentity.Payment, error) {
+func (s *paymentImpl) Initiate(ctx context.Context, req CreatePaymentRequest) (*payentity.Payment, error) {
 	initiation := &payentity.Initiation{
-		MerchantID:    in.MerchantID,
-		BizNo:         in.BizNo,
-		Subject:       in.Subject,
-		Amount:        in.Amount,
+		MerchantID:    req.MerchantID,
+		BizNo:         req.BizNo,
+		Subject:       req.Subject,
+		Amount:        req.Amount,
 		Currency:      "CNY",
-		PayMethod:     in.PayMethod,
-		ExpireMinutes: in.ExpireMinutes,
+		PayMethod:     req.PayMethod,
+		ExpireMinutes: req.ExpireMinutes,
 	}
 	if err := initiation.Validate(); err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.payment.initiate", err)
 		return nil, err
 	}
-	m, err := s.merchants.FindByID(ctx, in.MerchantID)
+	m, err := s.merchants.FindByID(ctx, req.MerchantID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.payment.initiate", err)
 		return nil, err
@@ -198,11 +232,13 @@ func (s *paymentImpl) Initiate(ctx context.Context, in *CreatePaymentInput, acto
 	}
 	// Re-initiation: the merchant's still-pending payments for this
 	// Business Order Number close as part of the same batch.
-	if _, err := s.payments.ClosePendingByBizNo(ctx, in.MerchantID, in.BizNo, actorID); err != nil {
+	if _, err := s.payments.ClosePendingByBizNo(ctx, payrepo.ClosePendingByBizNoRequest{
+		MerchantID: req.MerchantID, BizNo: req.BizNo, ActorID: req.ActorID,
+	}); err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.payment.initiate", err)
 		return nil, err
 	}
-	minutes := in.ExpireMinutes
+	minutes := req.ExpireMinutes
 	if minutes <= 0 {
 		minutes = defaultExpireMinutes
 	}
@@ -211,17 +247,17 @@ func (s *paymentImpl) Initiate(ctx context.Context, in *CreatePaymentInput, acto
 	}
 	p := &payentity.Payment{
 		ID:         s.payments.NextID(),
-		MerchantID: in.MerchantID,
+		MerchantID: req.MerchantID,
 		Channel:    m.Channel,
-		BizNo:      in.BizNo,
-		Subject:    in.Subject,
-		Amount:     in.Amount,
+		BizNo:      req.BizNo,
+		Subject:    req.Subject,
+		Amount:     req.Amount,
 		Currency:   "CNY",
-		PayMethod:  in.PayMethod,
+		PayMethod:  req.PayMethod,
 		Status:     payentity.PaymentPending,
 		ExpireTime: time.Now().Add(time.Duration(minutes) * time.Minute),
-		CreateBy:   actorID,
-		UpdateBy:   actorID,
+		CreateBy:   req.ActorID,
+		UpdateBy:   req.ActorID,
 	}
 	created, err := s.payments.Create(ctx, p)
 	if err != nil {
@@ -231,7 +267,8 @@ func (s *paymentImpl) Initiate(ctx context.Context, in *CreatePaymentInput, acto
 	return created, nil
 }
 
-func (s *paymentImpl) Prepay(ctx context.Context, id int64, notifyBaseURL string) (*payentity.Payment, error) {
+func (s *paymentImpl) Prepay(ctx context.Context, req PrepayPaymentRequest) (*payentity.Payment, error) {
+	id := req.ID
 	p, err := s.payments.FindByID(ctx, id)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.payment.prepay", err)
@@ -242,21 +279,21 @@ func (s *paymentImpl) Prepay(ctx context.Context, id int64, notifyBaseURL string
 		// the payment stays settled, no channel call is made.
 		return p, nil
 	}
-	m, gw, err := s.resolve(ctx, p.MerchantID)
+	resolved, err := s.resolve(ctx, p.MerchantID)
 	if err != nil {
 		s.failPending(ctx, id, err)
 		logx.Propagate(ctx, s.logger, "pay.svc.payment.prepay", err)
 		return nil, err
 	}
-	result, err := gw.Prepay(ctx, PrepayRequest{
-		Merchant:  m,
+	result, err := resolved.Gateway.Prepay(ctx, PrepayRequest{
+		Merchant:  resolved.Merchant,
 		PaymentNo: fmtPaymentNo(p.ID),
 		Amount:    p.Amount,
 		Currency:  p.Currency,
 		Subject:   p.Subject,
 		ExpireAt:  p.ExpireTime,
 		Method:    p.PayMethod,
-		NotifyURL: notifyURL(notifyBaseURL, p.Channel, p.MerchantID),
+		NotifyURL: notifyURL(req.NotifyBaseURL, p.Channel, p.MerchantID),
 	})
 	if err != nil {
 		s.failPending(ctx, id, err)
@@ -264,7 +301,7 @@ func (s *paymentImpl) Prepay(ctx context.Context, id int64, notifyBaseURL string
 		logx.Propagate(ctx, s.logger, "pay.svc.payment.prepay", err)
 		return nil, err
 	}
-	if err := s.payments.SetChannelPayload(ctx, id, result.ChannelPayload); err != nil {
+	if err := s.payments.SetChannelPayload(ctx, payrepo.SetChannelPayloadRequest{ID: id, Payload: result.ChannelPayload}); err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.payment.prepay", err)
 		return nil, err
 	}
@@ -313,7 +350,7 @@ func (s *paymentImpl) SweepExpired(ctx context.Context, limit int) (int, error) 
 	settled := 0
 	var after int64
 	for page := 0; page < sweepPageBudget && settled < limit; page++ {
-		candidates, err := s.payments.ListPendingExpired(ctx, time.Now(), after, limit)
+		candidates, err := s.payments.ListPendingExpired(ctx, payrepo.ListPendingExpiredRequest{Before: time.Now(), AfterID: after, Limit: limit})
 		if err != nil {
 			logx.Propagate(ctx, s.logger, "pay.svc.payment.sweep_expired", err)
 			return settled, err
@@ -347,7 +384,8 @@ func (s *paymentImpl) SweepExpired(ctx context.Context, limit int) (int, error) 
 	return settled, nil
 }
 
-func (s *paymentImpl) Close(ctx context.Context, id int64, actorID int64) (*payentity.Payment, error) {
+func (s *paymentImpl) Close(ctx context.Context, req ClosePaymentRequest) (*payentity.Payment, error) {
+	id := req.ID
 	p, err := s.payments.FindByID(ctx, id)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.payment.close", err)
@@ -358,12 +396,12 @@ func (s *paymentImpl) Close(ctx context.Context, id int64, actorID int64) (*paye
 	if p.Status != payentity.PaymentPending {
 		return p, nil
 	}
-	m, gw, err := s.resolve(ctx, p.MerchantID)
+	resolved, err := s.resolve(ctx, p.MerchantID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.payment.close", err)
 		return nil, err
 	}
-	closeErr := gw.Close(ctx, m, fmtPaymentNo(p.ID))
+	closeErr := resolved.Gateway.Close(ctx, CloseRequest{Merchant: resolved.Merchant, PaymentNo: fmtPaymentNo(p.ID)})
 	if closeErr != nil {
 		if !isChannelAlreadyPaid(closeErr) {
 			err = pay.ErrChannelError.WithCause(closeErr)
@@ -371,13 +409,13 @@ func (s *paymentImpl) Close(ctx context.Context, id int64, actorID int64) (*paye
 			return nil, err
 		}
 		// The channel says paid: flip into a query and settle PAID.
-		state, queryErr := gw.Query(ctx, m, fmtPaymentNo(p.ID))
+		state, queryErr := resolved.Gateway.Query(ctx, QueryRequest{Merchant: resolved.Merchant, PaymentNo: fmtPaymentNo(p.ID)})
 		if queryErr != nil {
 			err = pay.ErrChannelError.WithCause(queryErr)
 			logx.Propagate(ctx, s.logger, "pay.svc.payment.close", err)
 			return nil, err
 		}
-		if _, err := s.ApplyChannelState(ctx, p.ID, state); err != nil {
+		if _, err := s.ApplyChannelState(ctx, ApplyChannelStateRequest{PaymentNo: p.ID, State: state}); err != nil {
 			logx.Propagate(ctx, s.logger, "pay.svc.payment.close", err)
 			return nil, err
 		}
@@ -399,7 +437,8 @@ func (s *paymentImpl) Close(ctx context.Context, id int64, actorID int64) (*paye
 // transition is a CAS from Pending; false returns are duplicates,
 // out-of-order receipts, or a rejected amount mismatch — no-ops by design,
 // never errors.
-func (s *paymentImpl) ApplyChannelState(ctx context.Context, paymentNo int64, state ChannelPaymentState) (bool, error) {
+func (s *paymentImpl) ApplyChannelState(ctx context.Context, req ApplyChannelStateRequest) (bool, error) {
+	paymentNo, state := req.PaymentNo, req.State
 	switch state.State {
 	case payentity.PaymentPaid:
 		// Amount verification before the CAS: a signature-valid success
@@ -430,7 +469,7 @@ func (s *paymentImpl) ApplyChannelState(ctx context.Context, paymentNo int64, st
 			PaidAt:         state.PaidAt,
 			Amount:         state.Amount,
 		}
-		advanced, err := s.payments.MarkPaid(ctx, paymentNo, capture)
+		advanced, err := s.payments.MarkPaid(ctx, payrepo.MarkPaidRequest{ID: paymentNo, Capture: capture})
 		if err != nil {
 			logx.Propagate(ctx, s.logger, "pay.svc.payment.apply_state", err)
 			return false, err
@@ -438,7 +477,7 @@ func (s *paymentImpl) ApplyChannelState(ctx context.Context, paymentNo int64, st
 		if !advanced {
 			// Already PAID: backfill any evidence the earlier confirmation
 			// lacked; already FAILED/CLOSED/EXPIRED: irreversible no-op.
-			if _, err := s.payments.BackfillPaidInfo(ctx, paymentNo, capture); err != nil {
+			if _, err := s.payments.BackfillPaidInfo(ctx, payrepo.BackfillPaidInfoRequest{ID: paymentNo, Capture: capture}); err != nil {
 				logx.Propagate(ctx, s.logger, "pay.svc.payment.apply_state", err)
 				return false, err
 			}
@@ -446,7 +485,7 @@ func (s *paymentImpl) ApplyChannelState(ctx context.Context, paymentNo int64, st
 		return advanced, nil
 	case payentity.PaymentFailed:
 		return s.applyTransition(ctx, paymentNo, func() (bool, error) {
-			return s.payments.MarkFailed(ctx, paymentNo, state.FailReason)
+			return s.payments.MarkFailed(ctx, payrepo.MarkPaymentFailedRequest{ID: paymentNo, Reason: state.FailReason})
 		})
 	case payentity.PaymentClosed:
 		return s.applyTransition(ctx, paymentNo, func() (bool, error) {
@@ -474,11 +513,12 @@ func (s *paymentImpl) applyTransition(ctx context.Context, paymentNo int64, adva
 // wins (callback lost); channel PENDING past expiry closes at the channel
 // (best-effort) and marks EXPIRED locally; other states apply verbatim.
 func (s *paymentImpl) settle(ctx context.Context, p *payentity.Payment) (bool, error) {
-	m, gw, err := s.resolve(ctx, p.MerchantID)
+	resolved, err := s.resolve(ctx, p.MerchantID)
 	if err != nil {
 		return false, err
 	}
-	state, err := gw.Query(ctx, m, fmtPaymentNo(p.ID))
+	gw, m := resolved.Gateway, resolved.Merchant
+	state, err := gw.Query(ctx, QueryRequest{Merchant: m, PaymentNo: fmtPaymentNo(p.ID)})
 	if err != nil {
 		return false, err
 	}
@@ -489,13 +529,13 @@ func (s *paymentImpl) settle(ctx context.Context, p *payentity.Payment) (bool, e
 		// the user paid between the Query and the Close — money was
 		// captured, so re-query and apply the channel's truth instead of
 		// forcing EXPIRED (captured funds must land as PAID, refundable).
-		if closeErr := gw.Close(ctx, m, fmtPaymentNo(p.ID)); closeErr != nil {
+		if closeErr := gw.Close(ctx, CloseRequest{Merchant: m, PaymentNo: fmtPaymentNo(p.ID)}); closeErr != nil {
 			if isChannelAlreadyPaid(closeErr) {
-				paidState, queryErr := gw.Query(ctx, m, fmtPaymentNo(p.ID))
+				paidState, queryErr := gw.Query(ctx, QueryRequest{Merchant: m, PaymentNo: fmtPaymentNo(p.ID)})
 				if queryErr != nil {
 					return false, queryErr
 				}
-				return s.ApplyChannelState(ctx, p.ID, paidState)
+				return s.ApplyChannelState(ctx, ApplyChannelStateRequest{PaymentNo: p.ID, State: paidState})
 			}
 			s.logger.Warn("channel close of expired payment failed; expiring locally",
 				slog.String("operation", "pay.svc.payment.settle"),
@@ -504,7 +544,7 @@ func (s *paymentImpl) settle(ctx context.Context, p *payentity.Payment) (bool, e
 		}
 		state.State = payentity.PaymentExpired
 	}
-	return s.ApplyChannelState(ctx, p.ID, state)
+	return s.ApplyChannelState(ctx, ApplyChannelStateRequest{PaymentNo: p.ID, State: state})
 }
 
 // fmtPaymentNo renders the snowflake ID as the channel-facing order
@@ -529,7 +569,7 @@ func isChannelAlreadyPaid(err error) bool {
 // payment already settled — the reason is then pointless, which the error
 // path tolerates.
 func (s *paymentImpl) failPending(ctx context.Context, id int64, cause error) {
-	if _, err := s.payments.MarkFailed(ctx, id, truncateMessage(cause.Error(), 256)); err != nil {
+	if _, err := s.payments.MarkFailed(ctx, payrepo.MarkPaymentFailedRequest{ID: id, Reason: truncateMessage(cause.Error(), 256)}); err != nil {
 		s.logger.Warn("failed to record payment failure",
 			slog.String("operation", "pay.svc.payment.fail_pending"),
 			slog.Int64("payment_id", id),

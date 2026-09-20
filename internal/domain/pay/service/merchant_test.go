@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"net/http"
 	"testing"
 
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
+	payrepo "glex/internal/domain/pay/repository"
 	"glex/internal/infra/pay/crypt"
 	"glex/pkg/listq"
 )
@@ -94,7 +94,8 @@ func (f *fakeMerchantRepo) Create(ctx context.Context, m *payentity.MerchantAcco
 	return &cp, nil
 }
 
-func (f *fakeMerchantRepo) Update(ctx context.Context, m *payentity.MerchantAccount, actorID int64) (*payentity.MerchantAccount, error) {
+func (f *fakeMerchantRepo) Update(ctx context.Context, req payrepo.UpdateMerchantRequest) (*payentity.MerchantAccount, error) {
+	m := req.Merchant
 	if _, ok := f.m[m.ID]; !ok {
 		return nil, pay.ErrMerchantNotFound
 	}
@@ -105,24 +106,24 @@ func (f *fakeMerchantRepo) Update(ctx context.Context, m *payentity.MerchantAcco
 	cp := *m
 	cp.ConfigCipher = token
 	cp.Config = nil
-	cp.UpdateBy = actorID
+	cp.UpdateBy = req.ActorID
 	f.m[m.ID] = &cp
 	return &cp, nil
 }
 
-func (f *fakeMerchantRepo) UpdateStatus(ctx context.Context, id int64, status payentity.MerchantStatus, actorID int64) error {
-	if _, ok := f.m[id]; !ok {
+func (f *fakeMerchantRepo) UpdateStatus(ctx context.Context, req payrepo.UpdateMerchantStatusRequest) error {
+	if _, ok := f.m[req.ID]; !ok {
 		return pay.ErrMerchantNotFound
 	}
-	f.m[id].Status = status
+	f.m[req.ID].Status = req.Status
 	return nil
 }
 
-func (f *fakeMerchantRepo) Delete(ctx context.Context, id, actorID int64) error {
-	if _, ok := f.m[id]; !ok || f.deleted[id] {
+func (f *fakeMerchantRepo) Delete(ctx context.Context, req payrepo.DeleteMerchantRequest) error {
+	if _, ok := f.m[req.ID]; !ok || f.deleted[req.ID] {
 		return pay.ErrMerchantNotFound
 	}
-	f.deleted[id] = true
+	f.deleted[req.ID] = true
 	return nil
 }
 
@@ -132,26 +133,26 @@ type fakeCatalog struct{ schemas []payentity.ChannelSchema }
 
 func (f *fakeCatalog) Schemas() []payentity.ChannelSchema { return f.schemas }
 
-func (f *fakeCatalog) Schema(ch payentity.Channel) (payentity.ChannelSchema, bool) {
+func (f *fakeCatalog) Schema(ch payentity.Channel) (payentity.ChannelSchema, error) {
 	for _, s := range f.schemas {
 		if s.Channel == ch {
-			return s, true
+			return s, nil
 		}
 	}
-	return payentity.ChannelSchema{}, false
+	return payentity.ChannelSchema{}, pay.ErrChannelNotAdopted
 }
 
 func (f *fakeCatalog) Adopted(ch payentity.Channel) bool {
-	_, ok := f.Schema(ch)
-	return ok
+	_, err := f.Schema(ch)
+	return err == nil
 }
 
 // ValidateConfig applies the schema's core semantics: unknown keys
 // rejected, required fields present, values passed through.
 func (f *fakeCatalog) ValidateConfig(ch payentity.Channel, values map[string]string) (map[string]string, error) {
-	schema, ok := f.Schema(ch)
-	if !ok {
-		return nil, pay.ErrChannelNotAdopted
+	schema, err := f.Schema(ch)
+	if err != nil {
+		return nil, err
 	}
 	known := map[string]bool{}
 	for _, field := range schema.Fields {
@@ -173,8 +174,8 @@ func (f *fakeCatalog) ValidateConfig(ch payentity.Channel, values map[string]str
 }
 
 func (f *fakeCatalog) MaskConfig(ch payentity.Channel, values map[string]string) map[string]string {
-	schema, ok := f.Schema(ch)
-	if !ok {
+	schema, err := f.Schema(ch)
+	if err != nil {
 		return nil
 	}
 	masked := map[string]string{}
@@ -209,11 +210,11 @@ func (g *fakeChannelGateway) Prepay(ctx context.Context, req PrepayRequest) (Pre
 	return PrepayResult{}, nil
 }
 
-func (g *fakeChannelGateway) Query(ctx context.Context, m *payentity.MerchantAccount, paymentNo string) (ChannelPaymentState, error) {
+func (g *fakeChannelGateway) Query(ctx context.Context, req QueryRequest) (ChannelPaymentState, error) {
 	return ChannelPaymentState{}, nil
 }
 
-func (g *fakeChannelGateway) Close(ctx context.Context, m *payentity.MerchantAccount, paymentNo string) error {
+func (g *fakeChannelGateway) Close(ctx context.Context, req CloseRequest) error {
 	return nil
 }
 
@@ -221,11 +222,11 @@ func (g *fakeChannelGateway) Refund(ctx context.Context, req RefundRequest) (Cha
 	return ChannelRefundState{}, nil
 }
 
-func (g *fakeChannelGateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo, paymentNo string) (ChannelRefundState, error) {
+func (g *fakeChannelGateway) QueryRefund(ctx context.Context, req RefundQueryRequest) (ChannelRefundState, error) {
 	return ChannelRefundState{}, nil
 }
 
-func (g *fakeChannelGateway) ParseNotification(ctx context.Context, m *payentity.MerchantAccount, headers http.Header, body []byte) (payentity.ChannelNotification, error) {
+func (g *fakeChannelGateway) ParseNotification(ctx context.Context, req NotificationRequest) (payentity.ChannelNotification, error) {
 	return payentity.ChannelNotification{}, nil
 }
 
@@ -253,8 +254,8 @@ func wechatSchema() payentity.ChannelSchema {
 	}
 }
 
-func wechatInput() *CreateInput {
-	return &CreateInput{
+func wechatInput(actorID int64) CreateRequest {
+	return CreateRequest{
 		Channel: payentity.ChannelWechat,
 		Name:    "主店",
 		Config: map[string]string{
@@ -262,6 +263,7 @@ func wechatInput() *CreateInput {
 			"api_v3_key":           testAPIv3Key,
 			"merchant_private_key": testPrivKey,
 		},
+		ActorID: actorID,
 	}
 }
 
@@ -286,7 +288,7 @@ func newTestMerchantServiceWith(t *testing.T, cipher *crypt.Cipher) (Merchant, *
 
 func TestMerchantCreateSealsAndEchoes(t *testing.T) {
 	svc, repo, _ := newTestMerchantService(t)
-	m, err := svc.Create(context.Background(), wechatInput(), 7)
+	m, err := svc.Create(context.Background(), wechatInput(7))
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -316,44 +318,45 @@ func TestMerchantCreateSealsAndEchoes(t *testing.T) {
 
 func TestMerchantCreateRejectsInvalidInputs(t *testing.T) {
 	svc, _, _ := newTestMerchantService(t)
-	in := wechatInput()
+	in := wechatInput(7)
 	in.Channel = payentity.ChannelStripe
-	if _, err := svc.Create(context.Background(), in, 7); !errors.Is(err, pay.ErrChannelNotAdopted) {
+	if _, err := svc.Create(context.Background(), in); !errors.Is(err, pay.ErrChannelNotAdopted) {
 		t.Fatalf("err = %v, want ErrChannelNotAdopted", err)
 	}
-	in = wechatInput()
+	in = wechatInput(7)
 	in.Name = ""
-	if _, err := svc.Create(context.Background(), in, 7); !errors.Is(err, pay.ErrMerchantInvalid) {
+	if _, err := svc.Create(context.Background(), in); !errors.Is(err, pay.ErrMerchantInvalid) {
 		t.Fatalf("err = %v, want ErrMerchantInvalid", err)
 	}
-	in = wechatInput()
+	in = wechatInput(7)
 	delete(in.Config, "api_v3_key")
-	if _, err := svc.Create(context.Background(), in, 7); !errors.Is(err, pay.ErrMerchantInvalid) {
+	if _, err := svc.Create(context.Background(), in); !errors.Is(err, pay.ErrMerchantInvalid) {
 		t.Fatalf("err = %v, want ErrMerchantInvalid", err)
 	}
-	in = wechatInput()
+	in = wechatInput(7)
 	in.Config["bogus"] = "x"
-	if _, err := svc.Create(context.Background(), in, 7); !errors.Is(err, pay.ErrMerchantInvalid) {
+	if _, err := svc.Create(context.Background(), in); !errors.Is(err, pay.ErrMerchantInvalid) {
 		t.Fatalf("err = %v, want ErrMerchantInvalid", err)
 	}
 }
 
 func TestMerchantUpdateKeepsBlankSecrets(t *testing.T) {
 	svc, repo, gateways := newTestMerchantService(t)
-	m, err := svc.Create(context.Background(), wechatInput(), 7)
+	m, err := svc.Create(context.Background(), wechatInput(7))
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
 	gateways.invalidat = nil
-	updated, err := svc.Update(context.Background(), &UpdateInput{
-		ID:   m.ID,
-		Name: "分店",
+	updated, err := svc.Update(context.Background(), UpdateRequest{
+		ID:      m.ID,
+		Name:    "分店",
+		ActorID: 8,
 		Config: map[string]string{
 			"mchid":                "1900000002",
 			"api_v3_key":           "", // blank secret → keep
 			"merchant_private_key": "NEW-KEY",
 		},
-	}, 8)
+	})
 	if err != nil {
 		t.Fatalf("update: %v", err)
 	}
@@ -385,22 +388,26 @@ func TestMerchantUpdateKeepsBlankSecrets(t *testing.T) {
 
 func TestMerchantChangeStatusAndWithdrawInvalidate(t *testing.T) {
 	svc, _, gateways := newTestMerchantService(t)
-	m, err := svc.Create(context.Background(), wechatInput(), 7)
+	m, err := svc.Create(context.Background(), wechatInput(7))
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
 	gateways.invalidat = nil
-	got, err := svc.ChangeStatus(context.Background(), m.ID, payentity.MerchantDisabled, 7)
+	got, err := svc.ChangeStatus(context.Background(), ChangeStatusRequest{
+		ID: m.ID, Status: payentity.MerchantDisabled, ActorID: 7,
+	})
 	if err != nil {
 		t.Fatalf("change status: %v", err)
 	}
 	if got.Status != payentity.MerchantDisabled {
 		t.Fatalf("status = %d", got.Status)
 	}
-	if _, err := svc.ChangeStatus(context.Background(), m.ID, payentity.MerchantStatus(9), 7); !errors.Is(err, pay.ErrMerchantInvalid) {
+	if _, err := svc.ChangeStatus(context.Background(), ChangeStatusRequest{
+		ID: m.ID, Status: payentity.MerchantStatus(9), ActorID: 7,
+	}); !errors.Is(err, pay.ErrMerchantInvalid) {
 		t.Fatalf("err = %v, want ErrMerchantInvalid", err)
 	}
-	if err := svc.Withdraw(context.Background(), m.ID, 7); err != nil {
+	if err := svc.Withdraw(context.Background(), WithdrawRequest{ID: m.ID, ActorID: 7}); err != nil {
 		t.Fatalf("withdraw: %v", err)
 	}
 	if _, err := svc.Get(context.Background(), m.ID); !errors.Is(err, pay.ErrMerchantNotFound) {
@@ -413,7 +420,7 @@ func TestMerchantChangeStatusAndWithdrawInvalidate(t *testing.T) {
 
 func TestMerchantProbeOutcomes(t *testing.T) {
 	svc, _, gateways := newTestMerchantService(t)
-	m, err := svc.Create(context.Background(), wechatInput(), 7)
+	m, err := svc.Create(context.Background(), wechatInput(7))
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -440,7 +447,7 @@ func TestMerchantCreateFailsWithoutMasterKey(t *testing.T) {
 	// merchant write refuses (ADR 0018) while unrelated paths are
 	// unaffected.
 	svc, _, _ := newTestMerchantServiceWith(t, crypt.New())
-	if _, err := svc.Create(context.Background(), wechatInput(), 7); !errors.Is(err, pay.ErrMasterKeyMissing) {
+	if _, err := svc.Create(context.Background(), wechatInput(7)); !errors.Is(err, pay.ErrMasterKeyMissing) {
 		t.Fatalf("err = %v, want ErrMasterKeyMissing", err)
 	}
 }

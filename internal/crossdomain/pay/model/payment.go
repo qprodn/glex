@@ -43,3 +43,10 @@ type PaymentRequest struct {
 	PayMethod     int
 	ExpireMinutes int32
 }
+
+// GetByBizNoRequest names one merchant's Business Order Number — the pair
+// an outcome read resolves (ADR 0025: the pair rides one request struct).
+type GetByBizNoRequest struct {
+	MerchantID int64
+	BizNo      string
+}

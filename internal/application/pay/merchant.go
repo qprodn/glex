@@ -80,12 +80,13 @@ func (s *PayApplication) CreateMerchantAccount(ctx context.Context, req *payv1.C
 		logx.Propagate(ctx, s.logger, "pay.create_merchant_account", err)
 		return nil, err
 	}
-	m, err := s.merchants.Create(ctx, &payservice.CreateInput{
+	m, err := s.merchants.Create(ctx, payservice.CreateRequest{
 		Channel: channel,
 		Name:    req.GetName(),
 		Config:  req.GetConfig(),
 		Remark:  req.GetRemark(),
-	}, s.actor(ctx))
+		ActorID: s.actor(ctx),
+	})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.create_merchant_account", err)
 		return nil, err
@@ -138,12 +139,13 @@ func (s *PayApplication) GetMerchantAccount(ctx context.Context, req *payv1.GetM
 // UpdateMerchantAccount replaces the display fields and the whole config
 // form; secret fields left blank keep their stored values (ADR 0021).
 func (s *PayApplication) UpdateMerchantAccount(ctx context.Context, req *payv1.UpdateMerchantAccountRequest) (*payv1.MerchantAccount, error) {
-	m, err := s.merchants.Update(ctx, &payservice.UpdateInput{
-		ID:     req.GetMerchantId(),
-		Name:   req.GetName(),
-		Config: req.GetConfig(),
-		Remark: req.GetRemark(),
-	}, s.actor(ctx))
+	m, err := s.merchants.Update(ctx, payservice.UpdateRequest{
+		ID:      req.GetMerchantId(),
+		Name:    req.GetName(),
+		Config:  req.GetConfig(),
+		Remark:  req.GetRemark(),
+		ActorID: s.actor(ctx),
+	})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.update_merchant_account", err)
 		return nil, err
@@ -153,7 +155,11 @@ func (s *PayApplication) UpdateMerchantAccount(ctx context.Context, req *payv1.U
 
 // ChangeMerchantAccountStatus enables or disables a Merchant Account.
 func (s *PayApplication) ChangeMerchantAccountStatus(ctx context.Context, req *payv1.ChangeMerchantAccountStatusRequest) (*payv1.MerchantAccount, error) {
-	m, err := s.merchants.ChangeStatus(ctx, req.GetMerchantId(), payentity.MerchantStatus(req.GetStatus()), s.actor(ctx))
+	m, err := s.merchants.ChangeStatus(ctx, payservice.ChangeStatusRequest{
+		ID:      req.GetMerchantId(),
+		Status:  payentity.MerchantStatus(req.GetStatus()),
+		ActorID: s.actor(ctx),
+	})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.change_merchant_account_status", err)
 		return nil, err
@@ -163,7 +169,10 @@ func (s *PayApplication) ChangeMerchantAccountStatus(ctx context.Context, req *p
 
 // WithdrawMerchantAccount soft-deletes the Merchant Account.
 func (s *PayApplication) WithdrawMerchantAccount(ctx context.Context, req *payv1.WithdrawMerchantAccountRequest) (*emptypb.Empty, error) {
-	if err := s.merchants.Withdraw(ctx, req.GetMerchantId(), s.actor(ctx)); err != nil {
+	if err := s.merchants.Withdraw(ctx, payservice.WithdrawRequest{
+		ID:      req.GetMerchantId(),
+		ActorID: s.actor(ctx),
+	}); err != nil {
 		logx.Propagate(ctx, s.logger, "pay.withdraw_merchant_account", err)
 		return nil, err
 	}

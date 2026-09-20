@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"sort"
 	"testing"
 	"time"
 
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
+	payrepo "glex/internal/domain/pay/repository"
 	"glex/internal/infra/pay/crypt"
 	"glex/pkg/listq"
 
@@ -41,10 +41,10 @@ func (f *fakePaymentRepo) FindByID(ctx context.Context, id int64) (*payentity.Pa
 }
 
 // FindLatestByBizNo returns the newest active row for the pair.
-func (f *fakePaymentRepo) FindLatestByBizNo(ctx context.Context, merchantID int64, bizNo string) (*payentity.Payment, error) {
+func (f *fakePaymentRepo) FindLatestByBizNo(ctx context.Context, req payrepo.FindLatestByBizNoRequest) (*payentity.Payment, error) {
 	var newest *payentity.Payment
 	for _, p := range f.p {
-		if p.MerchantID == merchantID && p.BizNo == bizNo {
+		if p.MerchantID == req.MerchantID && p.BizNo == req.BizNo {
 			if newest == nil || p.ID > newest.ID {
 				cp := *p
 				newest = &cp
@@ -63,10 +63,10 @@ func (f *fakePaymentRepo) List(context.Context, listq.Query) ([]*payentity.Payme
 
 // ListPendingExpired mirrors the infra scan: still-Pending rows past their
 // expiry, id ascending from afterID, bounded.
-func (f *fakePaymentRepo) ListPendingExpired(ctx context.Context, before time.Time, afterID int64, limit int) ([]*payentity.Payment, error) {
+func (f *fakePaymentRepo) ListPendingExpired(ctx context.Context, req payrepo.ListPendingExpiredRequest) ([]*payentity.Payment, error) {
 	ids := make([]int64, 0, len(f.p))
 	for id := range f.p {
-		if id > afterID {
+		if id > req.AfterID {
 			ids = append(ids, id)
 		}
 	}
@@ -74,10 +74,10 @@ func (f *fakePaymentRepo) ListPendingExpired(ctx context.Context, before time.Ti
 	var out []*payentity.Payment
 	for _, id := range ids {
 		p := f.p[id]
-		if p.Status == payentity.PaymentPending && p.ExpireTime.Before(before) {
+		if p.Status == payentity.PaymentPending && p.ExpireTime.Before(req.Before) {
 			cp := *p
 			out = append(out, &cp)
-			if len(out) >= limit {
+			if len(out) >= req.Limit {
 				break
 			}
 		}
@@ -91,68 +91,68 @@ func (f *fakePaymentRepo) Create(ctx context.Context, p *payentity.Payment) (*pa
 	return &cp, nil
 }
 
-func (f *fakePaymentRepo) ClosePendingByBizNo(ctx context.Context, merchantID int64, bizNo string, actorID int64) (int, error) {
+func (f *fakePaymentRepo) ClosePendingByBizNo(ctx context.Context, req payrepo.ClosePendingByBizNoRequest) (int, error) {
 	n := 0
 	for _, p := range f.p {
-		if p.MerchantID == merchantID && p.BizNo == bizNo && p.Status == payentity.PaymentPending {
+		if p.MerchantID == req.MerchantID && p.BizNo == req.BizNo && p.Status == payentity.PaymentPending {
 			p.Status = payentity.PaymentClosed
-			p.UpdateBy = actorID
+			p.UpdateBy = req.ActorID
 			n++
 		}
 	}
 	return n, nil
 }
 
-func (f *fakePaymentRepo) SetChannelPayload(ctx context.Context, id int64, payload string) error {
-	f.p[id].ChannelPayload = payload
+func (f *fakePaymentRepo) SetChannelPayload(ctx context.Context, req payrepo.SetChannelPayloadRequest) error {
+	f.p[req.ID].ChannelPayload = req.Payload
 	f.resolved++
 	return nil
 }
 
-func (f *fakePaymentRepo) SetFailReason(ctx context.Context, id int64, reason string) error {
-	f.p[id].FailReason = reason
+func (f *fakePaymentRepo) SetFailReason(ctx context.Context, req payrepo.SetFailReasonRequest) error {
+	f.p[req.ID].FailReason = req.Reason
 	return nil
 }
 
-func (f *fakePaymentRepo) MarkPaid(ctx context.Context, id int64, capture payentity.PaidCapture) (bool, error) {
-	p, ok := f.p[id]
+func (f *fakePaymentRepo) MarkPaid(ctx context.Context, req payrepo.MarkPaidRequest) (bool, error) {
+	p, ok := f.p[req.ID]
 	if !ok || p.Status != payentity.PaymentPending {
 		return false, nil
 	}
 	p.Status = payentity.PaymentPaid
-	p.ChannelTradeNo = capture.ChannelTradeNo
-	p.PayerID = capture.PayerID
-	if !capture.PaidAt.IsZero() {
-		paidAt := capture.PaidAt
+	p.ChannelTradeNo = req.Capture.ChannelTradeNo
+	p.PayerID = req.Capture.PayerID
+	if !req.Capture.PaidAt.IsZero() {
+		paidAt := req.Capture.PaidAt
 		p.PaidAt = &paidAt
 	}
 	return true, nil
 }
 
-func (f *fakePaymentRepo) BackfillPaidInfo(ctx context.Context, id int64, capture payentity.PaidCapture) (bool, error) {
-	p, ok := f.p[id]
+func (f *fakePaymentRepo) BackfillPaidInfo(ctx context.Context, req payrepo.BackfillPaidInfoRequest) (bool, error) {
+	p, ok := f.p[req.ID]
 	if !ok || p.Status != payentity.PaymentPaid {
 		return false, nil
 	}
 	changed := false
-	if capture.ChannelTradeNo != "" && p.ChannelTradeNo == "" {
-		p.ChannelTradeNo = capture.ChannelTradeNo
+	if req.Capture.ChannelTradeNo != "" && p.ChannelTradeNo == "" {
+		p.ChannelTradeNo = req.Capture.ChannelTradeNo
 		changed = true
 	}
-	if capture.PayerID != "" && p.PayerID == "" {
-		p.PayerID = capture.PayerID
+	if req.Capture.PayerID != "" && p.PayerID == "" {
+		p.PayerID = req.Capture.PayerID
 		changed = true
 	}
 	return changed, nil
 }
 
-func (f *fakePaymentRepo) MarkFailed(ctx context.Context, id int64, reason string) (bool, error) {
-	p, ok := f.p[id]
+func (f *fakePaymentRepo) MarkFailed(ctx context.Context, req payrepo.MarkPaymentFailedRequest) (bool, error) {
+	p, ok := f.p[req.ID]
 	if !ok || p.Status != payentity.PaymentPending {
 		return false, nil
 	}
 	p.Status = payentity.PaymentFailed
-	p.FailReason = reason
+	p.FailReason = req.Reason
 	return true, nil
 }
 
@@ -213,7 +213,7 @@ func (g *scriptGateway) Prepay(ctx context.Context, req PrepayRequest) (PrepayRe
 	return PrepayResult{ChannelPayload: g.prepayBody}, nil
 }
 
-func (g *scriptGateway) Query(ctx context.Context, m *payentity.MerchantAccount, paymentNo string) (ChannelPaymentState, error) {
+func (g *scriptGateway) Query(ctx context.Context, req QueryRequest) (ChannelPaymentState, error) {
 	if g.resolveHits != nil {
 		*g.resolveHits++
 	}
@@ -226,7 +226,7 @@ func (g *scriptGateway) Query(ctx context.Context, m *payentity.MerchantAccount,
 	return g.queryState, nil
 }
 
-func (g *scriptGateway) Close(ctx context.Context, m *payentity.MerchantAccount, paymentNo string) error {
+func (g *scriptGateway) Close(ctx context.Context, req CloseRequest) error {
 	if g.closeCalled != nil {
 		*g.closeCalled++
 	}
@@ -238,16 +238,13 @@ func (g *scriptGateway) Refund(ctx context.Context, req RefundRequest) (ChannelR
 	return ChannelRefundState{}, nil
 }
 
-func (g *scriptGateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo, paymentNo string) (ChannelRefundState, error) {
+func (g *scriptGateway) QueryRefund(ctx context.Context, req RefundQueryRequest) (ChannelRefundState, error) {
 	return ChannelRefundState{}, nil
 }
 
-func (g *scriptGateway) ParseNotification(ctx context.Context, m *payentity.MerchantAccount, headers httpHeader, body []byte) (payentity.ChannelNotification, error) {
+func (g *scriptGateway) ParseNotification(ctx context.Context, req NotificationRequest) (payentity.ChannelNotification, error) {
 	return payentity.ChannelNotification{}, nil
 }
-
-// httpHeader aliases net/http's Header type under a short test-local name.
-type httpHeader = http.Header
 
 func (g *scriptGateway) Probe(ctx context.Context, m *payentity.MerchantAccount) error { return nil }
 
@@ -274,7 +271,7 @@ func newTestPaymentService(t *testing.T, gw *scriptGateway) (Payment, *fakePayme
 	merchantRepo := newFakeMerchantRepo(cipher)
 	catalog := &fakeCatalog{schemas: []payentity.ChannelSchema{wechatSchema()}}
 	merchantSvc := NewMerchantService(merchantRepo, catalog, cipher, &scriptGateways{}, slog.New(slog.DiscardHandler))
-	m, err := merchantSvc.Create(context.Background(), wechatInput(), 7)
+	m, err := merchantSvc.Create(context.Background(), wechatInput(7))
 	if err != nil {
 		t.Fatalf("create merchant fixture: %v", err)
 	}
@@ -290,20 +287,21 @@ func orderByDefault() ordering.OrderBy {
 	return o
 }
 
-func initiateInput(merchantID int64) *CreatePaymentInput {
-	return &CreatePaymentInput{
+func initiateInput(merchantID, actorID int64) CreatePaymentRequest {
+	return CreatePaymentRequest{
 		MerchantID: merchantID,
 		BizNo:      "ORDER-1",
 		Subject:    "测试商品",
 		Amount:     100,
 		PayMethod:  payentity.PayMethodNative,
+		ActorID:    actorID,
 	}
 }
 
 func TestInitiateClosesOldPendingAndCreatesNew(t *testing.T) {
 	svc, repo, merchantID := newTestPaymentService(t, &scriptGateway{prepayBody: "wxp://qr"})
 	// A first pending payment exists for (merchant, ORDER-1).
-	first, err := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	first, err := svc.Initiate(context.Background(), initiateInput(merchantID, 7))
 	if err != nil {
 		t.Fatalf("first initiate: %v", err)
 	}
@@ -311,7 +309,7 @@ func TestInitiateClosesOldPendingAndCreatesNew(t *testing.T) {
 		t.Fatalf("first payment = %+v", first)
 	}
 	// Re-initiation closes the old pending row and inserts a fresh one.
-	second, err := svc.Initiate(context.Background(), initiateInput(merchantID), 8)
+	second, err := svc.Initiate(context.Background(), initiateInput(merchantID, 8))
 	if err != nil {
 		t.Fatalf("second initiate: %v", err)
 	}
@@ -329,30 +327,30 @@ func TestInitiateClosesOldPendingAndCreatesNew(t *testing.T) {
 
 func TestInitiateValidations(t *testing.T) {
 	svc, _, merchantID := newTestPaymentService(t, &scriptGateway{})
-	in := initiateInput(merchantID)
+	in := initiateInput(merchantID, 7)
 	in.Amount = 0
-	if _, err := svc.Initiate(context.Background(), in, 7); !errors.Is(err, pay.ErrPaymentInvalid) {
+	if _, err := svc.Initiate(context.Background(), in); !errors.Is(err, pay.ErrPaymentInvalid) {
 		t.Fatalf("err = %v, want ErrPaymentInvalid", err)
 	}
-	in = initiateInput(merchantID)
+	in = initiateInput(merchantID, 7)
 	in.MerchantID = 999999
-	if _, err := svc.Initiate(context.Background(), in, 7); !errors.Is(err, pay.ErrMerchantNotFound) {
+	if _, err := svc.Initiate(context.Background(), in); !errors.Is(err, pay.ErrMerchantNotFound) {
 		t.Fatalf("err = %v, want ErrMerchantNotFound", err)
 	}
-	in = initiateInput(merchantID)
+	in = initiateInput(merchantID, 7)
 	in.BizNo = ""
-	if _, err := svc.Initiate(context.Background(), in, 7); !errors.Is(err, pay.ErrPaymentInvalid) {
+	if _, err := svc.Initiate(context.Background(), in); !errors.Is(err, pay.ErrPaymentInvalid) {
 		t.Fatalf("err = %v, want ErrPaymentInvalid", err)
 	}
 }
 
 func TestPrepayBackfillsPayload(t *testing.T) {
 	svc, _, merchantID := newTestPaymentService(t, &scriptGateway{prepayBody: "wxp://faked"})
-	p, err := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	p, err := svc.Initiate(context.Background(), initiateInput(merchantID, 7))
 	if err != nil {
 		t.Fatalf("initiate: %v", err)
 	}
-	out, err := svc.Prepay(context.Background(), p.ID, "https://pay.example.com")
+	out, err := svc.Prepay(context.Background(), PrepayPaymentRequest{ID: p.ID, NotifyBaseURL: "https://pay.example.com"})
 	if err != nil {
 		t.Fatalf("prepay: %v", err)
 	}
@@ -363,11 +361,11 @@ func TestPrepayBackfillsPayload(t *testing.T) {
 
 func TestPrepayChannelFailureFailsThePayment(t *testing.T) {
 	svc, repo, merchantID := newTestPaymentService(t, &scriptGateway{prepayErr: errors.New("ORDER_CLOSED by channel")})
-	p, err := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	p, err := svc.Initiate(context.Background(), initiateInput(merchantID, 7))
 	if err != nil {
 		t.Fatalf("initiate: %v", err)
 	}
-	_, err = svc.Prepay(context.Background(), p.ID, "")
+	_, err = svc.Prepay(context.Background(), PrepayPaymentRequest{ID: p.ID})
 	if !errors.Is(err, pay.ErrChannelError) {
 		t.Fatalf("err = %v, want ErrChannelError", err)
 	}
@@ -389,7 +387,7 @@ func TestGetSettlesExpiredPaymentToPaid(t *testing.T) {
 		closeCalled: &closeCalls,
 	}
 	svc, repo, merchantID := newTestPaymentService(t, gw)
-	p, err := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	p, err := svc.Initiate(context.Background(), initiateInput(merchantID, 7))
 	if err != nil {
 		t.Fatalf("initiate: %v", err)
 	}
@@ -411,7 +409,7 @@ func TestGetSettlesExpiredPaymentToExpired(t *testing.T) {
 		closeCalled: &closeCalls,
 	}
 	svc, repo, merchantID := newTestPaymentService(t, gw)
-	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID, 7))
 	repo.p[p.ID].ExpireTime = time.Now().Add(-time.Minute)
 	out, err := svc.Get(context.Background(), p.ID)
 	if err != nil {
@@ -439,7 +437,7 @@ func TestGetSettlesExpiredPaymentPaidBetweenQueryAndClose(t *testing.T) {
 		paidAfterClose: &paid,
 	}
 	svc, repo, merchantID := newTestPaymentService(t, gw)
-	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID, 7))
 	repo.p[p.ID].ExpireTime = time.Now().Add(-time.Minute)
 	out, err := svc.Get(context.Background(), p.ID)
 	if err != nil {
@@ -466,7 +464,7 @@ func TestQueryTerminalIsNoOp(t *testing.T) {
 	var resolveHits int
 	gw := &scriptGateway{resolveHits: &resolveHits}
 	svc, repo, merchantID := newTestPaymentService(t, gw)
-	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID, 7))
 	repo.p[p.ID].Status = payentity.PaymentPaid
 	if _, err := svc.Query(context.Background(), p.ID); err != nil {
 		t.Fatalf("query: %v", err)
@@ -480,9 +478,9 @@ func TestCloseOnPaidIsNoOp(t *testing.T) {
 	var closeCalls int
 	gw := &scriptGateway{closeCalled: &closeCalls}
 	svc, repo, merchantID := newTestPaymentService(t, gw)
-	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID, 7))
 	repo.p[p.ID].Status = payentity.PaymentPaid
-	out, err := svc.Close(context.Background(), p.ID, 7)
+	out, err := svc.Close(context.Background(), ClosePaymentRequest{ID: p.ID, ActorID: 7})
 	if err != nil {
 		t.Fatalf("close: %v", err)
 	}
@@ -504,8 +502,8 @@ func TestCloseChannelAlreadyPaidFlipsToPaid(t *testing.T) {
 		},
 	}
 	svc, _, merchantID := newTestPaymentService(t, gw)
-	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
-	out, err := svc.Close(context.Background(), p.ID, 7)
+	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID, 7))
+	out, err := svc.Close(context.Background(), ClosePaymentRequest{ID: p.ID, ActorID: 7})
 	if err != nil {
 		t.Fatalf("close: %v", err)
 	}
@@ -516,21 +514,21 @@ func TestCloseChannelAlreadyPaidFlipsToPaid(t *testing.T) {
 
 func TestApplyChannelStateDuplicateAndOutOfOrder(t *testing.T) {
 	svc, repo, merchantID := newTestPaymentService(t, &scriptGateway{})
-	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID, 7))
 	// First success advances.
-	advanced, err := svc.ApplyChannelState(ctx(), p.ID, ChannelPaymentState{
+	advanced, err := svc.ApplyChannelState(ctx(), ApplyChannelStateRequest{PaymentNo: p.ID, State: ChannelPaymentState{
 		State: payentity.PaymentPaid, ChannelTradeNo: "wx-txn-1", PayerID: "o-1",
-	})
+	}})
 	if err != nil || !advanced {
 		t.Fatalf("advanced = %v, err = %v", advanced, err)
 	}
 	// Duplicate delivery: no-op, no error.
-	advanced, err = svc.ApplyChannelState(ctx(), p.ID, ChannelPaymentState{State: payentity.PaymentPaid})
+	advanced, err = svc.ApplyChannelState(ctx(), ApplyChannelStateRequest{PaymentNo: p.ID, State: ChannelPaymentState{State: payentity.PaymentPaid}})
 	if err != nil || advanced {
 		t.Fatalf("duplicate advanced = %v, err = %v", advanced, err)
 	}
 	// Out-of-order close receipt after success: still a no-op.
-	advanced, err = svc.ApplyChannelState(ctx(), p.ID, ChannelPaymentState{State: payentity.PaymentClosed})
+	advanced, err = svc.ApplyChannelState(ctx(), ApplyChannelStateRequest{PaymentNo: p.ID, State: ChannelPaymentState{State: payentity.PaymentClosed}})
 	if err != nil || advanced {
 		t.Fatalf("out-of-order advanced = %v, err = %v", advanced, err)
 	}
@@ -542,17 +540,17 @@ func TestApplyChannelStateDuplicateAndOutOfOrder(t *testing.T) {
 
 func TestApplyChannelStateBackfillsEvidence(t *testing.T) {
 	svc, repo, merchantID := newTestPaymentService(t, &scriptGateway{})
-	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID, 7))
 	// First confirmation carries only the trade number.
-	if _, err := svc.ApplyChannelState(ctx(), p.ID, ChannelPaymentState{
+	if _, err := svc.ApplyChannelState(ctx(), ApplyChannelStateRequest{PaymentNo: p.ID, State: ChannelPaymentState{
 		State: payentity.PaymentPaid, ChannelTradeNo: "wx-txn-1",
-	}); err != nil {
+	}}); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	// A later confirmation backfills the payer evidence.
-	if _, err := svc.ApplyChannelState(ctx(), p.ID, ChannelPaymentState{
+	if _, err := svc.ApplyChannelState(ctx(), ApplyChannelStateRequest{PaymentNo: p.ID, State: ChannelPaymentState{
 		State: payentity.PaymentPaid, PayerID: "openid-1",
-	}); err != nil {
+	}}); err != nil {
 		t.Fatalf("backfill: %v", err)
 	}
 	stored, _ := repo.FindByID(context.Background(), p.ID)
@@ -563,11 +561,11 @@ func TestApplyChannelStateBackfillsEvidence(t *testing.T) {
 
 func TestApplyChannelStateRejectsAmountMismatch(t *testing.T) {
 	svc, repo, merchantID := newTestPaymentService(t, &scriptGateway{})
-	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID, 7))
 	// A signature-valid success naming the wrong amount never settles.
-	advanced, err := svc.ApplyChannelState(ctx(), p.ID, ChannelPaymentState{
+	advanced, err := svc.ApplyChannelState(ctx(), ApplyChannelStateRequest{PaymentNo: p.ID, State: ChannelPaymentState{
 		State: payentity.PaymentPaid, ChannelTradeNo: "wx-txn-1", Amount: 999,
-	})
+	}})
 	if err != nil || advanced {
 		t.Fatalf("mismatch advanced = %v, err = %v", advanced, err)
 	}
@@ -576,9 +574,9 @@ func TestApplyChannelStateRejectsAmountMismatch(t *testing.T) {
 		t.Fatalf("status = %v — a mismatched amount must not settle", stored.Status)
 	}
 	// The verified amount settles.
-	advanced, err = svc.ApplyChannelState(ctx(), p.ID, ChannelPaymentState{
+	advanced, err = svc.ApplyChannelState(ctx(), ApplyChannelStateRequest{PaymentNo: p.ID, State: ChannelPaymentState{
 		State: payentity.PaymentPaid, ChannelTradeNo: "wx-txn-1", Amount: 100,
-	})
+	}})
 	if err != nil || !advanced {
 		t.Fatalf("verified advanced = %v, err = %v", advanced, err)
 	}
@@ -601,15 +599,15 @@ func TestSweepExpiredSettlesOnlyExpiredPending(t *testing.T) {
 		closeCalled: &closeCalls,
 	}
 	svc, repo, merchantID := newTestPaymentService(t, gw)
-	inA := initiateInput(merchantID)
+	inA := initiateInput(merchantID, 7)
 	inA.BizNo = "ORDER-A"
-	inB := initiateInput(merchantID)
+	inB := initiateInput(merchantID, 7)
 	inB.BizNo = "ORDER-B"
-	inL := initiateInput(merchantID)
+	inL := initiateInput(merchantID, 7)
 	inL.BizNo = "ORDER-LIVE"
-	expiredA, _ := svc.Initiate(context.Background(), inA, 7)
-	expiredB, _ := svc.Initiate(context.Background(), inB, 7)
-	live, _ := svc.Initiate(context.Background(), inL, 7)
+	expiredA, _ := svc.Initiate(context.Background(), inA)
+	expiredB, _ := svc.Initiate(context.Background(), inB)
+	live, _ := svc.Initiate(context.Background(), inL)
 	repo.p[expiredA.ID].ExpireTime = time.Now().Add(-time.Hour)
 	repo.p[expiredB.ID].ExpireTime = time.Now().Add(-time.Minute)
 	// `live` keeps its future expiry.
@@ -639,7 +637,7 @@ func TestSweepExpiredContinuesPastFailure(t *testing.T) {
 		queryState: ChannelPaymentState{State: payentity.PaymentPending},
 	}
 	svc, repo, merchantID := newTestPaymentService(t, gw)
-	good, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	good, _ := svc.Initiate(context.Background(), initiateInput(merchantID, 7))
 	repo.p[good.ID].ExpireTime = time.Now().Add(-time.Hour)
 
 	// A candidate whose merchant no longer resolves — settle fails for it,
@@ -669,7 +667,7 @@ func TestSweepExpiredPagesPastPoisonedHead(t *testing.T) {
 	// A healthy expired row sits behind two poisoned ones (unresolvable
 	// merchant); with limit=2 the first batch is fully poisoned and the
 	// cursor must page the run forward to the healthy row.
-	good, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	good, _ := svc.Initiate(context.Background(), initiateInput(merchantID, 7))
 	repo.p[good.ID].ExpireTime = time.Now().Add(-time.Hour)
 	for i, id := range []int64{999001, 999002} {
 		repo.p[id] = &payentity.Payment{
@@ -693,7 +691,7 @@ func TestSweepExpiredPagesPastPoisonedHead(t *testing.T) {
 func TestSweepExpiredStopsOnDeadContext(t *testing.T) {
 	gw := &scriptGateway{queryState: ChannelPaymentState{State: payentity.PaymentPending}}
 	svc, repo, merchantID := newTestPaymentService(t, gw)
-	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID), 7)
+	p, _ := svc.Initiate(context.Background(), initiateInput(merchantID, 7))
 	repo.p[p.ID].ExpireTime = time.Now().Add(-time.Hour)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

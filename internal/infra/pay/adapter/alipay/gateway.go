@@ -115,9 +115,9 @@ func (g *gateway) Prepay(ctx context.Context, req payservice.PrepayRequest) (pay
 }
 
 // Query asks the channel for the payment's true state.
-func (g *gateway) Query(ctx context.Context, m *payentity.MerchantAccount, paymentNo string) (payservice.ChannelPaymentState, error) {
+func (g *gateway) Query(ctx context.Context, req payservice.QueryRequest) (payservice.ChannelPaymentState, error) {
 	var q alipay.TradeQuery
-	q.OutTradeNo = paymentNo
+	q.OutTradeNo = req.PaymentNo
 	rsp, err := g.client.TradeQuery(ctx, q)
 	if err != nil {
 		return payservice.ChannelPaymentState{}, err
@@ -148,9 +148,9 @@ func (g *gateway) Query(ctx context.Context, m *payentity.MerchantAccount, payme
 
 // Close closes the order; a status-refusal surfaces as
 // ErrChannelAlreadyPaid so the settlement path can flip into a query.
-func (g *gateway) Close(ctx context.Context, m *payentity.MerchantAccount, paymentNo string) error {
+func (g *gateway) Close(ctx context.Context, req payservice.CloseRequest) error {
 	var p alipay.TradeClose
-	p.OutTradeNo = paymentNo
+	p.OutTradeNo = req.PaymentNo
 	rsp, err := g.client.TradeClose(ctx, p)
 	if err != nil {
 		return err
@@ -224,10 +224,10 @@ func isHardRefundRejection(subCode string) bool {
 // requires the owning payment's out_trade_no alongside the out_request_no
 // — sending only the refund number is rejected as a parameter error by the
 // real gateway.
-func (g *gateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo, paymentNo string) (payservice.ChannelRefundState, error) {
+func (g *gateway) QueryRefund(ctx context.Context, req payservice.RefundQueryRequest) (payservice.ChannelRefundState, error) {
 	var p alipay.TradeFastPayRefundQuery
-	p.OutTradeNo = paymentNo
-	p.OutRequestNo = refundNo
+	p.OutTradeNo = req.PaymentNo
+	p.OutRequestNo = req.RefundNo
 	rsp, err := g.client.TradeFastPayRefundQuery(ctx, p)
 	if err != nil {
 		return payservice.ChannelRefundState{}, err
@@ -257,7 +257,8 @@ func (g *gateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount,
 // Alipay key material, then normalizes it into the canonical event. Any
 // verification failure is an error — the caller records the unverified
 // evidence and rejects (ADR 0020).
-func (g *gateway) ParseNotification(ctx context.Context, m *payentity.MerchantAccount, headers http.Header, body []byte) (payentity.ChannelNotification, error) {
+func (g *gateway) ParseNotification(ctx context.Context, req payservice.NotificationRequest) (payentity.ChannelNotification, error) {
+	body := req.Body
 	values, err := url.ParseQuery(string(body))
 	if err != nil {
 		return payentity.ChannelNotification{}, fmt.Errorf("alipay: unreadable notification body")

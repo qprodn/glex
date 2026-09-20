@@ -11,6 +11,7 @@ import (
 
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
+	payrepo "glex/internal/domain/pay/repository"
 	"glex/internal/infra/pay/crypt"
 	"glex/pkg/listq"
 )
@@ -46,30 +47,31 @@ func (f *fakeRefundRepo) Create(ctx context.Context, rf *payentity.Refund) (*pay
 	return &cp, nil
 }
 
-func (f *fakeRefundRepo) MarkSuccess(ctx context.Context, id, paymentID, amount int64, channelRefundNo string, refundedAt time.Time) (bool, error) {
-	rf, ok := f.r[id]
+func (f *fakeRefundRepo) MarkSuccess(ctx context.Context, req payrepo.MarkRefundSuccessRequest) (bool, error) {
+	rf, ok := f.r[req.ID]
 	if !ok || rf.Status != payentity.RefundPending {
 		return false, nil
 	}
 	rf.Status = payentity.RefundSuccess
-	rf.ChannelRefundNo = channelRefundNo
+	rf.ChannelRefundNo = req.ChannelRefundNo
+	refundedAt := req.RefundedAt
 	if refundedAt.IsZero() {
 		refundedAt = time.Now()
 	}
 	rf.RefundedAt = &refundedAt
 	if f.payments != nil {
-		f.payments.addRefunded(paymentID, amount)
+		f.payments.addRefunded(req.PaymentID, req.Amount)
 	}
 	return true, nil
 }
 
-func (f *fakeRefundRepo) MarkFailed(ctx context.Context, id int64, reason string) (bool, error) {
-	rf, ok := f.r[id]
+func (f *fakeRefundRepo) MarkFailed(ctx context.Context, req payrepo.MarkRefundFailedRequest) (bool, error) {
+	rf, ok := f.r[req.ID]
 	if !ok || rf.Status != payentity.RefundPending {
 		return false, nil
 	}
 	rf.Status = payentity.RefundFailed
-	rf.FailReason = reason
+	rf.FailReason = req.Reason
 	return true, nil
 }
 
@@ -105,11 +107,11 @@ func (g *scriptRefundGateway) Prepay(ctx context.Context, req PrepayRequest) (Pr
 	return PrepayResult{}, nil
 }
 
-func (g *scriptRefundGateway) Query(ctx context.Context, m *payentity.MerchantAccount, paymentNo string) (ChannelPaymentState, error) {
+func (g *scriptRefundGateway) Query(ctx context.Context, req QueryRequest) (ChannelPaymentState, error) {
 	return ChannelPaymentState{}, nil
 }
 
-func (g *scriptRefundGateway) Close(ctx context.Context, m *payentity.MerchantAccount, paymentNo string) error {
+func (g *scriptRefundGateway) Close(ctx context.Context, req CloseRequest) error {
 	return nil
 }
 
@@ -125,11 +127,11 @@ func (g *scriptRefundGateway) Refund(ctx context.Context, req RefundRequest) (Ch
 	return g.refundState, nil
 }
 
-func (g *scriptRefundGateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo, paymentNo string) (ChannelRefundState, error) {
+func (g *scriptRefundGateway) QueryRefund(ctx context.Context, req RefundQueryRequest) (ChannelRefundState, error) {
 	return g.Refund(ctx, RefundRequest{})
 }
 
-func (g *scriptRefundGateway) ParseNotification(ctx context.Context, m *payentity.MerchantAccount, headers httpHeader, body []byte) (payentity.ChannelNotification, error) {
+func (g *scriptRefundGateway) ParseNotification(ctx context.Context, req NotificationRequest) (payentity.ChannelNotification, error) {
 	return payentity.ChannelNotification{}, nil
 }
 
@@ -164,7 +166,7 @@ func newTestRefundService(t *testing.T, gw ChannelGateway) (Refund, *fakeRefundR
 	// The merchant fixture backs the payment's merchant_id snapshot.
 	catalog := &fakeCatalog{schemas: []payentity.ChannelSchema{wechatSchema()}}
 	merchantSvc := NewMerchantService(merchantRepo, catalog, cipher, &scriptGateways{}, slog.New(slog.DiscardHandler))
-	m, err := merchantSvc.Create(context.Background(), wechatInput(), 7)
+	m, err := merchantSvc.Create(context.Background(), wechatInput(7))
 	if err != nil {
 		t.Fatalf("merchant fixture: %v", err)
 	}
@@ -181,13 +183,13 @@ func TestRefundMultiplePartialRefundsAccumulate(t *testing.T) {
 	svc, refunds, payments, paymentID := newTestRefundService(t, gw)
 	// Three partial refunds: 30 + 30 + 40.
 	for _, amount := range []int64{30, 30, 40} {
-		rf, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: amount, Reason: "部分退款"}, 7)
+		rf, err := svc.Create(context.Background(), CreateRefundRequest{PaymentID: paymentID, Amount: amount, Reason: "部分退款", ActorID: 7})
 		if err != nil {
 			t.Fatalf("refund %d: %v", amount, err)
 		}
-		if _, err := svc.ApplyRefundState(context.Background(), rf.ID, ChannelRefundState{
+		if _, err := svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{RefundNo: rf.ID, State: ChannelRefundState{
 			State: payentity.RefundSuccess, ChannelRefundNo: fmt.Sprintf("ali-rf-%d", amount),
-		}); err != nil {
+		}}); err != nil {
 			t.Fatalf("apply %d: %v", amount, err)
 		}
 	}
@@ -209,22 +211,22 @@ func TestRefundMultiplePartialRefundsAccumulate(t *testing.T) {
 func TestRefundExceedsCapRejected(t *testing.T) {
 	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundSuccess}}
 	svc, _, _, paymentID := newTestRefundService(t, gw)
-	if _, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: 101}, 7); !errors.Is(err, pay.ErrRefundExceedLimit) {
+	if _, err := svc.Create(context.Background(), CreateRefundRequest{PaymentID: paymentID, Amount: 101, ActorID: 7}); !errors.Is(err, pay.ErrRefundExceedLimit) {
 		t.Fatalf("err = %v, want ErrRefundExceedLimit", err)
 	}
-	if _, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: 0}, 7); !errors.Is(err, pay.ErrPaymentInvalid) {
+	if _, err := svc.Create(context.Background(), CreateRefundRequest{PaymentID: paymentID, Amount: 0, ActorID: 7}); !errors.Is(err, pay.ErrPaymentInvalid) {
 		t.Fatalf("err = %v, want ErrPaymentInvalid", err)
 	}
 	// A full 100 refund is legal; once it settles, one more fen is over
 	// the cap.
-	full, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: 100}, 7)
+	full, err := svc.Create(context.Background(), CreateRefundRequest{PaymentID: paymentID, Amount: 100, ActorID: 7})
 	if err != nil {
 		t.Fatalf("full refund rejected: %v", err)
 	}
-	if _, err := svc.ApplyRefundState(context.Background(), full.ID, ChannelRefundState{State: payentity.RefundSuccess}); err != nil {
+	if _, err := svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{RefundNo: full.ID, State: ChannelRefundState{State: payentity.RefundSuccess}}); err != nil {
 		t.Fatalf("settle full refund: %v", err)
 	}
-	if _, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: 1}, 7); !errors.Is(err, pay.ErrRefundExceedLimit) {
+	if _, err := svc.Create(context.Background(), CreateRefundRequest{PaymentID: paymentID, Amount: 1, ActorID: 7}); !errors.Is(err, pay.ErrRefundExceedLimit) {
 		t.Fatalf("err = %v, want ErrRefundExceedLimit", err)
 	}
 }
@@ -236,18 +238,18 @@ func TestRefundExceedsCapRejected(t *testing.T) {
 func TestRefundPendingReservesCap(t *testing.T) {
 	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
 	svc, _, _, paymentID := newTestRefundService(t, gw)
-	first, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: 60}, 7)
+	first, err := svc.Create(context.Background(), CreateRefundRequest{PaymentID: paymentID, Amount: 60, ActorID: 7})
 	if err != nil {
 		t.Fatalf("first refund: %v", err)
 	}
-	if _, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: 60}, 7); !errors.Is(err, pay.ErrRefundExceedLimit) {
+	if _, err := svc.Create(context.Background(), CreateRefundRequest{PaymentID: paymentID, Amount: 60, ActorID: 7}); !errors.Is(err, pay.ErrRefundExceedLimit) {
 		t.Fatalf("err = %v, want ErrRefundExceedLimit while the first is PENDING", err)
 	}
 	// The channel fails the first refund: the reservation releases.
-	if _, err := svc.ApplyRefundState(context.Background(), first.ID, ChannelRefundState{State: payentity.RefundFailed, FailReason: "insufficient balance"}); err != nil {
+	if _, err := svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{RefundNo: first.ID, State: ChannelRefundState{State: payentity.RefundFailed, FailReason: "insufficient balance"}}); err != nil {
 		t.Fatalf("apply failed state: %v", err)
 	}
-	if _, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: 60}, 7); err != nil {
+	if _, err := svc.Create(context.Background(), CreateRefundRequest{PaymentID: paymentID, Amount: 60, ActorID: 7}); err != nil {
 		t.Fatalf("retry after release: %v", err)
 	}
 }
@@ -261,11 +263,11 @@ func TestRefundSyncChannelSettlesImmediately(t *testing.T) {
 		State: payentity.RefundSuccess, ChannelRefundNo: "ali-rf-1", RefundedAt: time.Now(),
 	}}
 	svc, refunds, payments, paymentID := newTestRefundService(t, gw)
-	rf, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: 40, Reason: "x"}, 7)
+	rf, err := svc.Create(context.Background(), CreateRefundRequest{PaymentID: paymentID, Amount: 40, Reason: "x", ActorID: 7})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	out, err := svc.PrepayRefund(context.Background(), rf.ID, "https://pay.example.com")
+	out, err := svc.PrepayRefund(context.Background(), PrepayRefundRequest{ID: rf.ID, NotifyBaseURL: "https://pay.example.com"})
 	if err != nil {
 		t.Fatalf("prepay refund: %v", err)
 	}
@@ -283,13 +285,13 @@ func TestRefundSyncChannelSettlesImmediately(t *testing.T) {
 func TestRefundApplyStateDuplicateDoesNotDoubleCount(t *testing.T) {
 	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundSuccess}}
 	svc, refunds, payments, paymentID := newTestRefundService(t, gw)
-	rf, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: 40}, 7)
+	rf, err := svc.Create(context.Background(), CreateRefundRequest{PaymentID: paymentID, Amount: 40, ActorID: 7})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
 	// The channel callback and a query both report success.
 	for i := 0; i < 2; i++ {
-		advanced, err := svc.ApplyRefundState(context.Background(), rf.ID, ChannelRefundState{State: payentity.RefundSuccess})
+		advanced, err := svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{RefundNo: rf.ID, State: ChannelRefundState{State: payentity.RefundSuccess}})
 		if err != nil {
 			t.Fatalf("apply %d: %v", i, err)
 		}
@@ -313,14 +315,14 @@ func TestRefundApplyStateDuplicateDoesNotDoubleCount(t *testing.T) {
 func TestRefundApplyStateRejectsRefundAmountMismatch(t *testing.T) {
 	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundSuccess}}
 	svc, refunds, payments, paymentID := newTestRefundService(t, gw)
-	rf, err := svc.Create(context.Background(), &CreateRefundInput{PaymentID: paymentID, Amount: 40}, 7)
+	rf, err := svc.Create(context.Background(), CreateRefundRequest{PaymentID: paymentID, Amount: 40, ActorID: 7})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
 	// A signature-valid success naming the wrong refund amount never settles.
-	advanced, err := svc.ApplyRefundState(context.Background(), rf.ID, ChannelRefundState{
+	advanced, err := svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{RefundNo: rf.ID, State: ChannelRefundState{
 		State: payentity.RefundSuccess, RefundAmount: 999,
-	})
+	}})
 	if err != nil || advanced {
 		t.Fatalf("mismatch advanced = %v, err = %v", advanced, err)
 	}
@@ -333,9 +335,9 @@ func TestRefundApplyStateRejectsRefundAmountMismatch(t *testing.T) {
 		t.Fatalf("refunded_amount = %d, want 0", p.RefundedAmount)
 	}
 	// The verified amount settles and moves the sum.
-	advanced, err = svc.ApplyRefundState(context.Background(), rf.ID, ChannelRefundState{
+	advanced, err = svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{RefundNo: rf.ID, State: ChannelRefundState{
 		State: payentity.RefundSuccess, RefundAmount: 40,
-	})
+	}})
 	if err != nil || !advanced {
 		t.Fatalf("verified advanced = %v, err = %v", advanced, err)
 	}

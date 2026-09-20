@@ -452,7 +452,7 @@ func TestQueryMapsTradeStates(t *testing.T) {
 		Payer:         &payments.TransactionPayer{Openid: strPtr("openid-1")},
 		Amount:        &payments.TransactionAmount{Total: i64Ptr(100), Currency: strPtr("CNY")},
 	}
-	state, err := gw.Query(context.Background(), nil, "PAID-1")
+	state, err := gw.Query(context.Background(), payservice.QueryRequest{PaymentNo: "PAID-1"})
 	if err != nil {
 		t.Fatalf("query: %v", err)
 	}
@@ -466,17 +466,17 @@ func TestQueryMapsTradeStates(t *testing.T) {
 		t.Fatalf("asserted amount = %d, want 100", state.Amount)
 	}
 	f.states["CLOSED-1"] = payments.Transaction{OutTradeNo: strPtr("CLOSED-1"), TradeState: strPtr("CLOSED")}
-	state, err = gw.Query(context.Background(), nil, "CLOSED-1")
+	state, err = gw.Query(context.Background(), payservice.QueryRequest{PaymentNo: "CLOSED-1"})
 	if err != nil || state.State != payentity.PaymentClosed {
 		t.Fatalf("closed state = %+v, err = %v", state, err)
 	}
 	f.states["ERR-1"] = payments.Transaction{OutTradeNo: strPtr("ERR-1"), TradeState: strPtr("PAYERROR")}
-	state, err = gw.Query(context.Background(), nil, "ERR-1")
+	state, err = gw.Query(context.Background(), payservice.QueryRequest{PaymentNo: "ERR-1"})
 	if err != nil || state.State != payentity.PaymentFailed {
 		t.Fatalf("failed state = %+v, err = %v", state, err)
 	}
 	f.states["WAIT-1"] = payments.Transaction{OutTradeNo: strPtr("WAIT-1"), TradeState: strPtr("NOTPAY")}
-	state, err = gw.Query(context.Background(), nil, "WAIT-1")
+	state, err = gw.Query(context.Background(), payservice.QueryRequest{PaymentNo: "WAIT-1"})
 	if err != nil || state.State != payentity.PaymentPending {
 		t.Fatalf("pending state = %+v, err = %v", state, err)
 	}
@@ -496,7 +496,7 @@ func TestCloseAlreadyPaidSignalsFlip(t *testing.T) {
 	f := newFakeWechat(t)
 	gw := f.gateway(t)
 	f.closeCodes["GONE-1"] = http.StatusForbidden
-	err := gw.Close(context.Background(), nil, "GONE-1")
+	err := gw.Close(context.Background(), payservice.CloseRequest{PaymentNo: "GONE-1"})
 	if !errorsIs(err, payservice.ErrChannelAlreadyPaid) {
 		t.Fatalf("err = %v, want ErrChannelAlreadyPaid", err)
 	}
@@ -521,7 +521,7 @@ func TestRefundAndQueryRefund(t *testing.T) {
 	if out.State != payentity.RefundPending {
 		t.Fatalf("processing refund state = %v, want Pending", out.State)
 	}
-	state, err := gw.QueryRefund(context.Background(), nil, "RF-1", "PAY-1")
+	state, err := gw.QueryRefund(context.Background(), payservice.RefundQueryRequest{RefundNo: "RF-1", PaymentNo: "PAY-1"})
 	if err != nil {
 		t.Fatalf("query refund: %v", err)
 	}
@@ -532,7 +532,7 @@ func TestRefundAndQueryRefund(t *testing.T) {
 	settled := refundFixture("RF-1", "PAY-1", "wx-refund-1", "wx-txn-1", "SUCCESS")
 	settled.SuccessTime = &refundedAt
 	f.refunds["RF-1"] = settled
-	state, err = gw.QueryRefund(context.Background(), nil, "RF-1", "PAY-1")
+	state, err = gw.QueryRefund(context.Background(), payservice.RefundQueryRequest{RefundNo: "RF-1", PaymentNo: "PAY-1"})
 	if err != nil {
 		t.Fatalf("query refund: %v", err)
 	}
@@ -565,7 +565,7 @@ func TestParseNotificationPaymentSuccess(t *testing.T) {
 		Payer:         &payments.TransactionPayer{Openid: strPtr("openid-9")},
 		Amount:        &payments.TransactionAmount{Total: i64Ptr(100), Currency: strPtr("CNY")},
 	})
-	out, err := gw.ParseNotification(context.Background(), nil, headers, body)
+	out, err := gw.ParseNotification(context.Background(), payservice.NotificationRequest{Headers: headers, Body: body})
 	if err != nil {
 		t.Fatalf("parse notification: %v", err)
 	}
@@ -588,7 +588,7 @@ func TestParseNotificationRefundSuccess(t *testing.T) {
 	notifRefund := refundFixture("RF-9", "PAY-9", "wx-refund-9", "wx-txn-9", "SUCCESS")
 	notifRefund.SuccessTime = &refundedAt
 	headers, body := f.refundNotification(t, notifRefund)
-	out, err := gw.ParseNotification(context.Background(), nil, headers, body)
+	out, err := gw.ParseNotification(context.Background(), payservice.NotificationRequest{Headers: headers, Body: body})
 	if err != nil {
 		t.Fatalf("parse notification: %v", err)
 	}
@@ -609,7 +609,7 @@ func TestParseNotificationRejectsBadSignature(t *testing.T) {
 	})
 	// Tamper with the signature — the delivery must be rejected.
 	headers.Set("Wechatpay-Signature", base64.StdEncoding.EncodeToString([]byte("forged")))
-	if _, err := gw.ParseNotification(context.Background(), nil, headers, body); err == nil {
+	if _, err := gw.ParseNotification(context.Background(), payservice.NotificationRequest{Headers: headers, Body: body}); err == nil {
 		t.Fatal("forged notification accepted")
 	}
 	// Tamper with the body against a valid signature — same rejection.
@@ -617,7 +617,7 @@ func TestParseNotificationRejectsBadSignature(t *testing.T) {
 		OutTradeNo: strPtr("PAY-Y"), TradeState: strPtr("SUCCESS"),
 	})
 	body = append(body, ' ')
-	if _, err := gw.ParseNotification(context.Background(), nil, headers, body); err == nil {
+	if _, err := gw.ParseNotification(context.Background(), payservice.NotificationRequest{Headers: headers, Body: body}); err == nil {
 		t.Fatal("body-substituted notification accepted")
 	}
 }
@@ -626,7 +626,7 @@ func TestParseNotificationRejectsUnknownEventType(t *testing.T) {
 	f := newFakeWechat(t)
 	gw := f.gateway(t)
 	body := []byte(`{"id":"EV-X","event_type":"MCHROOSTER.SOMETHING","resource":{}}`)
-	if _, err := gw.ParseNotification(context.Background(), nil, f.notifyHeaders(body), body); err == nil {
+	if _, err := gw.ParseNotification(context.Background(), payservice.NotificationRequest{Headers: f.notifyHeaders(body), Body: body}); err == nil {
 		t.Fatal("unknown event type accepted")
 	}
 }

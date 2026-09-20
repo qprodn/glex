@@ -3,7 +3,6 @@ package adapter
 import (
 	"context"
 	"errors"
-	"net/http"
 	"testing"
 
 	pay "glex/internal/domain/pay"
@@ -33,7 +32,7 @@ func TestValidateRejectsUnadoptedChannel(t *testing.T) {
 	if r.Adopted(payentity.ChannelStripe) {
 		t.Fatal("unregistered channel reported adopted")
 	}
-	if _, ok := r.Schema(payentity.ChannelStripe); ok {
+	if _, err := r.Schema(payentity.ChannelStripe); err == nil {
 		t.Fatal("unregistered channel returned a schema")
 	}
 }
@@ -97,11 +96,11 @@ func (f *fakeGateway) Prepay(ctx context.Context, req payservice.PrepayRequest) 
 	return payservice.PrepayResult{}, nil
 }
 
-func (f *fakeGateway) Query(ctx context.Context, m *payentity.MerchantAccount, paymentNo string) (payservice.ChannelPaymentState, error) {
+func (f *fakeGateway) Query(ctx context.Context, req payservice.QueryRequest) (payservice.ChannelPaymentState, error) {
 	return payservice.ChannelPaymentState{}, nil
 }
 
-func (f *fakeGateway) Close(ctx context.Context, m *payentity.MerchantAccount, paymentNo string) error {
+func (f *fakeGateway) Close(ctx context.Context, req payservice.CloseRequest) error {
 	return nil
 }
 
@@ -109,11 +108,11 @@ func (f *fakeGateway) Refund(ctx context.Context, req payservice.RefundRequest) 
 	return payservice.ChannelRefundState{}, nil
 }
 
-func (f *fakeGateway) QueryRefund(ctx context.Context, m *payentity.MerchantAccount, refundNo, paymentNo string) (payservice.ChannelRefundState, error) {
+func (f *fakeGateway) QueryRefund(ctx context.Context, req payservice.RefundQueryRequest) (payservice.ChannelRefundState, error) {
 	return payservice.ChannelRefundState{}, nil
 }
 
-func (f *fakeGateway) ParseNotification(ctx context.Context, m *payentity.MerchantAccount, headers http.Header, body []byte) (payentity.ChannelNotification, error) {
+func (f *fakeGateway) ParseNotification(ctx context.Context, req payservice.NotificationRequest) (payentity.ChannelNotification, error) {
 	return payentity.ChannelNotification{}, nil
 }
 

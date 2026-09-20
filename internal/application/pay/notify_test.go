@@ -37,7 +37,7 @@ func (f *advancePaymentSvc) Get(ctx context.Context, id int64) (*payentity.Payme
 	return f.row, nil
 }
 
-func (f *advancePaymentSvc) ApplyChannelState(ctx context.Context, paymentNo int64, state payservice.ChannelPaymentState) (bool, error) {
+func (f *advancePaymentSvc) ApplyChannelState(ctx context.Context, req payservice.ApplyChannelStateRequest) (bool, error) {
 	f.applied++
 	if f.absorb {
 		return false, nil
@@ -97,7 +97,7 @@ func (f *advanceRefundSvc) Get(ctx context.Context, id int64) (*payentity.Refund
 	return f.row, nil
 }
 
-func (f *advanceRefundSvc) ApplyRefundState(ctx context.Context, refundNo int64, state payservice.ChannelRefundState) (bool, error) {
+func (f *advanceRefundSvc) ApplyRefundState(ctx context.Context, req payservice.ApplyRefundStateRequest) (bool, error) {
 	f.applied++
 	return true, nil
 }

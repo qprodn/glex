@@ -153,7 +153,9 @@ func pendingRefundScope(id int64) []predicate.PayRefund {
 // would let the cap check admit more than was paid, so the pair moves
 // together or not at all. A lost CAS (duplicate delivery) skips the
 // accumulate — the sum must move exactly once with the status.
-func (r *refundRepo) MarkSuccess(ctx context.Context, id, paymentID, amount int64, channelRefundNo string, refundedAt time.Time) (bool, error) {
+func (r *refundRepo) MarkSuccess(ctx context.Context, req payrepo.MarkRefundSuccessRequest) (bool, error) {
+	id := req.ID
+	refundedAt := req.RefundedAt
 	if refundedAt.IsZero() {
 		refundedAt = time.Now()
 	}
@@ -164,8 +166,8 @@ func (r *refundRepo) MarkSuccess(ctx context.Context, id, paymentID, amount int6
 			SetStatus(int16(payentity.RefundSuccess)).
 			SetRefundedAt(refundedAt).
 			SetUpdateBy(systemActor)
-		if channelRefundNo != "" {
-			upd.SetChannelRefundNo(channelRefundNo)
+		if req.ChannelRefundNo != "" {
+			upd.SetChannelRefundNo(req.ChannelRefundNo)
 		}
 		n, err := upd.Save(ctx)
 		if err != nil || n == 0 {
@@ -174,11 +176,11 @@ func (r *refundRepo) MarkSuccess(ctx context.Context, id, paymentID, amount int6
 		advanced = true
 		moved, err := r.data.DB.PayPayment(ctx).Update().
 			Where(
-				entpayment.IDEQ(paymentID),
+				entpayment.IDEQ(req.PaymentID),
 				entpayment.StatusEQ(int16(payentity.PaymentPaid)),
 				entpayment.DeletedAtIsNil(),
 			).
-			AddRefundedAmount(amount).
+			AddRefundedAmount(req.Amount).
 			Save(ctx)
 		if err != nil {
 			return err
@@ -188,8 +190,8 @@ func (r *refundRepo) MarkSuccess(ctx context.Context, id, paymentID, amount int6
 			// anomaly worth surfacing even though the tx commits.
 			r.logger.WarnContext(ctx, "refund settled on a payment that is not Paid; refunded sum not moved",
 				slog.Int64("refund_id", id),
-				slog.Int64("payment_id", paymentID),
-				slog.Int64("amount", amount))
+				slog.Int64("payment_id", req.PaymentID),
+				slog.Int64("amount", req.Amount))
 		}
 		return nil
 	})
@@ -199,13 +201,13 @@ func (r *refundRepo) MarkSuccess(ctx context.Context, id, paymentID, amount int6
 	return advanced, nil
 }
 
-func (r *refundRepo) MarkFailed(ctx context.Context, id int64, reason string) (bool, error) {
+func (r *refundRepo) MarkFailed(ctx context.Context, req payrepo.MarkRefundFailedRequest) (bool, error) {
 	upd := r.data.DB.PayRefund(ctx).Update().
-		Where(pendingRefundScope(id)...).
+		Where(pendingRefundScope(req.ID)...).
 		SetStatus(int16(payentity.RefundFailed)).
 		SetUpdateBy(systemActor)
-	if reason != "" {
-		upd.SetFailReason(truncateReason(reason))
+	if req.Reason != "" {
+		upd.SetFailReason(truncateReason(req.Reason))
 	}
 	n, err := upd.Save(ctx)
 	if err != nil {

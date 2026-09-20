@@ -59,9 +59,9 @@ func payNotifyHandler(app *payapp.PayApplication) khttp.HandlerFunc {
 	return func(ctx khttp.Context) error {
 		khttp.SetOperation(ctx, OperationPayServiceChannelNotification)
 		// Validate the path before paying for the body at all.
-		channel, ok := payentity.ChannelByCode(ctx.Vars().Get("channel"))
+		channel := payentity.ChannelByCode(ctx.Vars().Get("channel"))
 		merchantID, parseErr := strconv.ParseInt(ctx.Vars().Get("merchant_id"), 10, 64)
-		if parseErr != nil || !ok {
+		if parseErr != nil || !channel.Valid() {
 			return payNotifyInvalid(parseErr)
 		}
 		body, err := io.ReadAll(io.LimitReader(ctx.Request().Body, maxNotifyBodyBytes+1))
@@ -72,7 +72,12 @@ func payNotifyHandler(app *payapp.PayApplication) khttp.HandlerFunc {
 			return payNotifyInvalid(errNotifyBodyTooLarge)
 		}
 		h := ctx.Middleware(func(requestCtx context.Context, _ any) (any, error) {
-			return app.HandleChannelNotification(requestCtx, channel, merchantID, ctx.Header(), body)
+			return app.HandleChannelNotification(requestCtx, &payapp.ChannelNotificationRequest{
+				Channel:    channel,
+				MerchantID: merchantID,
+				Headers:    ctx.Header(),
+				Body:       body,
+			})
 		})
 		out, err := h(ctx, &struct{}{})
 		if err != nil {

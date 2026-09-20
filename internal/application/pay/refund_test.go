@@ -54,18 +54,18 @@ type racingRefundSvc struct {
 	dropAfter int // how many callers see ErrRefundExceedLimit once capped
 }
 
-func (f *racingRefundSvc) Create(ctx context.Context, in *payservice.CreateRefundInput, actorID int64) (*payentity.Refund, error) {
+func (f *racingRefundSvc) Create(ctx context.Context, req payservice.CreateRefundRequest) (*payentity.Refund, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.refunded+in.Amount > f.paid {
+	if f.refunded+req.Amount > f.paid {
 		return nil, pay.ErrRefundExceedLimit
 	}
-	f.refunded += in.Amount
-	return &payentity.Refund{ID: 1, PaymentID: in.PaymentID, Amount: in.Amount, Status: payentity.RefundPending}, nil
+	f.refunded += req.Amount
+	return &payentity.Refund{ID: 1, PaymentID: req.PaymentID, Amount: req.Amount, Status: payentity.RefundPending}, nil
 }
 
-func (f *racingRefundSvc) PrepayRefund(ctx context.Context, id int64, notifyBaseURL string) (*payentity.Refund, error) {
-	return &payentity.Refund{ID: id, Status: payentity.RefundSuccess}, nil
+func (f *racingRefundSvc) PrepayRefund(ctx context.Context, req payservice.PrepayRefundRequest) (*payentity.Refund, error) {
+	return &payentity.Refund{ID: req.ID, Status: payentity.RefundSuccess}, nil
 }
 
 func TestCreateRefundConcurrentCapRaceExactlyOneWins(t *testing.T) {

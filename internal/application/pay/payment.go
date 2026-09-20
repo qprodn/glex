@@ -50,13 +50,14 @@ func convertPayment(p *payentity.Payment) *payv1.Payment {
 // insert batch runs in one transaction, and the channel prepay — which
 // must never ride inside that transaction — follows before the response.
 func (s *PayApplication) CreatePayment(ctx context.Context, req *payv1.CreatePaymentRequest) (*payv1.Payment, error) {
-	in := &payservice.CreatePaymentInput{
+	in := payservice.CreatePaymentRequest{
 		MerchantID:    req.GetMerchantId(),
 		BizNo:         req.GetBizNo(),
 		Subject:       req.GetSubject(),
 		Amount:        req.GetAmount(),
 		PayMethod:     payentity.PayMethod(req.GetPayMethod()),
 		ExpireMinutes: req.GetExpireMinutes(),
+		ActorID:       s.actor(ctx),
 	}
 	if in.PayMethod == 0 {
 		// Native is the MVP default (design §4).
@@ -66,13 +67,16 @@ func (s *PayApplication) CreatePayment(ctx context.Context, req *payv1.CreatePay
 	err := s.locker.WithLock(ctx, fmt.Sprintf("pay:prepay:%d:%s", in.MerchantID, in.BizNo), func(ctx context.Context) error {
 		if err := s.tx.InTx(ctx, func(ctx context.Context) error {
 			var err error
-			out, err = s.payments.Initiate(ctx, in, s.actor(ctx))
+			out, err = s.payments.Initiate(ctx, in)
 			return err
 		}); err != nil {
 			return err
 		}
 		var err error
-		out, err = s.payments.Prepay(ctx, out.ID, s.payConfig.GetNotifyBaseUrl())
+		out, err = s.payments.Prepay(ctx, payservice.PrepayPaymentRequest{
+			ID:            out.ID,
+			NotifyBaseURL: s.payConfig.GetNotifyBaseUrl(),
+		})
 		return err
 	})
 	if err != nil {
@@ -141,7 +145,10 @@ func (s *PayApplication) QueryPayment(ctx context.Context, req *payv1.QueryPayme
 // ClosePayment manually closes a PENDING payment at the channel, then
 // locally; a channel "already paid" flips into a query and settles PAID.
 func (s *PayApplication) ClosePayment(ctx context.Context, req *payv1.ClosePaymentRequest) (*payv1.Payment, error) {
-	p, err := s.payments.Close(ctx, req.GetPaymentId(), bizpkg.AuditActor(ctx))
+	p, err := s.payments.Close(ctx, payservice.ClosePaymentRequest{
+		ID:      req.GetPaymentId(),
+		ActorID: bizpkg.AuditActor(ctx),
+	})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.close_payment", err)
 		return nil, err

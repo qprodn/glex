@@ -36,5 +36,5 @@ type PaymentReader interface {
 	GetPayment(ctx context.Context, paymentNo string) (*model.Payment, error)
 	// GetByBizNo resolves a merchant's newest payment for a Business
 	// Order Number, with the same settlement-on-read.
-	GetByBizNo(ctx context.Context, merchantID int64, bizNo string) (*model.Payment, error)
+	GetByBizNo(ctx context.Context, req *model.GetByBizNoRequest) (*model.Payment, error)
 }

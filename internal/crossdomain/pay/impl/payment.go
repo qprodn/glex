@@ -10,6 +10,7 @@ import (
 	paycontract "glex/internal/crossdomain/pay"
 	"glex/internal/crossdomain/pay/model"
 	payentity "glex/internal/domain/pay/entity"
+	payservice "glex/internal/domain/pay/service"
 )
 
 // paymentCreator satisfies the crossdomain creation contract by sharing
@@ -68,7 +69,7 @@ type paymentReader struct {
 // contract needs — the interface the impl depends on.
 type payservicePayment interface {
 	Get(ctx context.Context, id int64) (*payentity.Payment, error)
-	GetByBizNo(ctx context.Context, merchantID int64, bizNo string) (*payentity.Payment, error)
+	GetByBizNo(ctx context.Context, req *payservice.GetByBizNoRequest) (*payentity.Payment, error)
 }
 
 // NewPaymentReader adapts the payment domain service to the crossdomain
@@ -92,8 +93,11 @@ func (r *paymentReader) GetPayment(ctx context.Context, paymentNo string) (*mode
 	return paymentToModel(p), nil
 }
 
-func (r *paymentReader) GetByBizNo(ctx context.Context, merchantID int64, bizNo string) (*model.Payment, error) {
-	p, err := r.payments.GetByBizNo(ctx, merchantID, bizNo)
+func (r *paymentReader) GetByBizNo(ctx context.Context, req *model.GetByBizNoRequest) (*model.Payment, error) {
+	p, err := r.payments.GetByBizNo(ctx, &payservice.GetByBizNoRequest{
+		MerchantID: req.MerchantID,
+		BizNo:      req.BizNo,
+	})
 	if err != nil {
 		return nil, err
 	}

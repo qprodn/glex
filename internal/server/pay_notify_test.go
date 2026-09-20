@@ -27,6 +27,7 @@ import (
 	"glex/internal/conf"
 	paydomain "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
+	payrepo "glex/internal/domain/pay/repository"
 	payservice "glex/internal/domain/pay/service"
 	"glex/internal/eventbus"
 	"glex/internal/infra/pay/adapter"
@@ -226,15 +227,17 @@ func (r *goldMerchantRepo) Create(ctx context.Context, m *payentity.MerchantAcco
 	return &cp, nil
 }
 
-func (r *goldMerchantRepo) Update(ctx context.Context, m *payentity.MerchantAccount, actorID int64) (*payentity.MerchantAccount, error) {
-	return m, nil
+func (r *goldMerchantRepo) Update(ctx context.Context, req payrepo.UpdateMerchantRequest) (*payentity.MerchantAccount, error) {
+	return req.Merchant, nil
 }
 
-func (r *goldMerchantRepo) UpdateStatus(ctx context.Context, id int64, status payentity.MerchantStatus, actorID int64) error {
+func (r *goldMerchantRepo) UpdateStatus(ctx context.Context, req payrepo.UpdateMerchantStatusRequest) error {
 	return nil
 }
 
-func (r *goldMerchantRepo) Delete(ctx context.Context, id, actorID int64) error { return nil }
+func (r *goldMerchantRepo) Delete(ctx context.Context, req payrepo.DeleteMerchantRequest) error {
+	return nil
+}
 
 func (r *goldMerchantRepo) NextID() int64 { return 777 }
 
@@ -250,7 +253,7 @@ func (r *goldPaymentRepo) FindByID(ctx context.Context, id int64) (*payentity.Pa
 	return nil, paydomain.ErrPaymentNotFound
 }
 
-func (r *goldPaymentRepo) FindLatestByBizNo(ctx context.Context, merchantID int64, bizNo string) (*payentity.Payment, error) {
+func (r *goldPaymentRepo) FindLatestByBizNo(ctx context.Context, req payrepo.FindLatestByBizNoRequest) (*payentity.Payment, error) {
 	return nil, paydomain.ErrPaymentNotFound
 }
 
@@ -258,7 +261,7 @@ func (r *goldPaymentRepo) List(context.Context, listq.Query) ([]*payentity.Payme
 	return nil, nil
 }
 
-func (r *goldPaymentRepo) ListPendingExpired(ctx context.Context, before time.Time, afterID int64, limit int) ([]*payentity.Payment, error) {
+func (r *goldPaymentRepo) ListPendingExpired(ctx context.Context, req payrepo.ListPendingExpiredRequest) ([]*payentity.Payment, error) {
 	return nil, nil
 }
 
@@ -268,36 +271,36 @@ func (r *goldPaymentRepo) Create(ctx context.Context, p *payentity.Payment) (*pa
 	return &cp, nil
 }
 
-func (r *goldPaymentRepo) ClosePendingByBizNo(ctx context.Context, merchantID int64, bizNo string, actorID int64) (int, error) {
+func (r *goldPaymentRepo) ClosePendingByBizNo(ctx context.Context, req payrepo.ClosePendingByBizNoRequest) (int, error) {
 	return 0, nil
 }
 
-func (r *goldPaymentRepo) SetChannelPayload(ctx context.Context, id int64, payload string) error {
+func (r *goldPaymentRepo) SetChannelPayload(ctx context.Context, req payrepo.SetChannelPayloadRequest) error {
 	return nil
 }
 
-func (r *goldPaymentRepo) SetFailReason(ctx context.Context, id int64, reason string) error {
+func (r *goldPaymentRepo) SetFailReason(ctx context.Context, req payrepo.SetFailReasonRequest) error {
 	return nil
 }
 
-func (r *goldPaymentRepo) MarkPaid(ctx context.Context, id int64, capture payentity.PaidCapture) (bool, error) {
-	p, ok := r.p[id]
+func (r *goldPaymentRepo) MarkPaid(ctx context.Context, req payrepo.MarkPaidRequest) (bool, error) {
+	p, ok := r.p[req.ID]
 	if !ok || p.Status != payentity.PaymentPending {
 		return false, nil
 	}
 	p.Status = payentity.PaymentPaid
-	p.ChannelTradeNo = capture.ChannelTradeNo
-	p.PayerID = capture.PayerID
-	paidAt := capture.PaidAt
+	p.ChannelTradeNo = req.Capture.ChannelTradeNo
+	p.PayerID = req.Capture.PayerID
+	paidAt := req.Capture.PaidAt
 	p.PaidAt = &paidAt
 	return true, nil
 }
 
-func (r *goldPaymentRepo) BackfillPaidInfo(ctx context.Context, id int64, capture payentity.PaidCapture) (bool, error) {
+func (r *goldPaymentRepo) BackfillPaidInfo(ctx context.Context, req payrepo.BackfillPaidInfoRequest) (bool, error) {
 	return false, nil
 }
 
-func (r *goldPaymentRepo) MarkFailed(ctx context.Context, id int64, reason string) (bool, error) {
+func (r *goldPaymentRepo) MarkFailed(ctx context.Context, req payrepo.MarkPaymentFailedRequest) (bool, error) {
 	return false, nil
 }
 
@@ -424,8 +427,8 @@ func newGoldFixture(t *testing.T) *goldFixture {
 type goldCatalog struct{}
 
 func (goldCatalog) Schemas() []payentity.ChannelSchema { return nil }
-func (goldCatalog) Schema(ch payentity.Channel) (payentity.ChannelSchema, bool) {
-	return payentity.ChannelSchema{}, false
+func (goldCatalog) Schema(ch payentity.Channel) (payentity.ChannelSchema, error) {
+	return payentity.ChannelSchema{}, paydomain.ErrChannelNotAdopted
 }
 func (goldCatalog) Adopted(payentity.Channel) bool { return true }
 func (goldCatalog) ValidateConfig(ch payentity.Channel, values map[string]string) (map[string]string, error) {

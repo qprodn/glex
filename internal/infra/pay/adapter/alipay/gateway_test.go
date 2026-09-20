@@ -347,7 +347,7 @@ func TestQueryMapsTradeStatuses(t *testing.T) {
 		buyer:   "ali***@sandbox.com",
 		payDate: "2026-09-11 10:00:00",
 	}
-	state, err := gw.Query(context.Background(), nil, "PAID-1")
+	state, err := gw.Query(context.Background(), payservice.QueryRequest{PaymentNo: "PAID-1"})
 	if err != nil {
 		t.Fatalf("query: %v", err)
 	}
@@ -360,18 +360,18 @@ func TestQueryMapsTradeStatuses(t *testing.T) {
 		t.Fatalf("asserted amount = %d, want 100", state.Amount)
 	}
 	f.trades["CLOSED-1"] = &tradeState{status: alipay.TradeStatusClosed, tradeNo: "ali-txn-2"}
-	state, err = gw.Query(context.Background(), nil, "CLOSED-1")
+	state, err = gw.Query(context.Background(), payservice.QueryRequest{PaymentNo: "CLOSED-1"})
 	if err != nil || state.State != payentity.PaymentClosed {
 		t.Fatalf("closed state = %+v, err = %v", state, err)
 	}
 	f.trades["WAIT-1"] = &tradeState{status: alipay.TradeStatusWaitBuyerPay, tradeNo: "ali-txn-3"}
-	state, err = gw.Query(context.Background(), nil, "WAIT-1")
+	state, err = gw.Query(context.Background(), payservice.QueryRequest{PaymentNo: "WAIT-1"})
 	if err != nil || state.State != payentity.PaymentPending {
 		t.Fatalf("pending state = %+v, err = %v", state, err)
 	}
 	// A trade the channel has never heard of is pending, not an error —
 	// precreate and query race legitimately.
-	state, err = gw.Query(context.Background(), nil, "GHOST-1")
+	state, err = gw.Query(context.Background(), payservice.QueryRequest{PaymentNo: "GHOST-1"})
 	if err != nil || state.State != payentity.PaymentPending {
 		t.Fatalf("ghost state = %+v, err = %v", state, err)
 	}
@@ -389,13 +389,13 @@ func TestCloseAlreadyPaidSignalsFlip(t *testing.T) {
 	f := newFakeAlipay(t)
 	gw := f.gateway(t)
 	f.trades["PAID-X"] = &tradeState{status: alipay.TradeStatusSuccess, tradeNo: "ali-txn-x"}
-	err := gw.Close(context.Background(), nil, "PAID-X")
+	err := gw.Close(context.Background(), payservice.CloseRequest{PaymentNo: "PAID-X"})
 	if !errorsIs(err, payservice.ErrChannelAlreadyPaid) {
 		t.Fatalf("err = %v, want ErrChannelAlreadyPaid", err)
 	}
 	// A closable trade closes silently.
 	f.trades["WAIT-X"] = &tradeState{status: alipay.TradeStatusWaitBuyerPay, tradeNo: "ali-txn-y"}
-	if err := gw.Close(context.Background(), nil, "WAIT-X"); err != nil {
+	if err := gw.Close(context.Background(), payservice.CloseRequest{PaymentNo: "WAIT-X"}); err != nil {
 		t.Fatalf("close pending: %v", err)
 	}
 }
@@ -457,7 +457,7 @@ func TestQueryRefund(t *testing.T) {
 	f := newFakeAlipay(t)
 	gw := f.gateway(t)
 	f.refunds["RF-9"] = &refundState{refunded: true, payTime: "2026-09-11 10:30:00"}
-	state, err := gw.QueryRefund(context.Background(), nil, "RF-9", "PAY-9")
+	state, err := gw.QueryRefund(context.Background(), payservice.RefundQueryRequest{RefundNo: "RF-9", PaymentNo: "PAY-9"})
 	if err != nil {
 		t.Fatalf("query refund: %v", err)
 	}
@@ -469,18 +469,18 @@ func TestQueryRefund(t *testing.T) {
 	}
 	// Unknown refunds are pending, not errors.
 	f.refunds["RF-GHOST"] = &refundState{notExist: true}
-	state, err = gw.QueryRefund(context.Background(), nil, "RF-GHOST", "PAY-9")
+	state, err = gw.QueryRefund(context.Background(), payservice.RefundQueryRequest{RefundNo: "RF-GHOST", PaymentNo: "PAY-9"})
 	if err != nil || state.State != payentity.RefundPending {
 		t.Fatalf("ghost refund = %+v, err = %v", state, err)
 	}
 	// A query failure is an error, never a terminal Failed state — a
 	// query cannot assert an outcome it did not observe.
 	f.refunds["RF-ERR"] = &refundState{notExist: true, systemError: true}
-	if _, err := gw.QueryRefund(context.Background(), nil, "RF-ERR", "PAY-9"); err == nil {
+	if _, err := gw.QueryRefund(context.Background(), payservice.RefundQueryRequest{RefundNo: "RF-ERR", PaymentNo: "PAY-9"}); err == nil {
 		t.Fatal("query failure settled the refund as Failed")
 	}
 	// Dropping the payment number is a parameter error at the real gateway.
-	if _, err := gw.QueryRefund(context.Background(), nil, "RF-9", ""); err == nil {
+	if _, err := gw.QueryRefund(context.Background(), payservice.RefundQueryRequest{RefundNo: "RF-9", PaymentNo: ""}); err == nil {
 		t.Fatal("query without out_trade_no accepted")
 	}
 }
@@ -496,7 +496,7 @@ func TestParseNotificationPaymentSuccess(t *testing.T) {
 		"gmt_payment":    "2026-09-11 10:10:00",
 		"total_amount":   "1.00",
 	})
-	out, err := gw.ParseNotification(context.Background(), nil, headers, body)
+	out, err := gw.ParseNotification(context.Background(), payservice.NotificationRequest{Headers: headers, Body: body})
 	if err != nil {
 		t.Fatalf("parse notification: %v", err)
 	}
@@ -522,7 +522,7 @@ func TestParseNotificationRefundCarriesRequestNo(t *testing.T) {
 		"refund_status":  "REFUND_SUCCESS",
 		"refund_fee":     "0.40",
 	})
-	out, err := gw.ParseNotification(context.Background(), nil, headers, body)
+	out, err := gw.ParseNotification(context.Background(), payservice.NotificationRequest{Headers: headers, Body: body})
 	if err != nil {
 		t.Fatalf("parse notification: %v", err)
 	}
@@ -542,7 +542,7 @@ func TestParseNotificationRejectsBadSignature(t *testing.T) {
 	})
 	// Tamper: reorder/alter the body after signing.
 	tampered := strings.Replace(string(body), "TRADE_SUCCESS", "TRADE_CLOSED", 1)
-	if _, err := gw.ParseNotification(context.Background(), nil, nil, []byte(tampered)); err == nil {
+	if _, err := gw.ParseNotification(context.Background(), payservice.NotificationRequest{Body: []byte(tampered)}); err == nil {
 		t.Fatal("forged notification accepted")
 	}
 }

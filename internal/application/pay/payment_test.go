@@ -50,14 +50,14 @@ type fakePaymentSvc struct {
 	settled   *payentity.Payment
 }
 
-func (f *fakePaymentSvc) Initiate(ctx context.Context, in *payservice.CreatePaymentInput, actorID int64) (*payentity.Payment, error) {
+func (f *fakePaymentSvc) Initiate(ctx context.Context, req payservice.CreatePaymentRequest) (*payentity.Payment, error) {
 	f.initiated++
-	p := &payentity.Payment{ID: 900, MerchantID: in.MerchantID, BizNo: in.BizNo, Status: payentity.PaymentPending}
+	p := &payentity.Payment{ID: 900, MerchantID: req.MerchantID, BizNo: req.BizNo, Status: payentity.PaymentPending}
 	f.pending = p
 	return p, nil
 }
 
-func (f *fakePaymentSvc) Prepay(ctx context.Context, id int64, notifyBaseURL string) (*payentity.Payment, error) {
+func (f *fakePaymentSvc) Prepay(ctx context.Context, req payservice.PrepayPaymentRequest) (*payentity.Payment, error) {
 	f.prepaid++
 	f.settled = f.pending
 	return f.pending, nil
