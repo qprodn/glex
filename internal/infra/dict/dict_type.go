@@ -143,11 +143,11 @@ func (r *dictTypeRepo) Update(ctx context.Context, t *dictentity.DictType) (*dic
 }
 
 // DeleteDictType soft-deletes the type (ADR 0002 — no row is hard-deleted),
-// stamping actorID into the audit fields. The caller owns the transaction.
-func (r *dictTypeRepo) Delete(ctx context.Context, id, actorID int64) error {
-	err := r.data.DB.DictType(ctx).UpdateOneID(id).
+// stamping req.ActorID into the audit fields. The caller owns the transaction.
+func (r *dictTypeRepo) Delete(ctx context.Context, req *dictrepo.DeleteRequest) error {
+	err := r.data.DB.DictType(ctx).UpdateOneID(req.ID).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {

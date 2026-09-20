@@ -12,6 +12,14 @@ import (
 	"glex/pkg/logx"
 )
 
+// DeleteRequest identifies the record a delete withdraws and the actor whose
+// id lands in the audit fields. DeleteType and DeleteEntry need the same
+// shape, so they share the struct (ADR 0025).
+type DeleteRequest struct {
+	ID      int64
+	ActorID int64
+}
+
 // Dict is the dict domain service behind the dictionary endpoints: the only
 // path to the Dict Type and Dict Entry reads and writes (ADR 0005). Methods
 // join the caller's ambient transaction; the Application service owns the
@@ -28,7 +36,7 @@ type Dict interface {
 	UpdateType(ctx context.Context, t *entity.DictType) (*entity.DictType, error)
 	// DeleteType soft-deletes the type, refusing while entries are still
 	// active under its key.
-	DeleteType(ctx context.Context, id, actorID int64) error
+	DeleteType(ctx context.Context, req *DeleteRequest) error
 
 	GetEntry(ctx context.Context, id int64) (*entity.DictEntry, error)
 	ListEntries(ctx context.Context, q listq.Query) ([]*entity.DictEntry, error)
@@ -43,7 +51,7 @@ type Dict interface {
 	// is immutable (ADR 0006): whatever the caller sends is replaced with
 	// the stored key before the write.
 	UpdateEntry(ctx context.Context, e *entity.DictEntry) (*entity.DictEntry, error)
-	DeleteEntry(ctx context.Context, id, actorID int64) error
+	DeleteEntry(ctx context.Context, req *DeleteRequest) error
 }
 
 type dictImpl struct {
@@ -122,8 +130,8 @@ func (s *dictImpl) UpdateType(ctx context.Context, t *entity.DictType) (*entity.
 	return updated, nil
 }
 
-func (s *dictImpl) DeleteType(ctx context.Context, id, actorID int64) error {
-	stored, err := s.types.FindByID(ctx, id)
+func (s *dictImpl) DeleteType(ctx context.Context, req *DeleteRequest) error {
+	stored, err := s.types.FindByID(ctx, req.ID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "dict.svc.delete_type", err)
 		return err
@@ -138,7 +146,7 @@ func (s *dictImpl) DeleteType(ctx context.Context, id, actorID int64) error {
 		logx.Propagate(ctx, s.logger, "dict.svc.delete_type", err)
 		return err
 	}
-	if err := s.types.Delete(ctx, id, actorID); err != nil {
+	if err := s.types.Delete(ctx, &repository.DeleteRequest{ID: req.ID, ActorID: req.ActorID}); err != nil {
 		logx.Propagate(ctx, s.logger, "dict.svc.delete_type", err)
 		return err
 	}
@@ -224,8 +232,8 @@ func (s *dictImpl) UpdateEntry(ctx context.Context, e *entity.DictEntry) (*entit
 	return updated, nil
 }
 
-func (s *dictImpl) DeleteEntry(ctx context.Context, id, actorID int64) error {
-	if err := s.entries.Delete(ctx, id, actorID); err != nil {
+func (s *dictImpl) DeleteEntry(ctx context.Context, req *DeleteRequest) error {
+	if err := s.entries.Delete(ctx, &repository.DeleteRequest{ID: req.ID, ActorID: req.ActorID}); err != nil {
 		logx.Propagate(ctx, s.logger, "dict.svc.delete_entry", err)
 		return err
 	}
@@ -253,7 +261,7 @@ func (s *dictImpl) assertTypeKeyAvailable(ctx context.Context, key string) error
 // values are reusable; the partial unique index is the last line of defense.
 // Its caller's method boundary owns the breadcrumb (ADR 0011).
 func (s *dictImpl) assertEntryValueAvailable(ctx context.Context, dictType, value string, excludeID int64) error {
-	existing, err := s.entries.FindByTypeAndValue(ctx, dictType, value)
+	existing, err := s.entries.FindByTypeAndValue(ctx, &repository.FindByTypeAndValueRequest{DictType: dictType, Value: value})
 	if err != nil {
 		if errors.Is(err, dict.ErrDictEntryNotFound) {
 			return nil

@@ -10,6 +10,7 @@ import (
 	authnentity "glex/internal/domain/authn/entity"
 	authnservice "glex/internal/domain/authn/service"
 	dictentity "glex/internal/domain/dict/entity"
+	dictservice "glex/internal/domain/dict/service"
 
 	"glex/pkg/listq"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
@@ -95,9 +96,9 @@ func (f *fakeDictService) UpdateType(ctx context.Context, t *dictentity.DictType
 	return f.updateType, nil
 }
 
-func (f *fakeDictService) DeleteType(ctx context.Context, id, actorID int64) error {
+func (f *fakeDictService) DeleteType(ctx context.Context, req *dictservice.DeleteRequest) error {
 	f.deleteTypeCalled++
-	f.deleteTypeCtx, f.deleteTypeID, f.deleteTypeActor = ctx, id, actorID
+	f.deleteTypeCtx, f.deleteTypeID, f.deleteTypeActor = ctx, req.ID, req.ActorID
 	return f.deleteTypeErr
 }
 
@@ -142,9 +143,9 @@ func (f *fakeDictService) UpdateEntry(ctx context.Context, e *dictentity.DictEnt
 	return f.updateEntry, nil
 }
 
-func (f *fakeDictService) DeleteEntry(ctx context.Context, id, actorID int64) error {
+func (f *fakeDictService) DeleteEntry(ctx context.Context, req *dictservice.DeleteRequest) error {
 	f.deleteEntryCalled++
-	f.deleteEntryCtx, f.deleteEntryID, f.deleteEntryActor = ctx, id, actorID
+	f.deleteEntryCtx, f.deleteEntryID, f.deleteEntryActor = ctx, req.ID, req.ActorID
 	return f.deleteEntryErr
 }
 

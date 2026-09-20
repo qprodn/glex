@@ -6,6 +6,7 @@ import (
 
 	"glex/internal/domain/dict"
 	"glex/internal/domain/dict/entity"
+	"glex/internal/domain/dict/repository"
 	"glex/pkg/listq"
 
 	"github.com/go-kratos/kratos/v3/errors"
@@ -64,11 +65,11 @@ func (r *fakeTypeRepo) Update(_ context.Context, t *entity.DictType) (*entity.Di
 	return t, nil
 }
 
-func (r *fakeTypeRepo) Delete(_ context.Context, id, _ int64) error {
-	if _, ok := r.byID[id]; !ok {
+func (r *fakeTypeRepo) Delete(_ context.Context, req *repository.DeleteRequest) error {
+	if _, ok := r.byID[req.ID]; !ok {
 		return dict.ErrDictTypeNotFound
 	}
-	r.deleted = append(r.deleted, id)
+	r.deleted = append(r.deleted, req.ID)
 	return nil
 }
 
@@ -96,8 +97,8 @@ func (r *fakeEntryRepo) FindByID(_ context.Context, id int64) (*entity.DictEntry
 	return e, nil
 }
 
-func (r *fakeEntryRepo) FindByTypeAndValue(_ context.Context, dictType, value string) (*entity.DictEntry, error) {
-	e, ok := r.byPair[dictType+"\x00"+value]
+func (r *fakeEntryRepo) FindByTypeAndValue(_ context.Context, req *repository.FindByTypeAndValueRequest) (*entity.DictEntry, error) {
+	e, ok := r.byPair[req.DictType+"\x00"+req.Value]
 	if !ok {
 		return nil, dict.ErrDictEntryNotFound
 	}
@@ -139,11 +140,11 @@ func (r *fakeEntryRepo) Update(_ context.Context, e *entity.DictEntry) (*entity.
 	return e, nil
 }
 
-func (r *fakeEntryRepo) Delete(_ context.Context, id, _ int64) error {
-	if _, ok := r.byID[id]; !ok {
+func (r *fakeEntryRepo) Delete(_ context.Context, req *repository.DeleteRequest) error {
+	if _, ok := r.byID[req.ID]; !ok {
 		return dict.ErrDictEntryNotFound
 	}
-	r.deleted = append(r.deleted, id)
+	r.deleted = append(r.deleted, req.ID)
 	return nil
 }
 
@@ -234,7 +235,7 @@ func TestDeleteType_InUseRejected(t *testing.T) {
 	entries.count["sys_normal_disable"] = 2
 	svc := newDictSvc(repo, entries)
 
-	if err := svc.DeleteType(context.Background(), 5, 0); !errors.Is(err, dict.ErrDictTypeInUse) {
+	if err := svc.DeleteType(context.Background(), &DeleteRequest{ID: 5}); !errors.Is(err, dict.ErrDictTypeInUse) {
 		t.Fatalf("expected ErrDictTypeInUse, got %v", err)
 	}
 	if len(repo.deleted) != 0 {
@@ -247,7 +248,7 @@ func TestDeleteType_EmptyAllowed(t *testing.T) {
 	repo.byID[5] = &entity.DictType{ID: 5, DictName: "系统启用停用", DictType: "sys_normal_disable"}
 	svc := newDictSvc(repo, newFakeEntryRepo())
 
-	if err := svc.DeleteType(context.Background(), 5, 42); err != nil {
+	if err := svc.DeleteType(context.Background(), &DeleteRequest{ID: 5, ActorID: 42}); err != nil {
 		t.Fatalf("delete empty type: %v", err)
 	}
 	if len(repo.deleted) != 1 || repo.deleted[0] != 5 {
@@ -258,7 +259,7 @@ func TestDeleteType_EmptyAllowed(t *testing.T) {
 func TestDeleteType_NotFound(t *testing.T) {
 	svc := newDictSvc(newFakeTypeRepo(), newFakeEntryRepo())
 
-	if err := svc.DeleteType(context.Background(), 99, 0); !errors.Is(err, dict.ErrDictTypeNotFound) {
+	if err := svc.DeleteType(context.Background(), &DeleteRequest{ID: 99}); !errors.Is(err, dict.ErrDictTypeNotFound) {
 		t.Fatalf("expected ErrDictTypeNotFound, got %v", err)
 	}
 }
@@ -386,7 +387,7 @@ func TestUpdateEntry_NotFound(t *testing.T) {
 func TestDeleteEntry_NotFound(t *testing.T) {
 	svc := newDictSvc(newFakeTypeRepo(), newFakeEntryRepo())
 
-	if err := svc.DeleteEntry(context.Background(), 99, 0); !errors.Is(err, dict.ErrDictEntryNotFound) {
+	if err := svc.DeleteEntry(context.Background(), &DeleteRequest{ID: 99}); !errors.Is(err, dict.ErrDictEntryNotFound) {
 		t.Fatalf("expected ErrDictEntryNotFound, got %v", err)
 	}
 }

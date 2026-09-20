@@ -17,7 +17,7 @@ type DictTypeRepo interface {
 	List(ctx context.Context, q listq.Query) ([]*entity.DictType, error)
 	Create(ctx context.Context, t *entity.DictType) (*entity.DictType, error)
 	Update(ctx context.Context, t *entity.DictType) (*entity.DictType, error)
-	// Delete soft-deletes the type, stamping actorID into the audit fields
-	// (ADR 0002 — no row is hard-deleted).
-	Delete(ctx context.Context, id, actorID int64) error
+	// Delete soft-deletes the type, stamping req.ActorID into the audit
+	// fields (ADR 0002 — no row is hard-deleted).
+	Delete(ctx context.Context, req *DeleteRequest) error
 }

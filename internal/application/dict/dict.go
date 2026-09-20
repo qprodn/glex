@@ -220,7 +220,10 @@ func (s *DictApplication) UpdateDictType(ctx context.Context, req *dictv1.Update
 // still active under its key (RuoYi: 已分配，不能删除).
 func (s *DictApplication) DeleteDictType(ctx context.Context, req *dictv1.DeleteDictTypeRequest) (*emptypb.Empty, error) {
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		return s.svc.DeleteType(ctx, req.GetDictTypeId(), bizpkg.AuditActor(ctx))
+		return s.svc.DeleteType(ctx, &dictservice.DeleteRequest{
+			ID:      req.GetDictTypeId(),
+			ActorID: bizpkg.AuditActor(ctx),
+		})
 	}); err != nil {
 		logx.Propagate(ctx, s.logger, "dict.delete_dict_type", err)
 		return nil, err
@@ -323,7 +326,10 @@ func (s *DictApplication) UpdateDictEntry(ctx context.Context, req *dictv1.Updat
 // DeleteDictEntry soft-deletes an entry by id.
 func (s *DictApplication) DeleteDictEntry(ctx context.Context, req *dictv1.DeleteDictEntryRequest) (*emptypb.Empty, error) {
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		return s.svc.DeleteEntry(ctx, req.GetEntryId(), bizpkg.AuditActor(ctx))
+		return s.svc.DeleteEntry(ctx, &dictservice.DeleteRequest{
+			ID:      req.GetEntryId(),
+			ActorID: bizpkg.AuditActor(ctx),
+		})
 	}); err != nil {
 		logx.Propagate(ctx, s.logger, "dict.delete_dict_entry", err)
 		return nil, err

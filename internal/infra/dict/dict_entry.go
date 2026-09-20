@@ -61,9 +61,9 @@ func (r *dictEntryRepo) FindByID(ctx context.Context, id int64) (*dictentity.Dic
 	return toBizDictEntry(po), nil
 }
 
-func (r *dictEntryRepo) FindByTypeAndValue(ctx context.Context, dictType, value string) (*dictentity.DictEntry, error) {
+func (r *dictEntryRepo) FindByTypeAndValue(ctx context.Context, req *dictrepo.FindByTypeAndValueRequest) (*dictentity.DictEntry, error) {
 	po, err := r.data.DB.DictData(ctx).Query().
-		Where(dictdata.DictTypeEQ(dictType), dictdata.DictValueEQ(value), dictdata.DeletedAtIsNil()).
+		Where(dictdata.DictTypeEQ(req.DictType), dictdata.DictValueEQ(req.Value), dictdata.DeletedAtIsNil()).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -167,11 +167,11 @@ func (r *dictEntryRepo) Update(ctx context.Context, e *dictentity.DictEntry) (*d
 }
 
 // DeleteDictEntry soft-deletes the entry (ADR 0002 — no row is hard-deleted),
-// stamping actorID into the audit fields. The caller owns the transaction.
-func (r *dictEntryRepo) Delete(ctx context.Context, id, actorID int64) error {
-	err := r.data.DB.DictData(ctx).UpdateOneID(id).
+// stamping req.ActorID into the audit fields. The caller owns the transaction.
+func (r *dictEntryRepo) Delete(ctx context.Context, req *dictrepo.DeleteRequest) error {
+	err := r.data.DB.DictData(ctx).UpdateOneID(req.ID).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
