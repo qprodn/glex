@@ -7,6 +7,8 @@ import (
 
 	orgv1 "glex/api/org/v1"
 	orgentity "glex/internal/domain/org/entity"
+	orgrepository "glex/internal/domain/org/repository"
+	orgservice "glex/internal/domain/org/service"
 )
 
 // fakePostAssignmentService is a hand-rolled orgservice.PostAssignment fake:
@@ -26,17 +28,17 @@ type fakePostAssignmentService struct {
 	replacedActor int64
 }
 
-func (f *fakePostAssignmentService) ListForUser(_ context.Context, userID, deptOverride int64) ([]*orgentity.PostAssignment, error) {
-	f.listedUser, f.listedDept = userID, deptOverride
+func (f *fakePostAssignmentService) ListForUser(_ context.Context, req orgservice.ListForUserRequest) ([]*orgentity.PostAssignment, error) {
+	f.listedUser, f.listedDept = req.UserID, req.DeptOverride
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
 	return f.list, nil
 }
 
-func (f *fakePostAssignmentService) ReplaceForUser(ctx context.Context, userID int64, postIDs []int64, actorID int64) ([]*orgentity.PostAssignment, error) {
+func (f *fakePostAssignmentService) ReplaceForUser(ctx context.Context, req orgrepository.ReplaceUserPostsRequest) ([]*orgentity.PostAssignment, error) {
 	f.replaceCalled++
-	f.replaceCtx, f.replacedUser, f.replacedIDs, f.replacedActor = ctx, userID, append([]int64(nil), postIDs...), actorID
+	f.replaceCtx, f.replacedUser, f.replacedIDs, f.replacedActor = ctx, req.UserID, append([]int64(nil), req.PostIDs...), req.ActorID
 	if f.replaceErr != nil {
 		return nil, f.replaceErr
 	}

@@ -59,11 +59,11 @@ func (r *deptRepo) FindByID(ctx context.Context, id int64) (*orgentity.Dept, err
 	return toBizDept(po), nil
 }
 
-func (r *deptRepo) FindByParentAndName(ctx context.Context, parentID int64, name string) (*orgentity.Dept, error) {
+func (r *deptRepo) FindByParentAndName(ctx context.Context, req orgrepo.FindByParentAndNameRequest) (*orgentity.Dept, error) {
 	po, err := r.data.DB.Dept(ctx).Query().
 		Where(
-			dept.ParentIDEQ(parentID),
-			dept.DeptNameEQ(name),
+			dept.ParentIDEQ(req.ParentID),
+			dept.DeptNameEQ(req.Name),
 			dept.DeletedAtIsNil(),
 		).
 		Only(ctx)
@@ -111,18 +111,18 @@ func (r *deptRepo) CreateDept(ctx context.Context, d *orgentity.Dept) (*orgentit
 	return toBizDept(po), nil
 }
 
-// UpdateDept applies the mutation and returns it with its pre-image — the
-// enable/disable transition the ancestor cascade keys on. The caller owns the
-// transaction.
-func (r *deptRepo) UpdateDept(ctx context.Context, d *orgentity.Dept) (*orgentity.Dept, *orgentity.Dept, error) {
+// UpdateDept applies the mutation and returns the write paired with its
+// pre-image — the enable/disable transition the ancestor cascade keys on.
+// The caller owns the transaction.
+func (r *deptRepo) UpdateDept(ctx context.Context, d *orgentity.Dept) (*orgentity.DeptUpdate, error) {
 	current, err := r.data.DB.Dept(ctx).Query().
 		Where(dept.IDEQ(d.ID), dept.DeletedAtIsNil()).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, nil, org.ErrDeptNotFound
+			return nil, org.ErrDeptNotFound
 		}
-		return nil, nil, orgStoreError(ctx, r.logger, "org.dept.update", err)
+		return nil, orgStoreError(ctx, r.logger, "org.dept.update", err)
 	}
 	po, err := r.data.DB.Dept(ctx).UpdateOneID(d.ID).
 		SetParentID(d.ParentID).
@@ -136,37 +136,38 @@ func (r *deptRepo) UpdateDept(ctx context.Context, d *orgentity.Dept) (*orgentit
 		Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, nil, org.ErrDeptNotFound
+			return nil, org.ErrDeptNotFound
 		}
-		return nil, nil, orgStoreError(ctx, r.logger, "org.dept.update", err)
+		return nil, orgStoreError(ctx, r.logger, "org.dept.update", err)
 	}
-	return toBizDept(po), toBizDept(current), nil
+	return &orgentity.DeptUpdate{Dept: toBizDept(po), Previous: toBizDept(current)}, nil
 }
 
-// EnableDepts sets status=0 on the given department ids — the ancestor
-// cascade behind enabling a department — stamping actorID. Missing ids are
-// skipped: the cascade repairs a display state, it is not a security write.
-// The caller owns the transaction.
-func (r *deptRepo) EnableDepts(ctx context.Context, ids []int64, actorID int64) error {
-	if len(ids) == 0 {
+// EnableDepts sets status=0 on req.IDs — the ancestor cascade behind
+// enabling a department — stamping req.ActorID. Missing ids are skipped: the
+// cascade repairs a display state, it is not a security write. The caller
+// owns the transaction.
+func (r *deptRepo) EnableDepts(ctx context.Context, req orgrepo.EnableDeptsRequest) error {
+	if len(req.IDs) == 0 {
 		return nil
 	}
 	if _, err := r.data.DB.Dept(ctx).Update().
-		Where(dept.IDIn(ids...), dept.DeletedAtIsNil()).
+		Where(dept.IDIn(req.IDs...), dept.DeletedAtIsNil()).
 		SetStatus(0).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Save(ctx); err != nil {
 		return orgStoreError(ctx, r.logger, "org.dept.enable_depts", err)
 	}
 	return nil
 }
 
-// DeleteDept soft-deletes the department, stamping actorID (ADR 0002 — no row
-// is hard-deleted). The caller owns the transaction.
-func (r *deptRepo) DeleteDept(ctx context.Context, id int64, actorID int64) error {
-	err := r.data.DB.Dept(ctx).UpdateOneID(id).
+// DeleteDept soft-deletes the department identified by req, stamping
+// req.ActorID (ADR 0002 — no row is hard-deleted). The caller owns the
+// transaction.
+func (r *deptRepo) DeleteDept(ctx context.Context, req orgrepo.DeleteDeptRequest) error {
+	err := r.data.DB.Dept(ctx).UpdateOneID(req.ID).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {

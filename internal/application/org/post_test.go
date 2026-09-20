@@ -8,8 +8,8 @@ import (
 
 	orgv1 "glex/api/org/v1"
 	orgentity "glex/internal/domain/org/entity"
+	orgrepository "glex/internal/domain/org/repository"
 	orgservice "glex/internal/domain/org/service"
-	"glex/pkg/listq"
 
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
@@ -43,7 +43,7 @@ func (f *fakePostService) Get(_ context.Context, _ int64) (*orgentity.Post, erro
 	return f.get, nil
 }
 
-func (f *fakePostService) List(context.Context, listq.Query, []int64) ([]*orgentity.Post, error) {
+func (f *fakePostService) List(context.Context, orgrepository.ListPostsRequest) ([]*orgentity.Post, error) {
 	return nil, nil
 }
 
@@ -65,9 +65,9 @@ func (f *fakePostService) Update(_ context.Context, p *orgentity.Post) (*orgenti
 	return f.update, nil
 }
 
-func (f *fakePostService) Delete(ctx context.Context, id, actorID int64) error {
+func (f *fakePostService) Delete(ctx context.Context, req orgrepository.DeletePostRequest) error {
 	f.deleteCalled++
-	f.deleteCtx, f.deleteID, f.deleteActor = ctx, id, actorID
+	f.deleteCtx, f.deleteID, f.deleteActor = ctx, req.ID, req.ActorID
 	return f.deleteErr
 }
 
@@ -95,7 +95,7 @@ func (f *fakeDeptServiceForPost) Update(context.Context, *orgentity.Dept) (*orge
 	return nil, nil
 }
 
-func (f *fakeDeptServiceForPost) Delete(context.Context, int64, int64) error {
+func (f *fakeDeptServiceForPost) Delete(context.Context, orgrepository.DeleteDeptRequest) error {
 	return nil
 }
 

@@ -23,6 +23,13 @@ type Post struct {
 	UpdatedAt time.Time
 }
 
+// PostUpdate pairs the persisted post with its pre-image so the service can
+// key the in-use guard on the enable/disable transition.
+type PostUpdate struct {
+	Post     *Post
+	Previous *Post
+}
+
 // Validate enforces the invariants a Post must satisfy before persistence.
 func (p *Post) Validate() error {
 	if p == nil || p.DeptID == 0 || p.PostName == "" || p.PostCode == "" {

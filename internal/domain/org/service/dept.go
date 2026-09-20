@@ -31,9 +31,10 @@ type Dept interface {
 	// department enables its whole ancestor chain with it (RuoYi's
 	// updateParentDeptStatusNormal).
 	Update(ctx context.Context, d *entity.Dept) (*entity.Dept, error)
-	// Delete soft-deletes the department, refusing the seeded root and
-	// departments with children or posts.
-	Delete(ctx context.Context, id, actorID int64) error // SubtreeIDs resolves deptID plus every descendant id — the
+	// Delete soft-deletes the department identified by req, refusing the
+	// seeded root and departments with children or posts.
+	Delete(ctx context.Context, req repository.DeleteDeptRequest) error
+	// SubtreeIDs resolves deptID plus every descendant id — the
 	// department-subtree filter behind the org contract. Disabled
 	// departments are included: disabling hides a department from selects,
 	// not from its users.
@@ -48,7 +49,7 @@ type Dept interface {
 	DeptPaths(ctx context.Context, deptIDs []int64) (map[int64]string, error)
 	// ResolveDeptPath maps a root-first display path back to the department
 	// id — Data Import's department column (ADR 0017). Sibling names are
-	// unique (AssertSiblingNameUnique), so a full path names at most one
+	// unique (assertSiblingNameUnique), so a full path names at most one
 	// department. Unknown paths return DEPT_NOT_FOUND and disabled
 	// departments DEPT_DISABLED, the org wire shape consumers surface.
 	ResolveDeptPath(ctx context.Context, path string) (int64, error)
@@ -107,7 +108,7 @@ func (s *deptImpl) Create(ctx context.Context, d *entity.Dept) (*entity.Dept, er
 			return nil, err
 		}
 	}
-	if err := AssertSiblingNameUnique(ctx, s.depts, d, false); err != nil {
+	if err := assertSiblingNameUnique(ctx, s.depts, d, false); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.create_dept", err)
 		return nil, err
 	}
@@ -142,7 +143,7 @@ func (s *deptImpl) Update(ctx context.Context, d *entity.Dept) (*entity.Dept, er
 			return nil, err
 		}
 	}
-	if err := AssertSiblingNameUnique(ctx, s.depts, d, true); err != nil {
+	if err := assertSiblingNameUnique(ctx, s.depts, d, true); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.update_dept", err)
 		return nil, err
 	}
@@ -154,7 +155,7 @@ func (s *deptImpl) Update(ctx context.Context, d *entity.Dept) (*entity.Dept, er
 		logx.Propagate(ctx, s.logger, "org.svc.update_dept", err)
 		return nil, err
 	}
-	updated, previous, err := s.depts.UpdateDept(ctx, d)
+	result, err := s.depts.UpdateDept(ctx, d)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.update_dept", err)
 		return nil, err
@@ -164,28 +165,28 @@ func (s *deptImpl) Update(ctx context.Context, d *entity.Dept) (*entity.Dept, er
 	// disabled subtree (RuoYi's updateParentDeptStatusNormal; the cascade
 	// fires on the disabled→enabled transition only — the disable guards
 	// keep enabled departments from ever having disabled ancestors).
-	if !previous.Enabled() && updated.Enabled() {
-		if ancestors, ok := AncestorIDs(depts, updated.ID); ok && len(ancestors) > 0 {
-			if err := s.depts.EnableDepts(ctx, ancestors, d.UpdateBy); err != nil {
+	if !result.Previous.Enabled() && result.Dept.Enabled() {
+		if ancestors := AncestorIDs(depts, result.Dept.ID); len(ancestors) > 0 {
+			if err := s.depts.EnableDepts(ctx, repository.EnableDeptsRequest{IDs: ancestors, ActorID: d.UpdateBy}); err != nil {
 				logx.Propagate(ctx, s.logger, "org.svc.update_dept", err)
 				return nil, err
 			}
 		}
 	}
-	return updated, nil
+	return result.Dept, nil
 }
 
-func (s *deptImpl) Delete(ctx context.Context, id, actorID int64) error {
-	if _, err := s.depts.FindByID(ctx, id); err != nil {
+func (s *deptImpl) Delete(ctx context.Context, req repository.DeleteDeptRequest) error {
+	if _, err := s.depts.FindByID(ctx, req.ID); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.delete_dept", err)
 		return err
 	}
-	if id == org.RootDeptID {
+	if req.ID == org.RootDeptID {
 		err := org.ErrDeptRootProtected
 		logx.Propagate(ctx, s.logger, "org.svc.delete_dept", err)
 		return err
 	}
-	n, err := s.depts.CountChildDepts(ctx, id)
+	n, err := s.depts.CountChildDepts(ctx, req.ID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.delete_dept", err)
 		return err
@@ -197,7 +198,7 @@ func (s *deptImpl) Delete(ctx context.Context, id, actorID int64) error {
 	}
 	// A department that still carries posts is not withdrawable (RuoYi 6.0:
 	// 部门存在岗位) — withdrawing it would strand the posts.
-	if n, err := s.posts.CountByDept(ctx, id); err != nil {
+	if n, err := s.posts.CountByDept(ctx, req.ID); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.delete_dept", err)
 		return err
 	} else if n > 0 {
@@ -205,7 +206,7 @@ func (s *deptImpl) Delete(ctx context.Context, id, actorID int64) error {
 		logx.Propagate(ctx, s.logger, "org.svc.delete_dept", err)
 		return err
 	}
-	if err := s.depts.DeleteDept(ctx, id, actorID); err != nil {
+	if err := s.depts.DeleteDept(ctx, req); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.delete_dept", err)
 		return err
 	}
@@ -333,23 +334,22 @@ func assertMoveAllowed(depts []*entity.Dept, d *entity.Dept) error {
 	if !ok {
 		return org.ErrDeptNotFound
 	}
-	if ancestors, ok := AncestorIDs(depts, parent.ID); ok {
-		for _, id := range ancestors {
-			if id == d.ID {
-				return org.ErrDeptParentInvalid
-			}
+	for _, id := range AncestorIDs(depts, parent.ID) {
+		if id == d.ID {
+			return org.ErrDeptParentInvalid
 		}
 	}
 	return nil
 }
 
-// AssertSiblingNameUnique checks no other department shares
+// assertSiblingNameUnique checks no other department shares
 // (parent_id, dept_name). When excludeSelf is set (update), a match bearing
 // the same id is allowed. A not-found from the repo is the expected
 // "available" case. Its caller's method boundary owns the breadcrumb
-// (ADR 0011).
-func AssertSiblingNameUnique(ctx context.Context, repo repository.DeptRepo, d *entity.Dept, excludeSelf bool) error {
-	existing, err := repo.FindByParentAndName(ctx, d.ParentID, d.DeptName)
+// (ADR 0011). A package-level invariant helper, unexported rather than
+// conformed (ADR 0025).
+func assertSiblingNameUnique(ctx context.Context, repo repository.DeptRepo, d *entity.Dept, excludeSelf bool) error {
+	existing, err := repo.FindByParentAndName(ctx, repository.FindByParentAndNameRequest{ParentID: d.ParentID, Name: d.DeptName})
 	if err != nil {
 		if errors.Is(err, org.ErrDeptNotFound) {
 			return nil
@@ -391,33 +391,34 @@ func BuildDeptTree(depts []*entity.Dept) []*entity.Dept {
 }
 
 // AncestorIDs walks the parent chain from deptID upward, returning the ids
-// strictly above it. ok=false means deptID is missing from the list or its
-// chain is broken (a soft-deleted ancestor): the caller treats the node as an
-// orphan and skips whatever cascade it was about to run. A cyclic chain also
-// reports false — it cannot be trusted.
-func AncestorIDs(depts []*entity.Dept, deptID int64) (ids []int64, ok bool) {
+// strictly above it. A nil result means deptID is missing from the list or
+// its chain is broken (a soft-deleted ancestor): the caller treats the node
+// as an orphan and skips whatever cascade it was about to run. A cyclic
+// chain also yields nil — it cannot be trusted.
+func AncestorIDs(depts []*entity.Dept, deptID int64) []int64 {
 	byID := make(map[int64]*entity.Dept, len(depts))
 	for _, d := range depts {
 		byID[d.ID] = d
 	}
 	node, ok := byID[deptID]
 	if !ok {
-		return nil, false
+		return nil
 	}
 	seen := map[int64]struct{}{deptID: {}}
+	var ids []int64
 	for parentID := node.ParentID; parentID != 0; {
 		if _, cycle := seen[parentID]; cycle {
-			return nil, false
+			return nil
 		}
 		seen[parentID] = struct{}{}
 		parent, exists := byID[parentID]
 		if !exists {
-			return nil, false
+			return nil
 		}
 		ids = append(ids, parentID)
 		parentID = parent.ParentID
 	}
-	return ids, true
+	return ids
 }
 
 // SubtreeIDs resolves deptID plus every descendant id (any depth, any

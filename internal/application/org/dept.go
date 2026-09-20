@@ -9,6 +9,7 @@ import (
 	"glex/internal/crossdomain/user"
 	orgdomain "glex/internal/domain/org"
 	orgentity "glex/internal/domain/org/entity"
+	orgrepository "glex/internal/domain/org/repository"
 	orgservice "glex/internal/domain/org/service"
 	"glex/pkg/logx"
 
@@ -206,7 +207,7 @@ func (s *DeptApplication) DeleteDept(ctx context.Context, req *orgv1.DeleteDeptR
 		} else if has {
 			return orgdomain.ErrDeptHasUsers
 		}
-		return s.svc.Delete(ctx, req.GetDeptId(), bizpkg.AuditActor(ctx))
+		return s.svc.Delete(ctx, orgrepository.DeleteDeptRequest{ID: req.GetDeptId(), ActorID: bizpkg.AuditActor(ctx)})
 	}); err != nil {
 		logx.Propagate(ctx, s.logger, "org.delete_dept", err)
 		return nil, err

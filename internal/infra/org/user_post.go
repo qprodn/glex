@@ -66,28 +66,28 @@ func (r *userPostRepo) AssignedPostIDs(ctx context.Context, userID int64) ([]int
 }
 
 // ReplaceUserPosts atomically replaces the user's active Post Assignment:
-// the current link rows are soft-deleted (stamping actorID), then the new
+// the current link rows are soft-deleted (stamping req.ActorID), then the new
 // generation is inserted (ADR 0002 — full replacement of the active set; a
 // re-assigned pair is a new row). The caller owns the transaction.
-func (r *userPostRepo) ReplaceUserPosts(ctx context.Context, userID int64, postIDs []int64, actorID int64) error {
+func (r *userPostRepo) ReplaceUserPosts(ctx context.Context, req orgrepo.ReplaceUserPostsRequest) error {
 	if _, err := r.data.DB.UserPost(ctx).Update().
-		Where(userpost.UserIDEQ(userID), userpost.DeletedAtIsNil()).
+		Where(userpost.UserIDEQ(req.UserID), userpost.DeletedAtIsNil()).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Save(ctx); err != nil {
 		return orgStoreError(ctx, r.logger, "org.user_post.replace", err)
 	}
-	if len(postIDs) == 0 {
+	if len(req.PostIDs) == 0 {
 		return nil
 	}
-	builders := make([]*ent.UserPostCreate, 0, len(postIDs))
-	for _, postID := range postIDs {
+	builders := make([]*ent.UserPostCreate, 0, len(req.PostIDs))
+	for _, postID := range req.PostIDs {
 		builders = append(builders, r.data.DB.UserPost(ctx).Create().
 			SetID(newSnowflakeID()).
-			SetUserID(userID).
+			SetUserID(req.UserID).
 			SetPostID(postID).
-			SetCreateBy(actorID).
-			SetUpdateBy(actorID))
+			SetCreateBy(req.ActorID).
+			SetUpdateBy(req.ActorID))
 	}
 	if err := r.data.DB.UserPost(ctx).CreateBulk(builders...).Exec(ctx); err != nil {
 		return orgStoreError(ctx, r.logger, "org.user_post.replace", err)

@@ -7,6 +7,7 @@ import (
 	orgv1 "glex/api/org/v1"
 	"glex/internal/bizpkg"
 	orgentity "glex/internal/domain/org/entity"
+	orgrepository "glex/internal/domain/org/repository"
 	orgservice "glex/internal/domain/org/service"
 	"glex/pkg/listq"
 	"glex/pkg/logx"
@@ -92,7 +93,7 @@ func (s *PostApplication) ListPosts(ctx context.Context, req *orgv1.ListPostsReq
 			return nil, err
 		}
 	}
-	posts, err := s.svc.List(ctx, q, deptIDs)
+	posts, err := s.svc.List(ctx, orgrepository.ListPostsRequest{Query: q, DeptIDs: deptIDs})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "org.list_posts", err)
 		return nil, err
@@ -179,7 +180,7 @@ func (s *PostApplication) UpdatePost(ctx context.Context, req *orgv1.UpdatePostR
 // assigned (RuoYi: 已分配，不能删除).
 func (s *PostApplication) DeletePost(ctx context.Context, req *orgv1.DeletePostRequest) (*emptypb.Empty, error) {
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		return s.svc.Delete(ctx, req.GetPostId(), bizpkg.AuditActor(ctx))
+		return s.svc.Delete(ctx, orgrepository.DeletePostRequest{ID: req.GetPostId(), ActorID: bizpkg.AuditActor(ctx)})
 	}); err != nil {
 		logx.Propagate(ctx, s.logger, "org.delete_post", err)
 		return nil, err

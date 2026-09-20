@@ -27,6 +27,13 @@ type Dept struct {
 	Children  []*Dept
 }
 
+// DeptUpdate pairs the persisted department with its pre-image so the
+// service can key the ancestor cascade on the enable/disable transition.
+type DeptUpdate struct {
+	Dept     *Dept
+	Previous *Dept
+}
+
 // Validate enforces the invariants a Dept must satisfy before persistence.
 func (d *Dept) Validate() error {
 	if d == nil || d.DeptName == "" {

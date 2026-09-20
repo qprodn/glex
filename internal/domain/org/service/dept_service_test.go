@@ -9,7 +9,6 @@ import (
 	"glex/internal/domain/org"
 	"glex/internal/domain/org/entity"
 	"glex/internal/domain/org/repository"
-	"glex/pkg/listq"
 )
 
 // fakeDeptRepo is an in-memory repository.DeptRepo for testing the dept
@@ -42,9 +41,9 @@ func (r *fakeDeptRepo) FindByID(_ context.Context, id int64) (*entity.Dept, erro
 	return d, nil
 }
 
-func (r *fakeDeptRepo) FindByParentAndName(_ context.Context, parentID int64, name string) (*entity.Dept, error) {
+func (r *fakeDeptRepo) FindByParentAndName(_ context.Context, req repository.FindByParentAndNameRequest) (*entity.Dept, error) {
 	for _, d := range r.rows {
-		if d.ParentID == parentID && d.DeptName == name {
+		if d.ParentID == req.ParentID && d.DeptName == req.Name {
 			return d, nil
 		}
 	}
@@ -70,27 +69,27 @@ func (r *fakeDeptRepo) CreateDept(_ context.Context, d *entity.Dept) (*entity.De
 	return d, nil
 }
 
-func (r *fakeDeptRepo) UpdateDept(_ context.Context, d *entity.Dept) (*entity.Dept, *entity.Dept, error) {
+func (r *fakeDeptRepo) UpdateDept(_ context.Context, d *entity.Dept) (*entity.DeptUpdate, error) {
 	previous, ok := r.rows[d.ID]
 	if !ok {
-		return nil, nil, org.ErrDeptNotFound
+		return nil, org.ErrDeptNotFound
 	}
 	r.rows[d.ID] = d
 	r.updated = append(r.updated, d)
-	return d, previous, nil
+	return &entity.DeptUpdate{Dept: d, Previous: previous}, nil
 }
 
-func (r *fakeDeptRepo) EnableDepts(_ context.Context, ids []int64, _ int64) error {
-	r.enabledIDs = append(r.enabledIDs, append([]int64(nil), ids...))
+func (r *fakeDeptRepo) EnableDepts(_ context.Context, req repository.EnableDeptsRequest) error {
+	r.enabledIDs = append(r.enabledIDs, append([]int64(nil), req.IDs...))
 	return nil
 }
 
-func (r *fakeDeptRepo) DeleteDept(_ context.Context, id int64, _ int64) error {
-	if _, ok := r.rows[id]; !ok {
+func (r *fakeDeptRepo) DeleteDept(_ context.Context, req repository.DeleteDeptRequest) error {
+	if _, ok := r.rows[req.ID]; !ok {
 		return org.ErrDeptNotFound
 	}
-	delete(r.rows, id)
-	r.deleted = append(r.deleted, id)
+	delete(r.rows, req.ID)
+	r.deleted = append(r.deleted, req.ID)
 	return nil
 }
 
@@ -147,9 +146,9 @@ func (r *fakePostRepo) FindByID(_ context.Context, id int64) (*entity.Post, erro
 	return p, nil
 }
 
-func (r *fakePostRepo) FindByDeptAndName(_ context.Context, deptID int64, name string) (*entity.Post, error) {
+func (r *fakePostRepo) FindByDeptAndName(_ context.Context, req repository.FindByDeptAndNameRequest) (*entity.Post, error) {
 	for _, p := range r.rows {
-		if p.DeptID == deptID && p.PostName == name {
+		if p.DeptID == req.DeptID && p.PostName == req.Name {
 			return p, nil
 		}
 	}
@@ -165,7 +164,7 @@ func (r *fakePostRepo) FindByPostCode(_ context.Context, code string) (*entity.P
 	return nil, org.ErrPostNotFound
 }
 
-func (r *fakePostRepo) ListPosts(context.Context, listq.Query, []int64) ([]*entity.Post, error) {
+func (r *fakePostRepo) ListPosts(context.Context, repository.ListPostsRequest) ([]*entity.Post, error) {
 	return nil, nil
 }
 
@@ -203,22 +202,22 @@ func (r *fakePostRepo) CreatePost(_ context.Context, p *entity.Post) (*entity.Po
 	return p, nil
 }
 
-func (r *fakePostRepo) UpdatePost(_ context.Context, p *entity.Post) (*entity.Post, *entity.Post, error) {
+func (r *fakePostRepo) UpdatePost(_ context.Context, p *entity.Post) (*entity.PostUpdate, error) {
 	previous, ok := r.rows[p.ID]
 	if !ok {
-		return nil, nil, org.ErrPostNotFound
+		return nil, org.ErrPostNotFound
 	}
 	r.rows[p.ID] = p
 	r.updated = append(r.updated, p)
-	return p, previous, nil
+	return &entity.PostUpdate{Post: p, Previous: previous}, nil
 }
 
-func (r *fakePostRepo) DeletePost(_ context.Context, id int64, _ int64) error {
-	if _, ok := r.rows[id]; !ok {
+func (r *fakePostRepo) DeletePost(_ context.Context, req repository.DeletePostRequest) error {
+	if _, ok := r.rows[req.ID]; !ok {
 		return org.ErrPostNotFound
 	}
-	delete(r.rows, id)
-	r.deleted = append(r.deleted, id)
+	delete(r.rows, req.ID)
+	r.deleted = append(r.deleted, req.ID)
 	return nil
 }
 
@@ -394,7 +393,7 @@ func TestUpdateDept_EnableAlreadyEnabledNoCascade(t *testing.T) {
 func TestDeleteDept_RootProtected(t *testing.T) {
 	repo := newFakeDeptRepo(&entity.Dept{ID: org.RootDeptID, ParentID: 0, DeptName: "seed root"})
 	svc := newDeptSvc(repo)
-	err := svc.Delete(context.Background(), org.RootDeptID, 1)
+	err := svc.Delete(context.Background(), repository.DeleteDeptRequest{ID: org.RootDeptID, ActorID: 1})
 	if !errors.Is(err, org.ErrDeptRootProtected) {
 		t.Fatalf("err = %v, want ErrDeptRootProtected", err)
 	}
@@ -402,7 +401,7 @@ func TestDeleteDept_RootProtected(t *testing.T) {
 
 func TestDeleteDept_HasChildrenRejected(t *testing.T) {
 	svc := newDeptSvc(newFakeDeptRepo(seedTree()...))
-	err := svc.Delete(context.Background(), 2, 1)
+	err := svc.Delete(context.Background(), repository.DeleteDeptRequest{ID: 2, ActorID: 1})
 	if !errors.Is(err, org.ErrDeptHasChildren) {
 		t.Fatalf("err = %v, want ErrDeptHasChildren", err)
 	}
@@ -411,7 +410,7 @@ func TestDeleteDept_HasChildrenRejected(t *testing.T) {
 func TestDeleteDept_Leaf(t *testing.T) {
 	repo := newFakeDeptRepo(seedTree()...)
 	svc := newDeptSvc(repo)
-	if err := svc.Delete(context.Background(), 3, 1); err != nil {
+	if err := svc.Delete(context.Background(), repository.DeleteDeptRequest{ID: 3, ActorID: 1}); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 	if len(repo.deleted) != 1 || repo.deleted[0] != 3 {
@@ -421,7 +420,7 @@ func TestDeleteDept_Leaf(t *testing.T) {
 
 func TestDeleteDept_Missing(t *testing.T) {
 	svc := newDeptSvc(newFakeDeptRepo(seedTree()...))
-	err := svc.Delete(context.Background(), 99, 1)
+	err := svc.Delete(context.Background(), repository.DeleteDeptRequest{ID: 99, ActorID: 1})
 	if !errors.Is(err, org.ErrDeptNotFound) {
 		t.Fatalf("err = %v, want ErrDeptNotFound", err)
 	}
@@ -500,17 +499,17 @@ func TestBuildDeptTree(t *testing.T) {
 
 func TestAncestorIDs(t *testing.T) {
 	depts := seedTree()
-	ids, ok := AncestorIDs(depts, 3)
-	if !ok || len(ids) != 2 || ids[0] != 2 || ids[1] != 1 {
-		t.Fatalf("ids = %v ok = %v, want [2 1] true", ids, ok)
+	ids := AncestorIDs(depts, 3)
+	if len(ids) != 2 || ids[0] != 2 || ids[1] != 1 {
+		t.Fatalf("ids = %v, want [2 1]", ids)
 	}
-	if _, ok := AncestorIDs(depts, 99); ok {
-		t.Fatal("missing node reports ok")
+	if got := AncestorIDs(depts, 99); got != nil {
+		t.Fatalf("missing node ids = %v, want nil", got)
 	}
-	// A broken chain (missing parent) reports not-ok so callers skip cascades.
+	// A broken chain (missing parent) yields nil so callers skip cascades.
 	broken := []*entity.Dept{{ID: 3, ParentID: 2, DeptName: "a1"}}
-	if _, ok := AncestorIDs(broken, 3); ok {
-		t.Fatal("broken chain reports ok")
+	if got := AncestorIDs(broken, 3); got != nil {
+		t.Fatalf("broken chain ids = %v, want nil", got)
 	}
 }
 
@@ -546,7 +545,7 @@ func TestDeleteDept_HasPostsRejected(t *testing.T) {
 	repo := newFakeDeptRepo(seedTree()...)
 	posts := newFakePostRepo(&entity.Post{ID: 21, DeptID: 3, PostCode: "x", PostName: "开发"})
 	svc := NewDeptService(repo, posts, testLogger())
-	err := svc.Delete(context.Background(), 3, 1)
+	err := svc.Delete(context.Background(), repository.DeleteDeptRequest{ID: 3, ActorID: 1})
 	if !errors.Is(err, org.ErrDeptHasPosts) {
 		t.Fatalf("err = %v, want ErrDeptHasPosts", err)
 	}

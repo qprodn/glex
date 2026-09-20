@@ -15,7 +15,7 @@ func newAssignmentSvc(posts repository.PostRepo, userPosts repository.UserPostRe
 
 func TestListForUser_MissingUserRejected(t *testing.T) {
 	svc := newAssignmentSvc(newFakePostRepo(seedPosts()...), newFakeUserPostRepo())
-	if _, err := svc.ListForUser(context.Background(), 99, 0); !errors.Is(err, org.ErrUserNotFound) {
+	if _, err := svc.ListForUser(context.Background(), ListForUserRequest{UserID: 99}); !errors.Is(err, org.ErrUserNotFound) {
 		t.Fatalf("err = %v, want ErrUserNotFound", err)
 	}
 }
@@ -26,7 +26,7 @@ func TestListForUser_FlagsAssignedCandidates(t *testing.T) {
 	userPosts.assigned[7] = []int64{22}
 	svc := newAssignmentSvc(newFakePostRepo(seedPosts()...), userPosts)
 
-	items, err := svc.ListForUser(context.Background(), 7, 0)
+	items, err := svc.ListForUser(context.Background(), ListForUserRequest{UserID: 7})
 	if err != nil {
 		t.Fatalf("ListForUser: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestListForUser_DeptOverrideChangesCandidates(t *testing.T) {
 	userPosts.users[7] = 2
 	svc := newAssignmentSvc(newFakePostRepo(seedPosts()...), userPosts)
 
-	items, err := svc.ListForUser(context.Background(), 7, 3)
+	items, err := svc.ListForUser(context.Background(), ListForUserRequest{UserID: 7, DeptOverride: 3})
 	if err != nil {
 		t.Fatalf("ListForUser: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestListForUser_ExcludesDisabledCandidates(t *testing.T) {
 	svc := newAssignmentSvc(posts, userPosts)
 
 	// Post 22 stays assigned (history) but is no longer a candidate.
-	items, err := svc.ListForUser(context.Background(), 7, 0)
+	items, err := svc.ListForUser(context.Background(), ListForUserRequest{UserID: 7})
 	if err != nil {
 		t.Fatalf("ListForUser: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestListForUser_ExcludesDisabledCandidates(t *testing.T) {
 
 func TestReplaceForUser_MissingUserRejected(t *testing.T) {
 	svc := newAssignmentSvc(newFakePostRepo(seedPosts()...), newFakeUserPostRepo())
-	if _, err := svc.ReplaceForUser(context.Background(), 99, []int64{21}, 1); !errors.Is(err, org.ErrUserNotFound) {
+	if _, err := svc.ReplaceForUser(context.Background(), repository.ReplaceUserPostsRequest{UserID: 99, PostIDs: []int64{21}, ActorID: 1}); !errors.Is(err, org.ErrUserNotFound) {
 		t.Fatalf("err = %v, want ErrUserNotFound", err)
 	}
 }
@@ -82,7 +82,7 @@ func TestReplaceForUser_UnknownPostRejected(t *testing.T) {
 	userPosts := newFakeUserPostRepo()
 	userPosts.users[7] = 2
 	svc := newAssignmentSvc(newFakePostRepo(seedPosts()...), userPosts)
-	if _, err := svc.ReplaceForUser(context.Background(), 7, []int64{21, 99}, 1); !errors.Is(err, org.ErrPostNotAssignable) {
+	if _, err := svc.ReplaceForUser(context.Background(), repository.ReplaceUserPostsRequest{UserID: 7, PostIDs: []int64{21, 99}, ActorID: 1}); !errors.Is(err, org.ErrPostNotAssignable) {
 		t.Fatalf("err = %v, want ErrPostNotAssignable", err)
 	}
 	if len(userPosts.replaced) != 0 {
@@ -96,7 +96,7 @@ func TestReplaceForUser_DisabledPostRejected(t *testing.T) {
 	userPosts := newFakeUserPostRepo()
 	userPosts.users[7] = 2
 	svc := newAssignmentSvc(posts, userPosts)
-	if _, err := svc.ReplaceForUser(context.Background(), 7, []int64{21}, 1); !errors.Is(err, org.ErrPostNotAssignable) {
+	if _, err := svc.ReplaceForUser(context.Background(), repository.ReplaceUserPostsRequest{UserID: 7, PostIDs: []int64{21}, ActorID: 1}); !errors.Is(err, org.ErrPostNotAssignable) {
 		t.Fatalf("err = %v, want ErrPostNotAssignable", err)
 	}
 }
@@ -109,7 +109,7 @@ func TestReplaceForUser_DedupesAndAcceptsCrossDeptPost(t *testing.T) {
 	userPosts.users[7] = 2
 	svc := newAssignmentSvc(newFakePostRepo(seedPosts()...), userPosts)
 
-	if _, err := svc.ReplaceForUser(context.Background(), 7, []int64{21, 31, 21}, 9); err != nil {
+	if _, err := svc.ReplaceForUser(context.Background(), repository.ReplaceUserPostsRequest{UserID: 7, PostIDs: []int64{21, 31, 21}, ActorID: 9}); err != nil {
 		t.Fatalf("ReplaceForUser: %v", err)
 	}
 	if len(userPosts.replaced) != 1 {
@@ -130,7 +130,7 @@ func TestReplaceForUser_EmptyClears(t *testing.T) {
 	userPosts.assigned[7] = []int64{21}
 	svc := newAssignmentSvc(newFakePostRepo(seedPosts()...), userPosts)
 
-	if _, err := svc.ReplaceForUser(context.Background(), 7, nil, 1); err != nil {
+	if _, err := svc.ReplaceForUser(context.Background(), repository.ReplaceUserPostsRequest{UserID: 7, ActorID: 1}); err != nil {
 		t.Fatalf("ReplaceForUser: %v", err)
 	}
 	if len(userPosts.assigned[7]) != 0 {

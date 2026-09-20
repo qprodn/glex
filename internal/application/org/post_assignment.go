@@ -7,6 +7,7 @@ import (
 	orgv1 "glex/api/org/v1"
 	"glex/internal/bizpkg"
 	orgentity "glex/internal/domain/org/entity"
+	orgrepository "glex/internal/domain/org/repository"
 	orgservice "glex/internal/domain/org/service"
 	"glex/pkg/logx"
 )
@@ -38,7 +39,7 @@ func NewPostAssignmentApplication(svc orgservice.PostAssignment, tx Transaction,
 // override follows a not-yet-saved department change in the form; absent it,
 // the user's stored department supplies the candidates.
 func (s *PostAssignmentApplication) ListUserPosts(ctx context.Context, req *orgv1.ListUserPostsRequest) (*orgv1.UserPosts, error) {
-	items, err := s.svc.ListForUser(ctx, req.GetUserId(), req.GetDeptId())
+	items, err := s.svc.ListForUser(ctx, orgservice.ListForUserRequest{UserID: req.GetUserId(), DeptOverride: req.GetDeptId()})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "org.list_user_posts", err)
 		return nil, err
@@ -54,7 +55,11 @@ func (s *PostAssignmentApplication) UpdateUserPosts(ctx context.Context, req *or
 	var items []*orgentity.PostAssignment
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
 		var err error
-		items, err = s.svc.ReplaceForUser(ctx, req.GetUserId(), req.GetPostIds(), bizpkg.AuditActor(ctx))
+		items, err = s.svc.ReplaceForUser(ctx, orgrepository.ReplaceUserPostsRequest{
+			UserID:  req.GetUserId(),
+			PostIDs: req.GetPostIds(),
+			ActorID: bizpkg.AuditActor(ctx),
+		})
 		return err
 	}); err != nil {
 		logx.Propagate(ctx, s.logger, "org.update_user_posts", err)

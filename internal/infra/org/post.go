@@ -12,7 +12,6 @@ import (
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/post"
 	"glex/internal/infra/store"
-	"glex/pkg/listq"
 )
 
 // toBizPost maps an ent Post PO to a orgentity.Post DO.
@@ -58,11 +57,11 @@ func (r *postRepo) FindByID(ctx context.Context, id int64) (*orgentity.Post, err
 	return toBizPost(po), nil
 }
 
-func (r *postRepo) FindByDeptAndName(ctx context.Context, deptID int64, name string) (*orgentity.Post, error) {
+func (r *postRepo) FindByDeptAndName(ctx context.Context, req orgrepo.FindByDeptAndNameRequest) (*orgentity.Post, error) {
 	po, err := r.data.DB.Post(ctx).Query().
 		Where(
-			post.DeptIDEQ(deptID),
-			post.PostNameEQ(name),
+			post.DeptIDEQ(req.DeptID),
+			post.PostNameEQ(req.Name),
 			post.DeletedAtIsNil(),
 		).
 		Only(ctx)
@@ -88,19 +87,19 @@ func (r *postRepo) FindByPostCode(ctx context.Context, code string) (*orgentity.
 	return toBizPost(po), nil
 }
 
-func (r *postRepo) ListPosts(ctx context.Context, q listq.Query, deptIDs []int64) ([]*orgentity.Post, error) {
+func (r *postRepo) ListPosts(ctx context.Context, req orgrepo.ListPostsRequest) ([]*orgentity.Post, error) {
 	query := r.data.DB.Post(ctx).Query().
 		Where(
 			post.DeletedAtIsNil(),
-			ents.ApplyFilter(q.Filter),
+			ents.ApplyFilter(req.Filter),
 		)
-	if len(deptIDs) > 0 {
-		query = query.Where(post.DeptIDIn(deptIDs...))
+	if len(req.DeptIDs) > 0 {
+		query = query.Where(post.DeptIDIn(req.DeptIDs...))
 	}
 	pos, err := query.
-		Order(ents.ApplyOrderBy(q.OrderBy)).
-		Offset(q.Offset).
-		Limit(q.Limit).
+		Order(ents.ApplyOrderBy(req.OrderBy)).
+		Offset(req.Offset).
+		Limit(req.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, orgStoreError(ctx, r.logger, "org.post.list", err)
@@ -164,18 +163,18 @@ func (r *postRepo) CreatePost(ctx context.Context, p *orgentity.Post) (*orgentit
 	return toBizPost(po), nil
 }
 
-// UpdatePost applies the mutation and returns it with its pre-image — the
-// enable/disable transition the in-use guard keys on. The caller owns the
-// transaction.
-func (r *postRepo) UpdatePost(ctx context.Context, p *orgentity.Post) (*orgentity.Post, *orgentity.Post, error) {
+// UpdatePost applies the mutation and returns the write paired with its
+// pre-image — the enable/disable transition the in-use guard keys on. The
+// caller owns the transaction.
+func (r *postRepo) UpdatePost(ctx context.Context, p *orgentity.Post) (*orgentity.PostUpdate, error) {
 	current, err := r.data.DB.Post(ctx).Query().
 		Where(post.IDEQ(p.ID), post.DeletedAtIsNil()).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, nil, org.ErrPostNotFound
+			return nil, org.ErrPostNotFound
 		}
-		return nil, nil, orgStoreError(ctx, r.logger, "org.post.update", err)
+		return nil, orgStoreError(ctx, r.logger, "org.post.update", err)
 	}
 	po, err := r.data.DB.Post(ctx).UpdateOneID(p.ID).
 		SetDeptID(p.DeptID).
@@ -188,19 +187,19 @@ func (r *postRepo) UpdatePost(ctx context.Context, p *orgentity.Post) (*orgentit
 		Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, nil, org.ErrPostNotFound
+			return nil, org.ErrPostNotFound
 		}
-		return nil, nil, orgStoreError(ctx, r.logger, "org.post.update", err)
+		return nil, orgStoreError(ctx, r.logger, "org.post.update", err)
 	}
-	return toBizPost(po), toBizPost(current), nil
+	return &orgentity.PostUpdate{Post: toBizPost(po), Previous: toBizPost(current)}, nil
 }
 
-// DeletePost soft-deletes the post, stamping actorID (ADR 0002 — no row is
-// hard-deleted). The caller owns the transaction.
-func (r *postRepo) DeletePost(ctx context.Context, id int64, actorID int64) error {
-	err := r.data.DB.Post(ctx).UpdateOneID(id).
+// DeletePost soft-deletes the post identified by req, stamping req.ActorID
+// (ADR 0002 — no row is hard-deleted). The caller owns the transaction.
+func (r *postRepo) DeletePost(ctx context.Context, req orgrepo.DeletePostRequest) error {
+	err := r.data.DB.Post(ctx).UpdateOneID(req.ID).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {

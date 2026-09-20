@@ -10,6 +10,14 @@ import (
 	"glex/pkg/logx"
 )
 
+// ListForUserRequest names the System User whose assignment dialog is read
+// and the form's not-yet-saved department choice (0 = none — the user's
+// stored department supplies the candidates).
+type ListForUserRequest struct {
+	UserID       int64
+	DeptOverride int64
+}
+
 // PostAssignment is the org domain service behind the user↔post link
 // endpoints (岗位分配): the only path to the link reads and writes
 // (ADR 0005). Assigning is full-replacement, the Role Assignment semantics.
@@ -19,14 +27,14 @@ import (
 type PostAssignment interface {
 	// ListForUser returns the effective department's active posts with
 	// whether the user is assigned each — the post dialog's data in one
-	// call. deptOverride (0 = none) is the form's not-yet-saved department
-	// choice; absent it, the user's stored department supplies the
-	// candidates. Gated on the user existing.
-	ListForUser(ctx context.Context, userID, deptOverride int64) ([]*entity.PostAssignment, error)
-	// ReplaceForUser validates and dedupes postIDs (every id must exist and
-	// be enabled), replaces the user's Post Assignment in full (empty =
+	// call. req.DeptOverride (0 = none) is the form's not-yet-saved
+	// department choice; absent it, the user's stored department supplies
+	// the candidates. Gated on req.UserID's user existing.
+	ListForUser(ctx context.Context, req ListForUserRequest) ([]*entity.PostAssignment, error)
+	// ReplaceForUser validates and dedupes req.PostIDs (every id must exist
+	// and be enabled), replaces the user's Post Assignment in full (empty =
 	// clear all), and returns the freshly-listed assignment.
-	ReplaceForUser(ctx context.Context, userID int64, postIDs []int64, actorID int64) ([]*entity.PostAssignment, error)
+	ReplaceForUser(ctx context.Context, req repository.ReplaceUserPostsRequest) ([]*entity.PostAssignment, error)
 }
 
 type postAssignmentImpl struct {
@@ -46,17 +54,17 @@ func NewPostAssignmentService(posts repository.PostRepo, userPosts repository.Us
 	}
 }
 
-func (s *postAssignmentImpl) ListForUser(ctx context.Context, userID, deptOverride int64) ([]*entity.PostAssignment, error) {
-	deptID, err := s.userPosts.UserDeptID(ctx, userID)
+func (s *postAssignmentImpl) ListForUser(ctx context.Context, req ListForUserRequest) ([]*entity.PostAssignment, error) {
+	deptID, err := s.userPosts.UserDeptID(ctx, req.UserID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.list_post_assignments", err)
 		return nil, err
 	}
-	if deptOverride != 0 {
-		deptID = deptOverride
+	if req.DeptOverride != 0 {
+		deptID = req.DeptOverride
 	}
 	assigned := make(map[int64]struct{})
-	if ids, err := s.userPosts.AssignedPostIDs(ctx, userID); err != nil {
+	if ids, err := s.userPosts.AssignedPostIDs(ctx, req.UserID); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.list_post_assignments", err)
 		return nil, err
 	} else {
@@ -77,27 +85,32 @@ func (s *postAssignmentImpl) ListForUser(ctx context.Context, userID, deptOverri
 	return out, nil
 }
 
-func (s *postAssignmentImpl) ReplaceForUser(ctx context.Context, userID int64, postIDs []int64, actorID int64) ([]*entity.PostAssignment, error) {
-	if err := AssertUserExists(ctx, s.userPosts, userID); err != nil {
+func (s *postAssignmentImpl) ReplaceForUser(ctx context.Context, req repository.ReplaceUserPostsRequest) ([]*entity.PostAssignment, error) {
+	if err := assertUserExists(ctx, s.userPosts, req.UserID); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.replace_post_assignments", err)
 		return nil, err
 	}
-	unique, err := AssertPostsAssignable(ctx, s.posts, postIDs)
+	unique, err := assertPostsAssignable(ctx, s.posts, req.PostIDs)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.replace_post_assignments", err)
 		return nil, err
 	}
-	if err := s.userPosts.ReplaceUserPosts(ctx, userID, unique, actorID); err != nil {
+	if err := s.userPosts.ReplaceUserPosts(ctx, repository.ReplaceUserPostsRequest{
+		UserID:  req.UserID,
+		PostIDs: unique,
+		ActorID: req.ActorID,
+	}); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.replace_post_assignments", err)
 		return nil, err
 	}
-	return s.ListForUser(ctx, userID, 0)
+	return s.ListForUser(ctx, ListForUserRequest{UserID: req.UserID})
 }
 
-// AssertUserExists gates the by-user assignment endpoints on the System User
+// assertUserExists gates the by-user assignment endpoints on the System User
 // existing (not soft-deleted). Its caller's method boundary owns the
-// breadcrumb (ADR 0011).
-func AssertUserExists(ctx context.Context, repo repository.UserPostRepo, userID int64) error {
+// breadcrumb (ADR 0011). A package-level invariant helper, unexported rather
+// than conformed (ADR 0025).
+func assertUserExists(ctx context.Context, repo repository.UserPostRepo, userID int64) error {
 	exists, err := repo.UserExists(ctx, userID)
 	if err != nil {
 		return err
@@ -108,12 +121,13 @@ func AssertUserExists(ctx context.Context, repo repository.UserPostRepo, userID 
 	return nil
 }
 
-// AssertPostsAssignable dedupes postIDs and checks every id exists, is not
+// assertPostsAssignable dedupes postIDs and checks every id exists, is not
 // soft-deleted, and is enabled (the repo's ListByIDs filters deleted rows;
 // enabled is checked here). An empty list is legal — it means "no posts" —
 // and passes without touching the repo. Its caller's method boundary owns
-// the breadcrumb (ADR 0011).
-func AssertPostsAssignable(ctx context.Context, postRepo repository.PostRepo, postIDs []int64) ([]int64, error) {
+// the breadcrumb (ADR 0011). A package-level invariant helper, unexported
+// rather than conformed (ADR 0025).
+func assertPostsAssignable(ctx context.Context, postRepo repository.PostRepo, postIDs []int64) ([]int64, error) {
 	unique := dedupeIDs(postIDs)
 	if len(unique) == 0 {
 		return unique, nil

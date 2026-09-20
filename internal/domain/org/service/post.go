@@ -8,7 +8,6 @@ import (
 	"glex/internal/domain/org"
 	"glex/internal/domain/org/entity"
 	"glex/internal/domain/org/repository"
-	"glex/pkg/listq"
 	"glex/pkg/logx"
 )
 
@@ -20,15 +19,16 @@ import (
 // returns to its caller first logs its Warn breadcrumb (ADR 0011).
 type Post interface {
 	Get(ctx context.Context, id int64) (*entity.Post, error)
-	List(ctx context.Context, q listq.Query, deptIDs []int64) ([]*entity.Post, error)
+	List(ctx context.Context, req repository.ListPostsRequest) ([]*entity.Post, error)
 	// Create validates the post (shape, department exists, name per dept and
 	// code globally unique) and persists it.
 	Create(ctx context.Context, p *entity.Post) (*entity.Post, error)
 	// Update validates the change (shape, department exists, uniqueness,
 	// disable guard) and persists it.
 	Update(ctx context.Context, p *entity.Post) (*entity.Post, error)
-	// Delete soft-deletes the post, refusing while users are still assigned.
-	Delete(ctx context.Context, id, actorID int64) error
+	// Delete soft-deletes the post identified by req, refusing while users
+	// are still assigned.
+	Delete(ctx context.Context, req repository.DeletePostRequest) error
 }
 
 type postImpl struct {
@@ -59,8 +59,8 @@ func (s *postImpl) Get(ctx context.Context, id int64) (*entity.Post, error) {
 	return p, nil
 }
 
-func (s *postImpl) List(ctx context.Context, q listq.Query, deptIDs []int64) ([]*entity.Post, error) {
-	ps, err := s.posts.ListPosts(ctx, q, deptIDs)
+func (s *postImpl) List(ctx context.Context, req repository.ListPostsRequest) ([]*entity.Post, error) {
+	ps, err := s.posts.ListPosts(ctx, req)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.list_posts", err)
 		return nil, err
@@ -80,7 +80,7 @@ func (s *postImpl) Create(ctx context.Context, p *entity.Post) (*entity.Post, er
 		logx.Propagate(ctx, s.logger, "org.svc.create_post", err)
 		return nil, err
 	}
-	if err := AssertPostUnique(ctx, s.posts, p, 0); err != nil {
+	if err := assertPostUnique(ctx, s.posts, p, 0); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.create_post", err)
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (s *postImpl) Update(ctx context.Context, p *entity.Post) (*entity.Post, er
 		logx.Propagate(ctx, s.logger, "org.svc.update_post", err)
 		return nil, err
 	}
-	if err := AssertPostUnique(ctx, s.posts, p, p.ID); err != nil {
+	if err := assertPostUnique(ctx, s.posts, p, p.ID); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.update_post", err)
 		return nil, err
 	}
@@ -128,20 +128,20 @@ func (s *postImpl) Update(ctx context.Context, p *entity.Post) (*entity.Post, er
 			return nil, err
 		}
 	}
-	updated, _, err := s.posts.UpdatePost(ctx, p)
+	result, err := s.posts.UpdatePost(ctx, p)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.update_post", err)
 		return nil, err
 	}
-	return updated, nil
+	return result.Post, nil
 }
 
-func (s *postImpl) Delete(ctx context.Context, id, actorID int64) error {
-	if _, err := s.posts.FindByID(ctx, id); err != nil {
+func (s *postImpl) Delete(ctx context.Context, req repository.DeletePostRequest) error {
+	if _, err := s.posts.FindByID(ctx, req.ID); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.delete_post", err)
 		return err
 	}
-	n, err := s.userPosts.CountUserPosts(ctx, id)
+	n, err := s.userPosts.CountUserPosts(ctx, req.ID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.delete_post", err)
 		return err
@@ -151,20 +151,21 @@ func (s *postImpl) Delete(ctx context.Context, id, actorID int64) error {
 		logx.Propagate(ctx, s.logger, "org.svc.delete_post", err)
 		return err
 	}
-	if err := s.posts.DeletePost(ctx, id, actorID); err != nil {
+	if err := s.posts.DeletePost(ctx, req); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.delete_post", err)
 		return err
 	}
 	return nil
 }
 
-// AssertPostUnique checks post_name is free within the post's department and
+// assertPostUnique checks post_name is free within the post's department and
 // post_code is free globally, ignoring the record with excludeID (0 = none).
 // Not-found from either lookup is the expected "available" case; checks run
 // against active rows only, so soft-deleted values are reusable. Its
-// caller's method boundary owns the breadcrumb (ADR 0011).
-func AssertPostUnique(ctx context.Context, repo repository.PostRepo, p *entity.Post, excludeID int64) error {
-	if existing, err := repo.FindByDeptAndName(ctx, p.DeptID, p.PostName); err != nil {
+// caller's method boundary owns the breadcrumb (ADR 0011). A package-level
+// invariant helper, unexported rather than conformed (ADR 0025).
+func assertPostUnique(ctx context.Context, repo repository.PostRepo, p *entity.Post, excludeID int64) error {
+	if existing, err := repo.FindByDeptAndName(ctx, repository.FindByDeptAndNameRequest{DeptID: p.DeptID, Name: p.PostName}); err != nil {
 		if !errors.Is(err, org.ErrPostNotFound) {
 			return err
 		}
