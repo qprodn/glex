@@ -206,6 +206,7 @@ func (s *FileApplication) BatchGetFiles(ctx context.Context, req *filev1.BatchGe
 
 // ListFiles lists stored files with AIP-160 filter, AIP-132 order, and
 // page-token pagination. Default order: newest first.
+
 // fileListSpec is this module's list fact (ADR 0024): filterable
 // idents plus the file listing order.
 var fileListSpec = listq.Spec{
@@ -215,7 +216,7 @@ var fileListSpec = listq.Spec{
 		filtering.DeclareIdent("mime_type", filtering.TypeString),
 		filtering.DeclareIdent("create_by", filtering.TypeInt),
 	},
-	DefaultOrder: []ordering.Field{{Path: "id", Desc: true}}, // 
+	DefaultOrder: []ordering.Field{{Path: "id", Desc: true}},
 }
 
 func (s *FileApplication) ListFiles(ctx context.Context, req *filev1.ListFilesRequest) (*filev1.StoredFileSet, error) {

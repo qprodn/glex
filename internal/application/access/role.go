@@ -109,6 +109,7 @@ func (s *RoleApplication) GetRole(ctx context.Context, req *accessv1.GetRoleRequ
 
 // ListRoles lists roles with AIP-160 filter, AIP-132 order, and page-token
 // pagination.
+
 // roleListSpec is this module's list fact (ADR 0024): filterable
 // idents plus the role listing order.
 var roleListSpec = listq.Spec{
@@ -117,7 +118,7 @@ var roleListSpec = listq.Spec{
 		filtering.DeclareIdent("role_key", filtering.TypeString),
 		filtering.DeclareIdent("status", filtering.TypeInt),
 	},
-	DefaultOrder: []ordering.Field{{Path: "role_sort"}, {Path: "id"}}, // 
+	DefaultOrder: []ordering.Field{{Path: "role_sort"}, {Path: "id"}},
 }
 
 func (s *RoleApplication) ListRoles(ctx context.Context, req *accessv1.ListRolesRequest) (*accessv1.RoleSet, error) {

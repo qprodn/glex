@@ -65,6 +65,7 @@ func NewPostApplication(svc orgservice.Post, depts orgservice.Dept, tx Transacti
 // ListPosts lists posts with AIP-160 filter, AIP-132 order, and page-token
 // pagination. A non-zero dept_id restricts the listing to that department's
 // subtree, resolved server-side by the department domain service.
+
 // postListSpec is this module's list fact (ADR 0024): filterable
 // idents plus the post listing order.
 var postListSpec = listq.Spec{
@@ -74,7 +75,7 @@ var postListSpec = listq.Spec{
 		filtering.DeclareIdent("status", filtering.TypeInt),
 		filtering.DeclareIdent("dept_id", filtering.TypeInt),
 	},
-	DefaultOrder: []ordering.Field{{Path: "post_sort"}, {Path: "id"}}, // 
+	DefaultOrder: []ordering.Field{{Path: "post_sort"}, {Path: "id"}},
 }
 
 func (s *PostApplication) ListPosts(ctx context.Context, req *orgv1.ListPostsRequest) (*orgv1.PostSet, error) {

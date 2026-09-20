@@ -92,16 +92,6 @@ func NewRoleAssignmentApplication(svc accessservice.RoleAssignment, revoker auth
 // ListUserRoles returns every active role with its assigned flag for the
 // user (the assign dialog's data in one call). The user must exist (and not
 // be soft-deleted).
-// roleUserListSpec is this module's list fact (ADR 0024): filterable
-// idents plus the assignment listing order.
-var roleUserListSpec = listq.Spec{
-	Idents: []filtering.DeclarationOption{
-		filtering.DeclareIdent("user_name", filtering.TypeString),
-		filtering.DeclareIdent("status", filtering.TypeInt),
-	},
-	DefaultOrder: []ordering.Field{{Path: "id"}}, // 
-}
-
 func (s *RoleAssignmentApplication) ListUserRoles(ctx context.Context, req *accessv1.ListUserRolesRequest) (*accessv1.UserRoles, error) {
 	assignments, err := s.svc.ListForUser(ctx, req.GetUserId())
 	if err != nil {
@@ -131,6 +121,17 @@ func (s *RoleAssignmentApplication) UpdateUserRoles(ctx context.Context, req *ac
 		return nil, err
 	}
 	return toUserRoles(assignments), nil
+}
+
+// roleUserListSpec is this module's list fact (ADR 0024): filterable
+// idents plus the assignment listing order.
+// roleUserListSpec is this module's list fact (ADR 0024).
+var roleUserListSpec = listq.Spec{
+	Idents: []filtering.DeclarationOption{
+		filtering.DeclareIdent("user_name", filtering.TypeString),
+		filtering.DeclareIdent("status", filtering.TypeInt),
+	},
+	DefaultOrder: []ordering.Field{{Path: "id"}},
 }
 
 // ListRoleUsers lists the active users assigned the role, with AIP-160

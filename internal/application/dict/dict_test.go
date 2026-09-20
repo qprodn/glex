@@ -7,9 +7,9 @@ import (
 	"time"
 
 	dictv1 "glex/api/dict/v1"
-	dictentity "glex/internal/domain/dict/entity"
 	authnentity "glex/internal/domain/authn/entity"
 	authnservice "glex/internal/domain/authn/service"
+	dictentity "glex/internal/domain/dict/entity"
 
 	"glex/pkg/listq"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
@@ -22,31 +22,31 @@ import (
 // the domain rules behind the interface.
 type fakeDictService struct {
 	// Configured returns.
-	getType   *dictentity.DictType
-	listTypes []*dictentity.DictType
-	createType *dictentity.DictType
-	updateType *dictentity.DictType
-	getEntry  *dictentity.DictEntry
-	listEntries []*dictentity.DictEntry
-	options   []*dictentity.DictEntry
-	createEntry *dictentity.DictEntry
-	updateEntry *dictentity.DictEntry
- getTypeErr, listTypesErr, createTypeErr, updateTypeErr, deleteTypeErr error
+	getType                                                                                 *dictentity.DictType
+	listTypes                                                                               []*dictentity.DictType
+	createType                                                                              *dictentity.DictType
+	updateType                                                                              *dictentity.DictType
+	getEntry                                                                                *dictentity.DictEntry
+	listEntries                                                                             []*dictentity.DictEntry
+	options                                                                                 []*dictentity.DictEntry
+	createEntry                                                                             *dictentity.DictEntry
+	updateEntry                                                                             *dictentity.DictEntry
+	getTypeErr, listTypesErr, createTypeErr, updateTypeErr, deleteTypeErr                   error
 	getEntryErr, listEntriesErr, optionsErr, createEntryErr, updateEntryErr, deleteEntryErr error
 
 	// Recorded calls.
-	createTypeCalled int
-	createTypeCtx    context.Context
-	createTypeInput  *dictentity.DictType
-	listTypesLimit   int
-	listTypesOffset  int
-	updateTypeCalled int
-	updateTypeCtx    context.Context
-	updateTypeInput  *dictentity.DictType
-	deleteTypeCalled int
-	deleteTypeCtx    context.Context
-	deleteTypeID     int64
-	deleteTypeActor  int64
+	createTypeCalled  int
+	createTypeCtx     context.Context
+	createTypeInput   *dictentity.DictType
+	listTypesLimit    int
+	listTypesOffset   int
+	updateTypeCalled  int
+	updateTypeCtx     context.Context
+	updateTypeInput   *dictentity.DictType
+	deleteTypeCalled  int
+	deleteTypeCtx     context.Context
+	deleteTypeID      int64
+	deleteTypeActor   int64
 	createEntryCalled int
 	createEntryCtx    context.Context
 	createEntryInput  *dictentity.DictEntry

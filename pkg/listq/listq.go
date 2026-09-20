@@ -47,7 +47,7 @@ type Query struct {
 	Filter  filtering.Filter
 	OrderBy ordering.OrderBy
 	Limit   int
-	Offset int
+	Offset  int
 }
 
 // Window is the parsed page window alongside a Query. It mints next-page
@@ -96,7 +96,7 @@ func Parse(req Request, spec Spec) (Query, Window, error) {
 		Filter:  filter,
 		OrderBy: orderBy,
 		Limit:   size,
-		Offset: int(pageToken.Offset),
+		Offset:  int(pageToken.Offset),
 	}, Window{token: pageToken, size: size}, nil
 }
 
