@@ -58,6 +58,20 @@ module-to-module capabilities still go through crossdomain contracts (ADR
 0005). bizpkg may import domain services and `pkg/`; only application
 services import bizpkg (ADR 0010).
 
+## Function signatures
+
+Layer-facing exported functions — application services, domain services,
+repository implementations, crossdomain contracts — take at most
+`context.Context` plus one business object and return at most one value plus
+`error`: `Create(ctx, req *CreateMenuRequest) (*entity.Menu, error)`,
+`FindByID(ctx, id) (*entity.Menu, error)`, `ListAll(ctx)`. The object and the
+returned value may be scalars and may be absent. When two business values
+must travel together — in or out — they travel in one struct: parameters in
+an `XxxRequest` type, a missing row as `nil` (or the module sentinel), a page
+window as one page struct. Exempt: constructors (`New*`),
+entity and value-object methods, variadic `opts ...Option`, and generated
+code. bizpkg helpers follow the same shape by convention (ADR 0025).
+
 ## Generation and generated files
 
 Regenerate via `make api`, `make config`, `make all`, or the owning generator.
