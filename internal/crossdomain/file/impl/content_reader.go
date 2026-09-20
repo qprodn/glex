@@ -31,9 +31,9 @@ func NewContentReader(files fileservice.File, logger *slog.Logger) file.ContentR
 // service; errors cross with their file reasons (FILE_NOT_FOUND for unknown
 // or withdrawn ids).
 func (r *contentReader) OpenContent(ctx context.Context, fileID int64) (io.ReadCloser, error) {
-	obj, _, err := r.files.Open(ctx, fileID, nil)
+	opened, err := r.files.Open(ctx, fileservice.OpenRequest{ID: fileID})
 	if err != nil {
 		return nil, err
 	}
-	return obj.Body, nil
+	return opened.Object.Body, nil
 }

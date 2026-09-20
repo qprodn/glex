@@ -79,7 +79,11 @@ func fileDownloadHandler(app *fileapp.FileApplication) func(ctx khttp.Context) e
 			if err != nil {
 				return nil, file.ErrFileInvalid.WithCause(err)
 			}
-			return app.Download(xfer, fileID, ctx.Query().Get("disposition"), ctx.Header().Get("Range"))
+			return app.Download(xfer, fileapp.DownloadRequest{
+				FileID:      fileID,
+				Disposition: ctx.Query().Get("disposition"),
+				RangeHeader: ctx.Header().Get("Range"),
+			})
 		})
 		out, err := h(ctx, &filev1.DownloadFileRequest{})
 		if err != nil {

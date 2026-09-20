@@ -74,6 +74,15 @@ type UploadInput struct {
 	BizPath      string
 }
 
+// DownloadRequest is one proxy download (ADR 0025): the Stored File to
+// open, the requested Content-Disposition ("" defaults to attachment), and
+// the raw optional Range header ("" = full body).
+type DownloadRequest struct {
+	FileID      int64
+	Disposition string
+	RangeHeader string
+}
+
 // Download is an opened byte stream plus everything a proxy download needs
 // to write the response. The caller owns Body and must close it.
 type Download struct {
@@ -127,7 +136,11 @@ func (s *FileApplication) Upload(ctx context.Context, in *UploadInput) (*filev1.
 		MIMEType:     mimeType,
 		SizeBytes:    in.Size,
 	}
-	created, err := s.svc.Accept(ctx, up, in.Content, bizpkg.AuditActor(ctx))
+	created, err := s.svc.Accept(ctx, fileservice.AcceptRequest{
+		Upload:  up,
+		Content: in.Content,
+		ActorID: bizpkg.AuditActor(ctx),
+	})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "file.upload", err)
 		return nil, err
@@ -137,12 +150,13 @@ func (s *FileApplication) Upload(ctx context.Context, in *UploadInput) (*filev1.
 	return out, nil
 }
 
-// Download opens a Stored File's bytes for the proxy download: it resolves
-// the disposition (default attachment), optionally one Range request, and
-// returns the stream. Called by the hand-written HTTP transfer handler
-// (ADR 0008); the caller owns and closes the returned Body.
-func (s *FileApplication) Download(ctx context.Context, fileID int64, disposition string, rangeHeader string) (*Download, error) {
-	disp := Disposition(disposition)
+// Download opens the Stored File req.FileID's bytes for the proxy download:
+// it resolves req.Disposition (default attachment), optionally one Range
+// request from req.RangeHeader, and returns the stream. Called by the
+// hand-written HTTP transfer handler (ADR 0008); the caller owns and closes
+// the returned Body.
+func (s *FileApplication) Download(ctx context.Context, req DownloadRequest) (*Download, error) {
+	disp := Disposition(req.Disposition)
 	if disp == "" {
 		disp = DispositionAttachment
 	}
@@ -152,25 +166,25 @@ func (s *FileApplication) Download(ctx context.Context, fileID int64, dispositio
 		return nil, err
 	}
 	var rng *storage.ByteRange
-	if rangeHeader != "" {
-		rng = &storage.ByteRange{Header: rangeHeader}
+	if req.RangeHeader != "" {
+		rng = &storage.ByteRange{Header: req.RangeHeader}
 	}
-	obj, f, err := s.svc.Open(ctx, fileID, rng)
+	opened, err := s.svc.Open(ctx, fileservice.OpenRequest{ID: req.FileID, Range: rng})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "file.download", err)
 		return nil, err
 	}
-	contentType := obj.ContentType
+	contentType := opened.Object.ContentType
 	if contentType == "" {
-		contentType = f.MIMEType
+		contentType = opened.File.MIMEType
 	}
 	return &Download{
 		Disposition:   disp,
-		OriginalName:  f.OriginalName,
+		OriginalName:  opened.File.OriginalName,
 		ContentType:   contentType,
-		ContentLength: obj.ContentLength,
-		ContentRange:  obj.ContentRange,
-		Body:          obj.Body,
+		ContentLength: opened.Object.ContentLength,
+		ContentRange:  opened.Object.ContentRange,
+		Body:          opened.Object.Body,
 	}, nil
 }
 
@@ -243,7 +257,7 @@ func (s *FileApplication) ListFiles(ctx context.Context, req *filev1.ListFilesRe
 // WithdrawFile withdraws a Stored File: row soft-deleted, bytes removed
 // (ADR 0009).
 func (s *FileApplication) WithdrawFile(ctx context.Context, req *filev1.WithdrawFileRequest) (*emptypb.Empty, error) {
-	if err := s.svc.Withdraw(ctx, req.GetFileId(), bizpkg.AuditActor(ctx)); err != nil {
+	if err := s.svc.Withdraw(ctx, fileservice.WithdrawRequest{ID: req.GetFileId(), ActorID: bizpkg.AuditActor(ctx)}); err != nil {
 		logx.Propagate(ctx, s.logger, "file.withdraw_file", err)
 		return nil, err
 	}

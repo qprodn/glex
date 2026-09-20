@@ -7,6 +7,13 @@ import (
 	"glex/pkg/listq"
 )
 
+// DeleteRequest is one Stored File withdrawal: the row to soft-delete and
+// the actor performing it (ADR 0025).
+type DeleteRequest struct {
+	ID      int64
+	ActorID int64
+}
+
 // FileRepo is the repository interface for Stored File rows (the inversion
 // seam declared in domain, implemented in infra). The bytes live behind the
 // storage port, not here.
@@ -21,10 +28,10 @@ type FileRepo interface {
 	// Create inserts the row. The ID is minted up front (NextID) so the
 	// Stored Key and the row correlate; the caller owns any transaction.
 	Create(ctx context.Context, f *entity.StoredFile) (*entity.StoredFile, error)
-	// Delete soft-deletes the row, stamping actorID into the audit fields
-	// (ADR 0002 — no row is hard-deleted; the bytes are removed separately,
-	// see ADR 0009).
-	Delete(ctx context.Context, id, actorID int64) error
+	// Delete soft-deletes the row req.ID, stamping req.ActorID into the
+	// audit fields (ADR 0002 — no row is hard-deleted; the bytes are
+	// removed separately, see ADR 0009).
+	Delete(ctx context.Context, req DeleteRequest) error
 	// NextID mints the snowflake row ID.
 	NextID() int64
 }

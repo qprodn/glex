@@ -72,12 +72,12 @@ func (r *fakeFileRepo) Create(_ context.Context, f *entity.StoredFile) (*entity.
 	return f, nil
 }
 
-func (r *fakeFileRepo) Delete(_ context.Context, id, _ int64) error {
-	if _, ok := r.byID[id]; !ok {
+func (r *fakeFileRepo) Delete(_ context.Context, req repository.DeleteRequest) error {
+	if _, ok := r.byID[req.ID]; !ok {
 		return file.ErrFileNotFound
 	}
-	delete(r.byID, id)
-	r.deleted = append(r.deleted, id)
+	delete(r.byID, req.ID)
+	r.deleted = append(r.deleted, req.ID)
 	return nil
 }
 
@@ -104,25 +104,25 @@ func (s *fakeObjectStorage) Bucket() string { return s.bucket }
 
 func (s *fakeObjectStorage) EnsureBucket(context.Context) error { return nil }
 
-func (s *fakeObjectStorage) Put(_ context.Context, key string, content io.Reader, _ int64, _ string) (string, error) {
+func (s *fakeObjectStorage) Put(_ context.Context, req storage.PutRequest) (string, error) {
 	if s.putErr != nil {
 		return "", s.putErr
 	}
 	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, content); err != nil {
+	if _, err := io.Copy(&buf, req.Content); err != nil {
 		return "", err
 	}
 	sum := sha256.Sum256(buf.Bytes())
 	digest := hex.EncodeToString(sum[:])
-	s.put[key] = digest
+	s.put[req.Key] = digest
 	return digest, nil
 }
 
-func (s *fakeObjectStorage) Get(_ context.Context, _ string, rng *storage.ByteRange) (*storage.Object, error) {
+func (s *fakeObjectStorage) Get(_ context.Context, req storage.GetRequest) (*storage.Object, error) {
 	if s.getErr != nil {
 		return nil, s.getErr
 	}
-	s.lastRange = rng
+	s.lastRange = req.Range
 	return s.getObj, nil
 }
 
@@ -147,9 +147,11 @@ func TestAcceptPersistsRecordWithFingerprint(t *testing.T) {
 	store := newFakeObjectStorage()
 	svc := newTestService(repo, store)
 
-	created, err := svc.Accept(context.Background(),
-		&entity.Upload{OriginalName: "报告.PDF", BizPath: "avatar/", MIMEType: "application/pdf", SizeBytes: 5},
-		strings.NewReader("hello"), 42)
+	created, err := svc.Accept(context.Background(), AcceptRequest{
+		Upload:  &entity.Upload{OriginalName: "报告.PDF", BizPath: "avatar/", MIMEType: "application/pdf", SizeBytes: 5},
+		Content: strings.NewReader("hello"),
+		ActorID: 42,
+	})
 	if err != nil {
 		t.Fatalf("Accept: %v", err)
 	}
@@ -190,7 +192,7 @@ func TestAcceptRejectsInvalidUploads(t *testing.T) {
 		{OriginalName: "a.pdf", BizPath: "/abs", MIMEType: "text/plain", SizeBytes: 5},
 	}
 	for i, up := range cases {
-		if _, err := svc.Accept(context.Background(), &up, strings.NewReader("hello"), 1); !errors.Is(err, file.ErrFileInvalid) {
+		if _, err := svc.Accept(context.Background(), AcceptRequest{Upload: &up, Content: strings.NewReader("hello"), ActorID: 1}); !errors.Is(err, file.ErrFileInvalid) {
 			t.Errorf("case %d: err = %v, want ErrFileInvalid", i, err)
 		}
 	}
@@ -205,7 +207,7 @@ func TestAcceptPutFailurePropagates(t *testing.T) {
 	store.putErr = file.ErrFileStorage
 	svc := newTestService(repo, store)
 
-	if _, err := svc.Accept(context.Background(), &entity.Upload{OriginalName: "a.txt", MIMEType: "text/plain", SizeBytes: 5}, strings.NewReader("hello"), 1); !errors.Is(err, file.ErrFileStorage) {
+	if _, err := svc.Accept(context.Background(), AcceptRequest{Upload: &entity.Upload{OriginalName: "a.txt", MIMEType: "text/plain", SizeBytes: 5}, Content: strings.NewReader("hello"), ActorID: 1}); !errors.Is(err, file.ErrFileStorage) {
 		t.Fatalf("err = %v, want ErrFileStorage", err)
 	}
 	if len(repo.created) != 0 {
@@ -219,7 +221,7 @@ func TestAcceptCreateFailureAfterPutIsAnError(t *testing.T) {
 	store := newFakeObjectStorage()
 	svc := newTestService(repo, store)
 
-	if _, err := svc.Accept(context.Background(), &entity.Upload{OriginalName: "a.txt", MIMEType: "text/plain", SizeBytes: 5}, strings.NewReader("hello"), 1); err == nil {
+	if _, err := svc.Accept(context.Background(), AcceptRequest{Upload: &entity.Upload{OriginalName: "a.txt", MIMEType: "text/plain", SizeBytes: 5}, Content: strings.NewReader("hello"), ActorID: 1}); err == nil {
 		t.Fatal("row failure after a successful put must surface as an error (the object is the logged orphan)")
 	}
 	if len(store.put) != 1 {
@@ -232,11 +234,11 @@ func TestWithdrawRemovesRowThenBytes(t *testing.T) {
 	store := newFakeObjectStorage()
 	svc := newTestService(repo, store)
 
-	created, err := svc.Accept(context.Background(), &entity.Upload{OriginalName: "a.txt", MIMEType: "text/plain", SizeBytes: 5}, strings.NewReader("hello"), 7)
+	created, err := svc.Accept(context.Background(), AcceptRequest{Upload: &entity.Upload{OriginalName: "a.txt", MIMEType: "text/plain", SizeBytes: 5}, Content: strings.NewReader("hello"), ActorID: 7})
 	if err != nil {
 		t.Fatalf("Accept: %v", err)
 	}
-	if err := svc.Withdraw(context.Background(), created.ID, 7); err != nil {
+	if err := svc.Withdraw(context.Background(), WithdrawRequest{ID: created.ID, ActorID: 7}); err != nil {
 		t.Fatalf("Withdraw: %v", err)
 	}
 	if _, err := repo.FindByID(context.Background(), created.ID); !errors.Is(err, file.ErrFileNotFound) {
@@ -253,19 +255,19 @@ func TestWithdrawSucceedsWhenByteRemovalFails(t *testing.T) {
 	store.deleteErr = errors.New("s3 down")
 	svc := newTestService(repo, store)
 
-	created, err := svc.Accept(context.Background(), &entity.Upload{OriginalName: "a.txt", MIMEType: "text/plain", SizeBytes: 5}, strings.NewReader("hello"), 7)
+	created, err := svc.Accept(context.Background(), AcceptRequest{Upload: &entity.Upload{OriginalName: "a.txt", MIMEType: "text/plain", SizeBytes: 5}, Content: strings.NewReader("hello"), ActorID: 7})
 	if err != nil {
 		t.Fatalf("Accept: %v", err)
 	}
 	// ADR 0009: the row withdrawal stands; the orphan is logged, not failed.
-	if err := svc.Withdraw(context.Background(), created.ID, 7); err != nil {
+	if err := svc.Withdraw(context.Background(), WithdrawRequest{ID: created.ID, ActorID: 7}); err != nil {
 		t.Fatalf("Withdraw must succeed despite byte-removal failure: %v", err)
 	}
 }
 
 func TestWithdrawUnknownID(t *testing.T) {
 	svc := newTestService(newFakeFileRepo(), newFakeObjectStorage())
-	if err := svc.Withdraw(context.Background(), 999, 1); !errors.Is(err, file.ErrFileNotFound) {
+	if err := svc.Withdraw(context.Background(), WithdrawRequest{ID: 999, ActorID: 1}); !errors.Is(err, file.ErrFileNotFound) {
 		t.Fatalf("err = %v, want ErrFileNotFound", err)
 	}
 }
@@ -276,18 +278,18 @@ func TestOpenPassesRangeThrough(t *testing.T) {
 	store.getObj = &storage.Object{Body: io.NopCloser(strings.NewReader("hello")), ContentType: "text/plain", ContentLength: 5}
 	svc := newTestService(repo, store)
 
-	created, err := svc.Accept(context.Background(), &entity.Upload{OriginalName: "a.txt", MIMEType: "text/plain", SizeBytes: 5}, strings.NewReader("hello"), 7)
+	created, err := svc.Accept(context.Background(), AcceptRequest{Upload: &entity.Upload{OriginalName: "a.txt", MIMEType: "text/plain", SizeBytes: 5}, Content: strings.NewReader("hello"), ActorID: 7})
 	if err != nil {
 		t.Fatalf("Accept: %v", err)
 	}
 	rng := &storage.ByteRange{Header: "bytes=0-1"}
-	obj, f, err := svc.Open(context.Background(), created.ID, rng)
+	opened, err := svc.Open(context.Background(), OpenRequest{ID: created.ID, Range: rng})
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer obj.Body.Close()
-	if f.ID != created.ID {
-		t.Errorf("returned file ID = %d, want %d", f.ID, created.ID)
+	defer opened.Object.Body.Close()
+	if opened.File.ID != created.ID {
+		t.Errorf("returned file ID = %d, want %d", opened.File.ID, created.ID)
 	}
 	if store.lastRange != rng {
 		t.Errorf("range not passed through")
@@ -309,11 +311,11 @@ func TestBatchGetSkipsUnknownIDs(t *testing.T) {
 	store := newFakeObjectStorage()
 	svc := newTestService(repo, store)
 
-	kept, err := svc.Accept(context.Background(), &entity.Upload{OriginalName: "a.txt", MIMEType: "text/plain", SizeBytes: 5}, strings.NewReader("hello"), 7)
+	kept, err := svc.Accept(context.Background(), AcceptRequest{Upload: &entity.Upload{OriginalName: "a.txt", MIMEType: "text/plain", SizeBytes: 5}, Content: strings.NewReader("hello"), ActorID: 7})
 	if err != nil {
 		t.Fatalf("Accept: %v", err)
 	}
-	other, err := svc.Accept(context.Background(), &entity.Upload{OriginalName: "b.txt", MIMEType: "text/plain", SizeBytes: 5}, strings.NewReader("world"), 7)
+	other, err := svc.Accept(context.Background(), AcceptRequest{Upload: &entity.Upload{OriginalName: "b.txt", MIMEType: "text/plain", SizeBytes: 5}, Content: strings.NewReader("world"), ActorID: 7})
 	if err != nil {
 		t.Fatalf("Accept: %v", err)
 	}

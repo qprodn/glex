@@ -25,6 +25,22 @@ type Object struct {
 	ContentRange string
 }
 
+// PutRequest is one streamed byte write: req.Content streams to req.Key
+// under the known req.Size, stored with req.ContentType (ADR 0025).
+type PutRequest struct {
+	Key         string
+	Content     io.Reader
+	Size        int64
+	ContentType string
+}
+
+// GetRequest is one byte read: req.Key's bytes, optionally one req.Range
+// (nil = full body).
+type GetRequest struct {
+	Key   string
+	Range *ByteRange
+}
+
 // ObjectStorage is the byte-level gateway behind the file domain service.
 type ObjectStorage interface {
 	// Bucket reports the single configured bucket (ADR 0007).
@@ -32,15 +48,15 @@ type ObjectStorage interface {
 	// EnsureBucket creates the bucket when missing; startup fails fast when
 	// storage is unreachable.
 	EnsureBucket(ctx context.Context) error
-	// Put streams content to the Stored Key under a known size and returns
-	// the bytes' SHA-256 hex digest (the Content Fingerprint), computed
-	// while streaming — the bytes are never fully buffered (ADR 0008).
-	// Acceptance policy (size cap, content-type whitelist) is enforced here,
-	// where the static config lives.
-	Put(ctx context.Context, key string, content io.Reader, size int64, contentType string) (digest string, err error)
-	// Get fetches the bytes, optionally one range (nil = full body). The
-	// caller owns the returned Object's Body.
-	Get(ctx context.Context, key string, rng *ByteRange) (*Object, error)
+	// Put streams req.Content to req.Key under the known req.Size and
+	// returns the bytes' SHA-256 hex digest (the Content Fingerprint),
+	// computed while streaming — the bytes are never fully buffered (ADR
+	// 0008). Acceptance policy (size cap, content-type whitelist on
+	// req.ContentType) is enforced here, where the static config lives.
+	Put(ctx context.Context, req PutRequest) (digest string, err error)
+	// Get fetches req.Key's bytes, optionally one req.Range (nil = full
+	// body). The caller owns the returned Object's Body.
+	Get(ctx context.Context, req GetRequest) (*Object, error)
 	// PresignGet mints a short-TTL presigned GET URL for the Stored Key's
 	// bytes — a Display URL (ADR 0016). Signing is a local computation (no
 	// storage round-trip); the TTL is the adapter's configured deployment

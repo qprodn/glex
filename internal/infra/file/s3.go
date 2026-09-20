@@ -137,24 +137,24 @@ func (s *objectStorage) EnsureBucket(ctx context.Context) error {
 	return nil
 }
 
-// Put streams the bytes to the Stored Key while hashing them — the bytes are
+// Put streams req.Content to req.Key while hashing the bytes — they are
 // never fully buffered in memory (ADR 0008). Acceptance policy is enforced
-// here, where the static config lives: the size cap and the whitelist
-// checked against the sniffed content type the caller provides.
-func (s *objectStorage) Put(ctx context.Context, key string, content io.Reader, size int64, contentType string) (string, error) {
-	if size > s.maxSize {
+// here, where the static config lives: the size cap on req.Size and the
+// whitelist checked against the sniffed req.ContentType the caller provides.
+func (s *objectStorage) Put(ctx context.Context, req storage.PutRequest) (string, error) {
+	if req.Size > s.maxSize {
 		return "", file.ErrFileTooLarge
 	}
-	if !mimeAllowed(contentType, s.allowMIME) {
+	if !mimeAllowed(req.ContentType, s.allowMIME) {
 		return "", file.ErrFileMimeNotAllowed
 	}
 	digest := sha256.New()
 	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:        aws.String(s.bucket),
-		Key:           aws.String(key),
-		Body:          io.TeeReader(content, digest),
-		ContentLength: aws.Int64(size),
-		ContentType:   aws.String(contentType),
+		Key:           aws.String(req.Key),
+		Body:          io.TeeReader(req.Content, digest),
+		ContentLength: aws.Int64(req.Size),
+		ContentType:   aws.String(req.ContentType),
 	})
 	if err != nil {
 		return "", wrapStorage(err)
@@ -162,15 +162,15 @@ func (s *objectStorage) Put(ctx context.Context, key string, content io.Reader, 
 	return hex.EncodeToString(digest.Sum(nil)), nil
 }
 
-func (s *objectStorage) Get(ctx context.Context, key string, rng *storage.ByteRange) (*storage.Object, error) {
+func (s *objectStorage) Get(ctx context.Context, req storage.GetRequest) (*storage.Object, error) {
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(key),
+		Key:    aws.String(req.Key),
 	}
-	if rng != nil && rng.Header != "" {
+	if req.Range != nil && req.Range.Header != "" {
 		// The raw single-range header passes through; S3 rejects what it
 		// cannot satisfy and the 416 maps to the domain error.
-		input.Range = aws.String(rng.Header)
+		input.Range = aws.String(req.Range.Header)
 	}
 	out, err := s.client.GetObject(ctx, input)
 	if err != nil {

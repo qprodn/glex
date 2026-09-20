@@ -118,13 +118,13 @@ func (r *fileRepo) Create(ctx context.Context, f *fileentity.StoredFile) (*filee
 	return toBizFile(po), nil
 }
 
-// Delete soft-deletes the row (ADR 0002 — no row is hard-deleted), stamping
-// actorID into the audit fields. The bytes are removed separately by the
-// domain service (ADR 0009).
-func (r *fileRepo) Delete(ctx context.Context, id, actorID int64) error {
-	err := r.data.DB.File(ctx).UpdateOneID(id).
+// Delete soft-deletes the row req.ID (ADR 0002 — no row is hard-deleted),
+// stamping req.ActorID into the audit fields. The bytes are removed
+// separately by the domain service (ADR 0009).
+func (r *fileRepo) Delete(ctx context.Context, req filerepo.DeleteRequest) error {
+	err := r.data.DB.File(ctx).UpdateOneID(req.ID).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {

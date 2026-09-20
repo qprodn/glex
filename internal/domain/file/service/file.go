@@ -15,6 +15,37 @@ import (
 	"glex/pkg/logx"
 )
 
+// AcceptRequest is one relayed upload: the validated Upload record, the
+// byte stream behind it, and the actor stamped into the audit fields
+// (ADR 0025).
+type AcceptRequest struct {
+	Upload  *entity.Upload
+	Content io.Reader
+	ActorID int64
+}
+
+// WithdrawRequest is one Stored File withdrawal: the row to withdraw and
+// the actor performing it (ADR 0025).
+type WithdrawRequest struct {
+	ID      int64
+	ActorID int64
+}
+
+// OpenRequest is one byte read: the Stored File to open, optionally one
+// HTTP range on its bytes (nil = full body) (ADR 0025).
+type OpenRequest struct {
+	ID    int64
+	Range *storage.ByteRange
+}
+
+// OpenResult is one opened transfer: the byte stream and the Stored File
+// row it belongs to (ADR 0025 — the resolved pair rides one struct). The
+// caller owns Object.Body and must close it.
+type OpenResult struct {
+	Object *storage.Object
+	File   *entity.StoredFile
+}
+
 // File is the file domain service behind the file endpoints: the only path
 // to the Stored File rows and their bytes (ADR 0005). The S3 protocol
 // carries the bytes (ADR 0007); every transfer flows through the service
@@ -29,18 +60,20 @@ type File interface {
 	// render what resolved).
 	BatchGet(ctx context.Context, ids []int64) ([]*entity.StoredFile, error)
 	List(ctx context.Context, q listq.Query) ([]*entity.StoredFile, error)
-	// Accept validates the upload, mints the Stored Key, streams the bytes
-	// to storage while computing the Content Fingerprint, then records the
-	// row. A row failure after the bytes landed leaves an orphan object —
+	// Accept validates the upload (req.Upload), mints the Stored Key,
+	// streams req.Content to storage while computing the Content
+	// Fingerprint, then records the row with req.ActorID in the audit
+	// fields. A row failure after the bytes landed leaves an orphan object —
 	// logged, never a live row pointing at missing bytes.
-	Accept(ctx context.Context, up *entity.Upload, content io.Reader, actorID int64) (*entity.StoredFile, error)
-	// Withdraw soft-deletes the row, then removes the bytes best-effort
-	// (ADR 0009): a failed object removal leaves an invisible orphan —
-	// logged — and the withdrawal still succeeds.
-	Withdraw(ctx context.Context, id, actorID int64) error
-	// Open locates an active Stored File and opens its bytes, optionally one
-	// range. The caller owns the returned Object's Body.
-	Open(ctx context.Context, id int64, rng *storage.ByteRange) (*storage.Object, *entity.StoredFile, error)
+	Accept(ctx context.Context, req AcceptRequest) (*entity.StoredFile, error)
+	// Withdraw soft-deletes the row req.ID (stamping req.ActorID), then
+	// removes the bytes best-effort (ADR 0009): a failed object removal
+	// leaves an invisible orphan — logged — and the withdrawal still
+	// succeeds.
+	Withdraw(ctx context.Context, req WithdrawRequest) error
+	// Open locates the Stored File req.ID and opens its bytes, optionally
+	// one req.Range. The caller owns the returned result's Object.Body.
+	Open(ctx context.Context, req OpenRequest) (*OpenResult, error)
 	// DisplayURL mints one Display URL (ADR 0016) — a short-TTL presigned
 	// GET for the row's Stored Key. Signing is local; the failure mode is
 	// upstream-reachability reasons only.
@@ -91,7 +124,8 @@ func (s *fileImpl) List(ctx context.Context, q listq.Query) ([]*entity.StoredFil
 	return fs, nil
 }
 
-func (s *fileImpl) Accept(ctx context.Context, up *entity.Upload, content io.Reader, actorID int64) (*entity.StoredFile, error) {
+func (s *fileImpl) Accept(ctx context.Context, req AcceptRequest) (*entity.StoredFile, error) {
+	up := req.Upload
 	if err := up.Validate(); err != nil {
 		logx.Propagate(ctx, s.logger, "file.svc.accept", err)
 		return nil, err
@@ -101,7 +135,12 @@ func (s *fileImpl) Accept(ctx context.Context, up *entity.Upload, content io.Rea
 	id := s.files.NextID()
 	suffix := file.NormalizeSuffix(up.OriginalName)
 	key := storedKey(id, up.BizPath, suffix, time.Now())
-	digest, err := s.store.Put(ctx, key, content, up.SizeBytes, up.MIMEType)
+	digest, err := s.store.Put(ctx, storage.PutRequest{
+		Key:         key,
+		Content:     req.Content,
+		Size:        up.SizeBytes,
+		ContentType: up.MIMEType,
+	})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "file.svc.accept", err)
 		return nil, err
@@ -115,8 +154,8 @@ func (s *fileImpl) Accept(ctx context.Context, up *entity.Upload, content io.Rea
 		Bucket:       s.store.Bucket(),
 		ObjKey:       key,
 		ContentHash:  digest,
-		CreateBy:     actorID,
-		UpdateBy:     actorID,
+		CreateBy:     req.ActorID,
+		UpdateBy:     req.ActorID,
 	}
 	created, err := s.files.Create(ctx, f)
 	if err != nil {
@@ -131,13 +170,13 @@ func (s *fileImpl) Accept(ctx context.Context, up *entity.Upload, content io.Rea
 	return created, nil
 }
 
-func (s *fileImpl) Withdraw(ctx context.Context, id, actorID int64) error {
-	f, err := s.files.FindByID(ctx, id)
+func (s *fileImpl) Withdraw(ctx context.Context, req WithdrawRequest) error {
+	f, err := s.files.FindByID(ctx, req.ID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "file.svc.withdraw", err)
 		return err
 	}
-	if err := s.files.Delete(ctx, id, actorID); err != nil {
+	if err := s.files.Delete(ctx, repository.DeleteRequest{ID: req.ID, ActorID: req.ActorID}); err != nil {
 		logx.Propagate(ctx, s.logger, "file.svc.withdraw", err)
 		return err
 	}
@@ -154,18 +193,18 @@ func (s *fileImpl) Withdraw(ctx context.Context, id, actorID int64) error {
 	return nil
 }
 
-func (s *fileImpl) Open(ctx context.Context, id int64, rng *storage.ByteRange) (*storage.Object, *entity.StoredFile, error) {
-	f, err := s.files.FindByID(ctx, id)
+func (s *fileImpl) Open(ctx context.Context, req OpenRequest) (*OpenResult, error) {
+	f, err := s.files.FindByID(ctx, req.ID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "file.svc.open", err)
-		return nil, nil, err
+		return nil, err
 	}
-	obj, err := s.store.Get(ctx, f.ObjKey, rng)
+	obj, err := s.store.Get(ctx, storage.GetRequest{Key: f.ObjKey, Range: req.Range})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "file.svc.open", err)
-		return nil, nil, err
+		return nil, err
 	}
-	return obj, f, nil
+	return &OpenResult{Object: obj, File: f}, nil
 }
 
 func (s *fileImpl) DisplayURL(ctx context.Context, f *entity.StoredFile) (string, error) {
