@@ -499,36 +499,36 @@ func TestBuildDeptTree(t *testing.T) {
 
 func TestAncestorIDs(t *testing.T) {
 	depts := seedTree()
-	ids := AncestorIDs(depts, 3)
+	ids := ancestorIDs(depts, 3)
 	if len(ids) != 2 || ids[0] != 2 || ids[1] != 1 {
 		t.Fatalf("ids = %v, want [2 1]", ids)
 	}
-	if got := AncestorIDs(depts, 99); got != nil {
+	if got := ancestorIDs(depts, 99); got != nil {
 		t.Fatalf("missing node ids = %v, want nil", got)
 	}
 	// A broken chain (missing parent) yields nil so callers skip cascades.
 	broken := []*entity.Dept{{ID: 3, ParentID: 2, DeptName: "a1"}}
-	if got := AncestorIDs(broken, 3); got != nil {
+	if got := ancestorIDs(broken, 3); got != nil {
 		t.Fatalf("broken chain ids = %v, want nil", got)
 	}
 }
 
 func TestSubtreeIDs_Function(t *testing.T) {
-	ids := SubtreeIDs(seedTree(), 1)
+	ids := subtreeIDs(seedTree(), 1)
 	if len(ids) != 5 {
 		t.Fatalf("ids = %v, want 5 ids", ids)
 	}
-	if got := SubtreeIDs(seedTree(), 99); len(got) != 1 || got[0] != 99 {
+	if got := subtreeIDs(seedTree(), 99); len(got) != 1 || got[0] != 99 {
 		t.Fatalf("missing root ids = %v, want [99]", got)
 	}
 }
 
 func TestHasEnabledDescendant(t *testing.T) {
 	depts := seedTree()
-	if !HasEnabledDescendant(depts, 1) {
+	if !hasEnabledDescendant(depts, 1) {
 		t.Fatal("root has enabled descendants")
 	}
-	if !HasEnabledDescendant(depts, 2) {
+	if !hasEnabledDescendant(depts, 2) {
 		t.Fatal("a has enabled descendants")
 	}
 	for _, d := range depts {
@@ -536,7 +536,7 @@ func TestHasEnabledDescendant(t *testing.T) {
 			d.Status = 1
 		}
 	}
-	if HasEnabledDescendant(depts, 1) {
+	if hasEnabledDescendant(depts, 1) {
 		t.Fatal("all descendants disabled")
 	}
 }

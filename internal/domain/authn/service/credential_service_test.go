@@ -36,7 +36,7 @@ func TestCredentialStoreHashesThePlaintext(t *testing.T) {
 	if stored == "secret" || !strings.HasPrefix(stored, "$2") {
 		t.Fatalf("stored credential = %q, want a bcrypt hash, not the plaintext", stored)
 	}
-	if !VerifyPassword(stored, "secret") {
+	if !verifyPassword(stored, "secret") {
 		t.Fatal("stored credential does not verify against the plaintext")
 	}
 }

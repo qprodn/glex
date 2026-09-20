@@ -26,7 +26,7 @@ func fakeValues() map[string]string {
 
 func TestValidateRejectsUnadoptedChannel(t *testing.T) {
 	r := newFakeRegistry()
-	if _, err := r.ValidateConfig(payentity.ChannelStripe, map[string]string{}); !errors.Is(err, pay.ErrChannelNotAdopted) {
+	if _, err := r.ValidateConfig(payservice.ChannelConfigRequest{Channel: payentity.ChannelStripe, Values: map[string]string{}}); !errors.Is(err, pay.ErrChannelNotAdopted) {
 		t.Fatalf("err = %v, want ErrChannelNotAdopted", err)
 	}
 	if r.Adopted(payentity.ChannelStripe) {

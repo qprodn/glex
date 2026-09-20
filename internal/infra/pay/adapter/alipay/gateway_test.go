@@ -57,10 +57,10 @@ type tradeState struct {
 }
 
 type refundState struct {
-	refunded     bool
-	payTime      string
-	notExist     bool
-	systemError  bool // the channel answers ACQ.SYSTEM_ERROR — an inconclusive outcome
+	refunded    bool
+	payTime     string
+	notExist    bool
+	systemError bool // the channel answers ACQ.SYSTEM_ERROR — an inconclusive outcome
 }
 
 func newFakeAlipay(t *testing.T) *fakeAlipay {
@@ -615,4 +615,3 @@ func errorsIs(err, target error) bool {
 	}
 	return false
 }
-

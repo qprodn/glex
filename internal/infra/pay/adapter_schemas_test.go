@@ -7,6 +7,7 @@ import (
 
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
+	payservice "glex/internal/domain/pay/service"
 	"glex/internal/infra/pay/adapter"
 	"glex/internal/infra/pay/adapter/alipay"
 	"glex/internal/infra/pay/adapter/wechat"
@@ -52,7 +53,7 @@ func alipayValues(mode string) map[string]string {
 
 func TestValidateWechatConfig(t *testing.T) {
 	r := newAdoptedRegistry()
-	cleaned, err := r.ValidateConfig(payentity.ChannelWechat, wechatValues())
+	cleaned, err := r.ValidateConfig(payservice.ChannelConfigRequest{Channel: payentity.ChannelWechat, Values: wechatValues()})
 	if err != nil {
 		t.Fatalf("valid wechat config rejected: %v", err)
 	}
@@ -65,12 +66,12 @@ func TestValidateRejectsUnknownKeyAndMissingRequired(t *testing.T) {
 	r := newAdoptedRegistry()
 	values := wechatValues()
 	values["nope"] = "x"
-	if _, err := r.ValidateConfig(payentity.ChannelWechat, values); !errors.Is(err, pay.ErrMerchantInvalid) {
+	if _, err := r.ValidateConfig(payservice.ChannelConfigRequest{Channel: payentity.ChannelWechat, Values: values}); !errors.Is(err, pay.ErrMerchantInvalid) {
 		t.Fatalf("unknown key: err = %v, want ErrMerchantInvalid", err)
 	}
 	values = wechatValues()
 	delete(values, "api_v3_key")
-	if _, err := r.ValidateConfig(payentity.ChannelWechat, values); !errors.Is(err, pay.ErrMerchantInvalid) {
+	if _, err := r.ValidateConfig(payservice.ChannelConfigRequest{Channel: payentity.ChannelWechat, Values: values}); !errors.Is(err, pay.ErrMerchantInvalid) {
 		t.Fatalf("missing required: err = %v, want ErrMerchantInvalid", err)
 	}
 }
@@ -79,7 +80,7 @@ func TestValidateSelectAndDefaults(t *testing.T) {
 	r := newAdoptedRegistry()
 	values := alipayValues("key")
 	delete(values, "mode")
-	cleaned, err := r.ValidateConfig(payentity.ChannelAlipay, values)
+	cleaned, err := r.ValidateConfig(payservice.ChannelConfigRequest{Channel: payentity.ChannelAlipay, Values: values})
 	if err != nil {
 		t.Fatalf("default mode validation failed: %v", err)
 	}
@@ -87,27 +88,27 @@ func TestValidateSelectAndDefaults(t *testing.T) {
 		t.Fatalf("mode = %q, want default key", cleaned["mode"])
 	}
 	bad := alipayValues("card")
-	if _, err := r.ValidateConfig(payentity.ChannelAlipay, bad); !errors.Is(err, pay.ErrMerchantInvalid) {
+	if _, err := r.ValidateConfig(payservice.ChannelConfigRequest{Channel: payentity.ChannelAlipay, Values: bad}); !errors.Is(err, pay.ErrMerchantInvalid) {
 		t.Fatalf("err = %v, want ErrMerchantInvalid", err)
 	}
 }
 
 func TestValidateAlipayModeRequirements(t *testing.T) {
 	r := newAdoptedRegistry()
-	if _, err := r.ValidateConfig(payentity.ChannelAlipay, alipayValues("key")); err != nil {
+	if _, err := r.ValidateConfig(payservice.ChannelConfigRequest{Channel: payentity.ChannelAlipay, Values: alipayValues("key")}); err != nil {
 		t.Fatalf("key mode rejected: %v", err)
 	}
-	if _, err := r.ValidateConfig(payentity.ChannelAlipay, alipayValues("cert")); err != nil {
+	if _, err := r.ValidateConfig(payservice.ChannelConfigRequest{Channel: payentity.ChannelAlipay, Values: alipayValues("cert")}); err != nil {
 		t.Fatalf("cert mode rejected: %v", err)
 	}
 	missing := alipayValues("cert")
 	delete(missing, "alipay_root_cert")
-	if _, err := r.ValidateConfig(payentity.ChannelAlipay, missing); !errors.Is(err, pay.ErrMerchantInvalid) {
+	if _, err := r.ValidateConfig(payservice.ChannelConfigRequest{Channel: payentity.ChannelAlipay, Values: missing}); !errors.Is(err, pay.ErrMerchantInvalid) {
 		t.Fatalf("cert trio incomplete: err = %v, want ErrMerchantInvalid", err)
 	}
 	missing = alipayValues("key")
 	delete(missing, "alipay_public_key")
-	if _, err := r.ValidateConfig(payentity.ChannelAlipay, missing); !errors.Is(err, pay.ErrMerchantInvalid) {
+	if _, err := r.ValidateConfig(payservice.ChannelConfigRequest{Channel: payentity.ChannelAlipay, Values: missing}); !errors.Is(err, pay.ErrMerchantInvalid) {
 		t.Fatalf("key mode missing public key: err = %v, want ErrMerchantInvalid", err)
 	}
 }
@@ -116,7 +117,7 @@ func TestValidateTrimsButKeepsMultiline(t *testing.T) {
 	r := newAdoptedRegistry()
 	values := wechatValues()
 	values["mchid"] = " 1900000001 \n"
-	cleaned, err := r.ValidateConfig(payentity.ChannelWechat, values)
+	cleaned, err := r.ValidateConfig(payservice.ChannelConfigRequest{Channel: payentity.ChannelWechat, Values: values})
 	if err != nil {
 		t.Fatalf("validate: %v", err)
 	}
@@ -131,7 +132,7 @@ func TestValidateTrimsButKeepsMultiline(t *testing.T) {
 func TestMaskConfigEchoesWhatIsSet(t *testing.T) {
 	r := newAdoptedRegistry()
 	values := wechatValues()
-	masked := r.MaskConfig(payentity.ChannelWechat, values)
+	masked := r.MaskConfig(payservice.ChannelConfigRequest{Channel: payentity.ChannelWechat, Values: values})
 	// Secrets show only their tail (ADR 0018's `****ab12` shape).
 	if got := masked["api_v3_key"]; got != "****g7h8" {
 		t.Fatalf("masked api_v3_key = %q", got)
@@ -150,7 +151,7 @@ func TestMaskShortSecretIsBareAndEmptyFieldsAbsent(t *testing.T) {
 	values := alipayValues("key")
 	values["app_private_key"] = "abc"
 	delete(values, "alipay_public_key") // unset → must be absent from the echo
-	masked := r.MaskConfig(payentity.ChannelAlipay, values)
+	masked := r.MaskConfig(payservice.ChannelConfigRequest{Channel: payentity.ChannelAlipay, Values: values})
 	if masked["app_private_key"] != "****" {
 		t.Fatalf("masked short secret = %q, want bare ****", masked["app_private_key"])
 	}

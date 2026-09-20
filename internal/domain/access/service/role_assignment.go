@@ -77,7 +77,7 @@ func (s *roleAssignmentImpl) ReplaceForUser(ctx context.Context, req repository.
 		logx.Propagate(ctx, s.logger, "access.svc.replace_assignments", err)
 		return nil, err
 	}
-	unique, err := AssertRolesAssignable(assignments, req.RoleIDs)
+	unique, err := assertRolesAssignable(assignments, req.RoleIDs)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.replace_assignments", err)
 		return nil, err
@@ -129,13 +129,13 @@ func assertUserExists(ctx context.Context, linkRepo repository.UserRoleRepo, use
 	return nil
 }
 
-// AssertRolesAssignable dedupes roleIDs and checks every id exists and is not
+// assertRolesAssignable dedupes roleIDs and checks every id exists and is not
 // soft-deleted. The active-role set is the freshly-read assignment list — the
 // same data the response carries, so no second query (Menu Grant instead
 // re-reads via ListByIDs; here the read is needed anyway for the reply). An
 // empty list is legal — it means "no roles" — and passes without touching
 // anything.
-func AssertRolesAssignable(assignments []*entity.RoleAssignment, roleIDs []int64) ([]int64, error) {
+func assertRolesAssignable(assignments []*entity.RoleAssignment, roleIDs []int64) ([]int64, error) {
 	unique := dedupeIDs(roleIDs)
 	if len(unique) == 0 {
 		return unique, nil

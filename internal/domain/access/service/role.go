@@ -159,7 +159,7 @@ func (s *roleImpl) CheckedMenuIDs(ctx context.Context, roleID int64) ([]int64, e
 		logx.Propagate(ctx, s.logger, "access.svc.checked_menu_ids", err)
 		return nil, err
 	}
-	return CheckedMenuIDs(role, links), nil
+	return checkedMenuIDs(role, links), nil
 }
 
 func (s *roleImpl) ReplaceMenus(ctx context.Context, req repository.ReplaceRoleMenusRequest) (*MenuGrantReplacement, error) {
@@ -260,10 +260,10 @@ func assertRoleDisableAllowed(ctx context.Context, repo repository.RoleRepo, use
 	return nil
 }
 
-// CheckedMenuIDs shapes the persisted Menu Grant for the role editor. Under
+// checkedMenuIDs shapes the persisted Menu Grant for the role editor. Under
 // strict checking, linked parents of other linked menus are represented by
 // their children and omitted from the returned checked keys.
-func CheckedMenuIDs(role *entity.Role, links []*repository.RoleMenuLink) []int64 {
+func checkedMenuIDs(role *entity.Role, links []*repository.RoleMenuLink) []int64 {
 	ids := make([]int64, 0, len(links))
 	if role.MenuCheckStrictly {
 		parentOf := make(map[int64]struct{}, len(links))

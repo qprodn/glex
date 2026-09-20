@@ -132,13 +132,13 @@ func (s *loginImpl) VerifyPassword(ctx context.Context, req VerifyPasswordReques
 			logx.Propagate(ctx, s.logger, "authn.svc.verify_password", err)
 			return nil, err
 		}
-		// Timing decoy, not an ignored error: VerifyPassword returns a bool,
+		// Timing decoy, not an ignored error: verifyPassword returns a bool,
 		// and only its bcrypt cost matters here — the match result carries no
 		// information (ADR 0007 `_ =` audit).
-		_ = VerifyPassword(DecoyCredentialHash, req.Password)
+		_ = verifyPassword(DecoyCredentialHash, req.Password)
 		return nil, s.RecordFailure(ctx, attempt)
 	}
-	if !VerifyPassword(account.PasswordHash, req.Password) {
+	if !verifyPassword(account.PasswordHash, req.Password) {
 		return nil, s.RecordFailure(ctx, attempt)
 	}
 	if account.Status != 0 {

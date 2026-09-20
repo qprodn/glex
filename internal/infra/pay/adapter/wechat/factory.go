@@ -1,9 +1,9 @@
 package wechat
 
 import (
-	"glex/internal/infra/pay/adapter"
 	payentity "glex/internal/domain/pay/entity"
 	payservice "glex/internal/domain/pay/service"
+	"glex/internal/infra/pay/adapter"
 )
 
 // Factory is the wechat channel's adapter factory.

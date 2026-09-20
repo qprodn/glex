@@ -149,8 +149,8 @@ func (f *fakeCatalog) Adopted(ch payentity.Channel) bool {
 
 // ValidateConfig applies the schema's core semantics: unknown keys
 // rejected, required fields present, values passed through.
-func (f *fakeCatalog) ValidateConfig(ch payentity.Channel, values map[string]string) (map[string]string, error) {
-	schema, err := f.Schema(ch)
+func (f *fakeCatalog) ValidateConfig(req ChannelConfigRequest) (map[string]string, error) {
+	schema, err := f.Schema(req.Channel)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (f *fakeCatalog) ValidateConfig(ch payentity.Channel, values map[string]str
 		known[field.Name] = true
 	}
 	cleaned := map[string]string{}
-	for name, v := range values {
+	for name, v := range req.Values {
 		if !known[name] {
 			return nil, pay.ErrMerchantInvalid
 		}
@@ -173,14 +173,14 @@ func (f *fakeCatalog) ValidateConfig(ch payentity.Channel, values map[string]str
 	return cleaned, nil
 }
 
-func (f *fakeCatalog) MaskConfig(ch payentity.Channel, values map[string]string) map[string]string {
-	schema, err := f.Schema(ch)
+func (f *fakeCatalog) MaskConfig(req ChannelConfigRequest) map[string]string {
+	schema, err := f.Schema(req.Channel)
 	if err != nil {
 		return nil
 	}
 	masked := map[string]string{}
 	for _, field := range schema.Fields {
-		if values[field.Name] != "" {
+		if req.Values[field.Name] != "" {
 			masked[field.Name] = "mask:" + field.Name
 		}
 	}

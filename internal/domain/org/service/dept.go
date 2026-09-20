@@ -150,7 +150,7 @@ func (s *deptImpl) Update(ctx context.Context, d *entity.Dept) (*entity.Dept, er
 	// Disabling is refused while any descendant is still enabled (RuoYi:
 	// 该部门包含未停用的子部门); the guard fires on the enabled→disabled
 	// transition, so re-saving a disabled department never re-trips it.
-	if current.Enabled() && !d.Enabled() && HasEnabledDescendant(depts, d.ID) {
+	if current.Enabled() && !d.Enabled() && hasEnabledDescendant(depts, d.ID) {
 		err := org.ErrDeptHasEnabledChildren
 		logx.Propagate(ctx, s.logger, "org.svc.update_dept", err)
 		return nil, err
@@ -166,7 +166,7 @@ func (s *deptImpl) Update(ctx context.Context, d *entity.Dept) (*entity.Dept, er
 	// fires on the disabled→enabled transition only — the disable guards
 	// keep enabled departments from ever having disabled ancestors).
 	if !result.Previous.Enabled() && result.Dept.Enabled() {
-		if ancestors := AncestorIDs(depts, result.Dept.ID); len(ancestors) > 0 {
+		if ancestors := ancestorIDs(depts, result.Dept.ID); len(ancestors) > 0 {
 			if err := s.depts.EnableDepts(ctx, repository.EnableDeptsRequest{IDs: ancestors, ActorID: d.UpdateBy}); err != nil {
 				logx.Propagate(ctx, s.logger, "org.svc.update_dept", err)
 				return nil, err
@@ -223,7 +223,7 @@ func (s *deptImpl) SubtreeIDs(ctx context.Context, deptID int64) ([]int64, error
 		logx.Propagate(ctx, s.logger, "org.svc.subtree_ids", err)
 		return nil, err
 	}
-	return SubtreeIDs(depts, deptID), nil
+	return subtreeIDs(depts, deptID), nil
 }
 
 func (s *deptImpl) EnsureActive(ctx context.Context, deptID int64) error {
@@ -334,7 +334,7 @@ func assertMoveAllowed(depts []*entity.Dept, d *entity.Dept) error {
 	if !ok {
 		return org.ErrDeptNotFound
 	}
-	for _, id := range AncestorIDs(depts, parent.ID) {
+	for _, id := range ancestorIDs(depts, parent.ID) {
 		if id == d.ID {
 			return org.ErrDeptParentInvalid
 		}
@@ -390,12 +390,12 @@ func BuildDeptTree(depts []*entity.Dept) []*entity.Dept {
 	return roots
 }
 
-// AncestorIDs walks the parent chain from deptID upward, returning the ids
+// ancestorIDs walks the parent chain from deptID upward, returning the ids
 // strictly above it. A nil result means deptID is missing from the list or
 // its chain is broken (a soft-deleted ancestor): the caller treats the node
 // as an orphan and skips whatever cascade it was about to run. A cyclic
 // chain also yields nil — it cannot be trusted.
-func AncestorIDs(depts []*entity.Dept, deptID int64) []int64 {
+func ancestorIDs(depts []*entity.Dept, deptID int64) []int64 {
 	byID := make(map[int64]*entity.Dept, len(depts))
 	for _, d := range depts {
 		byID[d.ID] = d
@@ -421,11 +421,11 @@ func AncestorIDs(depts []*entity.Dept, deptID int64) []int64 {
 	return ids
 }
 
-// SubtreeIDs resolves deptID plus every descendant id (any depth, any
+// subtreeIDs resolves deptID plus every descendant id (any depth, any
 // status) from the flat list. A missing root yields just deptID itself —
 // callers gate existence separately. Each node is visited at most once, so a
 // cycle cannot duplicate ids.
-func SubtreeIDs(depts []*entity.Dept, deptID int64) []int64 {
+func subtreeIDs(depts []*entity.Dept, deptID int64) []int64 {
 	byParent := make(map[int64][]*entity.Dept)
 	for _, d := range depts {
 		byParent[d.ParentID] = append(byParent[d.ParentID], d)
@@ -442,10 +442,10 @@ func SubtreeIDs(depts []*entity.Dept, deptID int64) []int64 {
 	return ids
 }
 
-// HasEnabledDescendant reports whether any department below deptID is still
+// hasEnabledDescendant reports whether any department below deptID is still
 // enabled — the disable guard (RuoYi: 该部门包含未停用的子部门). Direct and
 // deeper descendants both count, matching RuoYi's find_in_set depth.
-func HasEnabledDescendant(depts []*entity.Dept, deptID int64) bool {
+func hasEnabledDescendant(depts []*entity.Dept, deptID int64) bool {
 	byParent := make(map[int64][]*entity.Dept)
 	for _, d := range depts {
 		byParent[d.ParentID] = append(byParent[d.ParentID], d)

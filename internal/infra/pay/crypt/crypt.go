@@ -31,9 +31,9 @@ const EnvMasterKey = "PAY_MASTER_KEY"
 var ErrMasterKeyMissing = errors.New("crypt: PAY_MASTER_KEY is not configured or malformed")
 
 const (
-	keyVersion  = 1 // KEK rotation reserve: new version ⇒ new prefix, rewrite, retire
-	nonceSize   = 12
-	aesKeySize  = 32
+	keyVersion = 1 // KEK rotation reserve: new version ⇒ new prefix, rewrite, retire
+	nonceSize  = 12
+	aesKeySize = 32
 )
 
 // Cipher seals and opens merchant config value sets.

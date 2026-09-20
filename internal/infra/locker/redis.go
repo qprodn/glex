@@ -72,9 +72,9 @@ func (l *RedisLocker) WithLock(ctx context.Context, key string, fn func(ctx cont
 	defer func() {
 		releaseCtx, releaseCancel := context.WithTimeout(context.WithoutCancel(ctx), opTimeout)
 		defer releaseCancel()
-			if err := lk.Release(releaseCtx); err != nil && !errors.Is(err, redislock.ErrLockNotHeld) {
-				l.logger.Warn("release lock", slog.String("operation", "lock.release"), slog.String("key", key), slog.Any("error", err))
-			}
+		if err := lk.Release(releaseCtx); err != nil && !errors.Is(err, redislock.ErrLockNotHeld) {
+			l.logger.Warn("release lock", slog.String("operation", "lock.release"), slog.String("key", key), slog.Any("error", err))
+		}
 	}()
 
 	err = fn(fctx)

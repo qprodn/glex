@@ -159,6 +159,13 @@ type GatewayRegistry interface {
 	Invalidate(merchantID int64)
 }
 
+// ChannelConfigRequest is one schema-driven config pass: the channel whose
+// schema governs the values.
+type ChannelConfigRequest struct {
+	Channel entity.Channel
+	Values  map[string]string
+}
+
 // ChannelCatalog exposes the channel config schemas and the schema-driven
 // derivations the merchant use cases are built from (ADR 0021 — the schema
 // is defined beside its adapter and served through this port).
@@ -175,9 +182,9 @@ type ChannelCatalog interface {
 	// ValidateConfig checks values against the channel's schema (unknown
 	// keys rejected, required fields present, select values in range) and
 	// applies defaults; it returns the cleaned full value set.
-	ValidateConfig(channel entity.Channel, values map[string]string) (map[string]string, error)
+	ValidateConfig(req ChannelConfigRequest) (map[string]string, error)
 	// MaskConfig renders the write-time masked echo of a full value set.
-	MaskConfig(channel entity.Channel, values map[string]string) map[string]string
+	MaskConfig(req ChannelConfigRequest) map[string]string
 }
 
 // ConfigCipher is the credential-envelope port (ADR 0018): the whole

@@ -17,8 +17,8 @@ const (
 type ChannelNotification struct {
 	// ID is the notify-log row's identity, minted by the intake path
 	// before the write-once insert.
-	ID int64
-	Channel   Channel
+	ID         int64
+	Channel    Channel
 	MerchantID int64
 	// NotifyID is the Channel's notification identifier — the dedup
 	// half-key. Empty only for deliveries that failed parsing outright.

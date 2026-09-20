@@ -104,8 +104,8 @@ func HashPassword(password string) (string, error) {
 	return string(hashed), nil
 }
 
-// VerifyPassword checks a plaintext password against a stored bcrypt hash.
-func VerifyPassword(hash, password string) bool {
+// verifyPassword checks a plaintext password against a stored bcrypt hash.
+func verifyPassword(hash, password string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }
 

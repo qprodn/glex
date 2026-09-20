@@ -114,9 +114,9 @@ func (r *Registry) Adopted(channel payentity.Channel) bool {
 // keys rejected, required (or mode-required) fields present, select
 // values in range — applies defaults, and returns the cleaned full set:
 // every schema field present, whitespace-trimmed except multiline fields.
-func (r *Registry) ValidateConfig(channel payentity.Channel, values map[string]string) (map[string]string, error) {
+func (r *Registry) ValidateConfig(req payservice.ChannelConfigRequest) (map[string]string, error) {
 	r.mu.RLock()
-	f, ok := r.factories[channel]
+	f, ok := r.factories[req.Channel]
 	r.mu.RUnlock()
 	if !ok {
 		return nil, pay.ErrChannelNotAdopted
@@ -126,17 +126,17 @@ func (r *Registry) ValidateConfig(channel payentity.Channel, values map[string]s
 	for _, field := range schema.Fields {
 		byName[field.Name] = field
 	}
-	for name := range values {
+	for name := range req.Values {
 		if _, known := byName[name]; !known {
 			return nil, fmt.Errorf("%w: unknown config field %q", pay.ErrMerchantInvalid, name)
 		}
 	}
 	cleaned := make(map[string]string, len(schema.Fields))
 	for _, field := range schema.Fields {
-		v := strings.TrimSpace(values[field.Name])
+		v := strings.TrimSpace(req.Values[field.Name])
 		if field.Type == payentity.FieldTextarea {
 			// Multiline material (keys, certificates) is never trimmed.
-			v = values[field.Name]
+			v = req.Values[field.Name]
 		}
 		if v == "" && field.Default != "" {
 			v = field.Default
@@ -165,16 +165,16 @@ func (r *Registry) ValidateConfig(channel payentity.Channel, values map[string]s
 // secret shows only its last four characters (or a bare **** when too
 // short), everything else reads verbatim. Fields with no value are
 // omitted — "what is set" is exactly what the echo shows (ADR 0018).
-func (r *Registry) MaskConfig(channel payentity.Channel, values map[string]string) map[string]string {
+func (r *Registry) MaskConfig(req payservice.ChannelConfigRequest) map[string]string {
 	r.mu.RLock()
-	f, ok := r.factories[channel]
+	f, ok := r.factories[req.Channel]
 	r.mu.RUnlock()
 	if !ok {
 		return nil
 	}
 	masked := make(map[string]string)
 	for _, field := range f.Schema().Fields {
-		v := values[field.Name]
+		v := req.Values[field.Name]
 		if v == "" {
 			continue
 		}

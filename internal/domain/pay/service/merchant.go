@@ -157,7 +157,7 @@ func (s *merchantImpl) Create(ctx context.Context, req CreateRequest) (*payentit
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.create", err)
 		return nil, err
 	}
-	cleaned, err := s.catalog.ValidateConfig(req.Channel, req.Config)
+	cleaned, err := s.catalog.ValidateConfig(ChannelConfigRequest{Channel: req.Channel, Values: req.Config})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.create", err)
 		return nil, err
@@ -168,7 +168,7 @@ func (s *merchantImpl) Create(ctx context.Context, req CreateRequest) (*payentit
 		Name:         req.Name,
 		Status:       payentity.MerchantEnabled,
 		Config:       cleaned,
-		ConfigMasked: s.catalog.MaskConfig(req.Channel, cleaned),
+		ConfigMasked: s.catalog.MaskConfig(ChannelConfigRequest{Channel: req.Channel, Values: cleaned}),
 		ConfigDigest: s.cipher.Digest(cleaned),
 		KeyVersion:   1,
 		Remark:       req.Remark,
@@ -215,7 +215,7 @@ func (s *merchantImpl) Update(ctx context.Context, req UpdateRequest) (*payentit
 		return nil, err
 	}
 	merged := mergeBlankSecrets(schema, m.Config, req.Config)
-	cleaned, err := s.catalog.ValidateConfig(m.Channel, merged)
+	cleaned, err := s.catalog.ValidateConfig(ChannelConfigRequest{Channel: m.Channel, Values: merged})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.update", err)
 		return nil, err
@@ -223,7 +223,7 @@ func (s *merchantImpl) Update(ctx context.Context, req UpdateRequest) (*payentit
 	m.Name = req.Name
 	m.Remark = req.Remark
 	m.Config = cleaned
-	m.ConfigMasked = s.catalog.MaskConfig(m.Channel, cleaned)
+	m.ConfigMasked = s.catalog.MaskConfig(ChannelConfigRequest{Channel: m.Channel, Values: cleaned})
 	m.ConfigDigest = s.cipher.Digest(cleaned)
 	updated, err := s.merchants.Update(ctx, payrepo.UpdateMerchantRequest{Merchant: m, ActorID: req.ActorID})
 	if err != nil {

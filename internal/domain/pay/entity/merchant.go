@@ -102,16 +102,16 @@ type SchemaOption struct {
 // Alipay's certificate mode): the field is required exactly when every
 // named sibling field holds one of the listed values.
 type SchemaField struct {
-	Name        string
-	Label       string
-	Type        SchemaFieldType
-	Required    bool
-	Secret      bool
-	Placeholder string
-	Help        string
-	Group       string
-	Choices     []SchemaOption
-	Default     string
+	Name         string
+	Label        string
+	Type         SchemaFieldType
+	Required     bool
+	Secret       bool
+	Placeholder  string
+	Help         string
+	Group        string
+	Choices      []SchemaOption
+	Default      string
 	RequiredWhen map[string]string
 }
 

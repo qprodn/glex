@@ -431,11 +431,11 @@ func (goldCatalog) Schema(ch payentity.Channel) (payentity.ChannelSchema, error)
 	return payentity.ChannelSchema{}, paydomain.ErrChannelNotAdopted
 }
 func (goldCatalog) Adopted(payentity.Channel) bool { return true }
-func (goldCatalog) ValidateConfig(ch payentity.Channel, values map[string]string) (map[string]string, error) {
-	return values, nil
+func (goldCatalog) ValidateConfig(req payservice.ChannelConfigRequest) (map[string]string, error) {
+	return req.Values, nil
 }
-func (goldCatalog) MaskConfig(ch payentity.Channel, values map[string]string) map[string]string {
-	return values
+func (goldCatalog) MaskConfig(req payservice.ChannelConfigRequest) map[string]string {
+	return req.Values
 }
 
 type goldFactory struct{ base string }
