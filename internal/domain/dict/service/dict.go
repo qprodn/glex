@@ -8,10 +8,8 @@ import (
 	"glex/internal/domain/dict"
 	"glex/internal/domain/dict/entity"
 	"glex/internal/domain/dict/repository"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
-
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 )
 
 // Dict is the dict domain service behind the dictionary endpoints: the only
@@ -21,7 +19,7 @@ import (
 // logs its Warn breadcrumb (ADR 0011).
 type Dict interface {
 	GetType(ctx context.Context, id int64) (*entity.DictType, error)
-	ListTypes(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.DictType, error)
+	ListTypes(ctx context.Context, q listq.Query) ([]*entity.DictType, error)
 	// Create validates the type and persists it.
 	CreateType(ctx context.Context, t *entity.DictType) (*entity.DictType, error)
 	// Update validates the change and persists it. The key is immutable
@@ -33,7 +31,7 @@ type Dict interface {
 	DeleteType(ctx context.Context, id, actorID int64) error
 
 	GetEntry(ctx context.Context, id int64) (*entity.DictEntry, error)
-	ListEntries(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.DictEntry, error)
+	ListEntries(ctx context.Context, q listq.Query) ([]*entity.DictEntry, error)
 	// OptionsByType returns one type's active entries ordered by
 	// (dict_sort, id) — the consumption read. An unknown key yields an
 	// empty list, not an error.
@@ -76,13 +74,8 @@ func (s *dictImpl) GetType(ctx context.Context, id int64) (*entity.DictType, err
 	return t, nil
 }
 
-func (s *dictImpl) ListTypes(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.DictType, error) {
-	ts, err := s.types.List(ctx,
-		repository.ListFilter(filter),
-		repository.ListOrderBy(orderBy),
-		repository.ListLimit(limit),
-		repository.ListOffset(offset),
-	)
+func (s *dictImpl) ListTypes(ctx context.Context, q listq.Query) ([]*entity.DictType, error) {
+	ts, err := s.types.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "dict.svc.list_types", err)
 		return nil, err
@@ -163,13 +156,8 @@ func (s *dictImpl) GetEntry(ctx context.Context, id int64) (*entity.DictEntry, e
 	return e, nil
 }
 
-func (s *dictImpl) ListEntries(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*entity.DictEntry, error) {
-	es, err := s.entries.List(ctx,
-		repository.ListFilter(filter),
-		repository.ListOrderBy(orderBy),
-		repository.ListLimit(limit),
-		repository.ListOffset(offset),
-	)
+func (s *dictImpl) ListEntries(ctx context.Context, q listq.Query) ([]*entity.DictEntry, error) {
+	es, err := s.entries.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "dict.svc.list_entries", err)
 		return nil, err

@@ -11,8 +11,7 @@ import (
 	authnentity "glex/internal/domain/authn/entity"
 	authnservice "glex/internal/domain/authn/service"
 
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
+	"glex/pkg/listq"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
@@ -70,11 +69,11 @@ func (f *fakeDictService) GetType(_ context.Context, _ int64) (*dictentity.DictT
 	return f.getType, nil
 }
 
-func (f *fakeDictService) ListTypes(_ context.Context, _ filtering.Filter, _ ordering.OrderBy, limit, offset int) ([]*dictentity.DictType, error) {
+func (f *fakeDictService) ListTypes(_ context.Context, q listq.Query) ([]*dictentity.DictType, error) {
 	if f.listTypesErr != nil {
 		return nil, f.listTypesErr
 	}
-	f.listTypesLimit, f.listTypesOffset = limit, offset
+	f.listTypesLimit, f.listTypesOffset = q.Limit, q.Offset
 	return f.listTypes, nil
 }
 
@@ -109,11 +108,11 @@ func (f *fakeDictService) GetEntry(_ context.Context, _ int64) (*dictentity.Dict
 	return f.getEntry, nil
 }
 
-func (f *fakeDictService) ListEntries(_ context.Context, _ filtering.Filter, _ ordering.OrderBy, limit, offset int) ([]*dictentity.DictEntry, error) {
+func (f *fakeDictService) ListEntries(_ context.Context, q listq.Query) ([]*dictentity.DictEntry, error) {
 	if f.listEntriesErr != nil {
 		return nil, f.listEntriesErr
 	}
-	f.listEntriesLimit, f.listEntriesOffset = limit, offset
+	f.listEntriesLimit, f.listEntriesOffset = q.Limit, q.Offset
 	return f.listEntries, nil
 }
 

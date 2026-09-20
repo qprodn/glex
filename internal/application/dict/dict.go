@@ -8,12 +8,12 @@ import (
 	"glex/internal/bizpkg"
 	dictentity "glex/internal/domain/dict/entity"
 	dictservice "glex/internal/domain/dict/service"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
 
 	"go.einride.tech/aip/fieldmask"
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
-	"go.einride.tech/aip/pagination"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -144,41 +144,37 @@ func (s *DictApplication) GetDictType(ctx context.Context, req *dictv1.GetDictTy
 	return convertDictType(t), nil
 }
 
+// The dict module's two list facts (ADR 0024): the filterable idents plus
+// the RuoYi listing order each list defaults to.
+var (
+	dictTypeListSpec = listq.Spec{
+		Idents: []filtering.DeclarationOption{
+			filtering.DeclareIdent("dict_name", filtering.TypeString),
+			filtering.DeclareIdent("dict_type", filtering.TypeString),
+		},
+		DefaultOrder: []ordering.Field{{Path: "id"}},
+	}
+	dictEntryListSpec = listq.Spec{
+		Idents: []filtering.DeclarationOption{
+			filtering.DeclareIdent("dict_type", filtering.TypeString),
+			filtering.DeclareIdent("dict_label", filtering.TypeString),
+			filtering.DeclareIdent("dict_value", filtering.TypeString),
+		},
+		// Display order, then id as a stable tie-break — RuoYi's dict-data
+		// listing order.
+		DefaultOrder: []ordering.Field{{Path: "dict_sort"}, {Path: "id"}},
+	}
+)
+
 // ListDictTypes lists dict types with AIP-160 filter, AIP-132 order, and
 // page-token pagination.
 func (s *DictApplication) ListDictTypes(ctx context.Context, req *dictv1.ListDictTypesRequest) (*dictv1.DictTypeSet, error) {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
-		filtering.DeclareIdent("dict_name", filtering.TypeString),
-		filtering.DeclareIdent("dict_type", filtering.TypeString),
-	)
+	q, page, err := listq.Parse(req, dictTypeListSpec)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "dict.list_dict_types", err)
 		return nil, err
 	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "dict.list_dict_types", err)
-		return nil, err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "dict.list_dict_types", err)
-		return nil, err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "dict.list_dict_types", err)
-		return nil, err
-	}
-	if len(orderBy.Fields) == 0 {
-		// Default order: id ascending — RuoYi's dict-type listing order.
-		orderBy.Fields = []ordering.Field{{Path: "id"}}
-	}
-	if req.GetPageSize() <= 0 {
-		req.PageSize = 20
-	}
-	types, err := s.svc.ListTypes(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
+	types, err := s.svc.ListTypes(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "dict.list_dict_types", err)
 		return nil, err
@@ -187,9 +183,7 @@ func (s *DictApplication) ListDictTypes(ctx context.Context, req *dictv1.ListDic
 	for _, t := range types {
 		set.DictTypes = append(set.DictTypes, convertDictType(t))
 	}
-	if len(types) >= int(req.GetPageSize()) {
-		set.NextPageToken = pageToken.Next(req).String()
-	}
+	set.NextPageToken = page.NextToken(len(types))
 	return set, nil
 }
 
@@ -276,40 +270,12 @@ func (s *DictApplication) GetDictEntry(ctx context.Context, req *dictv1.GetDictE
 // page-token pagination. Filtering on dict_type is the drawer's "entries of
 // this type" read.
 func (s *DictApplication) ListDictEntries(ctx context.Context, req *dictv1.ListDictEntriesRequest) (*dictv1.DictEntrySet, error) {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
-		filtering.DeclareIdent("dict_type", filtering.TypeString),
-		filtering.DeclareIdent("dict_label", filtering.TypeString),
-		filtering.DeclareIdent("dict_value", filtering.TypeString),
-	)
+	q, page, err := listq.Parse(req, dictEntryListSpec)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "dict.list_dict_entries", err)
 		return nil, err
 	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "dict.list_dict_entries", err)
-		return nil, err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "dict.list_dict_entries", err)
-		return nil, err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "dict.list_dict_entries", err)
-		return nil, err
-	}
-	if len(orderBy.Fields) == 0 {
-		// Default order: display order, then id as a stable tie-break —
-		// RuoYi's dict-data listing order.
-		orderBy.Fields = []ordering.Field{{Path: "dict_sort"}, {Path: "id"}}
-	}
-	if req.GetPageSize() <= 0 {
-		req.PageSize = 20
-	}
-	entries, err := s.svc.ListEntries(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
+	entries, err := s.svc.ListEntries(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "dict.list_dict_entries", err)
 		return nil, err
@@ -318,9 +284,7 @@ func (s *DictApplication) ListDictEntries(ctx context.Context, req *dictv1.ListD
 	for _, e := range entries {
 		set.Entries = append(set.Entries, convertDictEntry(e))
 	}
-	if len(entries) >= int(req.GetPageSize()) {
-		set.NextPageToken = pageToken.Next(req).String()
-	}
+	set.NextPageToken = page.NextToken(len(entries))
 	return set, nil
 }
 

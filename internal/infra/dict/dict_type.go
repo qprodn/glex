@@ -13,6 +13,7 @@ import (
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/dicttype"
 	"glex/internal/infra/store"
+	"glex/pkg/listq"
 )
 
 // toBizDictType maps an ent DictType PO to a dictentity.DictType DO.
@@ -85,19 +86,15 @@ func (r *dictTypeRepo) FindByKey(ctx context.Context, key string) (*dictentity.D
 	return toBizDictType(po), nil
 }
 
-func (r *dictTypeRepo) List(ctx context.Context, opts ...dictrepo.ListOption) ([]*dictentity.DictType, error) {
-	o := dictrepo.ListOptions{Limit: 20}
-	for _, opt := range opts {
-		opt(&o)
-	}
+func (r *dictTypeRepo) List(ctx context.Context, q listq.Query) ([]*dictentity.DictType, error) {
 	pos, err := r.data.DB.DictType(ctx).Query().
 		Where(
 			dicttype.DeletedAtIsNil(),
-			ents.ApplyFilter(o.Filter),
+			ents.ApplyFilter(q.Filter),
 		).
-		Order(ents.ApplyOrderBy(o.OrderBy)).
-		Offset(o.Offset).
-		Limit(o.Limit).
+		Order(ents.ApplyOrderBy(q.OrderBy)).
+		Offset(q.Offset).
+		Limit(q.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, dictStoreError(ctx, r.logger, "dict.type.list", err)

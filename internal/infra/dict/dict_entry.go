@@ -12,6 +12,7 @@ import (
 	"glex/internal/infra/ent"
 	"glex/internal/infra/ent/dictdata"
 	"glex/internal/infra/store"
+	"glex/pkg/listq"
 )
 
 // toBizDictEntry maps an ent DictData PO to a dictentity.DictEntry DO. The
@@ -73,19 +74,15 @@ func (r *dictEntryRepo) FindByTypeAndValue(ctx context.Context, dictType, value 
 	return toBizDictEntry(po), nil
 }
 
-func (r *dictEntryRepo) List(ctx context.Context, opts ...dictrepo.ListOption) ([]*dictentity.DictEntry, error) {
-	o := dictrepo.ListOptions{Limit: 20}
-	for _, opt := range opts {
-		opt(&o)
-	}
+func (r *dictEntryRepo) List(ctx context.Context, q listq.Query) ([]*dictentity.DictEntry, error) {
 	pos, err := r.data.DB.DictData(ctx).Query().
 		Where(
 			dictdata.DeletedAtIsNil(),
-			ents.ApplyFilter(o.Filter),
+			ents.ApplyFilter(q.Filter),
 		).
-		Order(ents.ApplyOrderBy(o.OrderBy)).
-		Offset(o.Offset).
-		Limit(o.Limit).
+		Order(ents.ApplyOrderBy(q.OrderBy)).
+		Offset(q.Offset).
+		Limit(q.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, dictStoreError(ctx, r.logger, "dict.entry.list", err)

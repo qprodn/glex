@@ -6,7 +6,7 @@ import (
 
 	"glex/internal/domain/dict"
 	"glex/internal/domain/dict/entity"
-	"glex/internal/domain/dict/repository"
+	"glex/pkg/listq"
 
 	"github.com/go-kratos/kratos/v3/errors"
 )
@@ -42,7 +42,7 @@ func (r *fakeTypeRepo) FindByKey(_ context.Context, key string) (*entity.DictTyp
 	return t, nil
 }
 
-func (r *fakeTypeRepo) List(context.Context, ...repository.ListOption) ([]*entity.DictType, error) {
+func (r *fakeTypeRepo) List(context.Context, listq.Query) ([]*entity.DictType, error) {
 	return nil, nil
 }
 
@@ -104,7 +104,7 @@ func (r *fakeEntryRepo) FindByTypeAndValue(_ context.Context, dictType, value st
 	return e, nil
 }
 
-func (r *fakeEntryRepo) List(context.Context, ...repository.ListOption) ([]*entity.DictEntry, error) {
+func (r *fakeEntryRepo) List(context.Context, listq.Query) ([]*entity.DictEntry, error) {
 	return nil, nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"glex/internal/domain/dict/entity"
+	"glex/pkg/listq"
 )
 
 // DictEntryRepo is the repository interface for Dict Entries (the inversion
@@ -13,7 +14,7 @@ type DictEntryRepo interface {
 	// FindByTypeAndValue resolves the (dict_type, dict_value) pair among
 	// active entries; the value-uniqueness pre-check reads through it.
 	FindByTypeAndValue(ctx context.Context, dictType, value string) (*entity.DictEntry, error)
-	List(ctx context.Context, opts ...ListOption) ([]*entity.DictEntry, error)
+	List(ctx context.Context, q listq.Query) ([]*entity.DictEntry, error)
 	// ListByDictKey returns one type's active entries ordered by
 	// (dict_sort, id) — the shape the options endpoint serves. An unknown
 	// key yields an empty list, not an error.
