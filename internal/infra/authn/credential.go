@@ -25,9 +25,9 @@ func NewCredentialRepo(data *store.Data) authnrepo.CredentialRepo {
 
 // StoreCredential replaces the stored password hash inside the caller's
 // propagated transaction.
-func (r *credentialRepo) StoreCredential(ctx context.Context, systemUserID int64, passwordHash string) error {
-	if err := r.data.DB.User(ctx).UpdateOneID(systemUserID).
-		SetPassword(passwordHash).
+func (r *credentialRepo) StoreCredential(ctx context.Context, req authnrepo.StoreCredentialRequest) error {
+	if err := r.data.DB.User(ctx).UpdateOneID(req.SystemUserID).
+		SetPassword(req.PasswordHash).
 		Exec(ctx); err != nil {
 		return authDatabaseBackendError(ctx, r.logger, "authn.store_credential", err)
 	}

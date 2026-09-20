@@ -74,12 +74,12 @@ func (r *authLoginRepo) FindLoginAccount(ctx context.Context, userName string) (
 }
 
 // Revalidate re-reads the account inside the caller's Application transaction.
-func (r *authLoginRepo) Revalidate(ctx context.Context, systemUserID int64, userName, passwordHash string) (*authnentity.LoginAccount, error) {
-	if systemUserID <= 0 || userName == "" || passwordHash == "" {
+func (r *authLoginRepo) Revalidate(ctx context.Context, req authnrepo.RevalidateRequest) (*authnentity.LoginAccount, error) {
+	if req.SystemUserID <= 0 || req.UserName == "" || req.PasswordHash == "" {
 		return nil, authndomain.ErrInvalidCredentials
 	}
 	current, err := r.data.DB.User(ctx).Query().
-		Where(user.IDEQ(systemUserID), user.DeletedAtIsNil()).
+		Where(user.IDEQ(req.SystemUserID), user.DeletedAtIsNil()).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -87,7 +87,7 @@ func (r *authLoginRepo) Revalidate(ctx context.Context, systemUserID int64, user
 		}
 		return nil, authDatabaseBackendError(ctx, r.logger, "authn.reload_login_system_user", err)
 	}
-	if current.UserName != userName || current.Password != passwordHash {
+	if current.UserName != req.UserName || current.Password != req.PasswordHash {
 		return nil, authndomain.ErrInvalidCredentials
 	}
 	if current.Status != 0 {
@@ -103,10 +103,10 @@ func (r *authLoginRepo) Revalidate(ctx context.Context, systemUserID int64, user
 
 // RecordLogin persists the login IP and time on the System User row inside
 // the caller's transaction.
-func (r *authLoginRepo) RecordLogin(ctx context.Context, systemUserID int64, sourceIP string, loginTime time.Time) error {
-	if err := r.data.DB.User(ctx).UpdateOneID(systemUserID).
-		SetLoginIP(sourceIP).
-		SetLoginDate(loginTime).
+func (r *authLoginRepo) RecordLogin(ctx context.Context, req authnrepo.RecordLoginRequest) error {
+	if err := r.data.DB.User(ctx).UpdateOneID(req.SystemUserID).
+		SetLoginIP(req.SourceIP).
+		SetLoginDate(req.LoginTime).
 		Exec(ctx); err != nil {
 		return authDatabaseBackendError(ctx, r.logger, "authn.update_last_login", err)
 	}
@@ -118,16 +118,16 @@ func (r *authLoginRepo) RecordLogin(ctx context.Context, systemUserID int64, sou
 // authoritative Login Session. Pure Redis — deliberately the last step of the
 // login orchestration so its failure rolls the PostgreSQL writes back. On
 // partial failure it destroys what it wrote before returning the error.
-func (r *authLoginRepo) IssueCredential(ctx context.Context, snapshot *authnentity.AuthorizationSnapshot, session *authnentity.LoginSession) (*authnentity.LoginResult, error) {
-	if snapshot == nil || session == nil || session.SystemUserID <= 0 || session.UserName == "" {
+func (r *authLoginRepo) IssueCredential(ctx context.Context, req authnrepo.IssueCredentialRequest) (*authnentity.LoginResult, error) {
+	if req.Snapshot == nil || req.Session == nil || req.Session.SystemUserID <= 0 || req.Session.UserName == "" {
 		return nil, authndomain.ErrInvalidCredentials
 	}
-	token, err := loginAndReplaceAuthorizationSnapshot(r.manager, snapshot, session.DeviceType, r.fixedLifetime)
+	token, err := loginAndReplaceAuthorizationSnapshot(r.manager, req.Snapshot, req.Session.DeviceType, r.fixedLifetime)
 	if err != nil {
 		return nil, authndomain.ErrAuthBackendUnavailable
 	}
-	if _, err := r.sessions.Create(ctx, token, session); err != nil {
-		r.cleanupUnregisteredToken(ctx, token, session.SystemUserID)
+	if _, err := r.sessions.Create(ctx, authnrepo.CreateSessionRequest{BearerToken: token, Session: req.Session}); err != nil {
+		r.cleanupUnregisteredToken(ctx, token, req.Session.SystemUserID)
 		return nil, err
 	}
 	return &authnentity.LoginResult{AccessToken: token, ExpiresIn: r.fixedLifetime}, nil
@@ -146,16 +146,16 @@ func (r *authLoginRepo) IssueCredential(ctx context.Context, snapshot *authnenti
 // keys already gone (ErrAuthKeyNotFound), a Login Session revoked
 // concurrently (ErrLoginSessionNotOwned) — and a Warn here would double-log
 // each failure.
-func (r *authLoginRepo) DiscardCredential(ctx context.Context, systemUserID int64, bearerToken string) error {
-	if systemUserID <= 0 || bearerToken == "" {
+func (r *authLoginRepo) DiscardCredential(ctx context.Context, req authnrepo.DiscardCredentialRequest) error {
+	if req.SystemUserID <= 0 || req.BearerToken == "" {
 		return nil
 	}
-	if session, err := r.sessions.FindByToken(ctx, bearerToken); err == nil && session != nil {
+	if session, err := r.sessions.FindByToken(ctx, req.BearerToken); err == nil && session != nil {
 		_ = r.sessions.Logout(ctx, session.ID)
 	}
-	_ = r.manager.LogoutByToken(bearerToken)
-	if remaining, err := r.sessions.ListBySystemUser(ctx, systemUserID); err == nil && len(remaining) == 0 {
-		_ = r.manager.DeleteSession(strconv.FormatInt(systemUserID, 10))
+	_ = r.manager.LogoutByToken(req.BearerToken)
+	if remaining, err := r.sessions.ListBySystemUser(ctx, authnrepo.ListBySystemUserRequest{SystemUserID: req.SystemUserID}); err == nil && len(remaining) == 0 {
+		_ = r.manager.DeleteSession(strconv.FormatInt(req.SystemUserID, 10))
 	}
 	return nil
 }
@@ -222,7 +222,7 @@ func copyStringSet(values []string) []string {
 // nothing (ADR 0007).
 func (r *authLoginRepo) cleanupUnregisteredToken(ctx context.Context, token string, systemUserID int64) {
 	_ = r.manager.LogoutByToken(token)
-	remaining, err := r.sessions.ListBySystemUser(ctx, systemUserID)
+	remaining, err := r.sessions.ListBySystemUser(ctx, authnrepo.ListBySystemUserRequest{SystemUserID: systemUserID})
 	if err == nil && len(remaining) == 0 {
 		_ = r.manager.DeleteSession(strconv.FormatInt(systemUserID, 10))
 	}

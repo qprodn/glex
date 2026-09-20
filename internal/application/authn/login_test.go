@@ -13,6 +13,7 @@ import (
 	auditmodel "glex/internal/crossdomain/audit/model"
 	authndomain "glex/internal/domain/authn"
 	authnentity "glex/internal/domain/authn/entity"
+	authnservice "glex/internal/domain/authn/service"
 )
 
 // fakeLoginLogWriter stands in for the audit crossdomain contract: it
@@ -60,21 +61,21 @@ type fakeLoginService struct {
 	logoutErr      error
 }
 
-func (s *fakeLoginService) VerifyPassword(_ context.Context, userName, _, _ string) (*authnentity.LoginAccount, error) {
+func (s *fakeLoginService) VerifyPassword(_ context.Context, req authnservice.VerifyPasswordRequest) (*authnentity.LoginAccount, error) {
 	s.steps = append(s.steps, "verify")
-	s.verifyName = userName
+	s.verifyName = req.UserName
 	if s.verifyErr != nil {
 		return nil, s.verifyErr
 	}
 	if s.account == nil {
-		s.account = &authnentity.LoginAccount{ID: 42, UserName: userName, PasswordHash: "hash"}
+		s.account = &authnentity.LoginAccount{ID: 42, UserName: req.UserName, PasswordHash: "hash"}
 	}
 	return s.account, nil
 }
 
 // RecordFailure answers with the below-threshold normalized outcome, like the
 // domain service does once the attempt is recorded.
-func (s *fakeLoginService) RecordFailure(_ context.Context, _, _ string) error {
+func (s *fakeLoginService) RecordFailure(_ context.Context, _ authnservice.LoginAttemptRequest) error {
 	s.steps = append(s.steps, "fail")
 	s.failures++
 	return authndomain.ErrInvalidCredentials
@@ -86,28 +87,28 @@ func (s *fakeLoginService) ClearFailures(_ context.Context, userName string) err
 	return s.clearErr
 }
 
-func (s *fakeLoginService) Revalidate(_ context.Context, systemUserID int64, userName, _ string) (*authnentity.LoginAccount, error) {
+func (s *fakeLoginService) Revalidate(_ context.Context, req authnservice.RevalidateRequest) (*authnentity.LoginAccount, error) {
 	s.steps = append(s.steps, "lock")
 	if s.lockErr != nil {
 		return nil, s.lockErr
 	}
 	if s.locked == nil {
-		s.locked = &authnentity.LoginAccount{ID: systemUserID, UserName: userName}
+		s.locked = &authnentity.LoginAccount{ID: req.SystemUserID, UserName: req.UserName}
 	}
 	return s.locked, nil
 }
 
-func (s *fakeLoginService) RecordLogin(_ context.Context, _ int64, sourceIP string, loginTime time.Time) error {
+func (s *fakeLoginService) RecordLogin(_ context.Context, req authnservice.RecordLoginRequest) error {
 	s.steps = append(s.steps, "record")
-	s.recordIP = sourceIP
-	s.recordAt = loginTime
+	s.recordIP = req.SourceIP
+	s.recordAt = req.LoginTime
 	return nil
 }
 
-func (s *fakeLoginService) IssueCredential(_ context.Context, snapshot *authnentity.AuthorizationSnapshot, session *authnentity.LoginSession) (*authnentity.LoginResult, error) {
+func (s *fakeLoginService) IssueCredential(_ context.Context, req authnservice.IssueCredentialRequest) (*authnentity.LoginResult, error) {
 	s.steps = append(s.steps, "issue")
-	s.issuedSnapshot = snapshot
-	s.issued = session
+	s.issuedSnapshot = req.Snapshot
+	s.issued = req.Session
 	if s.issueErr != nil {
 		return nil, s.issueErr
 	}
@@ -117,9 +118,9 @@ func (s *fakeLoginService) IssueCredential(_ context.Context, snapshot *authnent
 	return s.result, nil
 }
 
-func (s *fakeLoginService) DiscardCredential(_ context.Context, _ int64, bearerToken string) error {
+func (s *fakeLoginService) DiscardCredential(_ context.Context, req authnservice.DiscardCredentialRequest) error {
 	s.steps = append(s.steps, "discard")
-	s.discarded = append(s.discarded, bearerToken)
+	s.discarded = append(s.discarded, req.BearerToken)
 	return nil
 }
 

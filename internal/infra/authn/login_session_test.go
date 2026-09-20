@@ -52,14 +52,17 @@ func createManagedLoginSession(t *testing.T, repo authnrepo.LoginSessionRepo, ma
 	if userName == "bob" {
 		ipAddress = "192.0.2.2"
 	}
-	session, err := repo.Create(t.Context(), token, &authnentity.LoginSession{
-		SystemUserID: userID,
-		UserName:     userName,
-		DeviceType:   device,
-		IPAddress:    ipAddress,
-		Browser:      "Firefox",
-		OS:           "Linux",
-		LoginTime:    loginTime,
+	session, err := repo.Create(t.Context(), authnrepo.CreateSessionRequest{
+		BearerToken: token,
+		Session: &authnentity.LoginSession{
+			SystemUserID: userID,
+			UserName:     userName,
+			DeviceType:   device,
+			IPAddress:    ipAddress,
+			Browser:      "Firefox",
+			OS:           "Linux",
+			LoginTime:    loginTime,
+		},
 	})
 	if err != nil {
 		t.Fatalf("Create Login Session: %v", err)
@@ -79,7 +82,7 @@ func TestLoginSessionsWithSameDeviceRemainEnumerable(t *testing.T) {
 		t.Fatal("Session ID must be separate from the bearer token")
 	}
 
-	got, err := repo.ListBySystemUser(t.Context(), 42)
+	got, err := repo.ListBySystemUser(t.Context(), authnrepo.ListBySystemUserRequest{SystemUserID: 42})
 	if err != nil {
 		t.Fatalf("ListBySystemUser: %v", err)
 	}
@@ -93,16 +96,19 @@ func TestLoginSessionsWithSameDeviceRemainEnumerable(t *testing.T) {
 
 func TestCreateLoginSessionRejectsUnmanagedBearerToken(t *testing.T) {
 	repo, _, _ := newTestLoginSessionRepo(t)
-	_, err := repo.Create(t.Context(), "not-issued-by-manager", &authnentity.LoginSession{
-		SystemUserID: 42,
-		UserName:     "alice",
-		DeviceType:   "desktop",
-		LoginTime:    time.Unix(1_700_000_100, 0),
+	_, err := repo.Create(t.Context(), authnrepo.CreateSessionRequest{
+		BearerToken: "not-issued-by-manager",
+		Session: &authnentity.LoginSession{
+			SystemUserID: 42,
+			UserName:     "alice",
+			DeviceType:   "desktop",
+			LoginTime:    time.Unix(1_700_000_100, 0),
+		},
 	})
 	if !errors.Is(err, authndomain.ErrTokenInvalid) {
 		t.Fatalf("Create(unmanaged token) = %v, want ErrTokenInvalid", err)
 	}
-	listed, err := repo.ListBySystemUser(t.Context(), 42)
+	listed, err := repo.ListBySystemUser(t.Context(), authnrepo.ListBySystemUserRequest{SystemUserID: 42})
 	if err != nil {
 		t.Fatalf("ListBySystemUser: %v", err)
 	}
@@ -132,11 +138,14 @@ func TestConcurrentRegistrationKeepsFiveUsableSessionsAndReplacesOldest(t *testi
 		go func(i int, token string) {
 			ready.Done()
 			<-start
-			session, err := repo.Create(t.Context(), token, &authnentity.LoginSession{
-				SystemUserID: 42,
-				UserName:     "alice",
-				DeviceType:   "desktop",
-				LoginTime:    time.Unix(1_700_001_000+int64(i), 0),
+			session, err := repo.Create(t.Context(), authnrepo.CreateSessionRequest{
+				BearerToken: token,
+				Session: &authnentity.LoginSession{
+					SystemUserID: 42,
+					UserName:     "alice",
+					DeviceType:   "desktop",
+					LoginTime:    time.Unix(1_700_001_000+int64(i), 0),
+				},
 			})
 			results <- created{session: session, token: token, err: err}
 		}(i, token)
@@ -153,7 +162,7 @@ func TestConcurrentRegistrationKeepsFiveUsableSessionsAndReplacesOldest(t *testi
 		byToken[result.token] = result.session
 	}
 
-	listed, err := repo.ListBySystemUser(t.Context(), 42)
+	listed, err := repo.ListBySystemUser(t.Context(), authnrepo.ListBySystemUserRequest{SystemUserID: 42})
 	if err != nil {
 		t.Fatalf("ListBySystemUser: %v", err)
 	}
@@ -243,11 +252,14 @@ func TestConcurrentRegistrationAgainstRealRedis(t *testing.T) {
 		go func(i int, token string) {
 			ready.Done()
 			<-start
-			_, err := repo.Create(t.Context(), token, &authnentity.LoginSession{
-				SystemUserID: 42,
-				UserName:     "alice",
-				DeviceType:   "desktop",
-				LoginTime:    time.Unix(1_700_001_100+int64(i), 0),
+			_, err := repo.Create(t.Context(), authnrepo.CreateSessionRequest{
+				BearerToken: token,
+				Session: &authnentity.LoginSession{
+					SystemUserID: 42,
+					UserName:     "alice",
+					DeviceType:   "desktop",
+					LoginTime:    time.Unix(1_700_001_100+int64(i), 0),
+				},
 			})
 			results <- result{token: token, err: err}
 		}(i, token)
@@ -269,7 +281,7 @@ func TestConcurrentRegistrationAgainstRealRedis(t *testing.T) {
 			t.Fatalf("unexpected token state: %v", err)
 		}
 	}
-	listed, err := repo.ListBySystemUser(t.Context(), 42)
+	listed, err := repo.ListBySystemUser(t.Context(), authnrepo.ListBySystemUserRequest{SystemUserID: 42})
 	if err != nil {
 		t.Fatalf("ListBySystemUser: %v", err)
 	}
@@ -312,13 +324,13 @@ func TestSaTokenDeviceMappingHazardIsContainedByProjectIndex(t *testing.T) {
 	// Prevention: the same login pattern through the project index.
 	first, firstToken := createManagedLoginSession(t, repo, manager, 42, "alice", "desktop", time.Unix(1_700_007_001, 0))
 	second, secondToken := createManagedLoginSession(t, repo, manager, 42, "alice", "desktop", time.Unix(1_700_007_002, 0))
-	indexed, err := repo.ListBySystemUser(t.Context(), 42)
+	indexed, err := repo.ListBySystemUser(t.Context(), authnrepo.ListBySystemUserRequest{SystemUserID: 42})
 	if err != nil || len(indexed) != 2 {
 		t.Fatalf("project index lists %d Sessions (%v), want both same-device Sessions", len(indexed), err)
 	}
 	// Limit enforcement counts real Sessions, not device mappings: revoking
 	// all of the user's Sessions through the index leaves no valid orphan.
-	if err := repo.RevokeSystemUser(t.Context(), 42, ""); err != nil {
+	if err := repo.RevokeSystemUser(t.Context(), authnrepo.RevokeSystemUserRequest{SystemUserID: 42}); err != nil {
 		t.Fatalf("RevokeSystemUser: %v", err)
 	}
 	for _, token := range []string{firstToken, secondToken} {
@@ -365,7 +377,7 @@ func TestLogoutOldSessionDoesNotHideNewerTokenAndLastLogoutDeletesAccountSession
 	if exists, err := rdb.Exists(t.Context(), "glex:auth:"+AuthManagerKeyPrefix+satokensession.AccountSessionKeyPrefix+"42").Result(); err != nil || exists != 0 {
 		t.Fatalf("Account Session after last Logout: exists=%d err=%v, want deleted", exists, err)
 	}
-	listed, err := repo.ListBySystemUser(t.Context(), 42)
+	listed, err := repo.ListBySystemUser(t.Context(), authnrepo.ListBySystemUserRequest{SystemUserID: 42})
 	if err != nil {
 		t.Fatalf("ListBySystemUser after Logout: %v", err)
 	}
@@ -378,14 +390,14 @@ func TestOwnershipCheckedLogoutCannotRevokeAnotherSystemUsersSession(t *testing.
 	repo, manager, _ := newTestLoginSessionRepo(t)
 	other, otherToken := createManagedLoginSession(t, repo, manager, 84, "bob", "mobile", time.Unix(1_700_003_001, 0))
 
-	err := repo.LogoutOwned(t.Context(), 42, other.ID)
+	err := repo.LogoutOwned(t.Context(), authnrepo.SessionOwnershipRequest{SystemUserID: 42, SessionID: other.ID})
 	if !errors.Is(err, authndomain.ErrLoginSessionNotOwned) {
 		t.Fatalf("LogoutOwned(other user) = %v, want ErrLoginSessionNotOwned", err)
 	}
 	if _, err := manager.CheckLoginWithState(otherToken); err != nil {
 		t.Fatalf("other user's token was revoked: %v", err)
 	}
-	owned, err := repo.Owns(t.Context(), 84, other.ID)
+	owned, err := repo.Owns(t.Context(), authnrepo.SessionOwnershipRequest{SystemUserID: 84, SessionID: other.ID})
 	if err != nil {
 		t.Fatalf("Owns: %v", err)
 	}
@@ -399,7 +411,7 @@ func TestSnowflakeSystemUserIDKeepsOwnershipAndLastSessionCleanupExact(t *testin
 	const systemUserID int64 = 9_007_199_254_740_993 // first integer above IEEE-754's exact range
 	session, _ := createManagedLoginSession(t, repo, manager, systemUserID, "alice", "desktop", time.Unix(1_700_003_100, 0))
 
-	if err := repo.LogoutOwned(t.Context(), systemUserID, session.ID); err != nil {
+	if err := repo.LogoutOwned(t.Context(), authnrepo.SessionOwnershipRequest{SystemUserID: systemUserID, SessionID: session.ID}); err != nil {
 		t.Fatalf("LogoutOwned(Snowflake ID): %v", err)
 	}
 	accountKey := "glex:auth:" + AuthManagerKeyPrefix + satokensession.AccountSessionKeyPrefix + strconv.FormatInt(systemUserID, 10)
@@ -436,7 +448,7 @@ func TestRevokeSystemUserSessionsCanPreserveCurrentSession(t *testing.T) {
 	current, currentToken := createManagedLoginSession(t, repo, manager, 42, "alice", "mobile", time.Unix(1_700_005_002, 0))
 	other, otherToken := createManagedLoginSession(t, repo, manager, 84, "bob", "desktop", time.Unix(1_700_005_003, 0))
 
-	if err := repo.RevokeSystemUser(t.Context(), 42, current.ID); err != nil {
+	if err := repo.RevokeSystemUser(t.Context(), authnrepo.RevokeSystemUserRequest{SystemUserID: 42, ExceptSessionID: current.ID}); err != nil {
 		t.Fatalf("RevokeSystemUser(except current): %v", err)
 	}
 	if _, err := repo.FindByToken(t.Context(), firstToken); !errors.Is(err, authndomain.ErrLoginSessionKickedOut) {
@@ -460,7 +472,7 @@ func TestRevokeSystemUserSessionsCanPreserveCurrentSession(t *testing.T) {
 		t.Fatal("test setup produced duplicate Session IDs")
 	}
 
-	if err := repo.RevokeSystemUser(t.Context(), 42, ""); err != nil {
+	if err := repo.RevokeSystemUser(t.Context(), authnrepo.RevokeSystemUserRequest{SystemUserID: 42}); err != nil {
 		t.Fatalf("RevokeSystemUser(all): %v", err)
 	}
 	if _, err := repo.FindByToken(t.Context(), currentToken); !errors.Is(err, authndomain.ErrLoginSessionKickedOut) {
@@ -482,7 +494,7 @@ func TestRevokeSystemUsersIsOneAtomicValidatedBatch(t *testing.T) {
 	if err := rdb.Set(t.Context(), "glex:auth:"+LoginSessionMetadataPrefix+second.ID, "{", time.Hour).Err(); err != nil {
 		t.Fatalf("corrupt later metadata: %v", err)
 	}
-	err := repo.RevokeSystemUsers(t.Context(), []int64{42, 84}, "")
+	err := repo.RevokeSystemUsers(t.Context(), authnrepo.RevokeSystemUsersRequest{SystemUserIDs: []int64{42, 84}})
 	if err == nil {
 		t.Fatal("atomic batch accepted malformed later metadata")
 	}

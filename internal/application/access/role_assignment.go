@@ -9,6 +9,7 @@ import (
 	"glex/internal/bizpkg"
 	"glex/internal/crossdomain/authn"
 	accessentity "glex/internal/domain/access/entity"
+	accessrepo "glex/internal/domain/access/repository"
 	accessservice "glex/internal/domain/access/service"
 	"glex/pkg/listq"
 	"glex/pkg/logx"
@@ -110,7 +111,11 @@ func (s *RoleAssignmentApplication) ListUserRoles(ctx context.Context, req *acce
 func (s *RoleAssignmentApplication) UpdateUserRoles(ctx context.Context, req *accessv1.UpdateUserRolesRequest) (*accessv1.UserRoles, error) {
 	var assignments []*accessentity.RoleAssignment
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		result, err := s.svc.ReplaceForUser(ctx, req.GetUserId(), req.GetRoleIds(), bizpkg.AuditActor(ctx))
+		result, err := s.svc.ReplaceForUser(ctx, accessrepo.ReplaceUserRolesRequest{
+			UserID:  req.GetUserId(),
+			RoleIDs: req.GetRoleIds(),
+			ActorID: bizpkg.AuditActor(ctx),
+		})
 		if err != nil {
 			return err
 		}
@@ -143,7 +148,7 @@ func (s *RoleAssignmentApplication) ListRoleUsers(ctx context.Context, req *acce
 		logx.Propagate(ctx, s.logger, "access.list_role_users", err)
 		return nil, err
 	}
-	users, err := s.svc.ListRoleUsers(ctx, req.GetRoleId(), q)
+	users, err := s.svc.ListRoleUsers(ctx, accessrepo.ListRoleUsersRequest{Query: q, RoleID: req.GetRoleId()})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.list_role_users", err)
 		return nil, err

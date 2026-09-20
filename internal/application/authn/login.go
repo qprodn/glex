@@ -101,7 +101,7 @@ func requestMetadata(ctx context.Context) (sourceIP, userAgent string) {
 // Session attached by OPTIONAL authentication. A successful logout records
 // its Login Log row best-effort (ADR 0012).
 func (s *LoginApplication) Logout(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	principal, _ := authnservice.PrincipalFromContext(ctx)
+	principal := authnservice.PrincipalFromContext(ctx)
 	if principal == nil {
 		return &emptypb.Empty{}, nil
 	}
@@ -131,7 +131,11 @@ func (s *LoginApplication) Logout(ctx context.Context, _ *emptypb.Empty) (*empty
 // commit failure after it is compensated by discarding the credential.
 func (s *LoginApplication) authenticate(ctx context.Context, req *LoginRequest) (*authnentity.LoginResult, error) {
 	userName := strings.TrimSpace(req.UserName)
-	account, err := s.login.VerifyPassword(ctx, userName, req.Password, req.SourceIP)
+	account, err := s.login.VerifyPassword(ctx, authnservice.VerifyPasswordRequest{
+		UserName: userName,
+		Password: req.Password,
+		SourceIP: req.SourceIP,
+	})
 	if err != nil {
 		s.recordLoginFailure(ctx, req, 0, err)
 		return nil, err
@@ -146,7 +150,11 @@ func (s *LoginApplication) authenticate(ctx context.Context, req *LoginRequest) 
 	loginTime := s.now()
 	var result *authnentity.LoginResult
 	err = s.tx.InTx(ctx, func(ctx context.Context) error {
-		locked, err := s.login.Revalidate(ctx, account.ID, account.UserName, account.PasswordHash)
+		locked, err := s.login.Revalidate(ctx, authnservice.RevalidateRequest{
+			SystemUserID: account.ID,
+			UserName:     account.UserName,
+			PasswordHash: account.PasswordHash,
+		})
 		if err != nil {
 			return err
 		}
@@ -154,25 +162,35 @@ func (s *LoginApplication) authenticate(ctx context.Context, req *LoginRequest) 
 		if err != nil {
 			return err
 		}
-		if err := s.login.RecordLogin(ctx, locked.ID, req.SourceIP, loginTime); err != nil {
+		if err := s.login.RecordLogin(ctx, authnservice.RecordLoginRequest{
+			SystemUserID: locked.ID,
+			SourceIP:     req.SourceIP,
+			LoginTime:    loginTime,
+		}); err != nil {
 			return err
 		}
 		// Credential issuance is deliberately last. A commit failure after a
 		// successful issue is compensated by discarding the credential below.
-		result, err = s.login.IssueCredential(ctx, snapshot, &authnentity.LoginSession{
-			SystemUserID: locked.ID,
-			UserName:     locked.UserName,
-			DeviceType:   deviceType,
-			IPAddress:    req.SourceIP,
-			Browser:      browser,
-			OS:           os,
-			LoginTime:    loginTime,
+		result, err = s.login.IssueCredential(ctx, authnservice.IssueCredentialRequest{
+			Snapshot: snapshot,
+			Session: &authnentity.LoginSession{
+				SystemUserID: locked.ID,
+				UserName:     locked.UserName,
+				DeviceType:   deviceType,
+				IPAddress:    req.SourceIP,
+				Browser:      browser,
+				OS:           os,
+				LoginTime:    loginTime,
+			},
 		})
 		return err
 	})
 	if err != nil {
 		if errors.Is(err, authndomain.ErrInvalidCredentials) {
-			mapped := s.login.RecordFailure(ctx, userName, req.SourceIP)
+			mapped := s.login.RecordFailure(ctx, authnservice.LoginAttemptRequest{
+				UserName: userName,
+				SourceIP: req.SourceIP,
+			})
 			s.recordLoginFailure(ctx, req, 0, mapped)
 			return nil, mapped
 		}
@@ -183,7 +201,10 @@ func (s *LoginApplication) authenticate(ctx context.Context, req *LoginRequest) 
 			// contract: each failed cleanup step is logged-and-mapped at the
 			// infra exit that owns it (ADR 0007), so ignoring the returned
 			// error here adds no new information.
-			_ = s.login.DiscardCredential(ctx, account.ID, result.AccessToken)
+			_ = s.login.DiscardCredential(ctx, authnservice.DiscardCredentialRequest{
+				SystemUserID: account.ID,
+				BearerToken:  result.AccessToken,
+			})
 		}
 		s.recordLoginFailure(ctx, req, account.ID, err)
 		return nil, err

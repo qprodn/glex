@@ -18,8 +18,6 @@ import (
 	"glex/internal/infra/ent/rolemenu"
 	"glex/internal/infra/ent/user"
 	"glex/internal/infra/ent/userrole"
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 )
 
 // toBizMenu maps an ent Menu PO to a accessentity.Menu DO. Children is left nil — the
@@ -75,9 +73,9 @@ func (r *menuRepo) FindByID(ctx context.Context, id int64) (*accessentity.Menu, 
 	return toBizMenu(po), nil
 }
 
-func (r *menuRepo) FindByParentAndName(ctx context.Context, parentID int64, name string) (*accessentity.Menu, error) {
+func (r *menuRepo) FindByParentAndName(ctx context.Context, req accessrepo.FindByParentAndNameRequest) (*accessentity.Menu, error) {
 	po, err := r.data.DB.Menu(ctx).Query().
-		Where(menu.ParentIDEQ(parentID), menu.MenuNameEQ(name), menu.DeletedAtIsNil()).
+		Where(menu.ParentIDEQ(req.ParentID), menu.MenuNameEQ(req.Name), menu.DeletedAtIsNil()).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -101,10 +99,10 @@ func (r *menuRepo) HasChildren(ctx context.Context, id int64) (bool, error) {
 // ListMenus returns the non-deleted menus as a flat list. It does not apply
 // offset/limit: menus are a small, tree-shaped set and ListMenus serves the
 // whole tree. Final sibling ordering is applied by access.buildTree.
-func (r *menuRepo) ListMenus(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy) ([]*accessentity.Menu, error) {
+func (r *menuRepo) ListMenus(ctx context.Context, req accessrepo.ListMenusRequest) ([]*accessentity.Menu, error) {
 	pos, err := r.data.DB.Menu(ctx).Query().
-		Where(menu.DeletedAtIsNil(), ents.ApplyFilter(filter)).
-		Order(ents.ApplyOrderBy(orderBy)).
+		Where(menu.DeletedAtIsNil(), ents.ApplyFilter(req.Filter)).
+		Order(ents.ApplyOrderBy(req.OrderBy)).
 		All(ctx)
 	if err != nil {
 		return nil, accessStoreError(ctx, r.logger, "access.menu.list", err)
@@ -274,12 +272,12 @@ func (r *menuRepo) ListByIDs(ctx context.Context, ids []int64) ([]*accessentity.
 	return out, nil
 }
 
-// DeleteMenu soft-deletes the menu and its role links (link rows stamped with
-// actorID — ADR 0002, nothing is hard-deleted). It returns the System User
-// identities observed before deletion; the caller owns the transaction and
-// revocation ordering.
-func (r *menuRepo) DeleteMenu(ctx context.Context, id int64, actorID int64) ([]int64, error) {
-	roleIDs, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(id), menu.DeletedAtIsNil()).
+// DeleteMenu soft-deletes the menu identified by req and its role links (link
+// rows stamped with req.ActorID — ADR 0002, nothing is hard-deleted). It
+// returns the System User identities observed before deletion; the caller
+// owns the transaction and revocation ordering.
+func (r *menuRepo) DeleteMenu(ctx context.Context, req accessrepo.DeleteMenuRequest) ([]int64, error) {
+	roleIDs, err := r.data.DB.Menu(ctx).Query().Where(menu.IDEQ(req.ID), menu.DeletedAtIsNil()).
 		QueryRoleLinks().Where(rolemenu.DeletedAtIsNil()).
 		QueryRole().Where(role.DeletedAtIsNil()).IDs(ctx)
 	if err != nil {
@@ -290,15 +288,15 @@ func (r *menuRepo) DeleteMenu(ctx context.Context, id int64, actorID int64) ([]i
 		return nil, accessStoreError(ctx, r.logger, "access.menu.delete", err)
 	}
 	if _, err := r.data.DB.RoleMenu(ctx).Update().
-		Where(rolemenu.MenuIDEQ(id), rolemenu.DeletedAtIsNil()).
+		Where(rolemenu.MenuIDEQ(req.ID), rolemenu.DeletedAtIsNil()).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Save(ctx); err != nil {
 		return nil, accessStoreError(ctx, r.logger, "access.menu.delete", err)
 	}
-	err = r.data.DB.Menu(ctx).UpdateOneID(id).
+	err = r.data.DB.Menu(ctx).UpdateOneID(req.ID).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {

@@ -7,7 +7,6 @@ import (
 	"glex/internal/domain/access"
 	"glex/internal/domain/access/entity"
 	"glex/internal/domain/access/repository"
-	"glex/pkg/listq"
 	"glex/pkg/logx"
 )
 
@@ -21,14 +20,15 @@ type RoleAssignment interface {
 	// ListForUser returns every active role with whether the user is assigned
 	// it, gated on the user existing and not being soft-deleted.
 	ListForUser(ctx context.Context, userID int64) ([]*entity.RoleAssignment, error)
-	// ReplaceForUser validates roleIDs (exist, not soft-deleted), replaces the
-	// user's Role Assignment in full, and returns the freshly-listed
+	// ReplaceForUser validates req.RoleIDs (exist, not soft-deleted), replaces
+	// the user's Role Assignment in full, and returns the freshly-listed
 	// assignments with their Assigned flags reflecting the persisted set plus
 	// the identities whose Authorization Snapshot the write invalidates.
-	ReplaceForUser(ctx context.Context, userID int64, roleIDs []int64, actorID int64) (*RoleAssignmentReplacement, error)
-	// ListRoleUsers lists the active users assigned the role, gated on the
-	// role existing, matching the given filter/order/offset/limit.
-	ListRoleUsers(ctx context.Context, roleID int64, q listq.Query) ([]*entity.RoleUser, error)
+	ReplaceForUser(ctx context.Context, req repository.ReplaceUserRolesRequest) (*RoleAssignmentReplacement, error)
+	// ListRoleUsers lists the active users assigned the role identified by
+	// req.RoleID, gated on the role existing, matching the given
+	// filter/order/offset/limit.
+	ListRoleUsers(ctx context.Context, req repository.ListRoleUsersRequest) ([]*entity.RoleUser, error)
 }
 
 // RoleAssignmentReplacement is the ReplaceForUser result.
@@ -55,7 +55,7 @@ func NewRoleAssignmentService(roles repository.RoleRepo, userRoles repository.Us
 }
 
 func (s *roleAssignmentImpl) ListForUser(ctx context.Context, userID int64) ([]*entity.RoleAssignment, error) {
-	if err := AssertUserExists(ctx, s.userRoles, userID); err != nil {
+	if err := assertUserExists(ctx, s.userRoles, userID); err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.list_assignments_for_user", err)
 		return nil, err
 	}
@@ -67,22 +67,26 @@ func (s *roleAssignmentImpl) ListForUser(ctx context.Context, userID int64) ([]*
 	return assignments, nil
 }
 
-func (s *roleAssignmentImpl) ReplaceForUser(ctx context.Context, userID int64, roleIDs []int64, actorID int64) (*RoleAssignmentReplacement, error) {
-	if err := AssertUserExists(ctx, s.userRoles, userID); err != nil {
+func (s *roleAssignmentImpl) ReplaceForUser(ctx context.Context, req repository.ReplaceUserRolesRequest) (*RoleAssignmentReplacement, error) {
+	if err := assertUserExists(ctx, s.userRoles, req.UserID); err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.replace_assignments", err)
 		return nil, err
 	}
-	assignments, err := s.userRoles.ListRoleAssignments(ctx, userID)
+	assignments, err := s.userRoles.ListRoleAssignments(ctx, req.UserID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.replace_assignments", err)
 		return nil, err
 	}
-	unique, err := AssertRolesAssignable(assignments, roleIDs)
+	unique, err := AssertRolesAssignable(assignments, req.RoleIDs)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.replace_assignments", err)
 		return nil, err
 	}
-	affected, err := s.userRoles.ReplaceUserRoles(ctx, userID, unique, actorID)
+	affected, err := s.userRoles.ReplaceUserRoles(ctx, repository.ReplaceUserRolesRequest{
+		UserID:  req.UserID,
+		RoleIDs: unique,
+		ActorID: req.ActorID,
+	})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.replace_assignments", err)
 		return nil, err
@@ -97,12 +101,12 @@ func (s *roleAssignmentImpl) ReplaceForUser(ctx context.Context, userID int64, r
 	return &RoleAssignmentReplacement{Assignments: assignments, AffectedUserIDs: affected}, nil
 }
 
-func (s *roleAssignmentImpl) ListRoleUsers(ctx context.Context, roleID int64, q listq.Query) ([]*entity.RoleUser, error) {
-	if _, err := s.roles.FindByID(ctx, roleID); err != nil {
+func (s *roleAssignmentImpl) ListRoleUsers(ctx context.Context, req repository.ListRoleUsersRequest) ([]*entity.RoleUser, error) {
+	if _, err := s.roles.FindByID(ctx, req.RoleID); err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.list_role_users", err)
 		return nil, err
 	}
-	users, err := s.userRoles.ListRoleUsers(ctx, roleID, q)
+	users, err := s.userRoles.ListRoleUsers(ctx, req)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.list_role_users", err)
 		return nil, err
@@ -110,11 +114,11 @@ func (s *roleAssignmentImpl) ListRoleUsers(ctx context.Context, roleID int64, q 
 	return users, nil
 }
 
-// AssertUserExists gates the by-user endpoints on the System User existing
+// assertUserExists gates the by-user endpoints on the System User existing
 // (and not being soft-deleted) — access's own copy of the reason, answered by
 // the assignment storage's user edge. Its caller's method boundary owns the
 // breadcrumb (ADR 0011).
-func AssertUserExists(ctx context.Context, linkRepo repository.UserRoleRepo, userID int64) error {
+func assertUserExists(ctx context.Context, linkRepo repository.UserRoleRepo, userID int64) error {
 	exists, err := linkRepo.UserExists(ctx, userID)
 	if err != nil {
 		return err

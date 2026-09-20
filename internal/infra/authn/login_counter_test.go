@@ -28,7 +28,7 @@ func TestLoginCountersLockAtConfiguredThresholdsAndExpire(t *testing.T) {
 	repo, mr := newTestLoginCounterRepo(t)
 	ctx := t.Context()
 	for attempt := 1; attempt < 5; attempt++ {
-		remaining, err := repo.RecordFailure(ctx, "alice", "192.0.2.10")
+		remaining, err := repo.RecordFailure(ctx, authnrepo.LoginAttemptRequest{UserName: "alice", SourceIP: "192.0.2.10"})
 		if err != nil {
 			t.Fatalf("RecordFailure #%d: %v", attempt, err)
 		}
@@ -36,19 +36,19 @@ func TestLoginCountersLockAtConfiguredThresholdsAndExpire(t *testing.T) {
 			t.Fatalf("attempt #%d locked for %v before threshold", attempt, remaining)
 		}
 	}
-	remaining, err := repo.RecordFailure(ctx, "alice", "192.0.2.10")
+	remaining, err := repo.RecordFailure(ctx, authnrepo.LoginAttemptRequest{UserName: "alice", SourceIP: "192.0.2.10"})
 	if err != nil {
 		t.Fatalf("RecordFailure threshold: %v", err)
 	}
 	if remaining <= 9*time.Minute || remaining > 10*time.Minute {
 		t.Fatalf("remaining = %v, want within ten-minute window", remaining)
 	}
-	if checked, err := repo.LockRemaining(ctx, "alice", "198.51.100.20"); err != nil || checked <= 0 {
+	if checked, err := repo.LockRemaining(ctx, authnrepo.LoginAttemptRequest{UserName: "alice", SourceIP: "198.51.100.20"}); err != nil || checked <= 0 {
 		t.Fatalf("username lock = %v/%v, want positive", checked, err)
 	}
 
 	mr.FastForward(10*time.Minute + time.Millisecond)
-	if checked, err := repo.LockRemaining(ctx, "alice", "192.0.2.10"); err != nil || checked != 0 {
+	if checked, err := repo.LockRemaining(ctx, authnrepo.LoginAttemptRequest{UserName: "alice", SourceIP: "192.0.2.10"}); err != nil || checked != 0 {
 		t.Fatalf("expired lock = %v/%v, want 0/nil", checked, err)
 	}
 }
@@ -57,7 +57,7 @@ func TestSuccessfulLoginClearsOnlyUsernameCounter(t *testing.T) {
 	repo, _ := newTestLoginCounterRepo(t)
 	ctx := t.Context()
 	for range 4 {
-		if _, err := repo.RecordFailure(ctx, "alice", "192.0.2.10"); err != nil {
+		if _, err := repo.RecordFailure(ctx, authnrepo.LoginAttemptRequest{UserName: "alice", SourceIP: "192.0.2.10"}); err != nil {
 			t.Fatalf("RecordFailure: %v", err)
 		}
 	}
@@ -66,11 +66,11 @@ func TestSuccessfulLoginClearsOnlyUsernameCounter(t *testing.T) {
 	}
 	// The same username starts from zero, while the source-IP count continues
 	// and reaches its independent threshold after sixteen more failures.
-	if remaining, err := repo.RecordFailure(ctx, "alice", "198.51.100.20"); err != nil || remaining != 0 {
+	if remaining, err := repo.RecordFailure(ctx, authnrepo.LoginAttemptRequest{UserName: "alice", SourceIP: "198.51.100.20"}); err != nil || remaining != 0 {
 		t.Fatalf("username was not cleared: %v/%v", remaining, err)
 	}
 	for attempt := 1; attempt <= 16; attempt++ {
-		remaining, err := repo.RecordFailure(ctx, fmt.Sprintf("source-only-%d", attempt), "192.0.2.10")
+		remaining, err := repo.RecordFailure(ctx, authnrepo.LoginAttemptRequest{UserName: fmt.Sprintf("source-only-%d", attempt), SourceIP: "192.0.2.10"})
 		if err != nil {
 			t.Fatalf("source failure #%d: %v", attempt, err)
 		}
@@ -86,7 +86,7 @@ func TestSuccessfulLoginClearsOnlyUsernameCounter(t *testing.T) {
 func TestLoginCounterBackendFailureMapsToServiceUnavailable(t *testing.T) {
 	repo, mr := newTestLoginCounterRepo(t)
 	mr.Close()
-	_, err := repo.LockRemaining(t.Context(), "alice", "192.0.2.10")
+	_, err := repo.LockRemaining(t.Context(), authnrepo.LoginAttemptRequest{UserName: "alice", SourceIP: "192.0.2.10"})
 	if !errors.Is(err, authndomain.ErrAuthBackendUnavailable) {
 		t.Fatalf("LockRemaining error = %v, want ErrAuthBackendUnavailable", err)
 	}

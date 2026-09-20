@@ -28,16 +28,25 @@ func (w *credentialWriter) WriteSystemUserCredential(ctx context.Context, reques
 	if request == nil || request.SystemUserID <= 0 {
 		return fmt.Errorf("write system user credential: system_user_id is required")
 	}
-	return w.credentials.Store(ctx, request.SystemUserID, request.Password)
+	return w.credentials.Store(ctx, authnservice.StoreRequest{
+		SystemUserID: request.SystemUserID,
+		Password:     request.Password,
+	})
 }
 
 // WriteSystemUserCredentials stores the shared password for the batch inside
 // the caller's propagated transaction, hashing it once (ADR 0017).
-func (w *credentialWriter) WriteSystemUserCredentials(ctx context.Context, systemUserIDs []int64, password string) error {
-	for _, id := range systemUserIDs {
+func (w *credentialWriter) WriteSystemUserCredentials(ctx context.Context, request *model.SystemUserCredentials) error {
+	if request == nil {
+		return nil
+	}
+	for _, id := range request.SystemUserIDs {
 		if id <= 0 {
 			return fmt.Errorf("write system user credentials: system_user_id is required")
 		}
 	}
-	return w.credentials.StoreAll(ctx, systemUserIDs, password)
+	return w.credentials.StoreAll(ctx, authnservice.StoreAllRequest{
+		SystemUserIDs: request.SystemUserIDs,
+		Password:      request.Password,
+	})
 }

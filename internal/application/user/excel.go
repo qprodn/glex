@@ -9,6 +9,7 @@ import (
 
 	userv1 "glex/api/user/v1"
 	"glex/internal/bizpkg"
+	authnmodel "glex/internal/crossdomain/authn/model"
 	"glex/internal/crossdomain/dict"
 	userdomain "glex/internal/domain/user"
 	userentity "glex/internal/domain/user/entity"
@@ -229,7 +230,10 @@ func (s *UserApplication) ImportUsers(ctx context.Context, req *userv1.ImportUse
 		}
 		// One hash for every row: imported users share the initial
 		// credential, and authn hashes the batch once (ADR 0017).
-		return s.credentials.WriteSystemUserCredentials(ctx, created, s.initPassword)
+		return s.credentials.WriteSystemUserCredentials(ctx, &authnmodel.SystemUserCredentials{
+			SystemUserIDs: created,
+			Password:      s.initPassword,
+		})
 	}); err != nil {
 		if stderrors.Is(err, errImportAborted) {
 			return importResult(conflicts...), nil

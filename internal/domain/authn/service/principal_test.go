@@ -10,11 +10,10 @@ import (
 func TestPrincipalContextRoundTrip(t *testing.T) {
 	principal := entity.NewPrincipal(42, "alice", "session-id", nil, nil)
 	ctx := WithPrincipal(context.Background(), principal)
-	got, ok := PrincipalFromContext(ctx)
-	if !ok || got != principal {
-		t.Fatalf("PrincipalFromContext = %#v/%v", got, ok)
+	if got := PrincipalFromContext(ctx); got != principal {
+		t.Fatalf("PrincipalFromContext = %#v, want the attached Principal", got)
 	}
-	if _, ok := PrincipalFromContext(context.Background()); ok {
+	if PrincipalFromContext(context.Background()) != nil {
 		t.Fatal("empty context unexpectedly contains a Principal")
 	}
 }

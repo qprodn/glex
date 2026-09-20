@@ -15,7 +15,6 @@ import (
 	"glex/internal/infra/ent/role"
 	"glex/internal/infra/ent/user"
 	"glex/internal/infra/ent/userrole"
-	"glex/pkg/listq"
 )
 
 // userRoleRepo implements accessrepo.UserRoleRepo over the sys_user_role link
@@ -113,12 +112,13 @@ func (r *userRoleRepo) ListRoleAssignments(ctx context.Context, userID int64) ([
 }
 
 // ReplaceUserRoles replaces the user's Role Assignment, returning the System
-// User identities whose sessions must be revoked ({userID}). RoleAssignmentUsecase
-// validates and dedupes roleIDs and owns the transaction and Redis rollback
-// contract. Full replacement works on the active set only (ADR 0002): the
-// current rows are soft-deleted (stamping actorID), then the new generation
-// is inserted with fresh snowflake ids.
-func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleIDs []int64, actorID int64) ([]int64, error) {
+// User identities whose sessions must be revoked ({req.UserID}).
+// RoleAssignmentUsecase validates and dedupes req.RoleIDs and owns the
+// transaction and Redis rollback contract. Full replacement works on the
+// active set only (ADR 0002): the current rows are soft-deleted (stamping
+// req.ActorID), then the new generation is inserted with fresh snowflake ids.
+func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, req accessrepo.ReplaceUserRolesRequest) ([]int64, error) {
+	userID, roleIDs, actorID := req.UserID, req.RoleIDs, req.ActorID
 	if len(roleIDs) > 0 {
 		count, err := r.data.DB.Role(ctx).Query().Where(role.IDIn(roleIDs...), role.DeletedAtIsNil()).Count(ctx)
 		if err != nil {
@@ -161,19 +161,19 @@ func (r *userRoleRepo) ReplaceUserRoles(ctx context.Context, userID int64, roleI
 	return []int64{userID}, nil
 }
 
-// ListRoleUsers lists the active users assigned the role, applying the given
-// list options (filter/order/offset/limit). The role's existence is checked
-// by RoleAssignmentUsecase.
-func (r *userRoleRepo) ListRoleUsers(ctx context.Context, roleID int64, q listq.Query) ([]*accessentity.RoleUser, error) {
+// ListRoleUsers lists the active users assigned the role identified by
+// req.RoleID, applying the request's list options (filter/order/offset/limit).
+// The role's existence is checked by RoleAssignmentUsecase.
+func (r *userRoleRepo) ListRoleUsers(ctx context.Context, req accessrepo.ListRoleUsersRequest) ([]*accessentity.RoleUser, error) {
 	pos, err := r.data.DB.User(ctx).Query().
 		Where(
 			user.DeletedAtIsNil(),
-			user.HasRoleAssignmentsWith(userrole.RoleIDEQ(roleID), userrole.DeletedAtIsNil()),
-			ents.ApplyFilter(q.Filter),
+			user.HasRoleAssignmentsWith(userrole.RoleIDEQ(req.RoleID), userrole.DeletedAtIsNil()),
+			ents.ApplyFilter(req.Filter),
 		).
-		Order(ents.ApplyOrderBy(q.OrderBy)).
-		Offset(q.Offset).
-		Limit(q.Limit).
+		Order(ents.ApplyOrderBy(req.OrderBy)).
+		Offset(req.Offset).
+		Limit(req.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, accessStoreError(ctx, r.logger, "access.role_assignment.list_users", err)

@@ -69,10 +69,10 @@ func NewLoginCounterRepo(data *store.Data, c *conf.Auth) authnrepo.LoginCounterR
 	}
 }
 
-func (r *loginCounterRepo) LockRemaining(ctx context.Context, userName, sourceIP string) (time.Duration, error) {
+func (r *loginCounterRepo) LockRemaining(ctx context.Context, req authnrepo.LoginAttemptRequest) (time.Duration, error) {
 	writeCtx, cancel := context.WithTimeout(ctx, store.BoundedTimeout(r.writeTimeout, store.DefaultAuthWriteTimeout))
 	defer cancel()
-	milliseconds, err := checkLoginCountersScript.Run(writeCtx, r.rdb, r.keys(userName, sourceIP),
+	milliseconds, err := checkLoginCountersScript.Run(writeCtx, r.rdb, r.keys(req.UserName, req.SourceIP),
 		r.userNameLimit, r.sourceIPLimit,
 	).Int64()
 	if err != nil {
@@ -81,10 +81,10 @@ func (r *loginCounterRepo) LockRemaining(ctx context.Context, userName, sourceIP
 	return time.Duration(milliseconds) * time.Millisecond, nil
 }
 
-func (r *loginCounterRepo) RecordFailure(ctx context.Context, userName, sourceIP string) (time.Duration, error) {
+func (r *loginCounterRepo) RecordFailure(ctx context.Context, req authnrepo.LoginAttemptRequest) (time.Duration, error) {
 	writeCtx, cancel := context.WithTimeout(ctx, store.BoundedTimeout(r.writeTimeout, store.DefaultAuthWriteTimeout))
 	defer cancel()
-	milliseconds, err := recordLoginFailureScript.Run(writeCtx, r.rdb, r.keys(userName, sourceIP),
+	milliseconds, err := recordLoginFailureScript.Run(writeCtx, r.rdb, r.keys(req.UserName, req.SourceIP),
 		r.userNameLimit, r.sourceIPLimit,
 		r.userNameWindow.Milliseconds(), r.sourceIPWindow.Milliseconds(),
 	).Int64()

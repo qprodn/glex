@@ -28,11 +28,14 @@ func TestAuthenticatorBuildsPrincipalAndRefreshesActivity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("issue bearer: %v", err)
 	}
-	loginSession, err := sessions.Create(t.Context(), token, &authnentity.LoginSession{
-		SystemUserID: 42,
-		UserName:     "alice",
-		DeviceType:   "desktop",
-		LoginTime:    time.Now(),
+	loginSession, err := sessions.Create(t.Context(), authnrepo.CreateSessionRequest{
+		BearerToken: token,
+		Session: &authnentity.LoginSession{
+			SystemUserID: 42,
+			UserName:     "alice",
+			DeviceType:   "desktop",
+			LoginTime:    time.Now(),
+		},
 	})
 	if err != nil {
 		t.Fatalf("create Login Session: %v", err)
@@ -84,11 +87,14 @@ func TestAuthenticatorAcceptsRoleLessSystemUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("issue bearer: %v", err)
 	}
-	if _, err := sessions.Create(t.Context(), token, &authnentity.LoginSession{
-		SystemUserID: 42,
-		UserName:     "alice",
-		DeviceType:   "desktop",
-		LoginTime:    time.Now(),
+	if _, err := sessions.Create(t.Context(), authnrepo.CreateSessionRequest{
+		BearerToken: token,
+		Session: &authnentity.LoginSession{
+			SystemUserID: 42,
+			UserName:     "alice",
+			DeviceType:   "desktop",
+			LoginTime:    time.Now(),
+		},
 	}); err != nil {
 		t.Fatalf("create Login Session: %v", err)
 	}

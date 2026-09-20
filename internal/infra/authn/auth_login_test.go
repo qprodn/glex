@@ -129,7 +129,7 @@ func TestAuthLoginRevalidateRejectsStaleHash(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(user.Columns).AddRow(
 			int64(42), int64(0), int64(0), now, now, nil, "alice", "Alice", nil, nil, int8(0), int8(0), "new-hash", int64(0), "", int64(0), "", nil,
 		))
-	_, err = repo.Revalidate(t.Context(), 42, "alice", "old-hash")
+	_, err = repo.Revalidate(t.Context(), authnrepo.RevalidateRequest{SystemUserID: 42, UserName: "alice", PasswordHash: "old-hash"})
 	if !errors.Is(err, authndomain.ErrInvalidCredentials) {
 		t.Fatalf("stale password = %v, want INVALID_CREDENTIALS", err)
 	}
@@ -149,7 +149,7 @@ func TestAuthLoginMapsDatabaseDriverErrors(t *testing.T) {
 	repo := &authLoginRepo{data: &store.Data{DB: ent.NewDatabaseFromClient(client)}, logger: testLogger()}
 	mock.ExpectQuery(`SELECT .* FROM "sys_user"`).WillReturnError(errors.New("database unavailable"))
 
-	_, err = repo.Revalidate(t.Context(), 42, "alice", "hash")
+	_, err = repo.Revalidate(t.Context(), authnrepo.RevalidateRequest{SystemUserID: 42, UserName: "alice", PasswordHash: "hash"})
 	if !errors.Is(err, authndomain.ErrAuthBackendUnavailable) {
 		t.Fatalf("database error = %v, want ErrAuthBackendUnavailable", err)
 	}
@@ -166,11 +166,11 @@ type stubFailingSessions struct {
 	createErr error
 }
 
-func (s *stubFailingSessions) Create(context.Context, string, *authnentity.LoginSession) (*authnentity.LoginSession, error) {
+func (s *stubFailingSessions) Create(context.Context, authnrepo.CreateSessionRequest) (*authnentity.LoginSession, error) {
 	return nil, s.createErr
 }
 
-func (s *stubFailingSessions) ListBySystemUser(context.Context, int64, ...authnrepo.ListOption) ([]*authnentity.LoginSession, error) {
+func (s *stubFailingSessions) ListBySystemUser(context.Context, authnrepo.ListBySystemUserRequest) ([]*authnentity.LoginSession, error) {
 	return nil, nil
 }
 
@@ -178,10 +178,13 @@ func TestAuthLoginIssueCredentialCleansUpPartialRedisFailure(t *testing.T) {
 	repo, manager, _, _ := newAuthLoginSQLMock(t)
 	repo.sessions = &stubFailingSessions{createErr: errors.New("session store unavailable")}
 
-	result, err := repo.IssueCredential(t.Context(), &authnentity.AuthorizationSnapshot{SystemUserID: 42, UserName: "alice", RoleKeys: []string{"viewer"}}, &authnentity.LoginSession{
-		SystemUserID: 42,
-		UserName:     "alice",
-		DeviceType:   "desktop",
+	result, err := repo.IssueCredential(t.Context(), authnrepo.IssueCredentialRequest{
+		Snapshot: &authnentity.AuthorizationSnapshot{SystemUserID: 42, UserName: "alice", RoleKeys: []string{"viewer"}},
+		Session: &authnentity.LoginSession{
+			SystemUserID: 42,
+			UserName:     "alice",
+			DeviceType:   "desktop",
+		},
 	})
 	if err == nil || result != nil {
 		t.Fatalf("partial Redis failure = %v/%#v, want error/nil", err, result)
@@ -199,18 +202,20 @@ func TestAuthLoginIssueCredentialCleansUpPartialRedisFailure(t *testing.T) {
 
 func TestAuthLoginDiscardCredentialTearsDownTokenAndLastSession(t *testing.T) {
 	repo, manager, sessions, _ := newAuthLoginSQLMock(t)
-	snapshot := &authnentity.AuthorizationSnapshot{SystemUserID: 42, UserName: "alice", RoleKeys: []string{"viewer"}}
-	result, err := repo.IssueCredential(t.Context(), snapshot, &authnentity.LoginSession{
-		SystemUserID: 42, UserName: "alice", DeviceType: "desktop", LoginTime: time.Unix(1_700_000_000, 0),
+	result, err := repo.IssueCredential(t.Context(), authnrepo.IssueCredentialRequest{
+		Snapshot: &authnentity.AuthorizationSnapshot{SystemUserID: 42, UserName: "alice", RoleKeys: []string{"viewer"}},
+		Session: &authnentity.LoginSession{
+			SystemUserID: 42, UserName: "alice", DeviceType: "desktop", LoginTime: time.Unix(1_700_000_000, 0),
+		},
 	})
 	if err != nil {
 		t.Fatalf("IssueCredential: %v", err)
 	}
 
-	if err := repo.DiscardCredential(t.Context(), 42, result.AccessToken); err != nil {
+	if err := repo.DiscardCredential(t.Context(), authnrepo.DiscardCredentialRequest{SystemUserID: 42, BearerToken: result.AccessToken}); err != nil {
 		t.Fatalf("DiscardCredential: %v", err)
 	}
-	listed, err := sessions.ListBySystemUser(t.Context(), 42)
+	listed, err := sessions.ListBySystemUser(t.Context(), authnrepo.ListBySystemUserRequest{SystemUserID: 42})
 	if err != nil || len(listed) != 0 {
 		t.Fatalf("Login Sessions after discard = %v/%v, want none", listed, err)
 	}
@@ -218,7 +223,7 @@ func TestAuthLoginDiscardCredentialTearsDownTokenAndLastSession(t *testing.T) {
 		t.Fatal("bearer token must be destroyed after discard")
 	}
 	// Discard is idempotent.
-	if err := repo.DiscardCredential(t.Context(), 42, result.AccessToken); err != nil {
+	if err := repo.DiscardCredential(t.Context(), authnrepo.DiscardCredentialRequest{SystemUserID: 42, BearerToken: result.AccessToken}); err != nil {
 		t.Fatalf("DiscardCredential (repeat): %v", err)
 	}
 }

@@ -75,7 +75,12 @@ func (s *OnlineSessionApplication) ListOnlineSessions(ctx context.Context, req *
 	if req.GetPageSize() <= 0 {
 		req.PageSize = 20
 	}
-	sessions, err := s.svc.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
+	sessions, err := s.svc.List(ctx, authnservice.ListSessionsRequest{
+		Filter:  filter,
+		OrderBy: orderBy,
+		Limit:   int(req.GetPageSize()),
+		Offset:  int(pageToken.Offset),
+	})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "authn.list_online_sessions", err)
 		return nil, err
@@ -126,8 +131,8 @@ func (s *OnlineSessionApplication) KickoutOnlineSession(ctx context.Context, req
 
 // ListMyOnlineSessions lists only the current System User's Login Sessions.
 func (s *OnlineSessionApplication) ListMyOnlineSessions(ctx context.Context, _ *emptypb.Empty) (*authnv1.OnlineSessionSet, error) {
-	principal, ok := authnservice.PrincipalFromContext(ctx)
-	if !ok {
+	principal := authnservice.PrincipalFromContext(ctx)
+	if principal == nil {
 		err := authndomain.ErrCredentialMissing
 		logx.Propagate(ctx, s.logger, "authn.list_my_online_sessions", err)
 		return nil, err
@@ -155,14 +160,17 @@ func (s *OnlineSessionApplication) ListMyOnlineSessions(ctx context.Context, _ *
 // DeleteMyOnlineSession revokes one Session only after an atomic ownership
 // check against the current System User.
 func (s *OnlineSessionApplication) DeleteMyOnlineSession(ctx context.Context, req *authnv1.OnlineSessionRequest) (*emptypb.Empty, error) {
-	principal, ok := authnservice.PrincipalFromContext(ctx)
-	if !ok {
+	principal := authnservice.PrincipalFromContext(ctx)
+	if principal == nil {
 		err := authndomain.ErrCredentialMissing
 		logx.Propagate(ctx, s.logger, "authn.delete_my_online_session", err)
 		return nil, err
 	}
 	session, _ := s.svc.Get(ctx, req.GetTokenId())
-	if err := s.svc.LogoutOwned(ctx, principal.SystemUserID(), req.GetTokenId()); err != nil {
+	if err := s.svc.LogoutOwned(ctx, authnservice.LogoutOwnedRequest{
+		SystemUserID: principal.SystemUserID(),
+		SessionID:    req.GetTokenId(),
+	}); err != nil {
 		logx.Propagate(ctx, s.logger, "authn.delete_my_online_session", err)
 		return nil, err
 	}

@@ -11,19 +11,35 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// StoreRequest stores one System User's credential: the user
+// (req.SystemUserID) and the plaintext password (req.Password) authn hashes
+// with its own policy.
+type StoreRequest struct {
+	SystemUserID int64
+	Password     string
+}
+
+// StoreAllRequest stores one shared credential for a batch of System Users:
+// the users (req.SystemUserIDs) and the plaintext password (req.Password)
+// hashed once for all of them.
+type StoreAllRequest struct {
+	SystemUserIDs []int64
+	Password      string
+}
+
 // Credential is the authn domain service behind the crossdomain credential
 // contract: the only writer of the credential column besides the login flow
 // (ADR 0005). Hashing happens here, beside the provider's domain policy, so
 // consumers never pick a hash format.
 type Credential interface {
-	// Store hashes the requested password with authn's policy and stores it
-	// inside the caller's propagated transaction.
-	Store(ctx context.Context, systemUserID int64, password string) error
+	// Store hashes req.Password with authn's policy and stores it inside the
+	// caller's propagated transaction.
+	Store(ctx context.Context, req StoreRequest) error
 	// StoreAll stores the same password for a batch of System Users inside
 	// the caller's propagated transaction, hashing it once — Data Import's
 	// initial credential (ADR 0017), where every row shares one password
 	// and per-row bcrypt would cost a minute per thousand rows.
-	StoreAll(ctx context.Context, systemUserIDs []int64, password string) error
+	StoreAll(ctx context.Context, req StoreAllRequest) error
 }
 
 type credentialImpl struct {
@@ -39,32 +55,38 @@ func NewCredentialService(credentials repository.CredentialRepo, logger *slog.Lo
 	}
 }
 
-func (s *credentialImpl) Store(ctx context.Context, systemUserID int64, password string) error {
-	hash, err := HashPassword(password)
+func (s *credentialImpl) Store(ctx context.Context, req StoreRequest) error {
+	hash, err := HashPassword(req.Password)
 	if err != nil {
 		err = fmt.Errorf("write system user credential: hash password: %w", err)
 		logx.Propagate(ctx, s.logger, "authn.svc.store_credential", err)
 		return err
 	}
-	if err := s.credentials.StoreCredential(ctx, systemUserID, hash); err != nil {
+	if err := s.credentials.StoreCredential(ctx, repository.StoreCredentialRequest{
+		SystemUserID: req.SystemUserID,
+		PasswordHash: hash,
+	}); err != nil {
 		logx.Propagate(ctx, s.logger, "authn.svc.store_credential", err)
 		return err
 	}
 	return nil
 }
 
-func (s *credentialImpl) StoreAll(ctx context.Context, systemUserIDs []int64, password string) error {
-	if len(systemUserIDs) == 0 {
+func (s *credentialImpl) StoreAll(ctx context.Context, req StoreAllRequest) error {
+	if len(req.SystemUserIDs) == 0 {
 		return nil
 	}
-	hash, err := HashPassword(password)
+	hash, err := HashPassword(req.Password)
 	if err != nil {
 		err = fmt.Errorf("store system user credentials: hash password: %w", err)
 		logx.Propagate(ctx, s.logger, "authn.svc.store_credentials", err)
 		return err
 	}
-	for _, id := range systemUserIDs {
-		if err := s.credentials.StoreCredential(ctx, id, hash); err != nil {
+	for _, id := range req.SystemUserIDs {
+		if err := s.credentials.StoreCredential(ctx, repository.StoreCredentialRequest{
+			SystemUserID: id,
+			PasswordHash: hash,
+		}); err != nil {
 			logx.Propagate(ctx, s.logger, "authn.svc.store_credentials", err)
 			return err
 		}

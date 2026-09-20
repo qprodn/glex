@@ -179,7 +179,7 @@ func (o *options) record(ctx context.Context, req any, start time.Time, err erro
 		Success:    err == nil,
 		LatencyMS:  time.Since(start).Milliseconds(),
 	}
-	if principal, ok := authmw.PrincipalFromContext(ctx); ok {
+	if principal := authmw.PrincipalFromContext(ctx); principal != nil {
 		if identity, isBiz := principal.(Identity); isBiz {
 			entry.OperUserID = identity.SystemUserID()
 			entry.OperUserName = identity.UserName()

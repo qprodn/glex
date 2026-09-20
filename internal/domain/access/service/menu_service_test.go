@@ -6,9 +6,7 @@ import (
 
 	"glex/internal/domain/access"
 	"glex/internal/domain/access/entity"
-
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
+	"glex/internal/domain/access/repository"
 
 	"github.com/go-kratos/kratos/v3/errors"
 )
@@ -37,9 +35,9 @@ func (r *fakeMenuRepo) FindByID(_ context.Context, id int64) (*entity.Menu, erro
 	return m, nil
 }
 
-func (r *fakeMenuRepo) FindByParentAndName(_ context.Context, parentID int64, name string) (*entity.Menu, error) {
+func (r *fakeMenuRepo) FindByParentAndName(_ context.Context, req repository.FindByParentAndNameRequest) (*entity.Menu, error) {
 	for _, m := range r.byID {
-		if m.ParentID == parentID && m.MenuName == name {
+		if m.ParentID == req.ParentID && m.MenuName == req.Name {
 			return m, nil
 		}
 	}
@@ -65,7 +63,7 @@ func (r *fakeMenuRepo) ListByIDs(_ context.Context, ids []int64) ([]*entity.Menu
 	return out, nil
 }
 
-func (r *fakeMenuRepo) ListMenus(context.Context, filtering.Filter, ordering.OrderBy) ([]*entity.Menu, error) {
+func (r *fakeMenuRepo) ListMenus(context.Context, repository.ListMenusRequest) ([]*entity.Menu, error) {
 	out := make([]*entity.Menu, 0, len(r.byID))
 	for _, m := range r.byID {
 		out = append(out, m)
@@ -90,9 +88,9 @@ func (r *fakeMenuRepo) UpdateMenu(_ context.Context, m *entity.Menu) (*entity.Me
 	return &entity.MenuUpdate{Menu: m, Previous: previous, AffectedUserIDs: r.affectedUsers}, nil
 }
 
-func (r *fakeMenuRepo) DeleteMenu(_ context.Context, id int64, _ int64) ([]int64, error) {
-	r.deleted = append(r.deleted, id)
-	delete(r.byID, id)
+func (r *fakeMenuRepo) DeleteMenu(_ context.Context, req repository.DeleteMenuRequest) ([]int64, error) {
+	r.deleted = append(r.deleted, req.ID)
+	delete(r.byID, req.ID)
 	return append([]int64(nil), r.affectedUsers...), nil
 }
 
@@ -205,7 +203,7 @@ func TestMenuDelete_HasChildrenRejected(t *testing.T) {
 	repo.byID[2] = &entity.Menu{ID: 2, ParentID: 1, MenuType: entity.MenuTypeMenu}
 	svc := newMenuSvc(repo)
 
-	if _, err := svc.Delete(context.Background(), 1, 0); !errors.Is(err, access.ErrMenuHasChildren) {
+	if _, err := svc.Delete(context.Background(), repository.DeleteMenuRequest{ID: 1}); !errors.Is(err, access.ErrMenuHasChildren) {
 		t.Fatalf("expected ErrMenuHasChildren, got %v", err)
 	}
 }
@@ -215,7 +213,7 @@ func TestMenuDelete_LeafSuccess(t *testing.T) {
 	repo.byID[2] = &entity.Menu{ID: 2, ParentID: 1, MenuType: entity.MenuTypeMenu}
 	svc := newMenuSvc(repo)
 
-	if _, err := svc.Delete(context.Background(), 2, 0); err != nil {
+	if _, err := svc.Delete(context.Background(), repository.DeleteMenuRequest{ID: 2}); err != nil {
 		t.Fatalf("delete leaf: %v", err)
 	}
 	if _, ok := repo.byID[2]; ok {

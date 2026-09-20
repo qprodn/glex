@@ -112,7 +112,8 @@ func (r *roleRepo) ListRoles(ctx context.Context, q listq.Query) ([]*accessentit
 // CreateRole inserts the role row and its initial Menu Grant (link rows
 // stamped with the actor from the DO's audit fields). The caller owns the
 // transaction.
-func (r *roleRepo) CreateRole(ctx context.Context, ro *accessentity.Role, menuIDs []int64) (*accessentity.Role, error) {
+func (r *roleRepo) CreateRole(ctx context.Context, req accessrepo.CreateRoleRequest) (*accessentity.Role, error) {
+	ro := req.Role
 	po, err := r.data.DB.Role(ctx).Create().
 		SetID(newSnowflakeID()).
 		SetRoleName(ro.RoleName).
@@ -127,7 +128,7 @@ func (r *roleRepo) CreateRole(ctx context.Context, ro *accessentity.Role, menuID
 	if err != nil {
 		return nil, accessStoreError(ctx, r.logger, "access.role.create", err)
 	}
-	if err := insertMenuGrants(ctx, r.data, ro.ID, menuIDs, ro.CreateBy); err != nil {
+	if err := insertMenuGrants(ctx, r.data, ro.ID, req.MenuIDs, ro.CreateBy); err != nil {
 		return nil, accessStoreError(ctx, r.logger, "access.role.create", err)
 	}
 	return toBizRole(po), nil
@@ -168,27 +169,27 @@ func (r *roleRepo) UpdateRole(ctx context.Context, ro *accessentity.Role) (*acce
 	return result, nil
 }
 
-// DeleteRole soft-deletes the role and its Menu Grant (link rows stamped with
-// actorID — ADR 0002, nothing is hard-deleted), returning the System User
-// identities observed before deletion. The caller owns the transaction and
-// revocation ordering.
-func (r *roleRepo) DeleteRole(ctx context.Context, id int64, actorID int64) ([]int64, error) {
-	userIDs, err := r.data.DB.Role(ctx).Query().Where(role.IDEQ(id), role.DeletedAtIsNil()).
+// DeleteRole soft-deletes the role identified by req and its Menu Grant (link
+// rows stamped with req.ActorID — ADR 0002, nothing is hard-deleted),
+// returning the System User identities observed before deletion. The caller
+// owns the transaction and revocation ordering.
+func (r *roleRepo) DeleteRole(ctx context.Context, req accessrepo.DeleteRoleRequest) ([]int64, error) {
+	userIDs, err := r.data.DB.Role(ctx).Query().Where(role.IDEQ(req.ID), role.DeletedAtIsNil()).
 		QueryUserLinks().Where(userrole.DeletedAtIsNil()).
 		QueryUser().Where(user.DeletedAtIsNil()).IDs(ctx)
 	if err != nil {
 		return nil, accessStoreError(ctx, r.logger, "access.role.delete", err)
 	}
 	if _, err := r.data.DB.RoleMenu(ctx).Update().
-		Where(rolemenu.RoleIDEQ(id), rolemenu.DeletedAtIsNil()).
+		Where(rolemenu.RoleIDEQ(req.ID), rolemenu.DeletedAtIsNil()).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Save(ctx); err != nil {
 		return nil, accessStoreError(ctx, r.logger, "access.role.delete", err)
 	}
-	err = r.data.DB.Role(ctx).UpdateOneID(id).
+	err = r.data.DB.Role(ctx).UpdateOneID(req.ID).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -221,11 +222,12 @@ func (r *roleRepo) ListRoleMenuLinks(ctx context.Context, roleID int64) ([]*acce
 
 // ReplaceRoleMenus replaces the role's active Menu Grant and writes
 // menu_check_strictly, returning the currently assigned System User
-// identities. RoleUsecase validates and dedupes menuIDs; the caller owns the
-// transaction and Redis rollback contract. Full replacement works on the
+// identities. RoleUsecase validates and dedupes req.MenuIDs; the caller owns
+// the transaction and Redis rollback contract. Full replacement works on the
 // active set only (ADR 0002): the current link rows are soft-deleted
-// (stamping actorID), then the new generation is inserted.
-func (r *roleRepo) ReplaceRoleMenus(ctx context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool, actorID int64) ([]int64, error) {
+// (stamping req.ActorID), then the new generation is inserted.
+func (r *roleRepo) ReplaceRoleMenus(ctx context.Context, req accessrepo.ReplaceRoleMenusRequest) ([]int64, error) {
+	roleID, menuIDs, menuCheckStrictly, actorID := req.RoleID, req.MenuIDs, req.MenuCheckStrictly, req.ActorID
 	if len(menuIDs) > 0 {
 		count, err := r.data.DB.Menu(ctx).Query().Where(menu.IDIn(menuIDs...), menu.DeletedAtIsNil()).Count(ctx)
 		if err != nil {

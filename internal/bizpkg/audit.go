@@ -15,7 +15,7 @@ import (
 // system itself acts (bootstrap, migration). Client DTOs never carry the
 // audit fields; this is the only writer.
 func AuditActor(ctx context.Context) int64 {
-	if principal, ok := authnservice.PrincipalFromContext(ctx); ok {
+	if principal := authnservice.PrincipalFromContext(ctx); principal != nil {
 		return principal.SystemUserID()
 	}
 	return 0

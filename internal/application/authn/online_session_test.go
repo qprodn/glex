@@ -12,8 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -41,7 +39,7 @@ func (s *fakeOnlineSessionService) Get(_ context.Context, sessionID string) (*au
 	return nil, authndomain.ErrLoginSessionNotFound
 }
 
-func (s *fakeOnlineSessionService) List(context.Context, filtering.Filter, ordering.OrderBy, int, int) ([]*authnentity.LoginSession, error) {
+func (s *fakeOnlineSessionService) List(context.Context, authnservice.ListSessionsRequest) ([]*authnentity.LoginSession, error) {
 	return s.sessions, s.err
 }
 
@@ -55,9 +53,9 @@ func (s *fakeOnlineSessionService) Kickout(_ context.Context, sessionID string) 
 	return s.err
 }
 
-func (s *fakeOnlineSessionService) LogoutOwned(_ context.Context, systemUserID int64, sessionID string) error {
-	s.ownedUser = systemUserID
-	s.ownedID = sessionID
+func (s *fakeOnlineSessionService) LogoutOwned(_ context.Context, req authnservice.LogoutOwnedRequest) error {
+	s.ownedUser = req.SystemUserID
+	s.ownedID = req.SessionID
 	return s.err
 }
 

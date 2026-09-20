@@ -7,9 +7,8 @@ import (
 
 	accessv1 "glex/api/access/v1"
 	accessentity "glex/internal/domain/access/entity"
+	accessrepo "glex/internal/domain/access/repository"
 
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
@@ -54,7 +53,7 @@ func (f *fakeMenuService) Get(_ context.Context, _ int64) (*accessentity.Menu, e
 	return f.get, nil
 }
 
-func (f *fakeMenuService) List(_ context.Context, _ filtering.Filter, _ ordering.OrderBy) ([]*accessentity.Menu, error) {
+func (f *fakeMenuService) List(_ context.Context, _ accessrepo.ListMenusRequest) ([]*accessentity.Menu, error) {
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
@@ -87,9 +86,9 @@ func (f *fakeMenuService) Update(ctx context.Context, m *accessentity.Menu) (*ac
 	return f.update, nil
 }
 
-func (f *fakeMenuService) Delete(ctx context.Context, id, actorID int64) ([]int64, error) {
+func (f *fakeMenuService) Delete(ctx context.Context, req accessrepo.DeleteMenuRequest) ([]int64, error) {
 	f.deleteCalled++
-	f.deleteCtx, f.deleteID, f.deleteActor = ctx, id, actorID
+	f.deleteCtx, f.deleteID, f.deleteActor = ctx, req.ID, req.ActorID
 	if f.deleteErr != nil {
 		return nil, f.deleteErr
 	}

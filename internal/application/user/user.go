@@ -206,8 +206,8 @@ func (s *UserApplication) GetUser(ctx context.Context, req *userv1.GetUserReques
 // GetInfo returns the freshly loaded current System User plus the Role keys and
 // Functional Permissions authenticated from the shared Authorization Snapshot.
 func (s *UserApplication) GetInfo(ctx context.Context, _ *emptypb.Empty) (*userv1.CurrentUserInfo, error) {
-	principal, ok := authnservice.PrincipalFromContext(ctx)
-	if !ok {
+	principal := authnservice.PrincipalFromContext(ctx)
+	if principal == nil {
 		err := authndomain.ErrCredentialMissing
 		logx.Propagate(ctx, s.logger, "user.get_info", err)
 		return nil, err
@@ -320,7 +320,7 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 	}
 	passwordPolicy := userentity.RevokeAllLoginSessions()
 	if u.Password != "" {
-		if principal, ok := authnservice.PrincipalFromContext(ctx); ok && principal.SystemUserID() == u.ID {
+		if principal := authnservice.PrincipalFromContext(ctx); principal != nil && principal.SystemUserID() == u.ID {
 			passwordPolicy = userentity.PreserveLoginSession(principal.SessionID())
 		}
 	}

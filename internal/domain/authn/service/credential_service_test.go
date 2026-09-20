@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"glex/internal/domain/authn/repository"
 )
 
 // fakeCredentialRepo records stored hashes by System User.
@@ -13,18 +15,18 @@ type fakeCredentialRepo struct {
 	err    error
 }
 
-func (r *fakeCredentialRepo) StoreCredential(_ context.Context, systemUserID int64, passwordHash string) error {
+func (r *fakeCredentialRepo) StoreCredential(_ context.Context, req repository.StoreCredentialRequest) error {
 	if r.stored == nil {
 		r.stored = make(map[int64]string)
 	}
-	r.stored[systemUserID] = passwordHash
+	r.stored[req.SystemUserID] = req.PasswordHash
 	return r.err
 }
 
 func TestCredentialStoreHashesThePlaintext(t *testing.T) {
 	credentials := &fakeCredentialRepo{}
 
-	if err := NewCredentialService(credentials, testLogger()).Store(t.Context(), 42, "secret"); err != nil {
+	if err := NewCredentialService(credentials, testLogger()).Store(t.Context(), StoreRequest{SystemUserID: 42, Password: "secret"}); err != nil {
 		t.Fatalf("Store: %v", err)
 	}
 	stored, ok := credentials.stored[42]
@@ -43,7 +45,7 @@ func TestCredentialStorePropagatesBackendFailure(t *testing.T) {
 	failure := errors.New("store credential: boom")
 	credentials := &fakeCredentialRepo{err: failure}
 
-	if err := NewCredentialService(credentials, testLogger()).Store(t.Context(), 42, "secret"); !errors.Is(err, failure) {
+	if err := NewCredentialService(credentials, testLogger()).Store(t.Context(), StoreRequest{SystemUserID: 42, Password: "secret"}); !errors.Is(err, failure) {
 		t.Fatalf("Store error = %v, want the backend failure surfaced", err)
 	}
 }

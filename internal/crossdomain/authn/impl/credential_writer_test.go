@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"glex/internal/crossdomain/authn/model"
+	authnservice "glex/internal/domain/authn/service"
 )
 
 // recordingCredentialService records Store calls; hashing is the provider's
@@ -15,17 +16,17 @@ type recordingCredentialService struct {
 	err    error
 }
 
-func (s *recordingCredentialService) Store(_ context.Context, systemUserID int64, password string) error {
+func (s *recordingCredentialService) Store(_ context.Context, req authnservice.StoreRequest) error {
 	if s.stored == nil {
 		s.stored = make(map[int64]string)
 	}
-	s.stored[systemUserID] = password
+	s.stored[req.SystemUserID] = req.Password
 	return s.err
 }
 
-func (s *recordingCredentialService) StoreAll(ctx context.Context, systemUserIDs []int64, password string) error {
-	for _, id := range systemUserIDs {
-		if err := s.Store(ctx, id, password); err != nil {
+func (s *recordingCredentialService) StoreAll(ctx context.Context, req authnservice.StoreAllRequest) error {
+	for _, id := range req.SystemUserIDs {
+		if err := s.Store(ctx, authnservice.StoreRequest{SystemUserID: id, Password: req.Password}); err != nil {
 			return err
 		}
 	}
@@ -36,7 +37,7 @@ func TestCredentialWriterBatchDelegatesToTheProvider(t *testing.T) {
 	credentials := &recordingCredentialService{}
 	writer := NewCredentialWriter(credentials)
 
-	if err := writer.WriteSystemUserCredentials(t.Context(), []int64{42, 43}, "secret"); err != nil {
+	if err := writer.WriteSystemUserCredentials(t.Context(), &model.SystemUserCredentials{SystemUserIDs: []int64{42, 43}, Password: "secret"}); err != nil {
 		t.Fatalf("WriteSystemUserCredentials: %v", err)
 	}
 	for _, id := range []int64{42, 43} {
@@ -44,7 +45,7 @@ func TestCredentialWriterBatchDelegatesToTheProvider(t *testing.T) {
 			t.Fatalf("credential for %d = %q, want the shared plaintext delegated verbatim", id, credentials.stored[id])
 		}
 	}
-	if err := writer.WriteSystemUserCredentials(t.Context(), []int64{0}, "secret"); err == nil {
+	if err := writer.WriteSystemUserCredentials(t.Context(), &model.SystemUserCredentials{SystemUserIDs: []int64{0}, Password: "secret"}); err == nil {
 		t.Fatal("a non-positive id must be rejected before any write")
 	}
 }

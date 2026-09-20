@@ -18,9 +18,10 @@ func WithPrincipal(ctx context.Context, principal *entity.Principal) context.Con
 	return authmw.WithPrincipal(ctx, principal)
 }
 
-// PrincipalFromContext returns the authenticated identity, when present.
-func PrincipalFromContext(ctx context.Context) (*entity.Principal, bool) {
-	principal, ok := authmw.PrincipalFromContext(ctx)
-	typed, isBiz := principal.(*entity.Principal)
-	return typed, ok && isBiz
+// PrincipalFromContext returns the authenticated identity, when present —
+// nil means no biz Principal is attached (ADR 0025: missing is nil, never a
+// bool flag).
+func PrincipalFromContext(ctx context.Context) *entity.Principal {
+	typed, _ := authmw.PrincipalFromContext(ctx).(*entity.Principal)
+	return typed
 }

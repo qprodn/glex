@@ -6,6 +6,7 @@ import (
 
 	"glex/internal/domain/access"
 	"glex/internal/domain/access/entity"
+	"glex/internal/domain/access/repository"
 	"glex/pkg/listq"
 
 	"github.com/go-kratos/kratos/v3/errors"
@@ -45,13 +46,13 @@ func (r *fakeUserRoleRepo) ListRoleAssignments(_ context.Context, userID int64) 
 	return out, nil
 }
 
-func (r *fakeUserRoleRepo) ReplaceUserRoles(_ context.Context, userID int64, roleIDs []int64, _ int64) ([]int64, error) {
-	r.links[userID] = append([]int64(nil), roleIDs...)
-	r.replaced = append(r.replaced, userID)
-	return []int64{userID}, nil
+func (r *fakeUserRoleRepo) ReplaceUserRoles(_ context.Context, req repository.ReplaceUserRolesRequest) ([]int64, error) {
+	r.links[req.UserID] = append([]int64(nil), req.RoleIDs...)
+	r.replaced = append(r.replaced, req.UserID)
+	return []int64{req.UserID}, nil
 }
 
-func (r *fakeUserRoleRepo) ListRoleUsers(context.Context, int64, listq.Query) ([]*entity.RoleUser, error) {
+func (r *fakeUserRoleRepo) ListRoleUsers(context.Context, repository.ListRoleUsersRequest) ([]*entity.RoleUser, error) {
 	return nil, nil
 }
 
@@ -116,7 +117,7 @@ func TestListForUser_AllRolesWithFlags(t *testing.T) {
 func TestReplaceForUser_UserNotFound(t *testing.T) {
 	svc := newRoleAssignmentSvc(newFakeRoleRepo(), newFakeUserRoleRepo())
 
-	_, err := svc.ReplaceForUser(context.Background(), 99, []int64{1}, 0)
+	_, err := svc.ReplaceForUser(context.Background(), repository.ReplaceUserRolesRequest{UserID: 99, RoleIDs: []int64{1}})
 	if !errors.Is(err, access.ErrUserNotFound) {
 		t.Fatalf("expected ErrUserNotFound, got %v", err)
 	}
@@ -127,7 +128,7 @@ func TestReplaceForUser_UnknownRoleRejected(t *testing.T) {
 	link.roles = []*entity.Role{{ID: 1, RoleName: "管理员", RoleKey: "admin"}}
 	svc := newRoleAssignmentSvc(newFakeRoleRepo(), link)
 
-	_, err := svc.ReplaceForUser(context.Background(), 10, []int64{1, 99}, 0)
+	_, err := svc.ReplaceForUser(context.Background(), repository.ReplaceUserRolesRequest{UserID: 10, RoleIDs: []int64{1, 99}})
 	if !errors.Is(err, access.ErrRoleNotFound) {
 		t.Fatalf("expected ErrRoleNotFound, got %v", err)
 	}
@@ -147,7 +148,7 @@ func TestReplaceForUser_FullReplacement(t *testing.T) {
 	svc := newRoleAssignmentSvc(newFakeRoleRepo(), link)
 
 	// Replace with [2, 3] — duplicates are silently deduped.
-	result, err := svc.ReplaceForUser(context.Background(), 10, []int64{2, 3, 2}, 42)
+	result, err := svc.ReplaceForUser(context.Background(), repository.ReplaceUserRolesRequest{UserID: 10, RoleIDs: []int64{2, 3, 2}, ActorID: 42})
 	if err != nil {
 		t.Fatalf("update user roles: %v", err)
 	}
@@ -177,7 +178,7 @@ func TestReplaceForUser_EmptyClears(t *testing.T) {
 	link.links[10] = []int64{1}
 	svc := newRoleAssignmentSvc(newFakeRoleRepo(), link)
 
-	result, err := svc.ReplaceForUser(context.Background(), 10, nil, 42)
+	result, err := svc.ReplaceForUser(context.Background(), repository.ReplaceUserRolesRequest{UserID: 10, ActorID: 42})
 	if err != nil {
 		t.Fatalf("clear user roles: %v", err)
 	}
@@ -194,7 +195,7 @@ func TestListRoleUsers_RoleNotFound(t *testing.T) {
 
 	// The fake repo ignores the filter/order payload; the role gate is what
 	// the test exercises.
-	_, err := svc.ListRoleUsers(context.Background(), 99, listq.Query{Limit: 20})
+	_, err := svc.ListRoleUsers(context.Background(), repository.ListRoleUsersRequest{Query: listq.Query{Limit: 20}, RoleID: 99})
 	if !errors.Is(err, access.ErrRoleNotFound) {
 		t.Fatalf("expected ErrRoleNotFound, got %v", err)
 	}

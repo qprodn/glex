@@ -21,20 +21,28 @@ type Role interface {
 	Get(ctx context.Context, id int64) (*entity.Role, error)
 	List(ctx context.Context, q listq.Query) ([]*entity.Role, error)
 	// Create validates the role and its initial Menu Grant and persists both.
-	Create(ctx context.Context, r *entity.Role, menuIDs []int64) (*entity.Role, error)
+	Create(ctx context.Context, req repository.CreateRoleRequest) (*entity.Role, error)
 	// Update validates the change (shape, uniqueness, disable guard) and
 	// persists it, returning the write with its pre-image and assigned users.
 	Update(ctx context.Context, r *entity.Role) (*entity.RoleUpdate, error)
 	// Delete soft-deletes the role and its Menu Grant, refusing while users
 	// are still assigned, and returns the assigned identities.
-	Delete(ctx context.Context, id, actorID int64) ([]int64, error)
+	Delete(ctx context.Context, req repository.DeleteRoleRequest) ([]int64, error)
 	// CheckedMenuIDs returns the role's granted menu ids shaped by
 	// menu_check_strictly (the role editor's checked keys).
 	CheckedMenuIDs(ctx context.Context, roleID int64) ([]int64, error)
-	// ReplaceMenus validates and dedupes menuIDs, replaces the role's Menu
-	// Grant together with menu_check_strictly, and returns the stored grant
+	// ReplaceMenus validates and dedupes req.MenuIDs, replaces the role's Menu
+	// Grant together with req.MenuCheckStrictly, and returns the stored grant
 	// with the assigned identities whose snapshots the write invalidates.
-	ReplaceMenus(ctx context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool, actorID int64) (granted []int64, affectedUserIDs []int64, err error)
+	ReplaceMenus(ctx context.Context, req repository.ReplaceRoleMenusRequest) (*MenuGrantReplacement, error)
+}
+
+// MenuGrantReplacement is the ReplaceMenus result: the stored (deduped) Menu
+// Grant the role editor's reply echoes, plus the assigned identities whose
+// Authorization Snapshot the write invalidates.
+type MenuGrantReplacement struct {
+	MenuIDs         []int64
+	AffectedUserIDs []int64
 }
 
 type roleImpl struct {
@@ -74,21 +82,21 @@ func (s *roleImpl) List(ctx context.Context, q listq.Query) ([]*entity.Role, err
 	return rs, nil
 }
 
-func (s *roleImpl) Create(ctx context.Context, r *entity.Role, menuIDs []int64) (*entity.Role, error) {
-	if err := ValidateRole(r); err != nil {
+func (s *roleImpl) Create(ctx context.Context, req repository.CreateRoleRequest) (*entity.Role, error) {
+	if err := ValidateRole(req.Role); err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.create_role", err)
 		return nil, err
 	}
-	if err := AssertRoleUnique(ctx, s.roles, r, 0); err != nil {
+	if err := assertRoleUnique(ctx, s.roles, req.Role, 0); err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.create_role", err)
 		return nil, err
 	}
-	unique, err := AssertMenusGrantable(ctx, s.menus, menuIDs)
+	unique, err := assertMenusGrantable(ctx, s.menus, req.MenuIDs)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.create_role", err)
 		return nil, err
 	}
-	created, err := s.roles.CreateRole(ctx, r, unique)
+	created, err := s.roles.CreateRole(ctx, repository.CreateRoleRequest{Role: req.Role, MenuIDs: unique})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.create_role", err)
 		return nil, err
@@ -101,11 +109,11 @@ func (s *roleImpl) Update(ctx context.Context, r *entity.Role) (*entity.RoleUpda
 		logx.Propagate(ctx, s.logger, "access.svc.update_role", err)
 		return nil, err
 	}
-	if err := AssertRoleUnique(ctx, s.roles, r, r.ID); err != nil {
+	if err := assertRoleUnique(ctx, s.roles, r, r.ID); err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.update_role", err)
 		return nil, err
 	}
-	if err := AssertRoleDisableAllowed(ctx, s.roles, s.userRoles, r); err != nil {
+	if err := assertRoleDisableAllowed(ctx, s.roles, s.userRoles, r); err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.update_role", err)
 		return nil, err
 	}
@@ -117,12 +125,12 @@ func (s *roleImpl) Update(ctx context.Context, r *entity.Role) (*entity.RoleUpda
 	return updated, nil
 }
 
-func (s *roleImpl) Delete(ctx context.Context, id, actorID int64) ([]int64, error) {
-	if _, err := s.roles.FindByID(ctx, id); err != nil {
+func (s *roleImpl) Delete(ctx context.Context, req repository.DeleteRoleRequest) ([]int64, error) {
+	if _, err := s.roles.FindByID(ctx, req.ID); err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.delete_role", err)
 		return nil, err
 	}
-	n, err := s.userRoles.CountUserRoles(ctx, id)
+	n, err := s.userRoles.CountUserRoles(ctx, req.ID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.delete_role", err)
 		return nil, err
@@ -132,7 +140,7 @@ func (s *roleImpl) Delete(ctx context.Context, id, actorID int64) ([]int64, erro
 		logx.Propagate(ctx, s.logger, "access.svc.delete_role", err)
 		return nil, err
 	}
-	revoked, err := s.roles.DeleteRole(ctx, id, actorID)
+	revoked, err := s.roles.DeleteRole(ctx, req)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.delete_role", err)
 		return nil, err
@@ -154,22 +162,27 @@ func (s *roleImpl) CheckedMenuIDs(ctx context.Context, roleID int64) ([]int64, e
 	return CheckedMenuIDs(role, links), nil
 }
 
-func (s *roleImpl) ReplaceMenus(ctx context.Context, roleID int64, menuIDs []int64, menuCheckStrictly bool, actorID int64) ([]int64, []int64, error) {
-	if _, err := s.roles.FindByID(ctx, roleID); err != nil {
+func (s *roleImpl) ReplaceMenus(ctx context.Context, req repository.ReplaceRoleMenusRequest) (*MenuGrantReplacement, error) {
+	if _, err := s.roles.FindByID(ctx, req.RoleID); err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.replace_menus", err)
-		return nil, nil, err
+		return nil, err
 	}
-	unique, err := AssertMenusGrantable(ctx, s.menus, menuIDs)
+	unique, err := assertMenusGrantable(ctx, s.menus, req.MenuIDs)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.replace_menus", err)
-		return nil, nil, err
+		return nil, err
 	}
-	affected, err := s.roles.ReplaceRoleMenus(ctx, roleID, unique, menuCheckStrictly, actorID)
+	affected, err := s.roles.ReplaceRoleMenus(ctx, repository.ReplaceRoleMenusRequest{
+		RoleID:            req.RoleID,
+		MenuIDs:           unique,
+		MenuCheckStrictly: req.MenuCheckStrictly,
+		ActorID:           req.ActorID,
+	})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.replace_menus", err)
-		return nil, nil, err
+		return nil, err
 	}
-	return unique, affected, nil
+	return &MenuGrantReplacement{MenuIDs: unique, AffectedUserIDs: affected}, nil
 }
 
 // ValidateRole rejects blank role_name/role_key (non-blank is the only rule).
@@ -180,12 +193,12 @@ func ValidateRole(r *entity.Role) error {
 	return nil
 }
 
-// AssertRoleUnique checks role_name and role_key are not taken by another
+// assertRoleUnique checks role_name and role_key are not taken by another
 // active role, ignoring the record with excludeID (0 = none). A not-found from
 // the repo is the expected "available" case. Checks run against active rows
 // only, so soft-deleted values are reusable. Its caller's method boundary
 // owns the breadcrumb (ADR 0011).
-func AssertRoleUnique(ctx context.Context, repo repository.RoleRepo, r *entity.Role, excludeID int64) error {
+func assertRoleUnique(ctx context.Context, repo repository.RoleRepo, r *entity.Role, excludeID int64) error {
 	if existing, err := repo.FindByRoleName(ctx, r.RoleName); err != nil {
 		if !errors.Is(err, access.ErrRoleNotFound) {
 			return err
@@ -203,11 +216,11 @@ func AssertRoleUnique(ctx context.Context, repo repository.RoleRepo, r *entity.R
 	return nil
 }
 
-// AssertMenusGrantable dedupes menuIDs and checks every id exists and is not
+// assertMenusGrantable dedupes menuIDs and checks every id exists and is not
 // soft-deleted (the repo's ListByIDs filters deleted rows). An empty list is
 // legal — it means "no grants" — and passes without touching the repo. Its
 // caller's method boundary owns the breadcrumb (ADR 0011).
-func AssertMenusGrantable(ctx context.Context, menuRepo repository.MenuRepo, menuIDs []int64) ([]int64, error) {
+func assertMenusGrantable(ctx context.Context, menuRepo repository.MenuRepo, menuIDs []int64) ([]int64, error) {
 	unique := dedupeIDs(menuIDs)
 	if len(unique) == 0 {
 		return unique, nil
@@ -222,11 +235,11 @@ func AssertMenusGrantable(ctx context.Context, menuRepo repository.MenuRepo, men
 	return unique, nil
 }
 
-// AssertRoleDisableAllowed rejects an update that *changes* the role's status
+// assertRoleDisableAllowed rejects an update that *changes* the role's status
 // to disabled (1) while users are still assigned. Re-disabling an already
 // disabled role is a no-op and passes; other status directions are free. Its
 // caller's method boundary owns the breadcrumb (ADR 0011).
-func AssertRoleDisableAllowed(ctx context.Context, repo repository.RoleRepo, userRoleRepo repository.UserRoleRepo, r *entity.Role) error {
+func assertRoleDisableAllowed(ctx context.Context, repo repository.RoleRepo, userRoleRepo repository.UserRoleRepo, r *entity.Role) error {
 	if r.Status != 1 {
 		return nil
 	}

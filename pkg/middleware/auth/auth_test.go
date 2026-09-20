@@ -163,7 +163,7 @@ func TestMiddlewareEnforcesRouteChecks(t *testing.T) {
 			handlerCalled := false
 			handler := Middleware(authenticator, routes)(func(ctx context.Context, _ any) (any, error) {
 				handlerCalled = true
-				_, hasPrincipal := PrincipalFromContext(ctx)
+				hasPrincipal := PrincipalFromContext(ctx) != nil
 				if hasPrincipal != tt.wantPrincipal {
 					t.Fatalf("handler Principal presence = %v, want %v", hasPrincipal, tt.wantPrincipal)
 				}

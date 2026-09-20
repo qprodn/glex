@@ -31,5 +31,8 @@ func (s *sessionRevoker) RevokeSystemUsers(ctx context.Context, request *model.R
 	if request == nil || len(request.SystemUserIDs) == 0 {
 		return nil
 	}
-	return s.sessions.RevokeSystemUsers(ctx, request.SystemUserIDs, request.PreservedSessionID)
+	return s.sessions.RevokeSystemUsers(ctx, authnservice.RevokeSystemUsersRequest{
+		SystemUserIDs:   request.SystemUserIDs,
+		ExceptSessionID: request.PreservedSessionID,
+	})
 }

@@ -54,9 +54,9 @@ func (w *fakeCredentialWriter) WriteSystemUserCredential(_ context.Context, requ
 
 // WriteSystemUserCredentials records the Data Import batch ask (ADR 0017) —
 // one shared password, ids only.
-func (w *fakeCredentialWriter) WriteSystemUserCredentials(_ context.Context, systemUserIDs []int64, password string) error {
-	for _, id := range systemUserIDs {
-		w.written = append(w.written, &authnmodel.SystemUserCredential{SystemUserID: id, Password: password})
+func (w *fakeCredentialWriter) WriteSystemUserCredentials(_ context.Context, request *authnmodel.SystemUserCredentials) error {
+	for _, id := range request.SystemUserIDs {
+		w.written = append(w.written, &authnmodel.SystemUserCredential{SystemUserID: id, Password: request.Password})
 	}
 	return w.err
 }

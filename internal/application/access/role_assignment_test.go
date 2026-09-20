@@ -8,8 +8,8 @@ import (
 
 	accessv1 "glex/api/access/v1"
 	accessentity "glex/internal/domain/access/entity"
+	accessrepo "glex/internal/domain/access/repository"
 	accessservice "glex/internal/domain/access/service"
-	"glex/pkg/listq"
 )
 
 // fakeRoleAssignmentService is a hand-rolled accessservice.RoleAssignment
@@ -46,17 +46,17 @@ func (f *fakeRoleAssignmentService) ListForUser(_ context.Context, userID int64)
 	return f.listed, nil
 }
 
-func (f *fakeRoleAssignmentService) ReplaceForUser(ctx context.Context, userID int64, roleIDs []int64, actorID int64) (*accessservice.RoleAssignmentReplacement, error) {
+func (f *fakeRoleAssignmentService) ReplaceForUser(ctx context.Context, req accessrepo.ReplaceUserRolesRequest) (*accessservice.RoleAssignmentReplacement, error) {
 	f.replaceCalled++
-	f.replaceCtx, f.replaceUserID, f.replaceRoleIDs, f.replaceActor = ctx, userID, roleIDs, actorID
+	f.replaceCtx, f.replaceUserID, f.replaceRoleIDs, f.replaceActor = ctx, req.UserID, req.RoleIDs, req.ActorID
 	if f.replaceErr != nil {
 		return nil, f.replaceErr
 	}
 	return f.replacement, nil
 }
 
-func (f *fakeRoleAssignmentService) ListRoleUsers(_ context.Context, roleID int64, q listq.Query) ([]*accessentity.RoleUser, error) {
-	f.usersRoleID, f.usersLimit, f.usersOffset = roleID, q.Limit, q.Offset
+func (f *fakeRoleAssignmentService) ListRoleUsers(_ context.Context, req accessrepo.ListRoleUsersRequest) ([]*accessentity.RoleUser, error) {
+	f.usersRoleID, f.usersLimit, f.usersOffset = req.RoleID, req.Limit, req.Offset
 	if f.usersErr != nil {
 		return nil, f.usersErr
 	}

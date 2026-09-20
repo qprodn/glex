@@ -32,5 +32,5 @@ type CredentialWriter interface {
 	// WriteSystemUserCredentials stores the same password for a batch of
 	// System Users on the caller's propagated transaction, hashing once —
 	// Data Import's shared initial credential (ADR 0017).
-	WriteSystemUserCredentials(ctx context.Context, systemUserIDs []int64, password string) error
+	WriteSystemUserCredentials(ctx context.Context, request *model.SystemUserCredentials) error
 }

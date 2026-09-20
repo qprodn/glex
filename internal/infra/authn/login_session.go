@@ -302,8 +302,8 @@ func authSessionLocalError(ctx context.Context, logger *slog.Logger, operation s
 	return authndomain.ErrAuthBackendUnavailable
 }
 
-func (r *loginSessionRepo) Create(ctx context.Context, bearerToken string, session *authnentity.LoginSession) (*authnentity.LoginSession, error) {
-	if bearerToken == "" || session == nil || session.SystemUserID <= 0 {
+func (r *loginSessionRepo) Create(ctx context.Context, req authnrepo.CreateSessionRequest) (*authnentity.LoginSession, error) {
+	if req.BearerToken == "" || req.Session == nil || req.Session.SystemUserID <= 0 {
 		return nil, authndomain.ErrTokenInvalid
 	}
 	for attempts := 0; attempts < 3; attempts++ {
@@ -311,7 +311,7 @@ func (r *loginSessionRepo) Create(ctx context.Context, bearerToken string, sessi
 		if err != nil {
 			return nil, authSessionLocalError(ctx, r.logger, "authn.create_session_id", err)
 		}
-		po := newLoginSession(session, id.String(), bearerToken)
+		po := newLoginSession(req.Session, id.String(), req.BearerToken)
 		payload, err := json.Marshal(po)
 		if err != nil {
 			return nil, authSessionLocalError(ctx, r.logger, "authn.encode_login_session", err)
@@ -323,7 +323,7 @@ func (r *loginSessionRepo) Create(ctx context.Context, bearerToken string, sessi
 			r.key(LoginSessionMetadataPrefix + po.ID),
 			r.key(loginSessionTokenKeyPrefix + po.Fingerprint),
 			r.key(loginSessionSequenceKey),
-			r.key(AuthManagerKeyPrefix + satokenmanager.TokenKeyPrefix + bearerToken),
+			r.key(AuthManagerKeyPrefix + satokenmanager.TokenKeyPrefix + req.BearerToken),
 		},
 			po.ID,
 			payload,
@@ -443,18 +443,18 @@ func mapLoginSessionAuthError(err error) error {
 }
 
 func (r *loginSessionRepo) List(ctx context.Context, opts ...authnrepo.ListOption) ([]*authnentity.LoginSession, error) {
-	return r.list(ctx, r.key(loginSessionAllKey), opts...)
-}
-
-func (r *loginSessionRepo) ListBySystemUser(ctx context.Context, systemUserID int64, opts ...authnrepo.ListOption) ([]*authnentity.LoginSession, error) {
-	return r.list(ctx, r.key(loginSessionUserKeyPrefix+strconv.FormatInt(systemUserID, 10)), opts...)
-}
-
-func (r *loginSessionRepo) list(ctx context.Context, indexKey string, opts ...authnrepo.ListOption) ([]*authnentity.LoginSession, error) {
 	o := authnrepo.ListOptions{}
 	for _, opt := range opts {
 		opt(&o)
 	}
+	return r.list(ctx, r.key(loginSessionAllKey), o)
+}
+
+func (r *loginSessionRepo) ListBySystemUser(ctx context.Context, req authnrepo.ListBySystemUserRequest) ([]*authnentity.LoginSession, error) {
+	return r.list(ctx, r.key(loginSessionUserKeyPrefix+strconv.FormatInt(req.SystemUserID, 10)), req.ListOptions)
+}
+
+func (r *loginSessionRepo) list(ctx context.Context, indexKey string, o authnrepo.ListOptions) ([]*authnentity.LoginSession, error) {
 	readCtx, cancel := context.WithTimeout(ctx, store.BoundedTimeout(r.readTimeout, store.DefaultAuthReadTimeout))
 	defer cancel()
 	ids, err := r.rdb.ZRange(readCtx, indexKey, 0, -1).Result()
@@ -637,23 +637,23 @@ func compareString(left, right string) int {
 	}
 }
 
-func (r *loginSessionRepo) Owns(ctx context.Context, systemUserID int64, sessionID string) (bool, error) {
-	po, err := r.findPO(ctx, sessionID)
+func (r *loginSessionRepo) Owns(ctx context.Context, req authnrepo.SessionOwnershipRequest) (bool, error) {
+	po, err := r.findPO(ctx, req.SessionID)
 	if errors.Is(err, authndomain.ErrLoginSessionNotFound) {
 		return false, nil
 	}
 	if err != nil {
 		return false, err
 	}
-	return po.SystemUserID == strconv.FormatInt(systemUserID, 10), nil
+	return po.SystemUserID == strconv.FormatInt(req.SystemUserID, 10), nil
 }
 
 func (r *loginSessionRepo) Logout(ctx context.Context, sessionID string) error {
 	return r.revoke(ctx, sessionID, 0, "LOGOUT")
 }
 
-func (r *loginSessionRepo) LogoutOwned(ctx context.Context, systemUserID int64, sessionID string) error {
-	return r.revoke(ctx, sessionID, systemUserID, "LOGOUT")
+func (r *loginSessionRepo) LogoutOwned(ctx context.Context, req authnrepo.SessionOwnershipRequest) error {
+	return r.revoke(ctx, req.SessionID, req.SystemUserID, "LOGOUT")
 }
 
 func (r *loginSessionRepo) Kickout(ctx context.Context, sessionID string) error {
@@ -664,12 +664,15 @@ func (r *loginSessionRepo) Replace(ctx context.Context, sessionID string) error 
 	return r.revoke(ctx, sessionID, 0, "BE_REPLACED")
 }
 
-func (r *loginSessionRepo) RevokeSystemUser(ctx context.Context, systemUserID int64, exceptSessionID string) error {
-	return r.RevokeSystemUsers(ctx, []int64{systemUserID}, exceptSessionID)
+func (r *loginSessionRepo) RevokeSystemUser(ctx context.Context, req authnrepo.RevokeSystemUserRequest) error {
+	return r.RevokeSystemUsers(ctx, authnrepo.RevokeSystemUsersRequest{
+		SystemUserIDs:   []int64{req.SystemUserID},
+		ExceptSessionID: req.ExceptSessionID,
+	})
 }
 
-func (r *loginSessionRepo) RevokeSystemUsers(ctx context.Context, systemUserIDs []int64, exceptSessionID string) error {
-	if len(systemUserIDs) == 0 {
+func (r *loginSessionRepo) RevokeSystemUsers(ctx context.Context, req authnrepo.RevokeSystemUsersRequest) error {
+	if len(req.SystemUserIDs) == 0 {
 		return nil
 	}
 	writeCtx, cancel := context.WithTimeout(ctx, store.BoundedTimeout(r.writeTimeout, store.DefaultAuthWriteTimeout))
@@ -685,8 +688,8 @@ func (r *loginSessionRepo) RevokeSystemUsers(ctx context.Context, systemUserIDs 
 		r.key(AuthManagerKeyPrefix + satokenmanager.RenewKeyPrefix),
 		r.key(AuthManagerKeyPrefix + satokensession.AccountSessionKeyPrefix),
 	}
-	for _, systemUserID := range systemUserIDs {
-		args = append(args, strconv.FormatInt(systemUserID, 10), exceptSessionID)
+	for _, systemUserID := range req.SystemUserIDs {
+		args = append(args, strconv.FormatInt(systemUserID, 10), req.ExceptSessionID)
 	}
 	_, err := revokeSystemUsersLoginSessionsScript.Run(writeCtx, r.rdb, nil, args...).Result()
 	if err != nil {

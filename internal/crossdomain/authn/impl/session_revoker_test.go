@@ -18,9 +18,9 @@ type recordingOnlineSessionService struct {
 	err     error
 }
 
-func (s *recordingOnlineSessionService) RevokeSystemUsers(_ context.Context, systemUserIDs []int64, exceptSessionID string) error {
-	s.batches = append(s.batches, append([]int64(nil), systemUserIDs...))
-	s.excepts = append(s.excepts, exceptSessionID)
+func (s *recordingOnlineSessionService) RevokeSystemUsers(_ context.Context, req authnservice.RevokeSystemUsersRequest) error {
+	s.batches = append(s.batches, append([]int64(nil), req.SystemUserIDs...))
+	s.excepts = append(s.excepts, req.ExceptSessionID)
 	return s.err
 }
 

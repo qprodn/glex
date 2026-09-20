@@ -11,6 +11,7 @@ import (
 	"glex/internal/bizpkg"
 	"glex/internal/crossdomain/authn"
 	accessentity "glex/internal/domain/access/entity"
+	accessrepo "glex/internal/domain/access/repository"
 	accessservice "glex/internal/domain/access/service"
 	authndomain "glex/internal/domain/authn"
 	authnservice "glex/internal/domain/authn/service"
@@ -219,7 +220,7 @@ func (s *MenuApplication) ListMenus(ctx context.Context, req *accessv1.ListMenus
 		logx.Propagate(ctx, s.logger, "access.list_menus", err)
 		return nil, err
 	}
-	menus, err := s.svc.List(ctx, filter, orderBy)
+	menus, err := s.svc.List(ctx, accessrepo.ListMenusRequest{Filter: filter, OrderBy: orderBy})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.list_menus", err)
 		return nil, err
@@ -234,8 +235,8 @@ func (s *MenuApplication) ListMenus(ctx context.Context, req *accessv1.ListMenus
 
 // GetRouters returns the current System User's freshly resolved route tree.
 func (s *MenuApplication) GetRouters(ctx context.Context, _ *emptypb.Empty) (*accessv1.RouterTree, error) {
-	principal, ok := authnservice.PrincipalFromContext(ctx)
-	if !ok {
+	principal := authnservice.PrincipalFromContext(ctx)
+	if principal == nil {
 		err := authndomain.ErrCredentialMissing
 		logx.Propagate(ctx, s.logger, "access.get_routers", err)
 		return nil, err
@@ -363,7 +364,7 @@ func (s *MenuApplication) UpdateMenu(ctx context.Context, req *accessv1.UpdateMe
 // Sessions in one transaction.
 func (s *MenuApplication) DeleteMenu(ctx context.Context, req *accessv1.DeleteMenuRequest) (*emptypb.Empty, error) {
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.svc.Delete(ctx, req.GetMenuId(), bizpkg.AuditActor(ctx))
+		affected, err := s.svc.Delete(ctx, accessrepo.DeleteMenuRequest{ID: req.GetMenuId(), ActorID: bizpkg.AuditActor(ctx)})
 		if err != nil {
 			return err
 		}
