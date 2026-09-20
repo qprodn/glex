@@ -250,7 +250,7 @@ func (s *JobApplication) UpdateJob(ctx context.Context, req *jobv1.UpdateJobRequ
 
 // DeleteJob soft-deletes a job by id.
 func (s *JobApplication) DeleteJob(ctx context.Context, req *jobv1.DeleteJobRequest) (*emptypb.Empty, error) {
-	if err := s.svc.Delete(ctx, req.GetJobId(), bizpkg.AuditActor(ctx)); err != nil {
+	if err := s.svc.Delete(ctx, jobservice.DeleteRequest{ID: req.GetJobId(), ActorID: bizpkg.AuditActor(ctx)}); err != nil {
 		logx.Propagate(ctx, s.logger, "job.delete_job", err)
 		return nil, err
 	}
@@ -259,7 +259,7 @@ func (s *JobApplication) DeleteJob(ctx context.Context, req *jobv1.DeleteJobRequ
 
 // SetJobEnabled resumes or pauses a job's schedule.
 func (s *JobApplication) SetJobEnabled(ctx context.Context, req *jobv1.SetJobEnabledRequest) (*jobv1.Job, error) {
-	if err := s.svc.SetEnabled(ctx, req.GetJobId(), req.GetEnabled(), bizpkg.AuditActor(ctx)); err != nil {
+	if err := s.svc.SetEnabled(ctx, jobservice.SetEnabledRequest{ID: req.GetJobId(), Enabled: req.GetEnabled(), ActorID: bizpkg.AuditActor(ctx)}); err != nil {
 		logx.Propagate(ctx, s.logger, "job.set_job_enabled", err)
 		return nil, err
 	}
@@ -289,7 +289,7 @@ func (s *JobApplication) RunJob(ctx context.Context, req *jobv1.RunJobRequest) (
 		time.Duration(j.TimeoutSeconds)*time.Second+runDispatchSlack)
 	go func() {
 		defer cancel()
-		if err := s.svc.Fire(runCtx, j, jobentity.TriggerManual); err != nil {
+		if err := s.svc.Fire(runCtx, jobservice.FireRequest{Job: j, Trigger: jobentity.TriggerManual}); err != nil {
 			// Degraded, not propagated — the requester is long gone; the
 			// operator sees the outcome (or its absence) in the log list.
 			s.logger.Warn("manual run failed to complete",
@@ -334,7 +334,7 @@ func (s *JobApplication) GetJobLog(ctx context.Context, req *jobv1.GetJobLogRequ
 
 // DeleteJobLog withdraws one log row.
 func (s *JobApplication) DeleteJobLog(ctx context.Context, req *jobv1.DeleteJobLogRequest) (*emptypb.Empty, error) {
-	if err := s.svc.DeleteLog(ctx, req.GetJobLogId(), bizpkg.AuditActor(ctx)); err != nil {
+	if err := s.svc.DeleteLog(ctx, jobservice.DeleteRequest{ID: req.GetJobLogId(), ActorID: bizpkg.AuditActor(ctx)}); err != nil {
 		logx.Propagate(ctx, s.logger, "job.delete_job_log", err)
 		return nil, err
 	}

@@ -75,30 +75,30 @@ func (f *fakeJobsSvc) Update(_ context.Context, j *jobentity.Job) (*jobentity.Jo
 	return &cp, nil
 }
 
-func (f *fakeJobsSvc) SetEnabled(_ context.Context, id int64, enabled bool, _ int64) error {
+func (f *fakeJobsSvc) SetEnabled(_ context.Context, req jobservice.SetEnabledRequest) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if _, ok := f.stored[id]; !ok {
+	if _, ok := f.stored[req.ID]; !ok {
 		return job.ErrJobNotFound
 	}
-	f.enabled[id] = enabled
+	f.enabled[req.ID] = req.Enabled
 	return nil
 }
 
-func (f *fakeJobsSvc) Delete(_ context.Context, id, _ int64) error {
+func (f *fakeJobsSvc) Delete(_ context.Context, req jobservice.DeleteRequest) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	delete(f.stored, id)
-	f.deleted = append(f.deleted, id)
+	delete(f.stored, req.ID)
+	f.deleted = append(f.deleted, req.ID)
 	return nil
 }
 
 func (f *fakeJobsSvc) ListExecutors() []string { return []string{"a.first", "b.second"} }
 
-func (f *fakeJobsSvc) Fire(_ context.Context, j *jobentity.Job, trigger jobentity.Trigger) error {
+func (f *fakeJobsSvc) Fire(_ context.Context, req jobservice.FireRequest) error {
 	f.mu.Lock()
-	f.fired = append(f.fired, j.ID)
-	f.triggers = append(f.triggers, trigger)
+	f.fired = append(f.fired, req.Job.ID)
+	f.triggers = append(f.triggers, req.Trigger)
 	err := f.fireErr
 	f.mu.Unlock()
 	f.fireWG.Done()

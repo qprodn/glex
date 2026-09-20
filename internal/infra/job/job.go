@@ -182,10 +182,10 @@ func (r *jobRepo) Update(ctx context.Context, j *jobentity.Job) (*jobentity.Job,
 	return toBizJob(po), nil
 }
 
-func (r *jobRepo) SetEnabled(ctx context.Context, id int64, enabled bool, actorID int64) error {
-	err := r.data.DB.Job(ctx).UpdateOneID(id).
-		SetEnabled(enabled).
-		SetUpdateBy(actorID).
+func (r *jobRepo) SetEnabled(ctx context.Context, req jobrepo.SetEnabledRequest) error {
+	err := r.data.DB.Job(ctx).UpdateOneID(req.ID).
+		SetEnabled(req.Enabled).
+		SetUpdateBy(req.ActorID).
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -197,11 +197,11 @@ func (r *jobRepo) SetEnabled(ctx context.Context, id int64, enabled bool, actorI
 }
 
 // DeleteJob soft-deletes the job (ADR 0002 — no row is hard-deleted),
-// stamping actorID into the audit fields.
-func (r *jobRepo) Delete(ctx context.Context, id, actorID int64) error {
-	err := r.data.DB.Job(ctx).UpdateOneID(id).
+// stamping req.ActorID into the audit fields.
+func (r *jobRepo) Delete(ctx context.Context, req jobrepo.DeleteRequest) error {
+	err := r.data.DB.Job(ctx).UpdateOneID(req.ID).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {

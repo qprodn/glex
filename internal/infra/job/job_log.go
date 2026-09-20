@@ -101,11 +101,11 @@ func (r *jobLogRepo) Create(ctx context.Context, l *jobentity.JobLog) (*jobentit
 }
 
 // DeleteJobLog soft-deletes the log row — history cleanup, not record
-// editing (ADR 0002).
-func (r *jobLogRepo) Delete(ctx context.Context, id, actorID int64) error {
-	err := r.data.DB.JobLog(ctx).UpdateOneID(id).
+// editing (ADR 0002) — stamping req.ActorID into the audit fields.
+func (r *jobLogRepo) Delete(ctx context.Context, req jobrepo.DeleteRequest) error {
+	err := r.data.DB.JobLog(ctx).UpdateOneID(req.ID).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {

@@ -61,10 +61,10 @@ func (r *Registry) Register(e Executor) {
 	r.executors[e.Name()] = e
 }
 
-// Lookup resolves a handler name; false means no such executor.
-func (r *Registry) Lookup(name string) (Executor, bool) {
-	e, ok := r.executors[name]
-	return e, ok
+// Lookup resolves a handler name; nil means no such executor (ADR 0025 —
+// missing is nil, never a bool flag).
+func (r *Registry) Lookup(name string) Executor {
+	return r.executors[name]
 }
 
 // Names returns every registered executor name, sorted — the stable order

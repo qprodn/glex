@@ -41,9 +41,9 @@ type SchedulerRuntime struct {
 // Built-in defaults when the config section is absent or zero-valued
 // (ADR 0023; the ratelimit config's 0-means-default pattern).
 const (
-	defaultTickSeconds    = 10
-	defaultJobTimezone    = "Asia/Shanghai"
-	fireClaimTTLSlack     = 60 * time.Second
+	defaultTickSeconds = 10
+	defaultJobTimezone = "Asia/Shanghai"
+	fireClaimTTLSlack  = 60 * time.Second
 )
 
 // NewSchedulerRuntime builds the runtime and owns its lifecycle, the
@@ -196,7 +196,7 @@ func (r *SchedulerRuntime) dispatch(ctx context.Context, j *jobentity.Job, occur
 		ttl := time.Duration(j.TimeoutSeconds)*time.Second + fireClaimTTLSlack
 		err := r.locker.WithLock(ctx, claim,
 			func(ctx context.Context) error {
-				runErr := r.jobs.Fire(ctx, j, jobentity.TriggerScheduled)
+				runErr := r.jobs.Fire(ctx, jobservice.FireRequest{Job: j, Trigger: jobentity.TriggerScheduled})
 				if hold := time.Until(occurrence.Add(2 * r.interval)); hold > 0 {
 					select {
 					case <-time.After(hold):

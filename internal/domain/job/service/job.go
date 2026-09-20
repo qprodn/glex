@@ -36,10 +36,10 @@ type Jobs interface {
 	Update(ctx context.Context, j *jobentity.Job) (*jobentity.Job, error)
 	// SetEnabled flips the pause/resume switch. It never touches content
 	// fields, so the switch cannot ride along an edit.
-	SetEnabled(ctx context.Context, id int64, enabled bool, actorID int64) error
+	SetEnabled(ctx context.Context, req SetEnabledRequest) error
 	// Delete soft-deletes the job; an in-flight run finishes, no new firing
 	// happens once the scheduler scan stops seeing the row.
-	Delete(ctx context.Context, id, actorID int64) error
+	Delete(ctx context.Context, req DeleteRequest) error
 	// ListExecutors returns the registered executor names — the save-time
 	// validation's registry, surfaced for the console's handler picker.
 	ListExecutors() []string
@@ -54,13 +54,37 @@ type Jobs interface {
 	// row has landed — the lock contract's own sentinel, the same
 	// pass-through pay's application layer practices. Everything else
 	// either lands a log row or reports the failure to record one.
-	Fire(ctx context.Context, j *jobentity.Job, trigger jobentity.Trigger) error
+	Fire(ctx context.Context, req FireRequest) error
 
 	GetLog(ctx context.Context, id int64) (*jobentity.JobLog, error)
 	ListLogs(ctx context.Context, q listq.Query) ([]*jobentity.JobLog, error)
 	// DeleteLog soft-deletes one log row — history cleanup, never record
 	// editing (ADR 0023).
-	DeleteLog(ctx context.Context, id, actorID int64) error
+	DeleteLog(ctx context.Context, req DeleteRequest) error
+}
+
+// SetEnabledRequest is one pause/resume flip: the job id, the switch's
+// target state, and the actor stamped into the audit fields.
+type SetEnabledRequest struct {
+	ID      int64
+	Enabled bool
+	ActorID int64
+}
+
+// DeleteRequest carries one withdrawal (ADR 0002): the record id and the
+// actor stamped into the audit fields. One shape serves the job and log
+// deletes — both are the same withdrawal.
+type DeleteRequest struct {
+	ID      int64
+	ActorID int64
+}
+
+// FireRequest is one firing: the job to run and the trigger that caused
+// it — the scheduler rides TriggerScheduled, manual run-now
+// TriggerManual.
+type FireRequest struct {
+	Job     *jobentity.Job
+	Trigger jobentity.Trigger
 }
 
 type jobsImpl struct {
@@ -144,16 +168,16 @@ func (s *jobsImpl) Update(ctx context.Context, j *jobentity.Job) (*jobentity.Job
 	return updated, nil
 }
 
-func (s *jobsImpl) SetEnabled(ctx context.Context, id int64, enabled bool, actorID int64) error {
-	if err := s.jobs.SetEnabled(ctx, id, enabled, actorID); err != nil {
+func (s *jobsImpl) SetEnabled(ctx context.Context, req SetEnabledRequest) error {
+	if err := s.jobs.SetEnabled(ctx, repository.SetEnabledRequest{ID: req.ID, Enabled: req.Enabled, ActorID: req.ActorID}); err != nil {
 		logx.Propagate(ctx, s.logger, "job.svc.set_enabled", err)
 		return err
 	}
 	return nil
 }
 
-func (s *jobsImpl) Delete(ctx context.Context, id, actorID int64) error {
-	if err := s.jobs.Delete(ctx, id, actorID); err != nil {
+func (s *jobsImpl) Delete(ctx context.Context, req DeleteRequest) error {
+	if err := s.jobs.Delete(ctx, repository.DeleteRequest{ID: req.ID, ActorID: req.ActorID}); err != nil {
 		logx.Propagate(ctx, s.logger, "job.svc.delete", err)
 		return err
 	}
@@ -169,13 +193,13 @@ func (s *jobsImpl) ListExecutors() []string {
 // Fire runs the job under the per-job run lock. The lock's TTL covers the
 // run timeout plus slack; the renewal watchdog (ADR 0003) keeps it alive
 // for long runs and cancels this context if the lock is definitively lost.
-func (s *jobsImpl) Fire(ctx context.Context, j *jobentity.Job, trigger jobentity.Trigger) error {
+func (s *jobsImpl) Fire(ctx context.Context, req FireRequest) error {
 	startedAt := time.Now()
-	err := s.locker.WithLock(ctx, job.RunLockKey(j.ID),
+	err := s.locker.WithLock(ctx, job.RunLockKey(req.Job.ID),
 		func(ctx context.Context) error {
-			return s.runAndRecord(ctx, j, trigger, startedAt)
+			return s.runAndRecord(ctx, req, startedAt)
 		},
-		lock.WithTTL(time.Duration(j.TimeoutSeconds)*time.Second+30*time.Second),
+		lock.WithTTL(time.Duration(req.Job.TimeoutSeconds)*time.Second+30*time.Second),
 	)
 	if err != nil {
 		if errors.Is(err, lock.ErrLockBusy) {
@@ -191,16 +215,17 @@ func (s *jobsImpl) Fire(ctx context.Context, j *jobentity.Job, trigger jobentity
 // runs on a detached, timeout-bounded context — the record must survive the
 // run's own cancellation (timeout, lock loss), the audit streams' detached
 // insert pattern (ADR 0012).
-func (s *jobsImpl) runAndRecord(ctx context.Context, j *jobentity.Job, trigger jobentity.Trigger, startedAt time.Time) error {
-	executor, known := s.executors.Lookup(j.Handler)
+func (s *jobsImpl) runAndRecord(ctx context.Context, req FireRequest, startedAt time.Time) error {
+	j := req.Job
+	executor := s.executors.Lookup(j.Handler)
 	entry := &jobentity.JobLog{
 		JobID:     j.ID,
 		Handler:   j.Handler,
-		Trigger:   trigger,
+		Trigger:   req.Trigger,
 		StartedAt: startedAt,
 	}
 	switch {
-	case !known:
+	case executor == nil:
 		// Code/config drift made visible, not an error to the caller: the
 		// fire happened, its outcome is the failure row (ADR 0023).
 		entry.Status = jobentity.RunFailure
@@ -274,8 +299,8 @@ func (s *jobsImpl) ListLogs(ctx context.Context, q listq.Query) ([]*jobentity.Jo
 	return ls, nil
 }
 
-func (s *jobsImpl) DeleteLog(ctx context.Context, id, actorID int64) error {
-	if err := s.logs.Delete(ctx, id, actorID); err != nil {
+func (s *jobsImpl) DeleteLog(ctx context.Context, req DeleteRequest) error {
+	if err := s.logs.Delete(ctx, repository.DeleteRequest{ID: req.ID, ActorID: req.ActorID}); err != nil {
 		logx.Propagate(ctx, s.logger, "job.svc.delete_log", err)
 		return err
 	}
@@ -303,7 +328,7 @@ func (s *jobsImpl) validate(ctx context.Context, j *jobentity.Job, excludeID int
 	if len(j.Args) > jobentity.MaxArgsLen {
 		return job.ErrJobInvalid
 	}
-	if _, known := s.executors.Lookup(j.Handler); !known {
+	if s.executors.Lookup(j.Handler) == nil {
 		return job.ErrJobHandlerUnknown
 	}
 	return s.assertNameAvailable(ctx, j.Name, excludeID)

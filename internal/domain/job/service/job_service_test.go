@@ -97,26 +97,26 @@ func (f *fakeJobRepo) Update(_ context.Context, j *jobentity.Job) (*jobentity.Jo
 	return &cp, nil
 }
 
-func (f *fakeJobRepo) SetEnabled(_ context.Context, id int64, enabled bool, _ int64) error {
+func (f *fakeJobRepo) SetEnabled(_ context.Context, req repository.SetEnabledRequest) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	j, ok := f.rows[id]
+	j, ok := f.rows[req.ID]
 	if !ok {
 		return job.ErrJobNotFound
 	}
-	j.Enabled = enabled
+	j.Enabled = req.Enabled
 	return nil
 }
 
-func (f *fakeJobRepo) Delete(_ context.Context, id, _ int64) error {
+func (f *fakeJobRepo) Delete(_ context.Context, req repository.DeleteRequest) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	j, ok := f.rows[id]
+	j, ok := f.rows[req.ID]
 	if !ok {
 		return job.ErrJobNotFound
 	}
 	delete(f.names, j.Name)
-	delete(f.rows, id)
+	delete(f.rows, req.ID)
 	return nil
 }
 
@@ -166,7 +166,7 @@ func (f *fakeJobLogRepo) Create(_ context.Context, l *jobentity.JobLog) (*jobent
 	return &cp, nil
 }
 
-func (f *fakeJobLogRepo) Delete(_ context.Context, id, _ int64) error { return nil }
+func (f *fakeJobLogRepo) Delete(_ context.Context, _ repository.DeleteRequest) error { return nil }
 
 // fakeLocker adapts lock.Locker; busyOn marks keys that report ErrLockBusy.
 type fakeLocker struct {
@@ -329,7 +329,7 @@ func TestFireSuccessRecordsLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if err := h.svc.Fire(context.Background(), created, jobentity.TriggerScheduled); err != nil {
+	if err := h.svc.Fire(context.Background(), FireRequest{Job: created, Trigger: jobentity.TriggerScheduled}); err != nil {
 		t.Fatalf("fire: %v", err)
 	}
 	rows, _ := h.logs.List(context.Background(), listq.Query{})
@@ -352,7 +352,7 @@ func TestFireExecutorErrorRecordsFailure(t *testing.T) {
 	h := newHarness(t)
 	h.exec.err = fmt.Errorf("channel down")
 	created, _ := h.svc.Create(context.Background(), validJob())
-	if err := h.svc.Fire(context.Background(), created, jobentity.TriggerManual); err != nil {
+	if err := h.svc.Fire(context.Background(), FireRequest{Job: created, Trigger: jobentity.TriggerManual}); err != nil {
 		t.Fatalf("fire reports the run, not the executor error: %v", err)
 	}
 	rows, _ := h.logs.List(context.Background(), listq.Query{})
@@ -368,7 +368,7 @@ func TestFirePanicRecordsFailure(t *testing.T) {
 	h := newHarness(t)
 	h.exec.panic = true
 	created, _ := h.svc.Create(context.Background(), validJob())
-	if err := h.svc.Fire(context.Background(), created, jobentity.TriggerScheduled); err != nil {
+	if err := h.svc.Fire(context.Background(), FireRequest{Job: created, Trigger: jobentity.TriggerScheduled}); err != nil {
 		t.Fatalf("fire: %v", err)
 	}
 	rows, _ := h.logs.List(context.Background(), listq.Query{})
@@ -387,7 +387,7 @@ func TestFireTimeoutRecordsFailure(t *testing.T) {
 	j.TimeoutSeconds = 1 // context.WithTimeout accepts seconds; 1s is tolerable here
 	created, _ := h.svc.Create(context.Background(), j)
 	start := time.Now()
-	if err := h.svc.Fire(context.Background(), created, jobentity.TriggerScheduled); err != nil {
+	if err := h.svc.Fire(context.Background(), FireRequest{Job: created, Trigger: jobentity.TriggerScheduled}); err != nil {
 		t.Fatalf("fire: %v", err)
 	}
 	if elapsed := time.Since(start); elapsed < 900*time.Millisecond {
@@ -406,7 +406,7 @@ func TestFireBusyReturnsSentinel(t *testing.T) {
 	h := newHarness(t)
 	created, _ := h.svc.Create(context.Background(), validJob())
 	h.locker.busyOn[fmt.Sprintf("job:run:%d", created.ID)] = true
-	if err := h.svc.Fire(context.Background(), created, jobentity.TriggerManual); !errors.Is(err, job.ErrJobBusy) {
+	if err := h.svc.Fire(context.Background(), FireRequest{Job: created, Trigger: jobentity.TriggerManual}); !errors.Is(err, job.ErrJobBusy) {
 		t.Fatalf("err = %v, want %v", err, job.ErrJobBusy)
 	}
 	if rows, _ := h.logs.List(context.Background(), listq.Query{}); len(rows) != 0 {
@@ -427,7 +427,7 @@ func TestFireUnknownHandlerRecordsDrift(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	if err := h.svc.Fire(context.Background(), stored, jobentity.TriggerScheduled); err != nil {
+	if err := h.svc.Fire(context.Background(), FireRequest{Job: stored, Trigger: jobentity.TriggerScheduled}); err != nil {
 		t.Fatalf("drift is a recorded outcome, not a fire error: %v", err)
 	}
 	rows, _ := h.logs.List(context.Background(), listq.Query{})
@@ -441,7 +441,7 @@ func TestFirePassesArgs(t *testing.T) {
 	j := validJob()
 	j.Args = "batch=50"
 	created, _ := h.svc.Create(context.Background(), j)
-	if err := h.svc.Fire(context.Background(), created, jobentity.TriggerScheduled); err != nil {
+	if err := h.svc.Fire(context.Background(), FireRequest{Job: created, Trigger: jobentity.TriggerScheduled}); err != nil {
 		t.Fatalf("fire: %v", err)
 	}
 	if h.exec.lastArg != "batch=50" {
@@ -453,7 +453,7 @@ func TestFireLogWriteFailureSurfaces(t *testing.T) {
 	h := newHarness(t)
 	h.logs.fails = true
 	created, _ := h.svc.Create(context.Background(), validJob())
-	if err := h.svc.Fire(context.Background(), created, jobentity.TriggerScheduled); err == nil {
+	if err := h.svc.Fire(context.Background(), FireRequest{Job: created, Trigger: jobentity.TriggerScheduled}); err == nil {
 		t.Fatalf("a run whose record failed must surface an error")
 	}
 }
@@ -462,7 +462,7 @@ func TestFireTruncatesLongMessage(t *testing.T) {
 	h := newHarness(t)
 	h.exec.err = fmt.Errorf("%s", string(make([]byte, jobentity.MaxMessageLen+500)))
 	created, _ := h.svc.Create(context.Background(), validJob())
-	_ = h.svc.Fire(context.Background(), created, jobentity.TriggerScheduled)
+	_ = h.svc.Fire(context.Background(), FireRequest{Job: created, Trigger: jobentity.TriggerScheduled})
 	rows, _ := h.logs.List(context.Background(), listq.Query{})
 	if len(rows[0].Message) != jobentity.MaxMessageLen {
 		t.Fatalf("message len = %d, want %d", len(rows[0].Message), jobentity.MaxMessageLen)
@@ -486,7 +486,7 @@ func TestFireTruncatesRunesNotBytes(t *testing.T) {
 	// characters.
 	h.exec.err = fmt.Errorf("%s", strings.Repeat("支", 2500))
 	created, _ := h.svc.Create(context.Background(), validJob())
-	_ = h.svc.Fire(context.Background(), created, jobentity.TriggerScheduled)
+	_ = h.svc.Fire(context.Background(), FireRequest{Job: created, Trigger: jobentity.TriggerScheduled})
 	rows, _ := h.logs.List(context.Background(), listq.Query{})
 	if len(rows) != 1 {
 		t.Fatalf("log rows = %d, want 1", len(rows))

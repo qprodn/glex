@@ -28,10 +28,10 @@ func (f *fakeJobsService) ListEnabled(context.Context) ([]*jobentity.Job, error)
 	return f.enabled, nil
 }
 
-func (f *fakeJobsService) Fire(_ context.Context, j *jobentity.Job, _ jobentity.Trigger) error {
+func (f *fakeJobsService) Fire(_ context.Context, req jobservice.FireRequest) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.fired = append(f.fired, j.ID)
+	f.fired = append(f.fired, req.Job.ID)
 	return f.fireErr
 }
 
