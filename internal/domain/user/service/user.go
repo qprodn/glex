@@ -14,7 +14,6 @@ import (
 	"glex/internal/domain/user"
 	"glex/internal/domain/user/entity"
 	"glex/internal/domain/user/repository"
-	"glex/pkg/listq"
 	"glex/pkg/logx"
 )
 
@@ -22,15 +21,15 @@ import (
 // path to the System User reads and writes (ADR 0005).
 type User interface {
 	Get(ctx context.Context, id int64) (*entity.User, error)
-	List(ctx context.Context, q listq.Query, deptIDs []int64) ([]*entity.User, error)
+	List(ctx context.Context, req repository.ListUsersRequest) ([]*entity.User, error)
 	// Create validates uniqueness against active rows and persists the user.
 	Create(ctx context.Context, u *entity.User) (*entity.User, error)
 	// Update validates uniqueness (excluding self) and persists the change,
 	// returning the write with its pre-image.
 	Update(ctx context.Context, u *entity.User) (*entity.UserUpdate, error)
 	// Delete soft-deletes the user and its Role Assignment, returning the
-	// identities whose sessions must be revoked (always {id}).
-	Delete(ctx context.Context, id, actorID int64) ([]int64, error)
+	// identities whose sessions must be revoked (always {req.ID}).
+	Delete(ctx context.Context, req repository.DeleteUserRequest) ([]int64, error)
 	// HasUsersInDept reports whether any active user's department reference
 	// points at deptID — the org module's department guards behind the
 	// crossdomain user contract (ADR 0013).
@@ -59,8 +58,8 @@ func (s *userImpl) Get(ctx context.Context, id int64) (*entity.User, error) {
 	return u, nil
 }
 
-func (s *userImpl) List(ctx context.Context, q listq.Query, deptIDs []int64) ([]*entity.User, error) {
-	users, err := s.users.ListUsers(ctx, q, deptIDs)
+func (s *userImpl) List(ctx context.Context, req repository.ListUsersRequest) ([]*entity.User, error) {
+	users, err := s.users.ListUsers(ctx, req)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "user.svc.list", err)
 		return nil, err
@@ -69,7 +68,7 @@ func (s *userImpl) List(ctx context.Context, q listq.Query, deptIDs []int64) ([]
 }
 
 func (s *userImpl) Create(ctx context.Context, u *entity.User) (*entity.User, error) {
-	if err := AssertUnique(ctx, s.users, u, 0); err != nil {
+	if err := assertUnique(ctx, s.users, u, 0); err != nil {
 		logx.Propagate(ctx, s.logger, "user.svc.create", err)
 		return nil, err
 	}
@@ -82,7 +81,7 @@ func (s *userImpl) Create(ctx context.Context, u *entity.User) (*entity.User, er
 }
 
 func (s *userImpl) Update(ctx context.Context, u *entity.User) (*entity.UserUpdate, error) {
-	if err := AssertUnique(ctx, s.users, u, u.ID); err != nil {
+	if err := assertUnique(ctx, s.users, u, u.ID); err != nil {
 		logx.Propagate(ctx, s.logger, "user.svc.update", err)
 		return nil, err
 	}
@@ -94,8 +93,8 @@ func (s *userImpl) Update(ctx context.Context, u *entity.User) (*entity.UserUpda
 	return updated, nil
 }
 
-func (s *userImpl) Delete(ctx context.Context, id, actorID int64) ([]int64, error) {
-	revoked, err := s.users.DeleteUser(ctx, id, actorID)
+func (s *userImpl) Delete(ctx context.Context, req repository.DeleteUserRequest) ([]int64, error) {
+	revoked, err := s.users.DeleteUser(ctx, req)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "user.svc.delete", err)
 		return nil, err
@@ -112,12 +111,13 @@ func (s *userImpl) HasUsersInDept(ctx context.Context, deptID int64) (bool, erro
 	return n > 0, nil
 }
 
-// AssertUnique checks user_name (always) and email/phone_number (when set) are
-// not already taken, ignoring the record with excludeID (0 = none). A
-// not-found from the repo is the expected "available" case. Checks run against
-// active rows only, so soft-deleted values are reusable. Its caller's method
-// boundary owns the breadcrumb (ADR 0011).
-func AssertUnique(ctx context.Context, repo repository.UserRepo, u *entity.User, excludeID int64) error {
+// assertUnique checks user_name (always) and email/phone_number (when set)
+// are not already taken, ignoring the record with excludeID (0 = none). A
+// not-found from the repo is the expected "available" case. Checks run
+// against active rows only, so soft-deleted values are reusable. Its
+// caller's method boundary owns the breadcrumb (ADR 0011). A package-level
+// invariant helper, unexported rather than conformed (ADR 0025).
+func assertUnique(ctx context.Context, repo repository.UserRepo, u *entity.User, excludeID int64) error {
 	if existing, err := repo.FindByUserName(ctx, u.UserName); err != nil {
 		if !errors.Is(err, user.ErrUserNotFound) {
 			return err

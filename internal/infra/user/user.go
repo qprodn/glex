@@ -16,7 +16,6 @@ import (
 	"glex/internal/infra/ent/user"
 	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
-	"glex/pkg/listq"
 )
 
 // toBiz maps an ent User PO to a userentity.User DO. The credential column is
@@ -132,19 +131,19 @@ func (r *userRepo) FindByPhoneNumber(ctx context.Context, phone string) (*useren
 	return toBiz(po), nil
 }
 
-func (r *userRepo) ListUsers(ctx context.Context, q listq.Query, deptIDs []int64) ([]*userentity.User, error) {
+func (r *userRepo) ListUsers(ctx context.Context, req userrepo.ListUsersRequest) ([]*userentity.User, error) {
 	query := r.data.DB.User(ctx).Query().
 		Where(
 			user.DeletedAtIsNil(),
-			ents.ApplyFilter(q.Filter),
+			ents.ApplyFilter(req.Filter),
 		)
-	if len(deptIDs) > 0 {
-		query = query.Where(user.DeptIDIn(deptIDs...))
+	if len(req.DeptIDs) > 0 {
+		query = query.Where(user.DeptIDIn(req.DeptIDs...))
 	}
 	pos, err := query.
-		Order(ents.ApplyOrderBy(q.OrderBy)).
-		Offset(q.Offset).
-		Limit(q.Limit).
+		Order(ents.ApplyOrderBy(req.OrderBy)).
+		Offset(req.Offset).
+		Limit(req.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, userStoreError(ctx, r.logger, "user.list", err)
@@ -222,24 +221,24 @@ func (r *userRepo) UpdateUser(ctx context.Context, u *userentity.User) (*userent
 // access and org modules, soft-deleted here in the same write, the
 // established sys_user_role precedent (ADR 0002). The caller owns the
 // transaction and session-revocation ordering.
-func (r *userRepo) DeleteUser(ctx context.Context, id int64, actorID int64) ([]int64, error) {
+func (r *userRepo) DeleteUser(ctx context.Context, req userrepo.DeleteUserRequest) ([]int64, error) {
 	if _, err := r.data.DB.UserRole(ctx).Update().
-		Where(userrole.UserIDEQ(id), userrole.DeletedAtIsNil()).
+		Where(userrole.UserIDEQ(req.ID), userrole.DeletedAtIsNil()).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Save(ctx); err != nil {
 		return nil, userStoreError(ctx, r.logger, "user.delete", err)
 	}
 	if _, err := r.data.DB.UserPost(ctx).Update().
-		Where(userpost.UserIDEQ(id), userpost.DeletedAtIsNil()).
+		Where(userpost.UserIDEQ(req.ID), userpost.DeletedAtIsNil()).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Save(ctx); err != nil {
 		return nil, userStoreError(ctx, r.logger, "user.delete", err)
 	}
-	err := r.data.DB.User(ctx).UpdateOneID(id).
+	err := r.data.DB.User(ctx).UpdateOneID(req.ID).
 		SetDeletedAt(time.Now()).
-		SetUpdateBy(actorID).
+		SetUpdateBy(req.ActorID).
 		Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -247,7 +246,7 @@ func (r *userRepo) DeleteUser(ctx context.Context, id int64, actorID int64) ([]i
 		}
 		return nil, userStoreError(ctx, r.logger, "user.delete", err)
 	}
-	return []int64{id}, nil
+	return []int64{req.ID}, nil
 }
 
 // CountByDeptID counts active users whose department reference points at

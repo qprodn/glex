@@ -12,6 +12,7 @@ import (
 	"glex/internal/crossdomain/dict"
 	userdomain "glex/internal/domain/user"
 	userentity "glex/internal/domain/user/entity"
+	userrepo "glex/internal/domain/user/repository"
 	"glex/pkg/excelx"
 	"glex/pkg/listq"
 	"glex/pkg/logx"
@@ -135,23 +136,29 @@ func (t *dictTranslator) load(dictType string) {
 	t.values[dictType] = values
 }
 
-// Label translates a stored value for export; unresolved values degrade to
-// the raw text (ADR 0017 — a sour dictionary never fails an export).
-func (t *dictTranslator) Label(dictType, value string) (string, bool) {
+// Label translates a stored value for export; a miss (ErrNoEntry) makes the
+// codec degrade to the raw text (ADR 0017 — a sour dictionary never fails an
+// export). A fetch failure rides Failure(), not this return.
+func (t *dictTranslator) Label(dictType, value string) (string, error) {
 	t.load(dictType)
-	label, ok := t.labels[dictType][value]
-	return label, ok
+	if label, ok := t.labels[dictType][value]; ok {
+		return label, nil
+	}
+	return "", excelx.ErrNoEntry
 }
 
 // Value translates a cell for import; the raw stored value also passes
-// (operators may type 0/1 where the template shows 男/女, RuoYi-style).
-func (t *dictTranslator) Value(dictType, label string) (string, bool) {
+// (operators may type 0/1 where the template shows 男/女, RuoYi-style). A
+// miss (ErrNoEntry) becomes the codec's row error.
+func (t *dictTranslator) Value(dictType, label string) (string, error) {
 	t.load(dictType)
 	if v, ok := t.values[dictType][label]; ok {
-		return v, true
+		return v, nil
 	}
-	_, ok := t.labels[dictType][label]
-	return label, ok
+	if _, ok := t.labels[dictType][label]; ok {
+		return label, nil
+	}
+	return "", excelx.ErrNoEntry
 }
 
 // Failure reports the first vocabulary fetch failure, if any — a store
@@ -397,7 +404,10 @@ func (s *UserApplication) listForExport(ctx context.Context, req *userv1.ExportU
 			return nil, err
 		}
 	}
-	users, err := s.svc.List(ctx, listq.Query{Filter: filter, OrderBy: orderBy, Limit: exportRowCap + 1}, deptIDs)
+	users, err := s.svc.List(ctx, userrepo.ListUsersRequest{
+		Query:   listq.Query{Filter: filter, OrderBy: orderBy, Limit: exportRowCap + 1},
+		DeptIDs: deptIDs,
+	})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "user.list_for_export", err)
 		return nil, err

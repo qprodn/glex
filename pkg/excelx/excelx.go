@@ -45,13 +45,20 @@ func (e RowError) Error() string {
 
 // Translator resolves dictionary values and labels for dict-tagged columns.
 // The calling application builds it from its dict capability and injects it
-// — excelx itself never fetches anything (ADR 0017).
+// — excelx itself never fetches anything (ADR 0017). Both directions return
+// one value plus an error (ADR 0025): a miss is ErrNoEntry, never a bool
+// flag.
 type Translator interface {
-	// Label returns the display label for a stored value. ok=false makes
-	// export fall back to the raw value — display degrades, the export
-	// never fails on a sour dictionary.
-	Label(dictType, value string) (label string, ok bool)
+	// Label returns the display label for a stored value. A miss (or any
+	// error) makes export fall back to the raw value — display degrades,
+	// the export never fails on a sour dictionary.
+	Label(dictType, value string) (string, error)
 	// Value resolves a cell's label (or the raw stored value) back to the
-	// stored value. ok=false is an import RowError.
-	Value(dictType, label string) (value string, ok bool)
+	// stored value. A miss is an import RowError.
+	Value(dictType, label string) (string, error)
 }
+
+// ErrNoEntry is the Translator's miss: the dictionary carries no entry for
+// the asked text. Export degrades to the raw value; import cites a RowError
+// — neither fails the workbook.
+var ErrNoEntry = errors.New("excelx: dictionary has no entry")

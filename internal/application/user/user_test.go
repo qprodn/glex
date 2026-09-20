@@ -15,10 +15,10 @@ import (
 	orgdomain "glex/internal/domain/org"
 	userdomain "glex/internal/domain/user"
 	userentity "glex/internal/domain/user/entity"
+	userrepo "glex/internal/domain/user/repository"
 	userservice "glex/internal/domain/user/service"
 
 	userv1 "glex/api/user/v1"
-	"glex/pkg/listq"
 
 	"github.com/go-kratos/kratos/v3/errors"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -103,17 +103,17 @@ func (s *fakeUserService) Get(_ context.Context, id int64) (*userentity.User, er
 	return u, nil
 }
 
-func (s *fakeUserService) List(_ context.Context, q listq.Query, _ []int64) ([]*userentity.User, error) {
-	s.lastListCall.limit = q.Limit
-	s.lastListCall.offset = q.Offset
-	if q.Offset >= len(s.list) {
+func (s *fakeUserService) List(_ context.Context, req userrepo.ListUsersRequest) ([]*userentity.User, error) {
+	s.lastListCall.limit = req.Limit
+	s.lastListCall.offset = req.Offset
+	if req.Offset >= len(s.list) {
 		return nil, nil
 	}
 	end := len(s.list)
-	if q.Limit > 0 && q.Offset+q.Limit < end {
-		end = q.Offset + q.Limit
+	if req.Limit > 0 && req.Offset+req.Limit < end {
+		end = req.Offset + req.Limit
 	}
-	return append([]*userentity.User(nil), s.list[q.Offset:end]...), nil
+	return append([]*userentity.User(nil), s.list[req.Offset:end]...), nil
 }
 
 func (s *fakeUserService) Create(_ context.Context, u *userentity.User) (*userentity.User, error) {
@@ -135,11 +135,11 @@ func (s *fakeUserService) Update(_ context.Context, u *userentity.User) (*useren
 	return &userentity.UserUpdate{User: u, Previous: previous}, nil
 }
 
-func (s *fakeUserService) Delete(_ context.Context, id int64, actorID int64) ([]int64, error) {
-	s.deletedIDs = append(s.deletedIDs, id)
-	s.deletedBy = append(s.deletedBy, actorID)
-	delete(s.byID, id)
-	return []int64{id}, nil
+func (s *fakeUserService) Delete(_ context.Context, req userrepo.DeleteUserRequest) ([]int64, error) {
+	s.deletedIDs = append(s.deletedIDs, req.ID)
+	s.deletedBy = append(s.deletedBy, req.ActorID)
+	delete(s.byID, req.ID)
+	return []int64{req.ID}, nil
 }
 
 func newTestUserApplication(svc *fakeUserService, credentials *fakeCredentialWriter, revoker *fakeSessionRevoker) *UserApplication {

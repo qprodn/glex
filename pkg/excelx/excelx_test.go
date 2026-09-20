@@ -26,27 +26,29 @@ type stubDict struct {
 	byType map[string]map[string]string
 }
 
-func (d stubDict) Label(dictType, value string) (string, bool) {
-	label, ok := d.byType[dictType][value]
-	return label, ok
+func (d stubDict) Label(dictType, value string) (string, error) {
+	if label, ok := d.byType[dictType][value]; ok {
+		return label, nil
+	}
+	return "", ErrNoEntry
 }
 
-func (d stubDict) Value(dictType, label string) (string, bool) {
+func (d stubDict) Value(dictType, label string) (string, error) {
 	m := d.byType[dictType]
 	if value, ok := m[label]; ok {
-		return value, true
+		return value, nil
 	}
 	for v, l := range m {
 		if l == label || v == label {
-			return v, true
+			return v, nil
 		}
 	}
-	return "", false
+	return "", ErrNoEntry
 }
 
 var dicts = stubDict{byType: map[string]map[string]string{
-	"sys_user_gender":     {"0": "男", "1": "女", "2": "未知"},
-	"sys_normal_disable":  {"0": "正常", "1": "停用"},
+	"sys_user_gender":    {"0": "男", "1": "女", "2": "未知"},
+	"sys_normal_disable": {"0": "正常", "1": "停用"},
 }}
 
 // minimalRow is the two-column shape for header-level tests.
@@ -174,8 +176,7 @@ func TestReadCollectsRowErrors(t *testing.T) {
 
 func TestReadSkipsBlankRows(t *testing.T) {
 	f := excelize.NewFile()
-	if err := f.SetSheetRow("Sheet1", "A1", &[]any{"登录账号", "用户昵称"});
-		err != nil {
+	if err := f.SetSheetRow("Sheet1", "A1", &[]any{"登录账号", "用户昵称"}); err != nil {
 		t.Fatalf("header: %v", err)
 	}
 	if err := f.SetSheetRow("Sheet1", "A3", &[]any{"admin", "管理员"}); err != nil {

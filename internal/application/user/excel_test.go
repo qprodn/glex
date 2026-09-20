@@ -81,25 +81,25 @@ type optionsTranslator struct {
 	o *fakeDictOptions
 }
 
-func (t optionsTranslator) Label(dictType, value string) (string, bool) {
+func (t optionsTranslator) Label(dictType, value string) (string, error) {
 	for _, e := range t.o.byType[dictType] {
 		if e.Value == value {
-			return e.Label, true
+			return e.Label, nil
 		}
 	}
-	return "", false
+	return "", excelx.ErrNoEntry
 }
 
-func (t optionsTranslator) Value(dictType, label string) (string, bool) {
+func (t optionsTranslator) Value(dictType, label string) (string, error) {
 	for _, e := range t.o.byType[dictType] {
 		if e.Label == label {
-			return e.Value, true
+			return e.Value, nil
 		}
 		if e.Value == label {
-			return e.Value, true
+			return e.Value, nil
 		}
 	}
-	return "", false
+	return "", excelx.ErrNoEntry
 }
 
 func translatorFrom(o *fakeDictOptions) excelx.Translator {

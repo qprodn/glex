@@ -93,7 +93,7 @@ func cellValue(fv reflect.Value, dict string, tr Translator) any {
 		s = strconv.FormatInt(int64Value(fv), 10)
 	}
 	if dict != "" && tr != nil {
-		if label, ok := tr.Label(dict, s); ok {
+		if label, err := tr.Label(dict, s); err == nil {
 			return label
 		}
 	}
@@ -119,8 +119,8 @@ func parseCell(fv reflect.Value, raw, dict string, tr Translator) error {
 		if tr == nil {
 			return fmt.Errorf("未配置字典翻译（%s）", dict)
 		}
-		v, ok := tr.Value(dict, s)
-		if !ok {
+		v, err := tr.Value(dict, s)
+		if err != nil {
 			return fmt.Errorf("无法识别的选项 %q", raw)
 		}
 		s = v

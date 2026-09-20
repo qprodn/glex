@@ -7,7 +7,6 @@ import (
 	"glex/internal/domain/user"
 	"glex/internal/domain/user/entity"
 	"glex/internal/domain/user/repository"
-	"glex/pkg/listq"
 
 	"github.com/go-kratos/kratos/v3/errors"
 )
@@ -73,7 +72,7 @@ func (r *fakeUserRepo) FindByPhoneNumber(_ context.Context, phone string) (*enti
 	return u, nil
 }
 
-func (r *fakeUserRepo) ListUsers(context.Context, listq.Query, []int64) ([]*entity.User, error) {
+func (r *fakeUserRepo) ListUsers(context.Context, repository.ListUsersRequest) ([]*entity.User, error) {
 	return nil, nil
 }
 
@@ -98,10 +97,10 @@ func (r *fakeUserRepo) UpdateUser(_ context.Context, u *entity.User) (*entity.Us
 	return &entity.UserUpdate{User: u, Previous: previous}, nil
 }
 
-func (r *fakeUserRepo) DeleteUser(_ context.Context, id int64, actorID int64) ([]int64, error) {
-	r.deleted = append(r.deleted, id)
-	r.actors = append(r.actors, actorID)
-	return []int64{id}, nil
+func (r *fakeUserRepo) DeleteUser(_ context.Context, req repository.DeleteUserRequest) ([]int64, error) {
+	r.deleted = append(r.deleted, req.ID)
+	r.actors = append(r.actors, req.ActorID)
+	return []int64{req.ID}, nil
 }
 
 func TestCreate_UserNameConflict(t *testing.T) {
@@ -232,7 +231,7 @@ func TestDelete_DelegatesWithActorAndReturnsAffectedIDs(t *testing.T) {
 	repo := newFakeUserRepo()
 	svc := NewUserService(repo, testLogger())
 
-	affected, err := svc.Delete(context.Background(), 42, 7)
+	affected, err := svc.Delete(context.Background(), repository.DeleteUserRequest{ID: 42, ActorID: 7})
 	if err != nil {
 		t.Fatalf("delete user: %v", err)
 	}
