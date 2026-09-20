@@ -13,8 +13,8 @@ import (
 // panics on anything else, which no sweep test reaches.
 type fakeSweepService struct {
 	payservice.Payment
-	swept  int
-	limit  int
+	swept      int
+	limit      int
 	sweepFails bool
 }
 

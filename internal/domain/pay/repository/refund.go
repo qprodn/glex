@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"glex/internal/domain/pay/entity"
+	"glex/pkg/listq"
 )
 
 // RefundRepo is the repository interface for Refund rows. State advances
@@ -13,7 +14,7 @@ import (
 type RefundRepo interface {
 	// FindByID resolves one active Refund.
 	FindByID(ctx context.Context, id int64) (*entity.Refund, error)
-	List(ctx context.Context, opts ...ListOption) ([]*entity.Refund, error)
+	List(ctx context.Context, q listq.Query) ([]*entity.Refund, error)
 	// Create inserts the row; the caller mints the ID (NextID).
 	Create(ctx context.Context, r *entity.Refund) (*entity.Refund, error)
 	// MarkSuccess settles the refund and advances the payment's refunded

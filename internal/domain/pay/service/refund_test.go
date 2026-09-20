@@ -11,8 +11,8 @@ import (
 
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
-	payrepo "glex/internal/domain/pay/repository"
 	"glex/internal/infra/pay/crypt"
+	"glex/pkg/listq"
 )
 
 // fakeRefundRepo mirrors the CAS refund state machine in memory.
@@ -36,7 +36,7 @@ func (f *fakeRefundRepo) FindByID(ctx context.Context, id int64) (*payentity.Ref
 	return nil, pay.ErrRefundNotFound
 }
 
-func (f *fakeRefundRepo) List(ctx context.Context, opts ...payrepo.ListOption) ([]*payentity.Refund, error) {
+func (f *fakeRefundRepo) List(context.Context, listq.Query) ([]*payentity.Refund, error) {
 	return nil, nil
 }
 
@@ -89,14 +89,14 @@ func (f *fakeRefundRepo) NextID() int64 { f.nextID++; return f.nextID }
 // scriptRefundGateway answers refunds synchronously and reports refund
 // queries on demand.
 type scriptRefundGateway struct {
-	refundState  ChannelRefundState
-	refundErr    error
-	queries      *syncState
+	refundState ChannelRefundState
+	refundErr   error
+	queries     *syncState
 }
 
 type syncState struct {
-	mu       sync.Mutex
-	invoked  int
+	mu      sync.Mutex
+	invoked int
 }
 
 func (g *scriptRefundGateway) Channel() payentity.Channel { return payentity.ChannelAlipay }

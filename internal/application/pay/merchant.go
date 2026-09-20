@@ -7,11 +7,11 @@ import (
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
 	payservice "glex/internal/domain/pay/service"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
-	"go.einride.tech/aip/pagination"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -53,14 +53,14 @@ func convertSchema(schema payentity.ChannelSchema, adopted bool) *payv1.ChannelS
 	}
 	for _, f := range schema.Fields {
 		pf := &payv1.SchemaField{
-			Name:        f.Name,
-			Label:       f.Label,
-			Type:        string(f.Type),
-			Required:    f.Required,
-			Secret:      f.Secret,
-			Placeholder: f.Placeholder,
-			Help:        f.Help,
-			Group:       f.Group,
+			Name:         f.Name,
+			Label:        f.Label,
+			Type:         string(f.Type),
+			Required:     f.Required,
+			Secret:       f.Secret,
+			Placeholder:  f.Placeholder,
+			Help:         f.Help,
+			Group:        f.Group,
 			DefaultValue: f.Default,
 		}
 		for _, c := range f.Choices {
@@ -93,41 +93,26 @@ func (s *PayApplication) CreateMerchantAccount(ctx context.Context, req *payv1.C
 	return convertMerchant(m), nil
 }
 
-// ListMerchantAccounts lists Merchant Accounts with AIP filter/order and
-// page-token pagination. Every row reads through its masked echo only.
-func (s *PayApplication) ListMerchantAccounts(ctx context.Context, req *payv1.ListMerchantAccountsRequest) (*payv1.MerchantAccountSet, error) {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
+// merchantListSpec is this module's list fact (ADR 0024): filterable
+// idents plus the default listing order.
+var merchantListSpec = listq.Spec{
+	Idents: []filtering.DeclarationOption{
 		filtering.DeclareIdent("name", filtering.TypeString),
 		filtering.DeclareIdent("channel", filtering.TypeInt),
 		filtering.DeclareIdent("status", filtering.TypeInt),
-	)
+	},
+	DefaultOrder: []ordering.Field{{Path: "id", Desc: true}},
+}
+
+// ListMerchantAccounts lists Merchant Accounts with AIP filter/order and
+// page-token pagination. Every row reads through its masked echo only.
+func (s *PayApplication) ListMerchantAccounts(ctx context.Context, req *payv1.ListMerchantAccountsRequest) (*payv1.MerchantAccountSet, error) {
+	q, page, err := listq.Parse(req, merchantListSpec)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.list_merchant_accounts", err)
 		return nil, err
 	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "pay.list_merchant_accounts", err)
-		return nil, err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "pay.list_merchant_accounts", err)
-		return nil, err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "pay.list_merchant_accounts", err)
-		return nil, err
-	}
-	if len(orderBy.Fields) == 0 {
-		orderBy.Fields = []ordering.Field{{Path: "id", Desc: true}}
-	}
-	if req.GetPageSize() <= 0 {
-		req.PageSize = 20
-	}
-	merchants, err := s.merchants.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
+	merchants, err := s.merchants.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.list_merchant_accounts", err)
 		return nil, err
@@ -136,9 +121,7 @@ func (s *PayApplication) ListMerchantAccounts(ctx context.Context, req *payv1.Li
 	for _, m := range merchants {
 		set.Merchants = append(set.Merchants, convertMerchant(m))
 	}
-	if len(merchants) >= int(req.GetPageSize()) {
-		set.NextPageToken = pageToken.Next(req).String()
-	}
+	set.NextPageToken = page.NextToken(len(merchants))
 	return set, nil
 }
 

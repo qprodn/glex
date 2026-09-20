@@ -12,10 +12,8 @@ import (
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
 	payrepo "glex/internal/domain/pay/repository"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
-
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 )
 
 // defaultExpireMinutes is the initiation expiry when the caller states none.
@@ -43,7 +41,7 @@ type Payment interface {
 	// Order Number, settling it first when PENDING and expired — the
 	// caller reads an outcome, so the lazy-expiry rule applies here too.
 	GetByBizNo(ctx context.Context, merchantID int64, bizNo string) (*payentity.Payment, error)
-	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*payentity.Payment, error)
+	List(ctx context.Context, q listq.Query) ([]*payentity.Payment, error)
 	// Initiate validates the initiation against the Merchant Account,
 	// closes the merchant's still-pending payments for the Business Order
 	// Number, and records the new PENDING payment. The caller owns the
@@ -165,13 +163,8 @@ func (s *paymentImpl) GetByBizNo(ctx context.Context, merchantID int64, bizNo st
 	return p, nil
 }
 
-func (s *paymentImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*payentity.Payment, error) {
-	ps, err := s.payments.List(ctx,
-		payrepo.ListFilter(filter),
-		payrepo.ListOrderBy(orderBy),
-		payrepo.ListLimit(limit),
-		payrepo.ListOffset(offset),
-	)
+func (s *paymentImpl) List(ctx context.Context, q listq.Query) ([]*payentity.Payment, error) {
+	ps, err := s.payments.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.payment.list", err)
 		return nil, err

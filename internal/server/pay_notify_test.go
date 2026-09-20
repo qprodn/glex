@@ -27,12 +27,12 @@ import (
 	"glex/internal/conf"
 	paydomain "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
-	payrepo "glex/internal/domain/pay/repository"
 	payservice "glex/internal/domain/pay/service"
 	"glex/internal/eventbus"
 	"glex/internal/infra/pay/adapter"
 	"glex/internal/infra/pay/adapter/wechat"
 	"glex/internal/infra/pay/crypt"
+	"glex/pkg/listq"
 
 	khttp "github.com/go-kratos/kratos/v3/transport/http"
 )
@@ -197,7 +197,7 @@ func (r *goldMerchantRepo) FindByID(ctx context.Context, id int64) (*payentity.M
 	return nil, paydomain.ErrMerchantNotFound
 }
 
-func (r *goldMerchantRepo) List(ctx context.Context, opts ...payrepo.ListOption) ([]*payentity.MerchantAccount, error) {
+func (r *goldMerchantRepo) List(context.Context, listq.Query) ([]*payentity.MerchantAccount, error) {
 	return nil, nil
 }
 
@@ -254,7 +254,7 @@ func (r *goldPaymentRepo) FindLatestByBizNo(ctx context.Context, merchantID int6
 	return nil, paydomain.ErrPaymentNotFound
 }
 
-func (r *goldPaymentRepo) List(ctx context.Context, opts ...payrepo.ListOption) ([]*payentity.Payment, error) {
+func (r *goldPaymentRepo) List(context.Context, listq.Query) ([]*payentity.Payment, error) {
 	return nil, nil
 }
 

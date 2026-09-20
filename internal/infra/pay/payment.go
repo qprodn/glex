@@ -12,6 +12,7 @@ import (
 	entpayment "glex/internal/infra/ent/paypayment"
 	"glex/internal/infra/ent/predicate"
 	"glex/internal/infra/store"
+	"glex/pkg/listq"
 
 	"github.com/go-kratos/aip-go/ents"
 )
@@ -123,19 +124,15 @@ func (r *paymentRepo) ListPendingExpired(ctx context.Context, before time.Time, 
 	return payments, nil
 }
 
-func (r *paymentRepo) List(ctx context.Context, opts ...payrepo.ListOption) ([]*payentity.Payment, error) {
-	o := payrepo.ListOptions{Limit: 20}
-	for _, opt := range opts {
-		opt(&o)
-	}
+func (r *paymentRepo) List(ctx context.Context, q listq.Query) ([]*payentity.Payment, error) {
 	pos, err := r.data.DB.PayPayment(ctx).Query().
 		Where(
 			entpayment.DeletedAtIsNil(),
-			ents.ApplyFilter(o.Filter),
+			ents.ApplyFilter(q.Filter),
 		).
-		Order(ents.ApplyOrderBy(o.OrderBy)).
-		Offset(o.Offset).
-		Limit(o.Limit).
+		Order(ents.ApplyOrderBy(q.OrderBy)).
+		Offset(q.Offset).
+		Limit(q.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, r.storeError(ctx, "pay.payment.list", err)

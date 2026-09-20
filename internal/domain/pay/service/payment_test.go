@@ -12,10 +12,9 @@ import (
 
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
-	payrepo "glex/internal/domain/pay/repository"
 	"glex/internal/infra/pay/crypt"
+	"glex/pkg/listq"
 
-	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
 )
 
@@ -58,7 +57,7 @@ func (f *fakePaymentRepo) FindLatestByBizNo(ctx context.Context, merchantID int6
 	return newest, nil
 }
 
-func (f *fakePaymentRepo) List(ctx context.Context, opts ...payrepo.ListOption) ([]*payentity.Payment, error) {
+func (f *fakePaymentRepo) List(context.Context, listq.Query) ([]*payentity.Payment, error) {
 	return nil, nil
 }
 
@@ -455,7 +454,7 @@ func TestListNeverTouchesTheChannel(t *testing.T) {
 	var resolveHits int
 	gw := &scriptGateway{resolveHits: &resolveHits}
 	svc, _, _ := newTestPaymentService(t, gw)
-	if _, err := svc.List(context.Background(), filtering.Filter{}, orderByDefault(), 20, 0); err != nil {
+	if _, err := svc.List(context.Background(), listq.Query{OrderBy: orderByDefault(), Limit: 20}); err != nil {
 		t.Fatalf("list: %v", err)
 	}
 	if resolveHits != 0 {

@@ -8,10 +8,8 @@ import (
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
 	payrepo "glex/internal/domain/pay/repository"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
-
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 )
 
 // CreateInput is what a merchant-create use case states.
@@ -25,10 +23,10 @@ type CreateInput struct {
 // UpdateInput is what a merchant-update use case states. Secret config
 // values left blank keep their stored values (schema semantics, ADR 0021).
 type UpdateInput struct {
-	ID      int64
-	Name    string
-	Config  map[string]string
-	Remark  string
+	ID     int64
+	Name   string
+	Config map[string]string
+	Remark string
 }
 
 // ProbeOutcome is one Connectivity Test's result: ok plus a human-readable
@@ -45,7 +43,7 @@ type ProbeOutcome struct {
 // echo, and the digest the gateway cache keys on (ADR 0018, ADR 0021).
 type Merchant interface {
 	Get(ctx context.Context, id int64) (*payentity.MerchantAccount, error)
-	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*payentity.MerchantAccount, error)
+	List(ctx context.Context, q listq.Query) ([]*payentity.MerchantAccount, error)
 	// Create validates the config against the channel schema, seals it,
 	// and records the account (enabled).
 	Create(ctx context.Context, in *CreateInput, actorID int64) (*payentity.MerchantAccount, error)
@@ -104,13 +102,8 @@ func (s *merchantImpl) Get(ctx context.Context, id int64) (*payentity.MerchantAc
 	return m, nil
 }
 
-func (s *merchantImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*payentity.MerchantAccount, error) {
-	ms, err := s.merchants.List(ctx,
-		payrepo.ListFilter(filter),
-		payrepo.ListOrderBy(orderBy),
-		payrepo.ListLimit(limit),
-		payrepo.ListOffset(offset),
-	)
+func (s *merchantImpl) List(ctx context.Context, q listq.Query) ([]*payentity.MerchantAccount, error) {
+	ms, err := s.merchants.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.merchant.list", err)
 		return nil, err

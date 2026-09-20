@@ -11,6 +11,7 @@ import (
 	entmerchant "glex/internal/infra/ent/paymerchantaccount"
 	"glex/internal/infra/pay/crypt"
 	"glex/internal/infra/store"
+	"glex/pkg/listq"
 
 	"github.com/go-kratos/aip-go/ents"
 )
@@ -93,19 +94,15 @@ func (r *merchantAccountRepo) FindByIDAny(ctx context.Context, id int64) (*payen
 	return toBizMerchant(po), nil
 }
 
-func (r *merchantAccountRepo) List(ctx context.Context, opts ...payrepo.ListOption) ([]*payentity.MerchantAccount, error) {
-	o := payrepo.ListOptions{Limit: 20}
-	for _, opt := range opts {
-		opt(&o)
-	}
+func (r *merchantAccountRepo) List(ctx context.Context, q listq.Query) ([]*payentity.MerchantAccount, error) {
 	pos, err := r.data.DB.PayMerchantAccount(ctx).Query().
 		Where(
 			entmerchant.DeletedAtIsNil(),
-			ents.ApplyFilter(o.Filter),
+			ents.ApplyFilter(q.Filter),
 		).
-		Order(ents.ApplyOrderBy(o.OrderBy)).
-		Offset(o.Offset).
-		Limit(o.Limit).
+		Order(ents.ApplyOrderBy(q.OrderBy)).
+		Offset(q.Offset).
+		Limit(q.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, r.storeError(ctx, "pay.merchant.list", err)

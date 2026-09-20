@@ -7,10 +7,8 @@ import (
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
 	payrepo "glex/internal/domain/pay/repository"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
-
-	"go.einride.tech/aip/filtering"
-	"go.einride.tech/aip/ordering"
 )
 
 // CreateRefundInput is what a refund initiation states. The caller holds
@@ -28,7 +26,7 @@ type CreateRefundInput struct {
 // from Pending and each success adds to the payment's refunded sum.
 type Refund interface {
 	Get(ctx context.Context, id int64) (*payentity.Refund, error)
-	List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*payentity.Refund, error)
+	List(ctx context.Context, q listq.Query) ([]*payentity.Refund, error)
 	// Create validates the cap and records the PENDING refund. The channel
 	// call happens in PrepayRefund afterwards so a synchronous channel
 	// answer settles the row immediately (design §5).
@@ -48,11 +46,11 @@ type Refund interface {
 }
 
 type refundImpl struct {
-	refunds  payrepo.RefundRepo
-	payments payrepo.PaymentRepo
+	refunds   payrepo.RefundRepo
+	payments  payrepo.PaymentRepo
 	merchants payrepo.MerchantAccountRepo
-	gateways GatewayRegistry
-	logger   *slog.Logger
+	gateways  GatewayRegistry
+	logger    *slog.Logger
 }
 
 // NewRefundService creates the refund domain service.
@@ -81,13 +79,8 @@ func (s *refundImpl) Get(ctx context.Context, id int64) (*payentity.Refund, erro
 	return rf, nil
 }
 
-func (s *refundImpl) List(ctx context.Context, filter filtering.Filter, orderBy ordering.OrderBy, limit, offset int) ([]*payentity.Refund, error) {
-	rs, err := s.refunds.List(ctx,
-		payrepo.ListFilter(filter),
-		payrepo.ListOrderBy(orderBy),
-		payrepo.ListLimit(limit),
-		payrepo.ListOffset(offset),
-	)
+func (s *refundImpl) List(ctx context.Context, q listq.Query) ([]*payentity.Refund, error) {
+	rs, err := s.refunds.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.list", err)
 		return nil, err
@@ -127,15 +120,15 @@ func (s *refundImpl) Create(ctx context.Context, in *CreateRefundInput, actorID 
 		return nil, err
 	}
 	rf := &payentity.Refund{
-		ID:        s.refunds.NextID(),
-		PaymentID: p.ID,
+		ID:         s.refunds.NextID(),
+		PaymentID:  p.ID,
 		MerchantID: p.MerchantID,
-		Channel:   p.Channel,
-		Amount:    in.Amount,
-		Reason:    in.Reason,
-		Status:    payentity.RefundPending,
-		CreateBy:  actorID,
-		UpdateBy:  actorID,
+		Channel:    p.Channel,
+		Amount:     in.Amount,
+		Reason:     in.Reason,
+		Status:     payentity.RefundPending,
+		CreateBy:   actorID,
+		UpdateBy:   actorID,
 	}
 	created, err := s.refunds.Create(ctx, rf)
 	if err != nil {
@@ -287,4 +280,3 @@ func (s *refundImpl) totalAmount(ctx context.Context, paymentID int64) int64 {
 	}
 	return p.Amount
 }
-

@@ -7,11 +7,11 @@ import (
 	payv1 "glex/api/pay/v1"
 	payentity "glex/internal/domain/pay/entity"
 	payservice "glex/internal/domain/pay/service"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
-	"go.einride.tech/aip/pagination"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -75,42 +75,27 @@ func (s *PayApplication) GetRefund(ctx context.Context, req *payv1.GetRefundRequ
 	return convertRefund(rf), nil
 }
 
-// ListRefunds lists Refunds with AIP filter/order/page-token.
-func (s *PayApplication) ListRefunds(ctx context.Context, req *payv1.ListRefundsRequest) (*payv1.RefundSet, error) {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
+// refundListSpec is this module's list fact (ADR 0024): filterable
+// idents plus the default listing order.
+var refundListSpec = listq.Spec{
+	Idents: []filtering.DeclarationOption{
 		filtering.DeclareIdent("payment_id", filtering.TypeInt),
 		filtering.DeclareIdent("merchant_id", filtering.TypeInt),
 		filtering.DeclareIdent("channel", filtering.TypeInt),
 		filtering.DeclareIdent("status", filtering.TypeInt),
 		filtering.DeclareIdent("created_at", filtering.TypeTimestamp),
-	)
+	},
+	DefaultOrder: []ordering.Field{{Path: "id", Desc: true}},
+}
+
+// ListRefunds lists Refunds with AIP filter/order/page-token.
+func (s *PayApplication) ListRefunds(ctx context.Context, req *payv1.ListRefundsRequest) (*payv1.RefundSet, error) {
+	q, page, err := listq.Parse(req, refundListSpec)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.list_refunds", err)
 		return nil, err
 	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "pay.list_refunds", err)
-		return nil, err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "pay.list_refunds", err)
-		return nil, err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "pay.list_refunds", err)
-		return nil, err
-	}
-	if len(orderBy.Fields) == 0 {
-		orderBy.Fields = []ordering.Field{{Path: "id", Desc: true}}
-	}
-	if req.GetPageSize() <= 0 {
-		req.PageSize = 20
-	}
-	refunds, err := s.refunds.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
+	refunds, err := s.refunds.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.list_refunds", err)
 		return nil, err
@@ -119,9 +104,7 @@ func (s *PayApplication) ListRefunds(ctx context.Context, req *payv1.ListRefunds
 	for _, rf := range refunds {
 		set.Refunds = append(set.Refunds, convertRefund(rf))
 	}
-	if len(refunds) >= int(req.GetPageSize()) {
-		set.NextPageToken = pageToken.Next(req).String()
-	}
+	set.NextPageToken = page.NextToken(len(refunds))
 	return set, nil
 }
 

@@ -9,8 +9,8 @@ import (
 
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
-	payrepo "glex/internal/domain/pay/repository"
 	"glex/internal/infra/pay/crypt"
+	"glex/pkg/listq"
 )
 
 // ---- fakes ----
@@ -19,9 +19,9 @@ import (
 // seal Config whole into ConfigCipher and never store plaintext;
 // LoadConfig opens the token (ADR 0018).
 type fakeMerchantRepo struct {
-	cipher *crypt.Cipher
-	m      map[int64]*payentity.MerchantAccount
-	nextID int64
+	cipher  *crypt.Cipher
+	m       map[int64]*payentity.MerchantAccount
+	nextID  int64
 	deleted map[int64]bool
 }
 
@@ -45,7 +45,7 @@ func (f *fakeMerchantRepo) FindByID(ctx context.Context, id int64) (*payentity.M
 	return nil, pay.ErrMerchantNotFound
 }
 
-func (f *fakeMerchantRepo) List(ctx context.Context, opts ...payrepo.ListOption) ([]*payentity.MerchantAccount, error) {
+func (f *fakeMerchantRepo) List(context.Context, listq.Query) ([]*payentity.MerchantAccount, error) {
 	return nil, nil
 }
 

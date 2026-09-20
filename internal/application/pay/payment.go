@@ -8,11 +8,11 @@ import (
 	"glex/internal/bizpkg"
 	payentity "glex/internal/domain/pay/entity"
 	payservice "glex/internal/domain/pay/service"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
 
 	"go.einride.tech/aip/filtering"
 	"go.einride.tech/aip/ordering"
-	"go.einride.tech/aip/pagination"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -93,43 +93,28 @@ func (s *PayApplication) GetPayment(ctx context.Context, req *payv1.GetPaymentRe
 	return convertPayment(p), nil
 }
 
-// ListPayments lists Payments with AIP filter/order/page-token. List
-// reads never touch the Channel (design §5).
-func (s *PayApplication) ListPayments(ctx context.Context, req *payv1.ListPaymentsRequest) (*payv1.PaymentSet, error) {
-	declarations, err := filtering.NewDeclarations(
-		filtering.DeclareStandardFunctions(),
+// paymentListSpec is this module's list fact (ADR 0024): filterable
+// idents plus the default listing order.
+var paymentListSpec = listq.Spec{
+	Idents: []filtering.DeclarationOption{
 		filtering.DeclareIdent("biz_no", filtering.TypeString),
 		filtering.DeclareIdent("status", filtering.TypeInt),
 		filtering.DeclareIdent("merchant_id", filtering.TypeInt),
 		filtering.DeclareIdent("channel", filtering.TypeInt),
 		filtering.DeclareIdent("created_at", filtering.TypeTimestamp),
-	)
+	},
+	DefaultOrder: []ordering.Field{{Path: "id", Desc: true}},
+}
+
+// ListPayments lists Payments with AIP filter/order/page-token. List
+// reads never touch the Channel (design §5).
+func (s *PayApplication) ListPayments(ctx context.Context, req *payv1.ListPaymentsRequest) (*payv1.PaymentSet, error) {
+	q, page, err := listq.Parse(req, paymentListSpec)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.list_payments", err)
 		return nil, err
 	}
-	filter, err := filtering.ParseFilter(req, declarations)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "pay.list_payments", err)
-		return nil, err
-	}
-	pageToken, err := pagination.ParsePageToken(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "pay.list_payments", err)
-		return nil, err
-	}
-	orderBy, err := ordering.ParseOrderBy(req)
-	if err != nil {
-		logx.Propagate(ctx, s.logger, "pay.list_payments", err)
-		return nil, err
-	}
-	if len(orderBy.Fields) == 0 {
-		orderBy.Fields = []ordering.Field{{Path: "id", Desc: true}}
-	}
-	if req.GetPageSize() <= 0 {
-		req.PageSize = 20
-	}
-	payments, err := s.payments.List(ctx, filter, orderBy, int(req.GetPageSize()), int(pageToken.Offset))
+	payments, err := s.payments.List(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.list_payments", err)
 		return nil, err
@@ -138,9 +123,7 @@ func (s *PayApplication) ListPayments(ctx context.Context, req *payv1.ListPaymen
 	for _, p := range payments {
 		set.Payments = append(set.Payments, convertPayment(p))
 	}
-	if len(payments) >= int(req.GetPageSize()) {
-		set.NextPageToken = pageToken.Next(req).String()
-	}
+	set.NextPageToken = page.NextToken(len(payments))
 	return set, nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"glex/internal/domain/pay/entity"
+	"glex/pkg/listq"
 )
 
 // PaymentRepo is the repository interface for Payment rows. Every state
@@ -26,7 +27,7 @@ type PaymentRepo interface {
 	// sweep run page past rows that permanently fail to settle, so a
 	// poisoned head cannot monopolize every batch.
 	ListPendingExpired(ctx context.Context, before time.Time, afterID int64, limit int) ([]*entity.Payment, error)
-	List(ctx context.Context, opts ...ListOption) ([]*entity.Payment, error)
+	List(ctx context.Context, q listq.Query) ([]*entity.Payment, error)
 	// Create inserts the row; the caller mints the ID (NextID) and owns
 	// any transaction.
 	Create(ctx context.Context, p *entity.Payment) (*entity.Payment, error)

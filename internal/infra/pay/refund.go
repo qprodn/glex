@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-kratos/aip-go/ents"
 	"glex/internal/infra/ent"
+	"glex/pkg/listq"
 )
 
 // toBizRefund maps an ent PayRefund PO to a payentity.Refund DO.
@@ -98,19 +99,15 @@ func (r *refundRepo) FindByID(ctx context.Context, id int64) (*payentity.Refund,
 	return toBizRefund(po), nil
 }
 
-func (r *refundRepo) List(ctx context.Context, opts ...payrepo.ListOption) ([]*payentity.Refund, error) {
-	o := payrepo.ListOptions{Limit: 20}
-	for _, opt := range opts {
-		opt(&o)
-	}
+func (r *refundRepo) List(ctx context.Context, q listq.Query) ([]*payentity.Refund, error) {
 	pos, err := r.data.DB.PayRefund(ctx).Query().
 		Where(
 			entrefund.DeletedAtIsNil(),
-			ents.ApplyFilter(o.Filter),
+			ents.ApplyFilter(q.Filter),
 		).
-		Order(ents.ApplyOrderBy(o.OrderBy)).
-		Offset(o.Offset).
-		Limit(o.Limit).
+		Order(ents.ApplyOrderBy(q.OrderBy)).
+		Offset(q.Offset).
+		Limit(q.Limit).
 		All(ctx)
 	if err != nil {
 		return nil, r.storeError(ctx, "pay.refund.list", err)
