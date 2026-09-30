@@ -13,6 +13,7 @@ import {
 } from "@/services/org/v1";
 import { createFileServiceClient } from "@/services/file/v1";
 import { createJobServiceClient } from "@/services/job/v1";
+import { createConfigServiceClient } from "@/services/param/v1";
 import { createPayServiceClient } from "@/services/pay/v1";
 import { createUserServiceClient } from "@/services/user/v1";
 import { request } from "@umijs/max";
@@ -65,6 +66,7 @@ export const services = {
   loginlog: createLoginLogServiceClient(requestHandler),
   pay: createPayServiceClient(requestHandler),
   job: createJobServiceClient(requestHandler),
+  config: createConfigServiceClient(requestHandler),
 };
 
 /**

@@ -124,6 +124,11 @@ func (db *Database) OperLog(ctx context.Context) *OperLogClient {
 	return db.loadClient(ctx).OperLog
 }
 
+// Param is the client for interacting with the Param builders.
+func (db *Database) Param(ctx context.Context) *ParamClient {
+	return db.loadClient(ctx).Param
+}
+
 // PayMerchantAccount is the client for interacting with the PayMerchantAccount builders.
 func (db *Database) PayMerchantAccount(ctx context.Context) *PayMerchantAccountClient {
 	return db.loadClient(ctx).PayMerchantAccount

@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+package param.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/field_mask.proto";
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "glex/api/param/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.param.v1";
+
+// Config is a Runtime Parameter (运行时参数), ported from RuoYi sys_config: a
+// named, system-wide value an administrator changes at runtime without a
+// redeploy. Values are plain strings — parsing them is the consumer's job.
+// Unlike a Dict Type key, config_key stays editable after create (dict keys
+// are referenced by rows in the database, config keys only by consumer code;
+// see docs/modules/param.md).
+message Config {
+  // Snowflake ID. Server-assigned on create.
+  int64 config_id = 1;
+  // Display name (e.g. "账号自助-是否开启用户注册功能"). Required, non-blank.
+  string config_name = 2;
+  // Parameter key (e.g. "sys.account.registerUser"). Required; must match
+  // ^[A-Za-z0-9][A-Za-z0-9._-]*$; unique among active parameters.
+  string config_key = 3;
+  // Parameter value, a plain string (booleans travel as "true"/"false").
+  string config_value = 4;
+  // Built-in Parameter: protected from withdrawal because the system assumes
+  // it exists. Settable at create; governs withdrawability only.
+  bool built_in = 5;
+  string remark = 6;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  int64 create_by = 7;
+  int64 update_by = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// ConfigSet is a page of configs.
+message ConfigSet {
+  repeated Config configs = 1;
+  // Opaque token for the next page; empty when on the last page.
+  string next_page_token = 2;
+}
+
+// ConfigService is the runtime-parameter management service (参数管理). v1
+// has no read cache (reads hit the indexed table directly) and deliberately
+// no by-key HTTP read — other modules consume values through the in-process
+// crossdomain ConfigReader contract, never the wire (docs/modules/param.md).
+service ConfigService {
+  // CreateConfig creates a new runtime parameter. config_name must be
+  // non-blank, config_key must match ^[A-Za-z0-9][A-Za-z0-9._-]*$ and be
+  // unique among active parameters.
+  rpc CreateConfig(CreateConfigRequest) returns (Config) {
+    option (google.api.http) = {
+      post: "/iam/config"
+      body: "config"
+    };
+  }
+  // GetConfig retrieves a runtime parameter by id.
+  rpc GetConfig(GetConfigRequest) returns (Config) {
+    option (google.api.http) = {
+      get: "/iam/config/{config_id}"
+    };
+  }
+  // ListConfigs lists runtime parameters with AIP filter/order/page-token.
+  rpc ListConfigs(ListConfigsRequest) returns (ConfigSet) {
+    option (google.api.http) = {
+      get: "/iam/config"
+    };
+  }
+  // UpdateConfig partially updates a runtime parameter (field-mask). All
+  // business fields are updatable, config_key included — a key rename passes
+  // the same uniqueness pre-check as a create.
+  rpc UpdateConfig(UpdateConfigRequest) returns (Config) {
+    option (google.api.http) = {
+      patch: "/iam/config/{config.config_id}"
+      body: "config"
+    };
+  }
+  // DeleteConfig soft-deletes a runtime parameter by id; refused for
+  // built-in parameters (RuoYi: 内置参数不能删除).
+  rpc DeleteConfig(DeleteConfigRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/iam/config/{config_id}"
+    };
+  }
+}
+
+message CreateConfigRequest {
+  // Required. The config to create.
+  Config config = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetConfigRequest {
+  // Required. The id of the config to retrieve.
+  int64 config_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListConfigsRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `config_name` (e.g. `config_name="注册"`)
+  //   * `config_key` (e.g. `config_key="sys.account.registerUser"`)
+  //   * `built_in` (tested directly, AIP-160 style: `built_in`, `NOT built_in`)
+  //   * `created_at`
+  string filter = 3;
+  // Optional. AIP-132 order, e.g. `config_id`. Defaults to id desc.
+  string order_by = 4;
+}
+
+message UpdateConfigRequest {
+  // Required. The config to update. config_id identifies the record.
+  Config config = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. Mask of fields to update.
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteConfigRequest {
+  // Required. The id of the config to delete.
+  int64 config_id = 1 [(google.api.field_behavior) = REQUIRED];
+}

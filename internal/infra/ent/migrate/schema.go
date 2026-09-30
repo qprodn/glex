@@ -306,6 +306,36 @@ var (
 			},
 		},
 	}
+	// SysConfigColumns holds the columns for the "sys_config" table.
+	SysConfigColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "config_name", Type: field.TypeString},
+		{Name: "config_key", Type: field.TypeString},
+		{Name: "config_value", Type: field.TypeString, Default: "", SchemaType: map[string]string{"postgres": "varchar(500)"}},
+		{Name: "built_in", Type: field.TypeInt, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
+		{Name: "remark", Type: field.TypeString, Default: ""},
+	}
+	// SysConfigTable holds the schema information for the "sys_config" table.
+	SysConfigTable = &schema.Table{
+		Name:       "sys_config",
+		Columns:    SysConfigColumns,
+		PrimaryKey: []*schema.Column{SysConfigColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "param_config_key",
+				Unique:  true,
+				Columns: []*schema.Column{SysConfigColumns[7]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+		},
+	}
 	// PayMerchantAccountColumns holds the columns for the "pay_merchant_account" table.
 	PayMerchantAccountColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -683,6 +713,7 @@ var (
 		SysLoginLogTable,
 		SysMenuTable,
 		SysOperLogTable,
+		SysConfigTable,
 		PayMerchantAccountTable,
 		PayNotifyLogTable,
 		PayPaymentTable,
@@ -723,6 +754,9 @@ func init() {
 	}
 	SysOperLogTable.Annotation = &entsql.Annotation{
 		Table: "sys_oper_log",
+	}
+	SysConfigTable.Annotation = &entsql.Annotation{
+		Table: "sys_config",
 	}
 	PayMerchantAccountTable.Annotation = &entsql.Annotation{
 		Table: "pay_merchant_account",

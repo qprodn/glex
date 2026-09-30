@@ -10,6 +10,7 @@ import (
 	filev1 "glex/api/file/v1"
 	jobv1 "glex/api/job/v1"
 	orgv1 "glex/api/org/v1"
+	paramv1 "glex/api/param/v1"
 	payv1 "glex/api/pay/v1"
 	userv1 "glex/api/user/v1"
 	domainaudit "glex/internal/domain/audit"
@@ -83,6 +84,15 @@ func authRoutes() map[string]authmw.Route {
 		// The consumption read every page's selects and status tags use:
 		// login required, no Functional Permission (GetInfo's pattern).
 		dictv1.OperationDictServiceListDictEntriesByType: {Login: true},
+
+		// param: runtime-parameter console (docs/modules/param.md). No by-key
+		// HTTP read exists by design — other modules consume values through
+		// the in-process crossdomain ConfigReader, never the wire.
+		paramv1.OperationConfigServiceCreateConfig: {Permission: "system:config:add"},
+		paramv1.OperationConfigServiceGetConfig:    {Permission: "system:config:query"},
+		paramv1.OperationConfigServiceListConfigs:  {Permission: "system:config:list"},
+		paramv1.OperationConfigServiceUpdateConfig: {Permission: "system:config:edit"},
+		paramv1.OperationConfigServiceDeleteConfig: {Permission: "system:config:remove"},
 
 		// The two transfer routes are hand-written (ADR 0008); their
 		// operation names are declared in file_transfer.go.

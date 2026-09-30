@@ -8,6 +8,7 @@ import (
 	fileapp "glex/internal/application/file"
 	jobapp "glex/internal/application/job"
 	orgapp "glex/internal/application/org"
+	paramapp "glex/internal/application/param"
 	payapp "glex/internal/application/pay"
 	userapp "glex/internal/application/user"
 	accessimpl "glex/internal/crossdomain/access/impl"
@@ -16,6 +17,7 @@ import (
 	dictimpl "glex/internal/crossdomain/dict/impl"
 	fileimpl "glex/internal/crossdomain/file/impl"
 	orgimpl "glex/internal/crossdomain/org/impl"
+	paramimpl "glex/internal/crossdomain/param/impl"
 	payimpl "glex/internal/crossdomain/pay/impl"
 	userimpl "glex/internal/crossdomain/user/impl"
 	accessservice "glex/internal/domain/access/service"
@@ -25,6 +27,7 @@ import (
 	fileservice "glex/internal/domain/file/service"
 	jobservice "glex/internal/domain/job/service"
 	orgservice "glex/internal/domain/org/service"
+	paramservice "glex/internal/domain/param/service"
 	payentity "glex/internal/domain/pay/entity"
 	payservice "glex/internal/domain/pay/service"
 	userservice "glex/internal/domain/user/service"
@@ -38,6 +41,7 @@ import (
 	jobinfra "glex/internal/infra/job"
 	lockerinfra "glex/internal/infra/locker"
 	orginfra "glex/internal/infra/org"
+	paraminfra "glex/internal/infra/param"
 	payinfra "glex/internal/infra/pay"
 	"glex/internal/infra/store"
 	userinfra "glex/internal/infra/user"
@@ -70,6 +74,7 @@ var appModule = fx.Options(
 	payinfra.Module,
 	eventbusinfra.Module,
 	jobinfra.Module,
+	paraminfra.Module,
 	// domain services
 	userservice.Module,
 	auditservice.Module,
@@ -80,6 +85,7 @@ var appModule = fx.Options(
 	orgservice.Module,
 	payservice.Module,
 	jobservice.Module,
+	paramservice.Module,
 	// crossdomain contract adapters
 	auditimpl.Module,
 	accessimpl.Module,
@@ -89,6 +95,7 @@ var appModule = fx.Options(
 	orgimpl.Module,
 	payimpl.Module,
 	userimpl.Module,
+	paramimpl.Module,
 	// application
 	userapp.Module,
 	auditapp.Module,
@@ -99,6 +106,7 @@ var appModule = fx.Options(
 	orgapp.Module,
 	payapp.Module,
 	jobapp.Module,
+	paramapp.Module,
 	// transport
 	server.Module,
 	fx.Provide(newApp),

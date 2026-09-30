@@ -15,6 +15,7 @@ import (
 	"glex/internal/infra/ent/loginlog"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/operlog"
+	"glex/internal/infra/ent/param"
 	"glex/internal/infra/ent/paymerchantaccount"
 	"glex/internal/infra/ent/paynotifylog"
 	"glex/internal/infra/ent/paypayment"
@@ -51,6 +52,7 @@ const (
 	TypeLoginLog           = "LoginLog"
 	TypeMenu               = "Menu"
 	TypeOperLog            = "OperLog"
+	TypeParam              = "Param"
 	TypePayMerchantAccount = "PayMerchantAccount"
 	TypePayNotifyLog       = "PayNotifyLog"
 	TypePayPayment         = "PayPayment"
@@ -10858,6 +10860,988 @@ func (m *OperLogMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *OperLogMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown OperLog edge %s", name)
+}
+
+// ParamMutation represents an operation that mutates the Param nodes in the graph.
+type ParamMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int64
+	create_by     *int64
+	addcreate_by  *int64
+	update_by     *int64
+	addupdate_by  *int64
+	created_at    *time.Time
+	updated_at    *time.Time
+	deleted_at    *time.Time
+	config_name   *string
+	config_key    *string
+	config_value  *string
+	built_in      *int
+	addbuilt_in   *int
+	remark        *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*Param, error)
+	predicates    []predicate.Param
+}
+
+var _ ent.Mutation = (*ParamMutation)(nil)
+
+// paramOption allows management of the mutation configuration using functional options.
+type paramOption func(*ParamMutation)
+
+// newParamMutation creates new mutation for the Param entity.
+func newParamMutation(c config, op Op, opts ...paramOption) *ParamMutation {
+	m := &ParamMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeParam,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withParamID sets the ID field of the mutation.
+func withParamID(id int64) paramOption {
+	return func(m *ParamMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Param
+		)
+		m.oldValue = func(ctx context.Context) (*Param, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Param.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withParam sets the old Param of the mutation.
+func withParam(node *Param) paramOption {
+	return func(m *ParamMutation) {
+		m.oldValue = func(context.Context) (*Param, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ParamMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ParamMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Param entities.
+func (m *ParamMutation) SetID(id int64) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ParamMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ParamMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Param.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreateBy sets the "create_by" field.
+func (m *ParamMutation) SetCreateBy(i int64) {
+	m.create_by = &i
+	m.addcreate_by = nil
+}
+
+// CreateBy returns the value of the "create_by" field in the mutation.
+func (m *ParamMutation) CreateBy() (r int64, exists bool) {
+	v := m.create_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreateBy returns the old "create_by" field's value of the Param entity.
+// If the Param object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ParamMutation) OldCreateBy(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreateBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreateBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreateBy: %w", err)
+	}
+	return oldValue.CreateBy, nil
+}
+
+// AddCreateBy adds i to the "create_by" field.
+func (m *ParamMutation) AddCreateBy(i int64) {
+	if m.addcreate_by != nil {
+		*m.addcreate_by += i
+	} else {
+		m.addcreate_by = &i
+	}
+}
+
+// AddedCreateBy returns the value that was added to the "create_by" field in this mutation.
+func (m *ParamMutation) AddedCreateBy() (r int64, exists bool) {
+	v := m.addcreate_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearCreateBy clears the value of the "create_by" field.
+func (m *ParamMutation) ClearCreateBy() {
+	m.create_by = nil
+	m.addcreate_by = nil
+	m.clearedFields[param.FieldCreateBy] = struct{}{}
+}
+
+// CreateByCleared returns if the "create_by" field was cleared in this mutation.
+func (m *ParamMutation) CreateByCleared() bool {
+	_, ok := m.clearedFields[param.FieldCreateBy]
+	return ok
+}
+
+// ResetCreateBy resets all changes to the "create_by" field.
+func (m *ParamMutation) ResetCreateBy() {
+	m.create_by = nil
+	m.addcreate_by = nil
+	delete(m.clearedFields, param.FieldCreateBy)
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (m *ParamMutation) SetUpdateBy(i int64) {
+	m.update_by = &i
+	m.addupdate_by = nil
+}
+
+// UpdateBy returns the value of the "update_by" field in the mutation.
+func (m *ParamMutation) UpdateBy() (r int64, exists bool) {
+	v := m.update_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdateBy returns the old "update_by" field's value of the Param entity.
+// If the Param object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ParamMutation) OldUpdateBy(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdateBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdateBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdateBy: %w", err)
+	}
+	return oldValue.UpdateBy, nil
+}
+
+// AddUpdateBy adds i to the "update_by" field.
+func (m *ParamMutation) AddUpdateBy(i int64) {
+	if m.addupdate_by != nil {
+		*m.addupdate_by += i
+	} else {
+		m.addupdate_by = &i
+	}
+}
+
+// AddedUpdateBy returns the value that was added to the "update_by" field in this mutation.
+func (m *ParamMutation) AddedUpdateBy() (r int64, exists bool) {
+	v := m.addupdate_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearUpdateBy clears the value of the "update_by" field.
+func (m *ParamMutation) ClearUpdateBy() {
+	m.update_by = nil
+	m.addupdate_by = nil
+	m.clearedFields[param.FieldUpdateBy] = struct{}{}
+}
+
+// UpdateByCleared returns if the "update_by" field was cleared in this mutation.
+func (m *ParamMutation) UpdateByCleared() bool {
+	_, ok := m.clearedFields[param.FieldUpdateBy]
+	return ok
+}
+
+// ResetUpdateBy resets all changes to the "update_by" field.
+func (m *ParamMutation) ResetUpdateBy() {
+	m.update_by = nil
+	m.addupdate_by = nil
+	delete(m.clearedFields, param.FieldUpdateBy)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *ParamMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *ParamMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Param entity.
+// If the Param object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ParamMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *ParamMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ParamMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ParamMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Param entity.
+// If the Param object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ParamMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ParamMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *ParamMutation) SetDeletedAt(t time.Time) {
+	m.deleted_at = &t
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *ParamMutation) DeletedAt() (r time.Time, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the Param entity.
+// If the Param object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ParamMutation) OldDeletedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (m *ParamMutation) ClearDeletedAt() {
+	m.deleted_at = nil
+	m.clearedFields[param.FieldDeletedAt] = struct{}{}
+}
+
+// DeletedAtCleared returns if the "deleted_at" field was cleared in this mutation.
+func (m *ParamMutation) DeletedAtCleared() bool {
+	_, ok := m.clearedFields[param.FieldDeletedAt]
+	return ok
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *ParamMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	delete(m.clearedFields, param.FieldDeletedAt)
+}
+
+// SetConfigName sets the "config_name" field.
+func (m *ParamMutation) SetConfigName(s string) {
+	m.config_name = &s
+}
+
+// ConfigName returns the value of the "config_name" field in the mutation.
+func (m *ParamMutation) ConfigName() (r string, exists bool) {
+	v := m.config_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConfigName returns the old "config_name" field's value of the Param entity.
+// If the Param object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ParamMutation) OldConfigName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConfigName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConfigName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConfigName: %w", err)
+	}
+	return oldValue.ConfigName, nil
+}
+
+// ResetConfigName resets all changes to the "config_name" field.
+func (m *ParamMutation) ResetConfigName() {
+	m.config_name = nil
+}
+
+// SetConfigKey sets the "config_key" field.
+func (m *ParamMutation) SetConfigKey(s string) {
+	m.config_key = &s
+}
+
+// ConfigKey returns the value of the "config_key" field in the mutation.
+func (m *ParamMutation) ConfigKey() (r string, exists bool) {
+	v := m.config_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConfigKey returns the old "config_key" field's value of the Param entity.
+// If the Param object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ParamMutation) OldConfigKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConfigKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConfigKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConfigKey: %w", err)
+	}
+	return oldValue.ConfigKey, nil
+}
+
+// ResetConfigKey resets all changes to the "config_key" field.
+func (m *ParamMutation) ResetConfigKey() {
+	m.config_key = nil
+}
+
+// SetConfigValue sets the "config_value" field.
+func (m *ParamMutation) SetConfigValue(s string) {
+	m.config_value = &s
+}
+
+// ConfigValue returns the value of the "config_value" field in the mutation.
+func (m *ParamMutation) ConfigValue() (r string, exists bool) {
+	v := m.config_value
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConfigValue returns the old "config_value" field's value of the Param entity.
+// If the Param object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ParamMutation) OldConfigValue(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConfigValue is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConfigValue requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConfigValue: %w", err)
+	}
+	return oldValue.ConfigValue, nil
+}
+
+// ResetConfigValue resets all changes to the "config_value" field.
+func (m *ParamMutation) ResetConfigValue() {
+	m.config_value = nil
+}
+
+// SetBuiltIn sets the "built_in" field.
+func (m *ParamMutation) SetBuiltIn(i int) {
+	m.built_in = &i
+	m.addbuilt_in = nil
+}
+
+// BuiltIn returns the value of the "built_in" field in the mutation.
+func (m *ParamMutation) BuiltIn() (r int, exists bool) {
+	v := m.built_in
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBuiltIn returns the old "built_in" field's value of the Param entity.
+// If the Param object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ParamMutation) OldBuiltIn(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBuiltIn is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBuiltIn requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBuiltIn: %w", err)
+	}
+	return oldValue.BuiltIn, nil
+}
+
+// AddBuiltIn adds i to the "built_in" field.
+func (m *ParamMutation) AddBuiltIn(i int) {
+	if m.addbuilt_in != nil {
+		*m.addbuilt_in += i
+	} else {
+		m.addbuilt_in = &i
+	}
+}
+
+// AddedBuiltIn returns the value that was added to the "built_in" field in this mutation.
+func (m *ParamMutation) AddedBuiltIn() (r int, exists bool) {
+	v := m.addbuilt_in
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetBuiltIn resets all changes to the "built_in" field.
+func (m *ParamMutation) ResetBuiltIn() {
+	m.built_in = nil
+	m.addbuilt_in = nil
+}
+
+// SetRemark sets the "remark" field.
+func (m *ParamMutation) SetRemark(s string) {
+	m.remark = &s
+}
+
+// Remark returns the value of the "remark" field in the mutation.
+func (m *ParamMutation) Remark() (r string, exists bool) {
+	v := m.remark
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRemark returns the old "remark" field's value of the Param entity.
+// If the Param object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ParamMutation) OldRemark(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRemark is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRemark requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRemark: %w", err)
+	}
+	return oldValue.Remark, nil
+}
+
+// ResetRemark resets all changes to the "remark" field.
+func (m *ParamMutation) ResetRemark() {
+	m.remark = nil
+}
+
+// Where appends a list predicates to the ParamMutation builder.
+func (m *ParamMutation) Where(ps ...predicate.Param) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ParamMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ParamMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Param, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ParamMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ParamMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Param).
+func (m *ParamMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ParamMutation) Fields() []string {
+	fields := make([]string, 0, 10)
+	if m.create_by != nil {
+		fields = append(fields, param.FieldCreateBy)
+	}
+	if m.update_by != nil {
+		fields = append(fields, param.FieldUpdateBy)
+	}
+	if m.created_at != nil {
+		fields = append(fields, param.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, param.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, param.FieldDeletedAt)
+	}
+	if m.config_name != nil {
+		fields = append(fields, param.FieldConfigName)
+	}
+	if m.config_key != nil {
+		fields = append(fields, param.FieldConfigKey)
+	}
+	if m.config_value != nil {
+		fields = append(fields, param.FieldConfigValue)
+	}
+	if m.built_in != nil {
+		fields = append(fields, param.FieldBuiltIn)
+	}
+	if m.remark != nil {
+		fields = append(fields, param.FieldRemark)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ParamMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case param.FieldCreateBy:
+		return m.CreateBy()
+	case param.FieldUpdateBy:
+		return m.UpdateBy()
+	case param.FieldCreatedAt:
+		return m.CreatedAt()
+	case param.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case param.FieldDeletedAt:
+		return m.DeletedAt()
+	case param.FieldConfigName:
+		return m.ConfigName()
+	case param.FieldConfigKey:
+		return m.ConfigKey()
+	case param.FieldConfigValue:
+		return m.ConfigValue()
+	case param.FieldBuiltIn:
+		return m.BuiltIn()
+	case param.FieldRemark:
+		return m.Remark()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ParamMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case param.FieldCreateBy:
+		return m.OldCreateBy(ctx)
+	case param.FieldUpdateBy:
+		return m.OldUpdateBy(ctx)
+	case param.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case param.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case param.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case param.FieldConfigName:
+		return m.OldConfigName(ctx)
+	case param.FieldConfigKey:
+		return m.OldConfigKey(ctx)
+	case param.FieldConfigValue:
+		return m.OldConfigValue(ctx)
+	case param.FieldBuiltIn:
+		return m.OldBuiltIn(ctx)
+	case param.FieldRemark:
+		return m.OldRemark(ctx)
+	}
+	return nil, fmt.Errorf("unknown Param field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ParamMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case param.FieldCreateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreateBy(v)
+		return nil
+	case param.FieldUpdateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdateBy(v)
+		return nil
+	case param.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case param.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case param.FieldDeletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case param.FieldConfigName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConfigName(v)
+		return nil
+	case param.FieldConfigKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConfigKey(v)
+		return nil
+	case param.FieldConfigValue:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConfigValue(v)
+		return nil
+	case param.FieldBuiltIn:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBuiltIn(v)
+		return nil
+	case param.FieldRemark:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRemark(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Param field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ParamMutation) AddedFields() []string {
+	var fields []string
+	if m.addcreate_by != nil {
+		fields = append(fields, param.FieldCreateBy)
+	}
+	if m.addupdate_by != nil {
+		fields = append(fields, param.FieldUpdateBy)
+	}
+	if m.addbuilt_in != nil {
+		fields = append(fields, param.FieldBuiltIn)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ParamMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case param.FieldCreateBy:
+		return m.AddedCreateBy()
+	case param.FieldUpdateBy:
+		return m.AddedUpdateBy()
+	case param.FieldBuiltIn:
+		return m.AddedBuiltIn()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ParamMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case param.FieldCreateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCreateBy(v)
+		return nil
+	case param.FieldUpdateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddUpdateBy(v)
+		return nil
+	case param.FieldBuiltIn:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddBuiltIn(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Param numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ParamMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(param.FieldCreateBy) {
+		fields = append(fields, param.FieldCreateBy)
+	}
+	if m.FieldCleared(param.FieldUpdateBy) {
+		fields = append(fields, param.FieldUpdateBy)
+	}
+	if m.FieldCleared(param.FieldDeletedAt) {
+		fields = append(fields, param.FieldDeletedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ParamMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ParamMutation) ClearField(name string) error {
+	switch name {
+	case param.FieldCreateBy:
+		m.ClearCreateBy()
+		return nil
+	case param.FieldUpdateBy:
+		m.ClearUpdateBy()
+		return nil
+	case param.FieldDeletedAt:
+		m.ClearDeletedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown Param nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ParamMutation) ResetField(name string) error {
+	switch name {
+	case param.FieldCreateBy:
+		m.ResetCreateBy()
+		return nil
+	case param.FieldUpdateBy:
+		m.ResetUpdateBy()
+		return nil
+	case param.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case param.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case param.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case param.FieldConfigName:
+		m.ResetConfigName()
+		return nil
+	case param.FieldConfigKey:
+		m.ResetConfigKey()
+		return nil
+	case param.FieldConfigValue:
+		m.ResetConfigValue()
+		return nil
+	case param.FieldBuiltIn:
+		m.ResetBuiltIn()
+		return nil
+	case param.FieldRemark:
+		m.ResetRemark()
+		return nil
+	}
+	return fmt.Errorf("unknown Param field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ParamMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ParamMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ParamMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ParamMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ParamMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ParamMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ParamMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown Param unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ParamMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown Param edge %s", name)
 }
 
 // PayMerchantAccountMutation represents an operation that mutates the PayMerchantAccount nodes in the graph.

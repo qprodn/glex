@@ -252,6 +252,44 @@ comment on column sys_dict_data.updated_at is '更新时间';
 comment on column sys_dict_data.deleted_at is '软删除时间；NULL=未删除';
 
 
+create table if not exists sys_config (
+    id           bigint       not null,
+    config_name  varchar(256) not null,               -- display name
+    config_key   varchar(256) not null,               -- parameter key; ^[A-Za-z0-9][A-Za-z0-9._-]*$; editable after create (docs/modules/param.md)
+    config_value varchar(500) not null default '',    -- plain string; parsing is the consumer's job
+    built_in     smallint     not null default 0,     -- built-in parameter: 1 = system assumes it exists, withdrawal refused (RuoYi config_type Y/N normalized)
+    remark       varchar(500) not null default '',
+    create_by    bigint       not null default 0,     -- audit; Application stamps from Principal (ADR 0002)
+    update_by    bigint       not null default 0,
+    created_at   timestamptz  not null default now(),
+    updated_at   timestamptz  not null default now(),
+    deleted_at   timestamptz,                         -- soft delete; NULL = active
+    constraint sys_config_pkey primary key (id)
+);
+
+-- The key is an exact-match identifier consumer code resolves parameters by,
+-- so it carries the same DB uniqueness guarantee the dict key has; the
+-- partial index (named as ent's migration creates it) is the race-proof
+-- backstop behind the domain pre-check and also serves the crossdomain
+-- ConfigReader's by-key point reads.
+create unique index if not exists param_config_key
+    on sys_config (config_key) where deleted_at is null;
+
+comment on table sys_config is '参数配置表（运行时参数）';
+
+comment on column sys_config.id is '主键ID（雪花）';
+comment on column sys_config.config_name is '参数名称';
+comment on column sys_config.config_key is '参数键名；满足 ^[A-Za-z0-9][A-Za-z0-9._-]*$；活跃行内唯一；建后可改';
+comment on column sys_config.config_value is '参数键值（纯字符串，解析归消费方）';
+comment on column sys_config.built_in is '内置参数：1=不可删除；0=普通';
+comment on column sys_config.remark is '备注';
+comment on column sys_config.create_by is '创建者用户ID';
+comment on column sys_config.update_by is '更新者用户ID';
+comment on column sys_config.created_at is '创建时间';
+comment on column sys_config.updated_at is '更新时间';
+comment on column sys_config.deleted_at is '软删除时间；NULL=未删除';
+
+
 create table if not exists sys_file (
     id            bigint       not null,
     original_name varchar(256) not null,               -- original file name as uploaded

@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package param.v1;
+
+option go_package = "glex/api/param/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.param.v1";
+
+// ErrorReason is the stable vocabulary for the `reason` field of the error
+// body. Values are wire-visible: protojson encodes them as their names, so
+// clients branch on the name (e.g. "CONFIG_BUILT_IN_LOCKED") rather than on
+// an HTTP status. The integer tags are internal to the enum; only the names
+// cross the wire.
+enum ErrorReason {
+  // Unset. Never returned; reserved by proto3 for the zero value.
+  ERROR_REASON_UNSPECIFIED = 0;
+
+  // Config reasons (ConfigService).
+  // The requested config does not exist (or is soft-deleted).
+  CONFIG_NOT_FOUND = 1;
+  // The config_key already exists among active parameters.
+  CONFIG_KEY_CONFLICT = 2;
+  // The parameter is built-in and cannot be deleted (RuoYi: 内置参数不能删除).
+  CONFIG_BUILT_IN_LOCKED = 3;
+  // config_name/config_key is blank or over length, or the key violates the
+  // charset.
+  CONFIG_INVALID = 4;
+  // A param-store operation failed unexpectedly (infra log-and-map, ADR 0007);
+  // clients see 503, never a driver message.
+  CONFIG_STORE_UNAVAILABLE = 5;
+}

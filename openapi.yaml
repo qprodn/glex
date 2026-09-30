@@ -148,6 +148,139 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/file.v1.StoredFileSet'
+    /iam/config:
+        get:
+            tags:
+                - ConfigService
+            description: ListConfigs lists runtime parameters with AIP filter/order/page-token.
+            operationId: ConfigService_ListConfigs
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `config_name` (e.g. `config_name="注册"`)
+                       * `config_key` (e.g. `config_key="sys.account.registerUser"`)
+                       * `built_in` (tested directly, AIP-160 style: `built_in`, `NOT built_in`)
+                       * `created_at`
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: Optional. AIP-132 order, e.g. `config_id`. Defaults to id desc.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/param.v1.ConfigSet'
+        post:
+            tags:
+                - ConfigService
+            description: |-
+                CreateConfig creates a new runtime parameter. config_name must be
+                 non-blank, config_key must match ^[A-Za-z0-9][A-Za-z0-9._-]*$ and be
+                 unique among active parameters.
+            operationId: ConfigService_CreateConfig
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/param.v1.Config'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/param.v1.Config'
+    /iam/config/{config.config_id}:
+        patch:
+            tags:
+                - ConfigService
+            description: |-
+                UpdateConfig partially updates a runtime parameter (field-mask). All
+                 business fields are updatable, config_key included — a key rename passes
+                 the same uniqueness pre-check as a create.
+            operationId: ConfigService_UpdateConfig
+            parameters:
+                - name: config.config_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: updateMask
+                  in: query
+                  description: Required. Mask of fields to update.
+                  schema:
+                    type: string
+                    format: field-mask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/param.v1.Config'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/param.v1.Config'
+    /iam/config/{configId}:
+        get:
+            tags:
+                - ConfigService
+            description: GetConfig retrieves a runtime parameter by id.
+            operationId: ConfigService_GetConfig
+            parameters:
+                - name: configId
+                  in: path
+                  description: Required. The id of the config to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/param.v1.Config'
+        delete:
+            tags:
+                - ConfigService
+            description: |-
+                DeleteConfig soft-deletes a runtime parameter by id; refused for
+                 built-in parameters (RuoYi: 内置参数不能删除).
+            operationId: ConfigService_DeleteConfig
+            parameters:
+                - name: configId
+                  in: path
+                  description: Required. The id of the config to delete.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
     /iam/dept:
         get:
             tags:
@@ -3255,6 +3388,59 @@ components:
                  department's active posts with their assigned flags, ordered by
                  (post_sort, post_id). Not paginated — a department's posts are a small
                  flat set.
+        param.v1.Config:
+            type: object
+            properties:
+                configId:
+                    type: string
+                    description: Snowflake ID. Server-assigned on create.
+                configName:
+                    type: string
+                    description: Display name (e.g. "账号自助-是否开启用户注册功能"). Required, non-blank.
+                configKey:
+                    type: string
+                    description: |-
+                        Parameter key (e.g. "sys.account.registerUser"). Required; must match
+                         ^[A-Za-z0-9][A-Za-z0-9._-]*$; unique among active parameters.
+                configValue:
+                    type: string
+                    description: Parameter value, a plain string (booleans travel as "true"/"false").
+                builtIn:
+                    type: boolean
+                    description: |-
+                        Built-in Parameter: protected from withdrawal because the system assumes
+                         it exists. Settable at create; governs withdrawability only.
+                remark:
+                    type: string
+                createBy:
+                    type: string
+                    description: 'Audit: who created/updated. Filled from the authenticated identity.'
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                Config is a Runtime Parameter (运行时参数), ported from RuoYi sys_config: a
+                 named, system-wide value an administrator changes at runtime without a
+                 redeploy. Values are plain strings — parsing them is the consumer's job.
+                 Unlike a Dict Type key, config_key stays editable after create (dict keys
+                 are referenced by rows in the database, config keys only by consumer code;
+                 see docs/modules/param.md).
+        param.v1.ConfigSet:
+            type: object
+            properties:
+                configs:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/param.v1.Config'
+                nextPageToken:
+                    type: string
+                    description: Opaque token for the next page; empty when on the last page.
+            description: ConfigSet is a page of configs.
         pay.v1.ChangeMerchantAccountStatusRequest:
             required:
                 - merchantId
@@ -3862,6 +4048,12 @@ tags:
       description: |-
         AuthService owns login/logout for Login Sessions. The user↔role link it
          once hosted moved to access.v1.RoleAssignmentService.
+    - name: ConfigService
+      description: |-
+        ConfigService is the runtime-parameter management service (参数管理). v1
+         has no read cache (reads hit the indexed table directly) and deliberately
+         no by-key HTTP read — other modules consume values through the in-process
+         crossdomain ConfigReader contract, never the wire (docs/modules/param.md).
     - name: DeptService
       description: DeptService is the department CRUD + tree service.
     - name: DictService

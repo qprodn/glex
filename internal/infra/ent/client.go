@@ -20,6 +20,7 @@ import (
 	"glex/internal/infra/ent/loginlog"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/operlog"
+	"glex/internal/infra/ent/param"
 	"glex/internal/infra/ent/paymerchantaccount"
 	"glex/internal/infra/ent/paynotifylog"
 	"glex/internal/infra/ent/paypayment"
@@ -62,6 +63,8 @@ type Client struct {
 	Menu *MenuClient
 	// OperLog is the client for interacting with the OperLog builders.
 	OperLog *OperLogClient
+	// Param is the client for interacting with the Param builders.
+	Param *ParamClient
 	// PayMerchantAccount is the client for interacting with the PayMerchantAccount builders.
 	PayMerchantAccount *PayMerchantAccountClient
 	// PayNotifyLog is the client for interacting with the PayNotifyLog builders.
@@ -102,6 +105,7 @@ func (c *Client) init() {
 	c.LoginLog = NewLoginLogClient(c.config)
 	c.Menu = NewMenuClient(c.config)
 	c.OperLog = NewOperLogClient(c.config)
+	c.Param = NewParamClient(c.config)
 	c.PayMerchantAccount = NewPayMerchantAccountClient(c.config)
 	c.PayNotifyLog = NewPayNotifyLogClient(c.config)
 	c.PayPayment = NewPayPaymentClient(c.config)
@@ -213,6 +217,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		LoginLog:           NewLoginLogClient(cfg),
 		Menu:               NewMenuClient(cfg),
 		OperLog:            NewOperLogClient(cfg),
+		Param:              NewParamClient(cfg),
 		PayMerchantAccount: NewPayMerchantAccountClient(cfg),
 		PayNotifyLog:       NewPayNotifyLogClient(cfg),
 		PayPayment:         NewPayPaymentClient(cfg),
@@ -251,6 +256,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		LoginLog:           NewLoginLogClient(cfg),
 		Menu:               NewMenuClient(cfg),
 		OperLog:            NewOperLogClient(cfg),
+		Param:              NewParamClient(cfg),
 		PayMerchantAccount: NewPayMerchantAccountClient(cfg),
 		PayNotifyLog:       NewPayNotifyLogClient(cfg),
 		PayPayment:         NewPayPaymentClient(cfg),
@@ -291,8 +297,8 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Dept, c.DictData, c.DictType, c.File, c.Job, c.JobLog, c.LoginLog, c.Menu,
-		c.OperLog, c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment, c.PayRefund,
-		c.Post, c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
+		c.OperLog, c.Param, c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment,
+		c.PayRefund, c.Post, c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -303,8 +309,8 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Dept, c.DictData, c.DictType, c.File, c.Job, c.JobLog, c.LoginLog, c.Menu,
-		c.OperLog, c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment, c.PayRefund,
-		c.Post, c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
+		c.OperLog, c.Param, c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment,
+		c.PayRefund, c.Post, c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -331,6 +337,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Menu.mutate(ctx, m)
 	case *OperLogMutation:
 		return c.OperLog.mutate(ctx, m)
+	case *ParamMutation:
+		return c.Param.mutate(ctx, m)
 	case *PayMerchantAccountMutation:
 		return c.PayMerchantAccount.mutate(ctx, m)
 	case *PayNotifyLogMutation:
@@ -1566,6 +1574,139 @@ func (c *OperLogClient) mutate(ctx context.Context, m *OperLogMutation) (Value, 
 		return (&OperLogDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown OperLog mutation op: %q", m.Op())
+	}
+}
+
+// ParamClient is a client for the Param schema.
+type ParamClient struct {
+	config
+}
+
+// NewParamClient returns a client for the Param from the given config.
+func NewParamClient(c config) *ParamClient {
+	return &ParamClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `param.Hooks(f(g(h())))`.
+func (c *ParamClient) Use(hooks ...Hook) {
+	c.hooks.Param = append(c.hooks.Param, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `param.Intercept(f(g(h())))`.
+func (c *ParamClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Param = append(c.inters.Param, interceptors...)
+}
+
+// Create returns a builder for creating a Param entity.
+func (c *ParamClient) Create() *ParamCreate {
+	mutation := newParamMutation(c.config, OpCreate)
+	return &ParamCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Param entities.
+func (c *ParamClient) CreateBulk(builders ...*ParamCreate) *ParamCreateBulk {
+	return &ParamCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ParamClient) MapCreateBulk(slice any, setFunc func(*ParamCreate, int)) *ParamCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ParamCreateBulk{err: fmt.Errorf("calling to ParamClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ParamCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ParamCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Param.
+func (c *ParamClient) Update() *ParamUpdate {
+	mutation := newParamMutation(c.config, OpUpdate)
+	return &ParamUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ParamClient) UpdateOne(_m *Param) *ParamUpdateOne {
+	mutation := newParamMutation(c.config, OpUpdateOne, withParam(_m))
+	return &ParamUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ParamClient) UpdateOneID(id int64) *ParamUpdateOne {
+	mutation := newParamMutation(c.config, OpUpdateOne, withParamID(id))
+	return &ParamUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Param.
+func (c *ParamClient) Delete() *ParamDelete {
+	mutation := newParamMutation(c.config, OpDelete)
+	return &ParamDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ParamClient) DeleteOne(_m *Param) *ParamDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ParamClient) DeleteOneID(id int64) *ParamDeleteOne {
+	builder := c.Delete().Where(param.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ParamDeleteOne{builder}
+}
+
+// Query returns a query builder for Param.
+func (c *ParamClient) Query() *ParamQuery {
+	return &ParamQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeParam},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Param entity by its id.
+func (c *ParamClient) Get(ctx context.Context, id int64) (*Param, error) {
+	return c.Query().Where(param.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ParamClient) GetX(ctx context.Context, id int64) *Param {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *ParamClient) Hooks() []Hook {
+	return c.hooks.Param
+}
+
+// Interceptors returns the client interceptors.
+func (c *ParamClient) Interceptors() []Interceptor {
+	return c.inters.Param
+}
+
+func (c *ParamClient) mutate(ctx context.Context, m *ParamMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ParamCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ParamUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ParamUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ParamDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Param mutation op: %q", m.Op())
 	}
 }
 
@@ -3078,12 +3219,12 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Dept, DictData, DictType, File, Job, JobLog, LoginLog, Menu, OperLog,
+		Dept, DictData, DictType, File, Job, JobLog, LoginLog, Menu, OperLog, Param,
 		PayMerchantAccount, PayNotifyLog, PayPayment, PayRefund, Post, Role, RoleMenu,
 		User, UserPost, UserRole []ent.Hook
 	}
 	inters struct {
-		Dept, DictData, DictType, File, Job, JobLog, LoginLog, Menu, OperLog,
+		Dept, DictData, DictType, File, Job, JobLog, LoginLog, Menu, OperLog, Param,
 		PayMerchantAccount, PayNotifyLog, PayPayment, PayRefund, Post, Role, RoleMenu,
 		User, UserPost, UserRole []ent.Interceptor
 	}

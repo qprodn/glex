@@ -419,4 +419,44 @@ values (1000000000000000500, '支付单过期扫描', 'pay.expire-sweep', '* * *
         '收敛已过期的 PENDING 支付单（主动过期，ADR 0023）', 0, 0)
 on conflict do nothing;
 
+-- ---------------------------------------------------------------------------
+-- 参数管理（菜单 + 按钮，docs/modules/param.md）
+-- perms 与 auth_routes.go 一一对应；icon 走 @ant-design/icons 运行时解析
+-- （edit = EditOutlined）。对齐 RuoYi：参数管理只授予管理员，common 不给。
+-- ---------------------------------------------------------------------------
+
+insert into sys_menu (id, menu_name, parent_id, order_num, path, component, menu_type, perms, icon, create_by, update_by)
+values (1000000000000000290, '参数管理', 1000000000000000201, 8, 'config', 'iam/config/index', 2, 'system:config:list', 'edit', 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, menu_type, perms, create_by, update_by)
+values (1000000000000000291, '参数查询', 1000000000000000290, 1, 3, 'system:config:query', 0, 0),
+       (1000000000000000292, '参数新增', 1000000000000000290, 2, 3, 'system:config:add', 0, 0),
+       (1000000000000000293, '参数修改', 1000000000000000290, 3, 3, 'system:config:edit', 0, 0),
+       (1000000000000000294, '参数删除', 1000000000000000290, 4, 3, 'system:config:remove', 0, 0)
+on conflict do nothing;
+
+-- superadmin 追加参数管理全部菜单
+insert into sys_role_menu (id, role_id, menu_id, create_by, update_by)
+values (1000000000000000460, 1000000000000000101, 1000000000000000290, 0, 0),
+       (1000000000000000461, 1000000000000000101, 1000000000000000291, 0, 0),
+       (1000000000000000462, 1000000000000000101, 1000000000000000292, 0, 0),
+       (1000000000000000463, 1000000000000000101, 1000000000000000293, 0, 0),
+       (1000000000000000464, 1000000000000000101, 1000000000000000294, 0, 0)
+on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- 运行时参数（sys_config，docs/modules/param.md）
+-- 只播两行休眠内置键（消费端接入后生效）。sys.user.initPassword 不播种：
+-- 它活在 configs/config.yaml（ADR 0017），一个值一次只活在一处；迁移条件
+-- 是消费端同批切到 crossdomain ConfigReader。
+-- ---------------------------------------------------------------------------
+
+insert into sys_config (id, config_name, config_key, config_value, built_in, remark, create_by, update_by)
+values (1000000000000001010, '账号自助-是否开启用户注册功能', 'sys.account.registerUser', 'false', 1,
+        '是否开启注册用户功能（true开启，false关闭）；消费端：authn 注册（未接入）', 0, 0),
+       (1000000000000001011, 'OSS预览列表资源开关', 'sys.oss.previewListResource', 'true', 1,
+        'true:开启, false:关闭；消费端：file 模块预览（未接入）', 0, 0)
+on conflict do nothing;
+
 commit;

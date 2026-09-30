@@ -6,6 +6,7 @@ export default {
   "menu.iam.role": "Roles",
   "menu.iam.menu": "Menus",
   "menu.iam.dict": "Dictionaries",
+  "menu.iam.config": "Parameters",
   "menu.monitor.online": "Online Sessions",
   "menu.monitor.operlog": "Operation Logs",
   "menu.monitor.loginlog": "Login Logs",

@@ -12,6 +12,7 @@ import (
 	"glex/internal/infra/ent/loginlog"
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/operlog"
+	"glex/internal/infra/ent/param"
 	"glex/internal/infra/ent/paymerchantaccount"
 	"glex/internal/infra/ent/paynotifylog"
 	"glex/internal/infra/ent/paypayment"
@@ -459,6 +460,41 @@ func init() {
 	operlogDescRequestID := operlogFields[11].Descriptor()
 	// operlog.DefaultRequestID holds the default value on creation for the request_id field.
 	operlog.DefaultRequestID = operlogDescRequestID.Default.(string)
+	paramMixin := schema.Param{}.Mixin()
+	paramMixinFields0 := paramMixin[0].Fields()
+	_ = paramMixinFields0
+	paramFields := schema.Param{}.Fields()
+	_ = paramFields
+	// paramDescCreateBy is the schema descriptor for create_by field.
+	paramDescCreateBy := paramMixinFields0[0].Descriptor()
+	// param.DefaultCreateBy holds the default value on creation for the create_by field.
+	param.DefaultCreateBy = paramDescCreateBy.Default.(int64)
+	// paramDescUpdateBy is the schema descriptor for update_by field.
+	paramDescUpdateBy := paramMixinFields0[1].Descriptor()
+	// param.DefaultUpdateBy holds the default value on creation for the update_by field.
+	param.DefaultUpdateBy = paramDescUpdateBy.Default.(int64)
+	// paramDescCreatedAt is the schema descriptor for created_at field.
+	paramDescCreatedAt := paramMixinFields0[2].Descriptor()
+	// param.DefaultCreatedAt holds the default value on creation for the created_at field.
+	param.DefaultCreatedAt = paramDescCreatedAt.Default.(func() time.Time)
+	// paramDescUpdatedAt is the schema descriptor for updated_at field.
+	paramDescUpdatedAt := paramMixinFields0[3].Descriptor()
+	// param.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	param.DefaultUpdatedAt = paramDescUpdatedAt.Default.(func() time.Time)
+	// param.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	param.UpdateDefaultUpdatedAt = paramDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// paramDescConfigValue is the schema descriptor for config_value field.
+	paramDescConfigValue := paramFields[3].Descriptor()
+	// param.DefaultConfigValue holds the default value on creation for the config_value field.
+	param.DefaultConfigValue = paramDescConfigValue.Default.(string)
+	// paramDescBuiltIn is the schema descriptor for built_in field.
+	paramDescBuiltIn := paramFields[4].Descriptor()
+	// param.DefaultBuiltIn holds the default value on creation for the built_in field.
+	param.DefaultBuiltIn = paramDescBuiltIn.Default.(int)
+	// paramDescRemark is the schema descriptor for remark field.
+	paramDescRemark := paramFields[5].Descriptor()
+	// param.DefaultRemark holds the default value on creation for the remark field.
+	param.DefaultRemark = paramDescRemark.Default.(string)
 	paymerchantaccountMixin := schema.PayMerchantAccount{}.Mixin()
 	paymerchantaccountMixinFields0 := paymerchantaccountMixin[0].Fields()
 	_ = paymerchantaccountMixinFields0

@@ -10,6 +10,7 @@ import (
 	filev1 "glex/api/file/v1"
 	jobv1 "glex/api/job/v1"
 	orgv1 "glex/api/org/v1"
+	paramv1 "glex/api/param/v1"
 	payv1 "glex/api/pay/v1"
 	userv1 "glex/api/user/v1"
 	accessapp "glex/internal/application/access"
@@ -19,6 +20,7 @@ import (
 	fileapp "glex/internal/application/file"
 	jobapp "glex/internal/application/job"
 	orgapp "glex/internal/application/org"
+	paramapp "glex/internal/application/param"
 	payapp "glex/internal/application/pay"
 	userapp "glex/internal/application/user"
 	"glex/internal/conf"
@@ -35,7 +37,7 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, audit *auditapp.AuditApplication, dept *orgapp.DeptApplication, post *orgapp.PostApplication, postAssignment *orgapp.PostAssignmentApplication, pay *payapp.PayApplication, job *jobapp.JobApplication, payNotifyLimiter NotifyLimiter, authenticator authnrepo.Authenticator, auditDomain auditservice.Audit, logger *slog.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, audit *auditapp.AuditApplication, dept *orgapp.DeptApplication, post *orgapp.PostApplication, postAssignment *orgapp.PostAssignmentApplication, pay *payapp.PayApplication, job *jobapp.JobApplication, config *paramapp.ConfigApplication, payNotifyLimiter NotifyLimiter, authenticator authnrepo.Authenticator, auditDomain auditservice.Audit, logger *slog.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Filter(
 			requestid.HTTP(requestid.WithLogger(logger)),
@@ -84,6 +86,7 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 	auditv1.RegisterLoginLogServiceHTTPServer(srv, audit)
 	payv1.RegisterPayServiceHTTPServer(srv, pay)
 	jobv1.RegisterJobServiceHTTPServer(srv, job)
+	paramv1.RegisterConfigServiceHTTPServer(srv, config)
 	registerPayNotifyHTTP(srv, pay, payNotifyLimiter)
 	registerFileTransferHTTP(srv, file)
 	registerUserExcelHTTP(srv, user)

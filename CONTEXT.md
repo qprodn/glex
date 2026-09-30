@@ -2,20 +2,23 @@
 
 The domain concerned with **who can operate the system, the navigation they see,
 how their identity is established, the controlled vocabularies the back office
-renders choices from, the organization structure it groups people by, the
+renders choices from, the runtime parameters it tunes without a redeploy, the
+organization structure it groups people by, the
 files it stores, the payments it collects, and the recurring work it
-schedules**. It is organized as nine modules in one service: **user**
+schedules**. It is organized as ten modules in one service: **user**
 (System User accounts), **org** (organization structure — departments, posts,
 and post assignments), **access** (authorization — roles, menus, grants, and
 permission resolution), **authn** (authentication — credentials, login
 sessions, and tokens), **dict** (dictionaries — the labeled option vocabularies
-pages render selects and status tags from), **file** (file storage —
+pages render selects and status tags from), **param** (runtime parameters —
+the named system-wide values administrators tune without a redeploy), **file**
+(file storage —
 accepting uploads, serving downloads, and withdrawing Stored Files), and
 **audit** (the write-once operation and login logs, minted by the transport
 middleware and authn rather than exposed as an API service of its own), ported
 from RuoYi-Vue-Plus's `sys_user`, `sys_dept`, `sys_post`, `sys_menu`,
 `sys_role`, `sys_user_role`, `sys_user_post`, `sys_dict_type`,
-`sys_dict_data`, `sys_oper_log`, and `sys_logininfor`; the file module
+`sys_dict_data`, `sys_config`, `sys_oper_log`, and `sys_logininfor`; the file module
 continues that lineage with its own `sys_file` (RuoYi's `sys_oss`, renamed).
 Two further modules, **pay** (payment — the Channel Merchant Accounts the back
 office configures and the payments and refunds collected through them) and
@@ -183,6 +186,24 @@ display label, a sort position, a tag style, and a default flag. The pair
 (Dict Type key, value) is unique among active entries. Pages consume entries
 to render selects and status tags; sorting is by sort position.
 _Avoid_: Dict Data, Option, Enum Value, Dictionary Item.
+
+### param
+
+**Runtime Parameter** (运行时参数):
+A named, system-wide value an administrator changes at runtime without a
+redeploy, ported from RuoYi's `sys_config`; identified by its key (e.g.
+`sys.account.registerUser`) and carried as a plain string — parsing it is the
+consumer's job. A value fixed at deploy time in the bootstrap yaml is static
+configuration, not a Runtime Parameter; a static knob becomes one only when
+its consumer switches to reading the param module, never by seeding a
+look-alike row beside the live one.
+_Avoid_: Config (overloaded by RuoYi), Setting, Option, 系统参数 (unqualified).
+
+**Built-in Parameter** (内置参数):
+A Runtime Parameter protected from withdrawal because the system assumes it
+exists: it may be re-valued at will but never withdrawn. The flag is
+settable when creating a parameter — it governs withdrawability only.
+_Avoid_: system parameter, fixed parameter, config_type.
 
 ### file
 

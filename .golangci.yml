@@ -33,6 +33,8 @@ linters:
               desc: application calls domain services, never repositories (ADR 0005)
             - pkg: glex/internal/domain/file/repository
               desc: application calls domain services, never repositories (ADR 0005)
+            - pkg: glex/internal/domain/param/repository
+              desc: application calls domain services, never repositories (ADR 0005)
         crossdomain-impl-no-repository:
           files:
             - "**/internal/crossdomain/**/impl/**"
@@ -46,6 +48,8 @@ linters:
             - pkg: glex/internal/domain/dict/repository
               desc: crossdomain impls delegate to domain services (ADR 0005)
             - pkg: glex/internal/domain/file/repository
+              desc: crossdomain impls delegate to domain services (ADR 0005)
+            - pkg: glex/internal/domain/param/repository
               desc: crossdomain impls delegate to domain services (ADR 0005)
         domain-access-no-cross-module:
           files:
@@ -106,4 +110,18 @@ linters:
             - pkg: glex/internal/domain/user
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/dict
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+        domain-param-no-cross-module:
+          files:
+            - "**/internal/domain/param/**"
+          deny:
+            - pkg: glex/internal/domain/access
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/authn
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/user
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/dict
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/file
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
