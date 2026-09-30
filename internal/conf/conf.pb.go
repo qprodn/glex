@@ -470,7 +470,7 @@ func (x *Data) GetSnowflakeNode() uint32 {
 }
 
 // File configures the file module: one S3-compatible endpoint with static
-// credentials (ADR 0007) plus the upload acceptance policy (size cap and
+// credentials (ADR 0026) plus the upload acceptance policy (size cap and
 // content-type whitelist) and the display-URL signing policy (ADR 0016).
 type File struct {
 	state protoimpl.MessageState `protogen:"open.v1"`

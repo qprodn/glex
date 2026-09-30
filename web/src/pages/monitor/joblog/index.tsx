@@ -25,7 +25,7 @@ const triggerLabel = (intl: ReturnType<typeof useIntl>, trigger: JobLog["trigger
 };
 
 /**
- * 任务日志: the run history of Scheduled Jobs (ADR 2023). Rows are written
+ * 任务日志: the run history of Scheduled Jobs (ADR 0023). Rows are written
  * once at completion — no running state, no editing; the only actions are
  * reading a record's detail and withdrawing it (soft delete, ADR 0002).
  */

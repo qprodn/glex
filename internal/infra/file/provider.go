@@ -10,7 +10,7 @@ import (
 )
 
 // Module contains file persistence adapters: the Stored File repo and the
-// S3-protocol object storage client (ADR 0007).
+// S3-protocol object storage client (ADR 0026).
 var Module = fx.Module("file-infra",
 	fx.Provide(
 		NewFileRepo,

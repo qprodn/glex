@@ -258,7 +258,7 @@ create table if not exists sys_file (
     suffix        varchar(16)  not null default '',    -- lowercased extension without the dot ("" when none); ≤16 chars by the domain invariant
     mime_type     varchar(128) not null,               -- content type sniffed from the bytes; client declarations never reach it
     size_bytes    bigint       not null,               -- byte size
-    bucket        varchar(128) not null,               -- object storage bucket (single static config, ADR 0007)
+    bucket        varchar(128) not null,               -- object storage bucket (single static config, ADR 0026)
     obj_key       varchar(512) not null,               -- Stored Key: [<biz>/]yyyy/MM/dd/<snowflake>.<suffix>; no public URL exists (ADR 0008)
     content_hash  varchar(64)  not null,               -- Content Fingerprint: sha256 hex; integrity record, never dedup
     create_by     bigint       not null default 0,     -- audit; Application stamps from Principal (ADR 0002)
@@ -281,7 +281,7 @@ comment on column sys_file.original_name is '原始文件名';
 comment on column sys_file.suffix is '小写扩展名（不含点；无扩展名为空串）';
 comment on column sys_file.mime_type is '内容类型（按字节嗅探；客户端声明不生效）';
 comment on column sys_file.size_bytes is '字节大小';
-comment on column sys_file.bucket is '对象存储桶（单一静态配置，ADR 0007）';
+comment on column sys_file.bucket is '对象存储桶（单一静态配置，ADR 0026）';
 comment on column sys_file.obj_key is '存储键：[<biz>/]yyyy/MM/dd/<雪花>.<扩展名>；无公开 URL（ADR 0008）';
 comment on column sys_file.content_hash is '内容指纹（sha256 hex）；仅完整性记录，不做去重';
 comment on column sys_file.create_by is '创建者用户ID';

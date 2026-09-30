@@ -55,7 +55,7 @@ var DefaultAllowMIME = []string{
 }
 
 // objectStorage is the S3-protocol implementation of the storage port
-// (ADR 0007: one aws-sdk-go-v2 client, one statically configured bucket).
+// (ADR 0026: one aws-sdk-go-v2 client, one statically configured bucket).
 type objectStorage struct {
 	client     *s3.Client
 	presigner  *s3.PresignClient

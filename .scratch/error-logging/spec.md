@@ -22,6 +22,8 @@ propagation-only.
 
 ## Out of scope
 
-- `pkg/middleware/errnormalize` (ADR 0004) — separate work item.
+- `pkg/middleware/errnormalize` — dropped. The ADR that proposed it (0004) was
+  retired into ADR 0007; the source-side log-and-map is the decision, and the
+  only uncovered item is panic normalization.
 - New lint gates — enforcement is review-based by decision.
 - Generated code and tests.

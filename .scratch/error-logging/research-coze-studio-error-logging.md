@@ -135,7 +135,7 @@ coze-studio **没有"错误只记一次"的成文约定**，实际策略是三�
 1. **重复日志**：log-and-return + 边界兜底 + 访问日志三层叠加，一条 DB 失败 3~4 行 Error（链 3），ADR 0007 第 3-5 行预判的问题在 coze-studio 是现实。
 2. **级别滥用**：Error 是默认级（530 处 vs Warn 164 处），业务 not-found、会话过期均打 Error，Error 告警语义已被稀释；且存在同一错误两行日志级别不一致（session.go:65 Error + InternalError Warn）。
 3. **无结构化字段**：错误全部 printf 进消息文本，无 operation/error 字段，机器检索与告警聚合能力弱；不带 ctx 的 `logs.Errorf` 还会丢 log-id。
-4. **裸错误穿透边界**：无 log-and-map，gorm 原生错误文本直达 handler 才被笼统化成 "internal server error"，原始 cause 只存在于边界日志里——客户端可见信息与日志排查完全耦合，这与 glex ADR 0004 的 errnormalize 动机相同，coze-studio 没做这一层。
+4. **裸错误穿透边界**：无 log-and-map，gorm 原生错误文本直达 handler 才被笼统化成 "internal server error"，原始 cause 只存在于边界日志里——客户端可见信息与日志排查完全耦合，这与 glex 已撤回的 ADR 0004（errnormalize）动机相同，coze-studio 没做这一层。
 5. **栈内嵌进 error 字符串**：`%v` 一次打印多行，污染日志解析；同时 `WrapByCode` 的"已有栈就不再抓"逻辑（`status.go:164-171`）说明作者也意识到栈会重复——glex 用 `AddSource` + 中间件栈的方案更干净。
 
 **未能确认的问题**

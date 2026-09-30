@@ -21,8 +21,5 @@ func Propagate(ctx context.Context, logger *slog.Logger, operation string, err e
 	if err == nil || errors.Is(err, context.Canceled) {
 		return
 	}
-	logger.WarnContext(ctx, "propagating error",
-		slog.String("operation", operation),
-		slog.Any("error", err),
-	)
+	logger.WarnContext(ctx, "propagating error", slog.String("operation", operation), slog.Any("error", err))
 }

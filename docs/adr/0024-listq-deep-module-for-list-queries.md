@@ -41,7 +41,8 @@ The rules that keep it deep:
 - **Exemption**: authn's online-session listing keeps its current shape
   until its Redis repo's List contract is narrowed (a separate review
   item); it honors two idents with string equality and cannot stand behind
-  a full Spec.
+  a full Spec. **Retired by ADR 0025**: the listing's option family folds
+  into one query struct like every other layer-facing signature.
 
 Migration is tracer-bullet: dict first (smallest, all three tiers), then
 pay, then the rest. Existing module tests stay — they exercise the real

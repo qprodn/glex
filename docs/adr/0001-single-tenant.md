@@ -1,5 +1,10 @@
 # Single-tenant system — no tenant_id
 
+> _Status: background — in force, but cited by nothing. It is kept because it
+> is the standing answer to "why is there no `tenant_id`?", and because
+> adding tenancy later is the most expensive change this repo could be asked
+> for. Do not treat its lack of references as decay._
+
 glex is a **single-tenant** system. No table carries a `tenant_id` column and no
 tenant-scoping filter is applied to queries. Decided 2026-08-12 at System User
 MVP planning; intended to hold repo-wide.

@@ -1,5 +1,5 @@
 // Package storage declares the file module's byte port (the inversion seam
-// declared in domain, implemented in infra over the S3 protocol — ADR 0007).
+// declared in domain, implemented in infra over the S3 protocol — ADR 0026).
 // Rows live in PostgreSQL behind the repository port; bytes live here.
 package storage
 
@@ -43,7 +43,7 @@ type GetRequest struct {
 
 // ObjectStorage is the byte-level gateway behind the file domain service.
 type ObjectStorage interface {
-	// Bucket reports the single configured bucket (ADR 0007).
+	// Bucket reports the single configured bucket (ADR 0026).
 	Bucket() string
 	// EnsureBucket creates the bucket when missing; startup fails fast when
 	// storage is unreachable.

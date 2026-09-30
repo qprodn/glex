@@ -42,9 +42,9 @@ review-based only; no lint gate was added.
   DB failure would produce 3–4 identical lines and bury the cause in noise;
   the transport middleware already guarantees the boundary record.
 - **Rejected:** keeping raw error propagation with middleware-only logging —
-  raw driver text leaks toward the transport boundary and duplicates the gap
-  ADR 0004 exists to close; mapping at the source keeps client-visible
-  errors clean and shrinks what the safety net has to catch.
+  raw driver text leaks toward the transport boundary; mapping at the source
+  keeps client-visible errors clean and shrinks whatever the safety net has
+  to catch.
 
 ## Consequences
 
@@ -56,9 +56,17 @@ review-based only; no lint gate was added.
   `observe()`, `access/menu.go` `routeAccessError`) move Warn → `Error` and
   adopt dotted `operation` names; remaining silent infra exits gain
   mapping. Implementation is tracked under `.scratch/error-logging/`.
-- ADR 0004's errnormalize middleware remains desirable as a dumb, outermost
-  safety net (panics, application-layer slips), but most of its workload
-  moves to the source; it stays a separate work item.
+- Panic responses are not unified, and that gap is the one thing this
+  decision does not close. Source-side mapping covers every error a handler
+  returns; a panic still reaches Kratos's stock recovery handler and leaves
+  the client with the framework's `UNKNOWN / "unknown request error"` body
+  instead of a canonical error. Normalizing it is a future work item, noted
+  here rather than tracked in a document of its own.
+- The former ADR 0004 (normalize untyped errors at the transport boundary)
+  is retired into this decision: its source-side mapping *is* the rule
+  above, its client-visible-cleanliness goal is already met, and its only
+  uncovered item is the panic case. The number 0004 is left unused rather
+  than reassigned.
 - Amended 2026-09-03 by ADR 0011: domain and application propagation sites
   no longer stay silent — they log a `Warn` breadcrumb and return; `Error`
   remains reserved exactly as decided here.

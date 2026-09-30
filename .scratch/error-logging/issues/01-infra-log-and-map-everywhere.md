@@ -37,5 +37,5 @@ id-generation/encoding/corruption paths) are mapped too. The old helpers
 `observe`) are untouched — that is ticket 02. Known remaining non-ent exits:
 startup config validation (`auth_manager.go`, `provider.go`), in-package
 propagation into a mapping caller (`resolveAuthorization`, `findPO`,
-`toBizLoginSession`), and client-input filter-expression errors (ADR 0004
-territory). `go build ./...` and the full test suite pass.
+`toBizLoginSession`), and client-input filter-expression errors (the territory
+the retired ADR 0004 covered). `go build ./...` and the full test suite pass.

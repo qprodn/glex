@@ -15,7 +15,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import React, { useRef, useState } from "react";
 
 /**
- * 定时任务: the back-office view over Scheduled Jobs (ADR 2023). Rows name
+ * 定时任务: the back-office view over Scheduled Jobs (ADR 0023). Rows name
  * code-registered executors; firing is best-effort and never backfilled.
  * The switch pauses/resumes the schedule; 立即执行 fires one manual run —
  * its outcome lands in the 任务日志 page, not in this call's response.

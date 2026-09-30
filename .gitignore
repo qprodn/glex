@@ -41,6 +41,7 @@ bin/
 RuoYi-Vue-Plus/*
 go-wind-admin/*
 /.zcode/
+.workbuddy/
 
 # Local build output of `go build` inside cmd/glex (make build targets ./bin)
 /cmd/glex/glex

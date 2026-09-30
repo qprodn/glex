@@ -51,4 +51,5 @@ gap in the monitor page family (online sessions already exist).
 
 - Login location (IP→geo), export, RuoYi's 清空-all, retention/archiving.
 - oper-log coverage for the hand-written DownloadFile (a safe-method read).
-- The `errnormalize` middleware (ADR 0004) — separate work item.
+- The `errnormalize` middleware — dropped. ADR 0007 absorbed it (see its
+  Consequences).

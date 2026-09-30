@@ -1,5 +1,7 @@
 ## Database conventions
 
+_Authority: ADR 0002._
+
 Every PostgreSQL table carries the five audit fields — `create_by`,
 `update_by` (bigint, 0 = the system itself), `created_at`, `updated_at`
 (timestamptz, `now()`), `deleted_at` (timestamptz, nullable) — via the shared
@@ -11,6 +13,8 @@ carry a snowflake surrogate PK plus a partial unique index on the id pair
 `WHERE deleted_at IS NULL`; a re-granted pair inserts a new row.
 
 ## Error handling and logging
+
+_Authority: ADR 0007 + ADR 0011._
 
 An error is logged at `Error` exactly once, where it is handled — the site
 that maps, replaces, swallows, or degrades it instead of returning it (ADR
@@ -39,6 +43,8 @@ lint.
 
 ## Audit logs
 
+_Authority: ADR 0012._
+
 Audit rows are write-once: no endpoint creates or updates them, and the only
 change a row ever takes is withdrawal (ADR 0012). Oper Logs
 (`sys_oper_log`, 操作日志) are minted by the transport middleware
@@ -52,6 +58,8 @@ only after secret keys (`password`, tokens) are scrubbed.
 
 ## Shared application helpers
 
+_Authority: ADR 0005 + ADR 0010._
+
 Cross-module application helpers live in `internal/bizpkg`, a flat package:
 stateless, derived only from the request context, never a capability call —
 module-to-module capabilities still go through crossdomain contracts (ADR
@@ -59,6 +67,8 @@ module-to-module capabilities still go through crossdomain contracts (ADR
 services import bizpkg (ADR 0010).
 
 ## Function signatures
+
+_Authority: ADR 0025._
 
 Layer-facing exported functions — application services, domain services,
 repository implementations, crossdomain contracts — take at most
@@ -74,28 +84,30 @@ code. bizpkg helpers follow the same shape by convention (ADR 0025).
 
 ## Generation and generated files
 
+_Authority: the generators themselves (`make api`, `make config`, `make all`)._
+
 Regenerate via `make api`, `make config`, `make all`, or the owning generator.
 Never hand-edit `*.pb.go`, `*_grpc.pb.go`, `*_http.pb.go`, or Ent-generated
 files.
 
 ## Commits and security
 
+_Authority: this file._
+
 - Conventional Commits: `feat:`, `fix:`, `refactor:`, `chore(deps):`, `docs:`,
   `test:`. Regenerated files belong in the same commit as their source.
 - Never commit real credentials in `configs/config.yaml`.
 
-### Issue tracker
+## Issue tracker
+
+_Authority: `docs/agents/issue-tracker.md`._
 
 Issues live as markdown files under `.scratch/<feature>/`. See
 `docs/agents/issue-tracker.md`.
 
-### Triage labels
+## Domain docs
 
-Five canonical roles map to same-named labels (`needs-triage`, `needs-info`,
-`ready-for-agent`, `ready-for-human`, `wontfix`). See
-`docs/agents/triage-labels.md`.
-
-### Domain docs
+_Authority: `CONTEXT.md` and `docs/adr/`._
 
 Single-context: one root `CONTEXT.md` plus `docs/adr/`. See
 `docs/agents/domain.md`.

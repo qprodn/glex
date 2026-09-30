@@ -14,9 +14,12 @@ and repo construction stays in infra fx providers (the equivalent of coze's
 so thin pass-through service methods (`List` delegating straight to the
 repo) are the accepted price of one uniform, lint-enforceable rule.
 
-Six services, one per application handler: **Role** (holds the role, menu,
-and user-role repos), **Menu**, **RoleAssignment**, **Login**, **OnlineSession**,
-**User**. Two further seam services exist only for crossdomain delegation:
+Services as they stood at this decision — 2026-08-28, when only three modules
+existed (access, authn, user) — one per application handler: **Role** (holds
+the role, menu, and user-role repos), **Menu**, **RoleAssignment**, **Login**,
+**OnlineSession**, **User**. Every module added since owns service(s) of its
+own under the same rule; the enumeration is a snapshot, not the current set.
+Two further seam services exist only for crossdomain delegation:
 **Authorization** (Authorization Resolution) and **Credential** (password
 hashing and store) — the crossdomain impls delegate to services, not repos. Interface and implementation live together in
 `domain/<mod>/service/` (coze's `message.go` + `message_impl.go` style) with

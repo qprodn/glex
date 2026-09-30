@@ -4,21 +4,23 @@ The domain concerned with **who can operate the system, the navigation they see,
 how their identity is established, the controlled vocabularies the back office
 renders choices from, the organization structure it groups people by, the
 files it stores, the payments it collects, and the recurring work it
-schedules**. It is organized as six modules in one service: **user**
+schedules**. It is organized as nine modules in one service: **user**
 (System User accounts), **org** (organization structure — departments, posts,
 and post assignments), **access** (authorization — roles, menus, grants, and
 permission resolution), **authn** (authentication — credentials, login
 sessions, and tokens), **dict** (dictionaries — the labeled option vocabularies
-pages render selects and status tags from), and **file** (file storage —
-accepting uploads, serving downloads, and withdrawing Stored Files), ported from
-RuoYi-Vue-Plus's `sys_user`, `sys_dept`, `sys_post`, `sys_menu`, `sys_role`,
-`sys_user_role`, `sys_user_post`, `sys_dict_type`, and `sys_dict_data`; the
-file module continues that lineage with its own `sys_file` (RuoYi's `sys_oss`,
-renamed). A seventh module, **pay** (payment — the Channel Merchant Accounts
-the back office configures and the payments and refunds collected through
-them), and an eighth module, **job** (scheduled tasks — the Scheduled Jobs the
-back office configures and the Job Executors they fire), are designed natively
-for glex rather than ported.
+pages render selects and status tags from), **file** (file storage —
+accepting uploads, serving downloads, and withdrawing Stored Files), and
+**audit** (the write-once operation and login logs, minted by the transport
+middleware and authn rather than exposed as an API service of its own), ported
+from RuoYi-Vue-Plus's `sys_user`, `sys_dept`, `sys_post`, `sys_menu`,
+`sys_role`, `sys_user_role`, `sys_user_post`, `sys_dict_type`,
+`sys_dict_data`, `sys_oper_log`, and `sys_logininfor`; the file module
+continues that lineage with its own `sys_file` (RuoYi's `sys_oss`, renamed).
+Two further modules, **pay** (payment — the Channel Merchant Accounts the back
+office configures and the payments and refunds collected through them) and
+**job** (scheduled tasks — the Scheduled Jobs the back office configures and
+the Job Executors they fire), are designed natively for glex rather than ported.
 
 ## Language
 

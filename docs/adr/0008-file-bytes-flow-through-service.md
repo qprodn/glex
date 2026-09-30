@@ -1,5 +1,9 @@
 # File bytes flow through the service — no presigned URLs
 
+> Partially superseded by ADR 0016: reads now return a short-TTL presigned
+> **display** URL. The upload and proxied-download clauses below stand
+> unchanged — this is not a blanket "no presigned URLs" rule any more.
+
 S3 presigned PUT/GET would let browsers talk to storage directly and offload
 the service — but the service never sees the bytes: uploader identity,
 original filename, and Content Fingerprint could only come from forgeable

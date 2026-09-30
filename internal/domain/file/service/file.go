@@ -48,7 +48,7 @@ type OpenResult struct {
 
 // File is the file domain service behind the file endpoints: the only path
 // to the Stored File rows and their bytes (ADR 0005). The S3 protocol
-// carries the bytes (ADR 0007); every transfer flows through the service
+// carries the bytes (ADR 0026); every transfer flows through the service
 // (ADR 0008); withdrawal keeps the row and removes the bytes (ADR 0009).
 // The module has no multi-statement write, so no ambient transaction is
 // needed — each write is a single-row statement. Every error a method
