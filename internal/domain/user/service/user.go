@@ -18,8 +18,6 @@ import (
 	"glex/pkg/logx"
 )
 
-// User is the System User domain service behind the user endpoints: the only
-// path to the System User reads and writes (ADR 0005).
 // ListUsersRequest is the user-list read as the service states it: the
 // shared query shape plus the department subtree filter the application
 // resolved server-side. It flows application → service unchanged (ADR
@@ -37,6 +35,8 @@ type DeleteUserRequest struct {
 	ActorID int64
 }
 
+// User is the System User domain service behind the user endpoints: the only
+// path to the System User reads and writes (ADR 0005).
 type User interface {
 	Get(ctx context.Context, id int64) (*entity.User, error)
 	List(ctx context.Context, req ListUsersRequest) ([]*entity.User, error)

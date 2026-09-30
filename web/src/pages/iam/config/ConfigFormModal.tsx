@@ -14,8 +14,11 @@ type ConfigFormModalProps = {
 
 // All business fields are updatable — the key included: a Config key stays
 // editable after create (unlike a Dict Type key, ADR 0006); a rename passes
-// the same uniqueness pre-check as a create.
-const EDITABLE_FIELDS = ["configName", "configKey", "configValue", "builtIn", "remark"] as const;
+// the same uniqueness pre-check as a create. built_in is the exception: set
+// at create and immutable afterwards — a PATCH-and-delete pair must not be
+// able to strip the withdrawal protection, so the switch is create-only and
+// the mask never carries it.
+const EDITABLE_FIELDS = ["configName", "configKey", "configValue", "remark"] as const;
 
 const ConfigFormModal: React.FC<ConfigFormModalProps> = ({ open, record, onClose }) => {
   const intl = useIntl();
@@ -77,7 +80,13 @@ const ConfigFormModal: React.FC<ConfigFormModalProps> = ({ open, record, onClose
         rules={[
           { required: true },
           // Same charset the server enforces.
-          { pattern: /^[A-Za-z0-9][A-Za-z0-9._-]*$/, message: "字母或数字开头，仅字母、数字、点、下划线、连字符" },
+          {
+            pattern: /^[A-Za-z0-9][A-Za-z0-9._-]*$/,
+            message: intl.formatMessage({
+              id: "pages.config.keyPattern",
+              defaultMessage: "字母或数字开头，仅字母、数字、点、下划线、连字符",
+            }),
+          },
         ]}
         extra={intl.formatMessage({
           id: "pages.config.keyHint",
@@ -94,14 +103,16 @@ const ConfigFormModal: React.FC<ConfigFormModalProps> = ({ open, record, onClose
           defaultMessage: "纯字符串，布尔写 true/false，解析归消费方",
         })}
       />
-      <ProFormSwitch
-        name="builtIn"
-        label={intl.formatMessage({ id: "pages.config.builtIn", defaultMessage: "内置参数" })}
-        extra={intl.formatMessage({
-          id: "pages.config.builtInHint",
-          defaultMessage: "内置参数只防删除（系统预置语义）；随时可改回",
-        })}
-      />
+      {!isEdit && (
+        <ProFormSwitch
+          name="builtIn"
+          label={intl.formatMessage({ id: "pages.config.builtIn", defaultMessage: "内置参数" })}
+          extra={intl.formatMessage({
+            id: "pages.config.builtInHint",
+            defaultMessage: "内置参数不可删除；标记创建后不可修改",
+          })}
+        />
+      )}
       <ProFormTextArea
         name="remark"
         label={intl.formatMessage({ id: "common.remark", defaultMessage: "备注" })}

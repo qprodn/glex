@@ -13,11 +13,6 @@ import (
 	"glex/pkg/logx"
 )
 
-// Dept is the org domain service behind the department endpoints: the only
-// path to the Department reads and writes (ADR 0005). Methods join the
-// caller's ambient transaction; the Application service owns the transaction
-// boundary. Every error a method returns to its caller first logs its Warn
-// breadcrumb (ADR 0011).
 // DeleteDeptRequest identifies the department a Delete withdraws and the
 // actor whose id lands in the audit fields (ADR 0005/0025).
 type DeleteDeptRequest struct {
@@ -25,6 +20,11 @@ type DeleteDeptRequest struct {
 	ActorID int64
 }
 
+// Dept is the org domain service behind the department endpoints: the only
+// path to the Department reads and writes (ADR 0005). Methods join the
+// caller's ambient transaction; the Application service owns the transaction
+// boundary. Every error a method returns to its caller first logs its Warn
+// breadcrumb (ADR 0011).
 type Dept interface {
 	Get(ctx context.Context, id int64) (*entity.Dept, error)
 	// List returns every non-withdrawn department as a flat list ordered by

@@ -201,8 +201,9 @@ _Avoid_: Config (overloaded by RuoYi), Setting, Option, 系统参数 (unqualifie
 
 **Built-in Parameter** (内置参数):
 A Runtime Parameter protected from withdrawal because the system assumes it
-exists: it may be re-valued at will but never withdrawn. The flag is
-settable when creating a parameter — it governs withdrawability only.
+exists: it may be re-valued at will but never withdrawn. The flag is set at
+create and immutable afterwards — it governs withdrawability only, and no
+update path can strip it.
 _Avoid_: system parameter, fixed parameter, config_type.
 
 ### file

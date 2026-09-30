@@ -12,12 +12,6 @@ import (
 	"glex/pkg/logx"
 )
 
-// Post is the org domain service behind the post endpoints: the only path to
-// the Post reads and writes (ADR 0005). Posts are department-scoped
-// (ADR 0015): the name is unique within its department, the code is unique
-// across all posts. Methods join the caller's ambient transaction; the
-// Application service owns the transaction boundary. Every error a method
-// returns to its caller first logs its Warn breadcrumb (ADR 0011).
 // ListPostsRequest is the post-list read as the service states it: the
 // shared query shape plus the department subtree filter the application
 // resolved server-side (ADR 0005/0025).
@@ -33,6 +27,12 @@ type DeletePostRequest struct {
 	ActorID int64
 }
 
+// Post is the org domain service behind the post endpoints: the only path to
+// the Post reads and writes (ADR 0005). Posts are department-scoped
+// (ADR 0015): the name is unique within its department, the code is unique
+// across all posts. Methods join the caller's ambient transaction; the
+// Application service owns the transaction boundary. Every error a method
+// returns to its caller first logs its Warn breadcrumb (ADR 0011).
 type Post interface {
 	Get(ctx context.Context, id int64) (*entity.Post, error)
 	List(ctx context.Context, req ListPostsRequest) ([]*entity.Post, error)

@@ -115,7 +115,9 @@ func (r *configRepo) List(ctx context.Context, q listq.Query) ([]*paramentity.Co
 
 // Create inserts the parameter row. The caller owns the transaction; the
 // partial unique index on config_key is the race-proof backstop behind the
-// service's friendly pre-check.
+// service's friendly pre-check. A constraint hit is that backstop firing —
+// an expected business condition mapped silently to the module's conflict
+// sentinel (ADR 0007), never a 503.
 func (r *configRepo) Create(ctx context.Context, c *paramentity.Config) (*paramentity.Config, error) {
 	builtIn := 0
 	if c.BuiltIn {

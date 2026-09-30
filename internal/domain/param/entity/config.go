@@ -1,7 +1,9 @@
 package entity
 
 import (
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"glex/internal/domain/param"
 )
@@ -27,14 +29,17 @@ type Config struct {
 }
 
 // Validate enforces the invariants a Config must satisfy before persistence:
-// non-blank name and key inside the charset and column budgets, value and
-// remark inside theirs.
+// a non-blank name (whitespace-only counts as blank, RuoYi's @NotBlank), a
+// key inside the charset, and every free-text field inside its column
+// budget. Free-text budgets count runes, not bytes — the columns are
+// varchar(n) counting characters, and this is a zh-CN back office; the key
+// needs no rune counting because its charset is ASCII-only.
 func (c *Config) Validate() error {
 	if c == nil ||
-		c.ConfigName == "" || len(c.ConfigName) > param.NameMaxLen ||
+		strings.TrimSpace(c.ConfigName) == "" || utf8.RuneCountInString(c.ConfigName) > param.NameMaxLen ||
 		!param.KeyPattern.MatchString(c.ConfigKey) || len(c.ConfigKey) > param.KeyMaxLen ||
-		len(c.ConfigValue) > param.ValueMaxLen ||
-		len(c.Remark) > param.RemarkMaxLen {
+		utf8.RuneCountInString(c.ConfigValue) > param.ValueMaxLen ||
+		utf8.RuneCountInString(c.Remark) > param.RemarkMaxLen {
 		return param.ErrConfigInvalid
 	}
 	return nil

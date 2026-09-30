@@ -286,7 +286,8 @@ export default {
   "pages.config.edit": "Edit parameter",
   "pages.config.keyHint": "Consumer code reads by this key; renaming leaves the old key not-found",
   "pages.config.valueHint": "Plain string; booleans travel as true/false; parsing is the consumer's job",
-  "pages.config.builtInHint": "Built-in only protects from deletion; reversible at any time",
+  "pages.config.builtInHint": "Built-in parameters cannot be deleted; the flag is fixed after create",
+  "pages.config.keyPattern": "Start with a letter or digit; then letters, digits, dots, underscores, hyphens",
   "pages.config.delete.confirm": "Delete parameter \"{name}\"?",
   "pages.config.delete.hint": "Consumers referencing the key will read not-found; built-in parameters cannot be deleted.",
 };

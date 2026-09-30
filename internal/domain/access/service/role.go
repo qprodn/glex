@@ -12,11 +12,6 @@ import (
 	"glex/pkg/logx"
 )
 
-// Role is the access domain service behind the role endpoints: the only path
-// to the Role, Menu Grant, and assignment-guard reads and writes (ADR 0005).
-// Methods join the caller's ambient transaction; the Application service
-// owns the transaction boundary and the cross-domain revocation. Every error
-// a method returns to its caller first logs its Warn breadcrumb (ADR 0011).
 // CreateRoleRequest is one role creation as the service states it: the role
 // to persist and the menu ids of its initial Menu Grant (ADR 0005/0025).
 type CreateRoleRequest struct {
@@ -42,6 +37,11 @@ type ReplaceRoleMenusRequest struct {
 	ActorID           int64
 }
 
+// Role is the access domain service behind the role endpoints: the only path
+// to the Role, Menu Grant, and assignment-guard reads and writes (ADR 0005).
+// Methods join the caller's ambient transaction; the Application service
+// owns the transaction boundary and the cross-domain revocation. Every error
+// a method returns to its caller first logs its Warn breadcrumb (ADR 0011).
 type Role interface {
 	Get(ctx context.Context, id int64) (*entity.Role, error)
 	List(ctx context.Context, q listq.Query) ([]*entity.Role, error)

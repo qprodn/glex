@@ -278,7 +278,8 @@ export default {
   "pages.config.edit": "编辑参数",
   "pages.config.keyHint": "消费方代码按此键取值；改名会让旧键读到 not-found",
   "pages.config.valueHint": "纯字符串，布尔写 true/false，解析归消费方",
-  "pages.config.builtInHint": "内置参数只防删除（系统预置语义）；随时可改回",
+  "pages.config.builtInHint": "内置参数不可删除；标记创建后不可修改",
+  "pages.config.keyPattern": "字母或数字开头，仅字母、数字、点、下划线、连字符",
   "pages.config.delete.confirm": "确定删除参数「{name}」吗？",
   "pages.config.delete.hint": "删除后按此键引用的消费方将读到 not-found；内置参数不可删除。",
 };

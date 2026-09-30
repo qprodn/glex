@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"glex/internal/domain/param"
@@ -94,11 +95,13 @@ func TestCreateValidatesBeforePersisting(t *testing.T) {
 
 	for name, c := range map[string]*entity.Config{
 		"blank name":   {ConfigName: "", ConfigKey: "sys.ok"},
+		"space name":   {ConfigName: "  \t ", ConfigKey: "sys.ok"}, // whitespace-only counts as blank (RuoYi @NotBlank)
 		"blank key":    {ConfigName: "名字", ConfigKey: ""},
 		"key charset":  {ConfigName: "名字", ConfigKey: "sys account"}, // space
 		"key leading":  {ConfigName: "名字", ConfigKey: ".leading"},    // no leading letter/digit
 		"value length": {ConfigName: "名字", ConfigKey: "sys.ok", ConfigValue: string(make([]byte, param.ValueMaxLen+1))},
 		"name length":  {ConfigName: string(make([]byte, param.NameMaxLen+1)), ConfigKey: "sys.ok"},
+		"remark runes": {ConfigName: "名字", ConfigKey: "sys.ok", Remark: strings.Repeat("备", param.RemarkMaxLen+1)},
 	} {
 		if _, err := svc.Create(context.Background(), c); !errors.Is(err, param.ErrConfigInvalid) {
 			t.Errorf("%s: got %v, want ErrConfigInvalid", name, err)
@@ -189,6 +192,27 @@ func TestUpdateValidatesUnknownRecord(t *testing.T) {
 
 	if _, err := svc.Update(context.Background(), &entity.Config{ID: 99, ConfigName: "x", ConfigKey: "sys.x"}); !errors.Is(err, param.ErrConfigNotFound) {
 		t.Fatalf("got %v, want ErrConfigNotFound", err)
+	}
+}
+
+func TestUpdateKeepsStoredBuiltInFlag(t *testing.T) {
+	repo := newFakeConfigRepo()
+	builtIn, _ := seedBuiltIn(repo)
+	svc := newService(repo)
+
+	// A PATCH carrying built_in=false must not strip the withdrawal
+	// protection — the stored flag wins, whatever the caller sent.
+	flipped := &entity.Config{
+		ID: builtIn.ID, ConfigName: builtIn.ConfigName,
+		ConfigKey: builtIn.ConfigKey, ConfigValue: builtIn.ConfigValue,
+		BuiltIn: false,
+	}
+	updated, err := svc.Update(context.Background(), flipped)
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if !updated.BuiltIn {
+		t.Fatal("built-in flag was stripped by the update")
 	}
 }
 

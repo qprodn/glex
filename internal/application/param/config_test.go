@@ -258,6 +258,29 @@ func TestUpdateConfig_AppliesMaskAndCarriesKey(t *testing.T) {
 	}
 }
 
+func TestUpdateConfig_IgnoresBuiltInMask(t *testing.T) {
+	now := time.Now()
+	// A stored built-in parameter; the client PATCHes built_in=false.
+	svc := &fakeConfigsService{
+		get:    &paramentity.Config{ID: 7, ConfigName: "注册开关", ConfigKey: "sys.account.registerUser", ConfigValue: "false", BuiltIn: true, CreatedAt: now, UpdatedAt: now},
+		update: &paramentity.Config{ID: 7, ConfigName: "注册开关", ConfigKey: "sys.account.registerUser", ConfigValue: "false", BuiltIn: true},
+	}
+	app, _ := newParamApp(svc)
+
+	_, err := app.UpdateConfig(context.Background(), &paramv1.UpdateConfigRequest{
+		Config:     &paramv1.Config{ConfigId: 7, BuiltIn: false},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"config_value", "built_in"}},
+	})
+	if err != nil {
+		t.Fatalf("update config: %v", err)
+	}
+	// The entity sent down never carries the client's flag — the stored one
+	// rides along (and the domain service re-reads it regardless).
+	if !svc.updateInput.BuiltIn {
+		t.Fatal("client's built_in=false crossed into the update")
+	}
+}
+
 func TestUpdateConfig_ServiceErrorPropagates(t *testing.T) {
 	svc := &fakeConfigsService{get: &paramentity.Config{ID: 7, ConfigName: "n", ConfigKey: "sys.k"}, updateErr: errServiceFailed}
 	app, _ := newParamApp(svc)

@@ -314,11 +314,11 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
-		{Name: "config_name", Type: field.TypeString},
-		{Name: "config_key", Type: field.TypeString},
+		{Name: "config_name", Type: field.TypeString, SchemaType: map[string]string{"postgres": "varchar(256)"}},
+		{Name: "config_key", Type: field.TypeString, SchemaType: map[string]string{"postgres": "varchar(256)"}},
 		{Name: "config_value", Type: field.TypeString, Default: "", SchemaType: map[string]string{"postgres": "varchar(500)"}},
 		{Name: "built_in", Type: field.TypeInt, Default: 0, SchemaType: map[string]string{"postgres": "smallint"}},
-		{Name: "remark", Type: field.TypeString, Default: ""},
+		{Name: "remark", Type: field.TypeString, Default: "", SchemaType: map[string]string{"postgres": "varchar(500)"}},
 	}
 	// SysConfigTable holds the schema information for the "sys_config" table.
 	SysConfigTable = &schema.Table{

@@ -101,10 +101,16 @@ func (s *configsImpl) Create(ctx context.Context, c *entity.Config) (*entity.Con
 }
 
 func (s *configsImpl) Update(ctx context.Context, c *entity.Config) (*entity.Config, error) {
-	if _, err := s.configs.FindByID(ctx, c.ID); err != nil {
+	stored, err := s.configs.FindByID(ctx, c.ID)
+	if err != nil {
 		logx.Propagate(ctx, s.logger, "param.svc.update", err)
 		return nil, err
 	}
+	// The built-in flag is immutable after create (docs/modules/param.md): the
+	// stored flag wins whatever the caller sent, so a PATCH-and-delete pair
+	// can never strip the withdrawal protection the ConfigReader contract
+	// relies on — the dict service's stance for the immutable type key.
+	c.BuiltIn = stored.BuiltIn
 	if err := c.Validate(); err != nil {
 		logx.Propagate(ctx, s.logger, "param.svc.update", err)
 		return nil, err

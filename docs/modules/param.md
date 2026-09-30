@@ -11,7 +11,7 @@ param 模块是 glex 的第十个模块,为后台提供**运行时参数**能力
 | 概念 | 中文 | 本质 | 存活处 |
 |---|---|---|---|
 | **Runtime Parameter** | 运行时参数 | 一行数据:名称、键、值、内置标记、备注 | **数据库 `sys_config` 表** |
-| **Built-in Parameter** | 内置参数 | `built_in=1` 的参数:可改值、不可删除 | 同上 |
+| **Built-in Parameter** | 内置参数 | `built_in=1` 的参数:可改值、不可删除;标记建后不可改 | 同上 |
 | **ConfigReader** | 读取契约 | `crossdomain/param.ConfigReader`,其他模块按 key 取值的唯一入口 | **代码**,进程内接口 |
 
 与静态配置的边界是本模块最重要的概念切割:**yaml 里的 `conf.Bootstrap` 是部署期静态配置,`sys_config` 是运行时参数**。一个值只允许有一个真相源——当前 `user.init_password` 活在 yaml,`sys_config` 就不播种它的同名键;静态开关迁进参数表的条件是"消费端同批切换到 Reader",绝不是先播一行长得像的行(详见第 6 章)。
@@ -20,7 +20,7 @@ param 模块是 glex 的第十个模块,为后台提供**运行时参数**能力
 
 每个决策都对应一个明确放弃的备选方案。
 
-**① 治理自由:不做键注册制。** 管理员可自由增删改参数键,没有代码侧白名单。放弃注册制(代码声明合法 key)的理由:消费方寥寥,注册机制是为想象中的规模付复杂度;真出现垃圾键问题再收紧是可逆决定。`built_in` 只防删不防改,对齐 RuoYi"内置参数不能删除"。
+**① 治理自由:不做键注册制。** 管理员可自由增删改参数键,没有代码侧白名单。放弃注册制(代码声明合法 key)的理由:消费方寥寥,注册机制是为想象中的规模付复杂度;真出现垃圾键问题再收紧是可逆决定。`built_in` 防删:内置行拒绝删除、改值随意,但**标记本身建后不可改**(比 RuoYi 收紧——RuoYi 允许先把 Y 改 N 再删;glex 的读取契约声明"系统假设它存在",不允许 PATCH+DELETE 两步绕过)。
 
 **② 值是纯字符串。** 无类型列、无结构化 JSON,布尔写成 `true`/`false`,解析归消费方。管理页按纯文本渲染。
 
@@ -82,7 +82,7 @@ create unique index param_config_key
 | 列表 | `GET /iam/config` | `system:config:list` | listq:AIP-160 过滤 `config_name`/`config_key`/`built_in`/`created_at`,默认 `id desc` |
 | 详情 | `GET /iam/config/{id}` | `system:config:query` | |
 | 新增 | `POST /iam/config` | `system:config:add` | `built_in` 客户端可设(仅治理可删性);服务端过键唯一性预检 |
-| 修改 | `PATCH /iam/config/{id}` | `system:config:edit` | field-mask 局部更新,`config_key` 可改,改键过唯一性预检 |
+| 修改 | `PATCH /iam/config/{id}` | `system:config:edit` | field-mask 局部更新,`config_key` 可改,改键过唯一性预检;`built_in` 建后不可改,mask 携带无效 |
 | 删除 | `DELETE /iam/config/{id}` | `system:config:remove` | 软删;`built_in=1` 拒绝 |
 
 路由映射登记进 `internal/server/auth_routes.go`(操作名 → 权限串);审计字段由应用层从 Principal 盖戳,DTO 不携带。

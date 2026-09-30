@@ -131,20 +131,24 @@ func (s *ConfigApplication) ListConfigs(ctx context.Context, req *paramv1.ListCo
 // the current state as a DTO, applies the mask onto it, then persists. All
 // business fields are updatable — the key included: a Config key stays
 // editable after create (unlike a Dict Type key, ADR 0006), and the service's
-// uniqueness pre-check covers renames the same way it covers creates.
+// uniqueness pre-check covers renames the same way it covers creates. The
+// built-in flag is the exception: set at create and immutable afterwards, so
+// the entity never carries the client's value (the service re-reads the
+// stored flag regardless).
 func (s *ConfigApplication) UpdateConfig(ctx context.Context, req *paramv1.UpdateConfigRequest) (*paramv1.Config, error) {
-	current, err := s.GetConfig(ctx, &paramv1.GetConfigRequest{ConfigId: req.GetConfig().GetConfigId()})
+	stored, err := s.svc.Get(ctx, req.GetConfig().GetConfigId())
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "param.update_config", err)
 		return nil, err
 	}
+	current := convertConfig(stored)
 	fieldmask.Update(req.GetUpdateMask(), current, req.GetConfig())
 	c := &paramentity.Config{
 		ID:          current.GetConfigId(),
 		ConfigName:  current.GetConfigName(),
 		ConfigKey:   current.GetConfigKey(),
 		ConfigValue: current.GetConfigValue(),
-		BuiltIn:     current.GetBuiltIn(),
+		BuiltIn:     stored.BuiltIn,
 		Remark:      current.GetRemark(),
 		UpdateBy:    bizpkg.AuditActor(ctx),
 	}

@@ -31,13 +31,19 @@ func (Param) Fields() []ent.Field {
 		// Snowflake ID; stored in the id column. Set by the
 		// repo on create (see data.newSnowflakeID).
 		field.Int64("id").Unique().Immutable(),
-		field.String("config_name"),
+		// Name and key carry the domain's 256-char budgets (param.NameMaxLen /
+		// KeyMaxLen); the explicit SchemaType keeps ent's DDL in step with
+		// docs/db/schema.sql and the validator instead of its varchar(255)
+		// default — a budget-length value must never fail the insert.
+		field.String("config_name").
+			SchemaType(map[string]string{dialect.Postgres: "varchar(256)"}),
 		// Parameter key (^[A-Za-z0-9][A-Za-z0-9._-]*$). Uniqueness among
 		// active rows is backed by the partial unique index below — the exact
 		// same DB guarantee the dict key carries, since consumer code resolves
 		// parameters by this identifier; the friendly pre-check lives in the
 		// domain service. Soft-deleted keys are reusable.
-		field.String("config_key"),
+		field.String("config_key").
+			SchemaType(map[string]string{dialect.Postgres: "varchar(256)"}),
 		// Plain string value; varchar(500) keeps RuoYi's headroom for values
 		// that carry data rather than labels (the repo's 256 default is a
 		// label-sized budget).
@@ -48,7 +54,9 @@ func (Param) Fields() []ent.Field {
 		// system assumes the parameter exists and withdrawal is refused.
 		field.Int("built_in").Default(0).
 			SchemaType(map[string]string{dialect.Postgres: "smallint"}),
-		field.String("remark").Default(""),
+		// Remark rides the same 500 budget as the value (param.RemarkMaxLen).
+		field.String("remark").Default("").
+			SchemaType(map[string]string{dialect.Postgres: "varchar(500)"}),
 	}
 }
 

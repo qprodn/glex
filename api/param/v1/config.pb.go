@@ -43,7 +43,8 @@ type Config struct {
 	// Parameter value, a plain string (booleans travel as "true"/"false").
 	ConfigValue string `protobuf:"bytes,4,opt,name=config_value,json=configValue,proto3" json:"config_value,omitempty"`
 	// Built-in Parameter: protected from withdrawal because the system assumes
-	// it exists. Settable at create; governs withdrawability only.
+	// it exists. Set at create and immutable afterwards — UpdateConfig ignores
+	// it regardless of the mask; it governs withdrawability only.
 	BuiltIn bool   `protobuf:"varint,5,opt,name=built_in,json=builtIn,proto3" json:"built_in,omitempty"`
 	Remark  string `protobuf:"bytes,6,opt,name=remark,proto3" json:"remark,omitempty"`
 	// Audit: who created/updated. Filled from the authenticated identity.
@@ -379,7 +380,8 @@ type UpdateConfigRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Required. The config to update. config_id identifies the record.
 	Config *Config `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
-	// Required. Mask of fields to update.
+	// Required. Mask of fields to update. `built_in` in the mask has no
+	// effect (immutable after create).
 	UpdateMask    *fieldmaskpb.FieldMask `protobuf:"bytes,2,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

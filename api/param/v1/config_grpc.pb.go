@@ -46,7 +46,9 @@ type ConfigServiceClient interface {
 	ListConfigs(ctx context.Context, in *ListConfigsRequest, opts ...grpc.CallOption) (*ConfigSet, error)
 	// UpdateConfig partially updates a runtime parameter (field-mask). All
 	// business fields are updatable, config_key included — a key rename passes
-	// the same uniqueness pre-check as a create.
+	// the same uniqueness pre-check as a create. built_in is the exception:
+	// set at create, immutable afterwards, ignored here regardless of the
+	// mask.
 	UpdateConfig(ctx context.Context, in *UpdateConfigRequest, opts ...grpc.CallOption) (*Config, error)
 	// DeleteConfig soft-deletes a runtime parameter by id; refused for
 	// built-in parameters (RuoYi: 内置参数不能删除).
@@ -130,7 +132,9 @@ type ConfigServiceServer interface {
 	ListConfigs(context.Context, *ListConfigsRequest) (*ConfigSet, error)
 	// UpdateConfig partially updates a runtime parameter (field-mask). All
 	// business fields are updatable, config_key included — a key rename passes
-	// the same uniqueness pre-check as a create.
+	// the same uniqueness pre-check as a create. built_in is the exception:
+	// set at create, immutable afterwards, ignored here regardless of the
+	// mask.
 	UpdateConfig(context.Context, *UpdateConfigRequest) (*Config, error)
 	// DeleteConfig soft-deletes a runtime parameter by id; refused for
 	// built-in parameters (RuoYi: 内置参数不能删除).

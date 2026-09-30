@@ -11,12 +11,6 @@ import (
 	"glex/pkg/logx"
 )
 
-// RoleAssignment is the access domain service behind the Role Assignment
-// (角色分配) endpoints: the only path to the user↔role link reads and writes
-// (ADR 0005). Methods join the caller's ambient transaction; the Application
-// service owns the transaction boundary and the cross-domain revocation.
-// Every error a method returns to its caller first logs its Warn breadcrumb
-// (ADR 0011).
 // ReplaceUserRolesRequest is one full replacement of a user's Role
 // Assignment as the service states it: the user, the role ids to store, and
 // the actor stamped into the audit fields (ADR 0005/0025).
@@ -34,6 +28,12 @@ type ListRoleUsersRequest struct {
 	RoleID int64
 }
 
+// RoleAssignment is the access domain service behind the Role Assignment
+// (角色分配) endpoints: the only path to the user↔role link reads and writes
+// (ADR 0005). Methods join the caller's ambient transaction; the Application
+// service owns the transaction boundary and the cross-domain revocation.
+// Every error a method returns to its caller first logs its Warn breadcrumb
+// (ADR 0011).
 type RoleAssignment interface {
 	// ListForUser returns every active role with whether the user is assigned
 	// it, gated on the user existing and not being soft-deleted.

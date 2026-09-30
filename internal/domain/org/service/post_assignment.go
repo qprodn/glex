@@ -18,12 +18,6 @@ type ListForUserRequest struct {
 	DeptOverride int64
 }
 
-// PostAssignment is the org domain service behind the user↔post link
-// endpoints (岗位分配): the only path to the link reads and writes
-// (ADR 0005). Assigning is full-replacement, the Role Assignment semantics.
-// Methods join the caller's ambient transaction; the Application service
-// owns the transaction boundary. Every error a method returns to its caller
-// first logs its Warn breadcrumb (ADR 0011).
 // ReplaceUserPostsRequest is one full replacement of a user's Post
 // Assignment as the service states it: the user, the post ids to store, and
 // the actor stamped into the audit fields (ADR 0005/0025).
@@ -33,6 +27,12 @@ type ReplaceUserPostsRequest struct {
 	ActorID int64
 }
 
+// PostAssignment is the org domain service behind the user↔post link
+// endpoints (岗位分配): the only path to the link reads and writes
+// (ADR 0005). Assigning is full-replacement, the Role Assignment semantics.
+// Methods join the caller's ambient transaction; the Application service
+// owns the transaction boundary. Every error a method returns to its caller
+// first logs its Warn breadcrumb (ADR 0011).
 type PostAssignment interface {
 	// ListForUser returns the effective department's active posts with
 	// whether the user is assigned each — the post dialog's data in one

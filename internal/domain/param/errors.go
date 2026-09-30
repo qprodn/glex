@@ -6,6 +6,8 @@
 package param
 
 import (
+	"fmt"
+
 	"github.com/go-kratos/kratos/v3/errors"
 )
 
@@ -20,8 +22,11 @@ var (
 	// (RuoYi: 内置参数不能删除). Re-valuing stays allowed.
 	ErrConfigBuiltInLocked = errors.Conflict("CONFIG_BUILT_IN_LOCKED", "built-in config cannot be deleted")
 	// ErrConfigInvalid: config_name/config_key is blank or over length, the
-	// key violates the charset, or config_value/remark is over length.
-	ErrConfigInvalid = errors.BadRequest("CONFIG_INVALID", "config_name and config_key are required; config_key must match ^[A-Za-z0-9][A-Za-z0-9._-]*$")
+	// key violates the charset, or config_value/remark is over length. The
+	// message quotes KeyPattern so the advertised rule cannot drift from the
+	// enforced one.
+	ErrConfigInvalid = errors.BadRequest("CONFIG_INVALID",
+		fmt.Sprintf("config_name and config_key are required; config_key must match %s", KeyPattern))
 )
 
 var (

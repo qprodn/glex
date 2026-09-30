@@ -19,7 +19,8 @@ export type Config = {
   // Parameter value, a plain string (booleans travel as "true"/"false").
   configValue: string | undefined;
   // Built-in Parameter: protected from withdrawal because the system assumes
-  // it exists. Settable at create; governs withdrawability only.
+  // it exists. Set at create and immutable afterwards — UpdateConfig ignores
+  // it regardless of the mask; it governs withdrawability only.
   builtIn: boolean | undefined;
   remark: string | undefined;
   // Audit: who created/updated. Filled from the authenticated identity.
@@ -75,7 +76,8 @@ export type UpdateConfigRequest = {
   //
   // Behaviors: REQUIRED
   config: Config | undefined;
-  // Required. Mask of fields to update.
+  // Required. Mask of fields to update. `built_in` in the mask has no
+  // effect (immutable after create).
   //
   // Behaviors: REQUIRED
   updateMask: wellKnownFieldMask | undefined;
@@ -131,7 +133,9 @@ export interface ConfigService {
   ListConfigs(request: ListConfigsRequest): Promise<ConfigSet>;
   // UpdateConfig partially updates a runtime parameter (field-mask). All
   // business fields are updatable, config_key included — a key rename passes
-  // the same uniqueness pre-check as a create.
+  // the same uniqueness pre-check as a create. built_in is the exception:
+  // set at create, immutable afterwards, ignored here regardless of the
+  // mask.
   UpdateConfig(request: UpdateConfigRequest): Promise<Config>;
   // DeleteConfig soft-deletes a runtime parameter by id; refused for
   // built-in parameters (RuoYi: 内置参数不能删除).

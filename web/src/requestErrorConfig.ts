@@ -22,6 +22,8 @@ const reasonMessageId: Record<string, string> = {
   JOB_CRON_INVALID: "pages.error.jobCronInvalid",
   JOB_HANDLER_UNKNOWN: "pages.error.jobHandlerUnknown",
   JOB_BUSY: "pages.error.jobBusy",
+  CONFIG_KEY_CONFLICT: "pages.error.configKeyConflict",
+  CONFIG_BUILT_IN_LOCKED: "pages.error.configBuiltInLocked",
 };
 
 /**

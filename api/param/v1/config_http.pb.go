@@ -38,7 +38,9 @@ type ConfigServiceHTTPServer interface {
 	ListConfigs(context.Context, *ListConfigsRequest) (*ConfigSet, error)
 	// UpdateConfig UpdateConfig partially updates a runtime parameter (field-mask). All
 	// business fields are updatable, config_key included — a key rename passes
-	// the same uniqueness pre-check as a create.
+	// the same uniqueness pre-check as a create. built_in is the exception:
+	// set at create, immutable afterwards, ignored here regardless of the
+	// mask.
 	UpdateConfig(context.Context, *UpdateConfigRequest) (*Config, error)
 }
 
@@ -175,7 +177,9 @@ type ConfigServiceHTTPClient interface {
 	ListConfigs(ctx context.Context, req *ListConfigsRequest, opts ...http.CallOption) (rsp *ConfigSet, err error)
 	// UpdateConfig UpdateConfig partially updates a runtime parameter (field-mask). All
 	// business fields are updatable, config_key included — a key rename passes
-	// the same uniqueness pre-check as a create.
+	// the same uniqueness pre-check as a create. built_in is the exception:
+	// set at create, immutable afterwards, ignored here regardless of the
+	// mask.
 	UpdateConfig(ctx context.Context, req *UpdateConfigRequest, opts ...http.CallOption) (rsp *Config, err error)
 }
 
@@ -261,7 +265,9 @@ func (c *ConfigServiceHTTPClientImpl) ListConfigs(ctx context.Context, in *ListC
 
 // UpdateConfig UpdateConfig partially updates a runtime parameter (field-mask). All
 // business fields are updatable, config_key included — a key rename passes
-// the same uniqueness pre-check as a create.
+// the same uniqueness pre-check as a create. built_in is the exception:
+// set at create, immutable afterwards, ignored here regardless of the
+// mask.
 func (c *ConfigServiceHTTPClientImpl) UpdateConfig(ctx context.Context, in *UpdateConfigRequest, opts ...http.CallOption) (*Config, error) {
 	var out Config
 	pattern := "/iam/config/{config.config_id}"

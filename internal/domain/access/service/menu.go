@@ -22,11 +22,6 @@ import (
 	"go.einride.tech/aip/ordering"
 )
 
-// Menu is the access domain service behind the menu endpoints: the only path
-// to the Menu reads and writes (ADR 0005). Methods join the caller's ambient
-// transaction; the Application service owns the transaction boundary and the
-// cross-domain revocation. Every error a method returns to its caller first
-// logs its Warn breadcrumb (ADR 0011).
 // ListMenusRequest is the menu-list read as the service states it: the raw
 // AIP-160 filter and AIP-132 order (no pagination — menus list unpaginated as
 // a small, tree-shaped set). Declared beside the consuming interface so the
@@ -44,6 +39,11 @@ type DeleteMenuRequest struct {
 	ActorID int64
 }
 
+// Menu is the access domain service behind the menu endpoints: the only path
+// to the Menu reads and writes (ADR 0005). Methods join the caller's ambient
+// transaction; the Application service owns the transaction boundary and the
+// cross-domain revocation. Every error a method returns to its caller first
+// logs its Warn breadcrumb (ADR 0011).
 type Menu interface {
 	Get(ctx context.Context, id int64) (*entity.Menu, error)
 	List(ctx context.Context, req ListMenusRequest) ([]*entity.Menu, error)
