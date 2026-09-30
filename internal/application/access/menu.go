@@ -11,7 +11,6 @@ import (
 	"glex/internal/bizpkg"
 	"glex/internal/crossdomain/authn"
 	accessentity "glex/internal/domain/access/entity"
-	accessrepo "glex/internal/domain/access/repository"
 	accessservice "glex/internal/domain/access/service"
 	authndomain "glex/internal/domain/authn"
 	authnservice "glex/internal/domain/authn/service"
@@ -220,7 +219,7 @@ func (s *MenuApplication) ListMenus(ctx context.Context, req *accessv1.ListMenus
 		logx.Propagate(ctx, s.logger, "access.list_menus", err)
 		return nil, err
 	}
-	menus, err := s.svc.List(ctx, accessrepo.ListMenusRequest{Filter: filter, OrderBy: orderBy})
+	menus, err := s.svc.List(ctx, accessservice.ListMenusRequest{Filter: filter, OrderBy: orderBy})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.list_menus", err)
 		return nil, err
@@ -364,7 +363,7 @@ func (s *MenuApplication) UpdateMenu(ctx context.Context, req *accessv1.UpdateMe
 // Sessions in one transaction.
 func (s *MenuApplication) DeleteMenu(ctx context.Context, req *accessv1.DeleteMenuRequest) (*emptypb.Empty, error) {
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.svc.Delete(ctx, accessrepo.DeleteMenuRequest{ID: req.GetMenuId(), ActorID: bizpkg.AuditActor(ctx)})
+		affected, err := s.svc.Delete(ctx, accessservice.DeleteMenuRequest{ID: req.GetMenuId(), ActorID: bizpkg.AuditActor(ctx)})
 		if err != nil {
 			return err
 		}

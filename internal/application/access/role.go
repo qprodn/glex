@@ -8,7 +8,6 @@ import (
 	"glex/internal/bizpkg"
 	"glex/internal/crossdomain/authn"
 	accessentity "glex/internal/domain/access/entity"
-	accessrepo "glex/internal/domain/access/repository"
 	accessservice "glex/internal/domain/access/service"
 	"glex/pkg/listq"
 	"glex/pkg/logx"
@@ -89,7 +88,7 @@ func (s *RoleApplication) CreateRole(ctx context.Context, req *accessv1.CreateRo
 	var created *accessentity.Role
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
 		var err error
-		created, err = s.svc.Create(ctx, accessrepo.CreateRoleRequest{Role: r, MenuIDs: req.GetMenuIds()})
+		created, err = s.svc.Create(ctx, accessservice.CreateRoleRequest{Role: r, MenuIDs: req.GetMenuIds()})
 		return err
 	}); err != nil {
 		logx.Propagate(ctx, s.logger, "access.create_role", err)
@@ -188,7 +187,7 @@ func (s *RoleApplication) UpdateRole(ctx context.Context, req *accessv1.UpdateRo
 // revokes the assigned users' Login Sessions in one transaction.
 func (s *RoleApplication) DeleteRole(ctx context.Context, req *accessv1.DeleteRoleRequest) (*emptypb.Empty, error) {
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.svc.Delete(ctx, accessrepo.DeleteRoleRequest{ID: req.GetRoleId(), ActorID: bizpkg.AuditActor(ctx)})
+		affected, err := s.svc.Delete(ctx, accessservice.DeleteRoleRequest{ID: req.GetRoleId(), ActorID: bizpkg.AuditActor(ctx)})
 		if err != nil {
 			return err
 		}
@@ -229,7 +228,7 @@ func (s *RoleApplication) UpdateRoleMenus(ctx context.Context, req *accessv1.Upd
 	}
 	var granted []int64
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		result, err := s.svc.ReplaceMenus(ctx, accessrepo.ReplaceRoleMenusRequest{
+		result, err := s.svc.ReplaceMenus(ctx, accessservice.ReplaceRoleMenusRequest{
 			RoleID:            req.GetRoleId(),
 			MenuIDs:           req.GetMenuIds(),
 			MenuCheckStrictly: strict,

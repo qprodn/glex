@@ -24,6 +24,15 @@ type ListForUserRequest struct {
 // Methods join the caller's ambient transaction; the Application service
 // owns the transaction boundary. Every error a method returns to its caller
 // first logs its Warn breadcrumb (ADR 0011).
+// ReplaceUserPostsRequest is one full replacement of a user's Post
+// Assignment as the service states it: the user, the post ids to store, and
+// the actor stamped into the audit fields (ADR 0005/0025).
+type ReplaceUserPostsRequest struct {
+	UserID  int64
+	PostIDs []int64
+	ActorID int64
+}
+
 type PostAssignment interface {
 	// ListForUser returns the effective department's active posts with
 	// whether the user is assigned each — the post dialog's data in one
@@ -34,7 +43,7 @@ type PostAssignment interface {
 	// ReplaceForUser validates and dedupes req.PostIDs (every id must exist
 	// and be enabled), replaces the user's Post Assignment in full (empty =
 	// clear all), and returns the freshly-listed assignment.
-	ReplaceForUser(ctx context.Context, req repository.ReplaceUserPostsRequest) ([]*entity.PostAssignment, error)
+	ReplaceForUser(ctx context.Context, req ReplaceUserPostsRequest) ([]*entity.PostAssignment, error)
 }
 
 type postAssignmentImpl struct {
@@ -85,7 +94,7 @@ func (s *postAssignmentImpl) ListForUser(ctx context.Context, req ListForUserReq
 	return out, nil
 }
 
-func (s *postAssignmentImpl) ReplaceForUser(ctx context.Context, req repository.ReplaceUserPostsRequest) ([]*entity.PostAssignment, error) {
+func (s *postAssignmentImpl) ReplaceForUser(ctx context.Context, req ReplaceUserPostsRequest) ([]*entity.PostAssignment, error) {
 	if err := assertUserExists(ctx, s.userPosts, req.UserID); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.replace_post_assignments", err)
 		return nil, err

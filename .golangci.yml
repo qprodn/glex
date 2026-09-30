@@ -7,9 +7,10 @@
 #   3. a module's domain code never imports another module's domain
 #      (cross-module access goes through crossdomain contracts only).
 #
-# The deny lists enumerate every module (user, access, authn, dict, file) —
-# new modules must be added to all three rule families.
-# Enable more linters as the codebase adopts them; keep these rules intact.
+# The deny lists enumerate every module (access, authn, user, dict, file, org,
+# pay, job, audit, param) — new modules must be added to all three rule
+# families. Enable more linters as the codebase adopts them; keep these rules
+# intact.
 version: "2"
 
 linters:
@@ -33,6 +34,14 @@ linters:
               desc: application calls domain services, never repositories (ADR 0005)
             - pkg: glex/internal/domain/file/repository
               desc: application calls domain services, never repositories (ADR 0005)
+            - pkg: glex/internal/domain/org/repository
+              desc: application calls domain services, never repositories (ADR 0005)
+            - pkg: glex/internal/domain/pay/repository
+              desc: application calls domain services, never repositories (ADR 0005)
+            - pkg: glex/internal/domain/job/repository
+              desc: application calls domain services, never repositories (ADR 0005)
+            - pkg: glex/internal/domain/audit/repository
+              desc: application calls domain services, never repositories (ADR 0005)
             - pkg: glex/internal/domain/param/repository
               desc: application calls domain services, never repositories (ADR 0005)
         crossdomain-impl-no-repository:
@@ -49,6 +58,14 @@ linters:
               desc: crossdomain impls delegate to domain services (ADR 0005)
             - pkg: glex/internal/domain/file/repository
               desc: crossdomain impls delegate to domain services (ADR 0005)
+            - pkg: glex/internal/domain/org/repository
+              desc: crossdomain impls delegate to domain services (ADR 0005)
+            - pkg: glex/internal/domain/pay/repository
+              desc: crossdomain impls delegate to domain services (ADR 0005)
+            - pkg: glex/internal/domain/job/repository
+              desc: crossdomain impls delegate to domain services (ADR 0005)
+            - pkg: glex/internal/domain/audit/repository
+              desc: crossdomain impls delegate to domain services (ADR 0005)
             - pkg: glex/internal/domain/param/repository
               desc: crossdomain impls delegate to domain services (ADR 0005)
         domain-access-no-cross-module:
@@ -63,6 +80,16 @@ linters:
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/file
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/org
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/pay
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/job
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/audit
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/param
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
         domain-authn-no-cross-module:
           files:
             - "**/internal/domain/authn/**"
@@ -74,6 +101,16 @@ linters:
             - pkg: glex/internal/domain/dict
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/file
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/org
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/pay
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/job
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/audit
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/param
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
         domain-user-no-cross-module:
           files:
@@ -87,6 +124,16 @@ linters:
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/file
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/org
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/pay
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/job
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/audit
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/param
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
         domain-dict-no-cross-module:
           files:
             - "**/internal/domain/dict/**"
@@ -99,6 +146,16 @@ linters:
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/file
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/org
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/pay
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/job
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/audit
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/param
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
         domain-file-no-cross-module:
           files:
             - "**/internal/domain/file/**"
@@ -110,6 +167,104 @@ linters:
             - pkg: glex/internal/domain/user
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/dict
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/org
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/pay
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/job
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/audit
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/param
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+        domain-org-no-cross-module:
+          files:
+            - "**/internal/domain/org/**"
+          deny:
+            - pkg: glex/internal/domain/access
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/authn
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/user
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/dict
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/file
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/pay
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/job
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/audit
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/param
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+        domain-pay-no-cross-module:
+          files:
+            - "**/internal/domain/pay/**"
+          deny:
+            - pkg: glex/internal/domain/access
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/authn
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/user
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/dict
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/file
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/org
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/job
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/audit
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/param
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+        domain-job-no-cross-module:
+          files:
+            - "**/internal/domain/job/**"
+          deny:
+            - pkg: glex/internal/domain/access
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/authn
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/user
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/dict
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/file
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/org
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/pay
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/audit
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/param
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+        domain-audit-no-cross-module:
+          files:
+            - "**/internal/domain/audit/**"
+          deny:
+            - pkg: glex/internal/domain/access
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/authn
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/user
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/dict
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/file
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/org
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/pay
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/job
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/param
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
         domain-param-no-cross-module:
           files:
@@ -124,4 +279,12 @@ linters:
             - pkg: glex/internal/domain/dict
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/file
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/org
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/pay
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/job
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/audit
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)

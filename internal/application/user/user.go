@@ -16,7 +16,6 @@ import (
 	authnservice "glex/internal/domain/authn/service"
 	userdomain "glex/internal/domain/user"
 	userentity "glex/internal/domain/user/entity"
-	userrepo "glex/internal/domain/user/repository"
 	userservice "glex/internal/domain/user/service"
 	"glex/pkg/listq"
 	"glex/pkg/logx"
@@ -275,7 +274,7 @@ func (s *UserApplication) ListUsers(ctx context.Context, req *userv1.ListUsersRe
 			return nil, err
 		}
 	}
-	users, err := s.svc.List(ctx, userrepo.ListUsersRequest{Query: q, DeptIDs: deptIDs})
+	users, err := s.svc.List(ctx, userservice.ListUsersRequest{Query: q, DeptIDs: deptIDs})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "user.list_users", err)
 		return nil, err
@@ -357,7 +356,7 @@ func (s *UserApplication) UpdateUser(ctx context.Context, req *userv1.UpdateUser
 // Sessions in the same transaction.
 func (s *UserApplication) DeleteUser(ctx context.Context, req *userv1.DeleteUserRequest) (*emptypb.Empty, error) {
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
-		affected, err := s.svc.Delete(ctx, userrepo.DeleteUserRequest{ID: req.GetUserId(), ActorID: bizpkg.AuditActor(ctx)})
+		affected, err := s.svc.Delete(ctx, userservice.DeleteUserRequest{ID: req.GetUserId(), ActorID: bizpkg.AuditActor(ctx)})
 		if err != nil {
 			return err
 		}

@@ -184,7 +184,7 @@ func TestDeletePost_InUseRejected(t *testing.T) {
 	userPosts.postCounts[21] = 1
 	repo := newFakePostRepo(seedPosts()...)
 	svc := newPostSvc(repo, newFakeDeptRepo(seedTree()...), userPosts)
-	if err := svc.Delete(context.Background(), repository.DeletePostRequest{ID: 21, ActorID: 1}); !errors.Is(err, org.ErrPostInUse) {
+	if err := svc.Delete(context.Background(), DeletePostRequest{ID: 21, ActorID: 1}); !errors.Is(err, org.ErrPostInUse) {
 		t.Fatalf("err = %v, want ErrPostInUse", err)
 	}
 	if len(repo.deleted) != 0 {
@@ -194,7 +194,7 @@ func TestDeletePost_InUseRejected(t *testing.T) {
 
 func TestDeletePost_Missing(t *testing.T) {
 	svc := newPostSvc(newFakePostRepo(seedPosts()...), newFakeDeptRepo(seedTree()...), newFakeUserPostRepo())
-	if err := svc.Delete(context.Background(), repository.DeletePostRequest{ID: 99, ActorID: 1}); !errors.Is(err, org.ErrPostNotFound) {
+	if err := svc.Delete(context.Background(), DeletePostRequest{ID: 99, ActorID: 1}); !errors.Is(err, org.ErrPostNotFound) {
 		t.Fatalf("err = %v, want ErrPostNotFound", err)
 	}
 }
@@ -202,7 +202,7 @@ func TestDeletePost_Missing(t *testing.T) {
 func TestDeletePost(t *testing.T) {
 	repo := newFakePostRepo(seedPosts()...)
 	svc := newPostSvc(repo, newFakeDeptRepo(seedTree()...), newFakeUserPostRepo())
-	if err := svc.Delete(context.Background(), repository.DeletePostRequest{ID: 22, ActorID: 1}); err != nil {
+	if err := svc.Delete(context.Background(), DeletePostRequest{ID: 22, ActorID: 1}); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 	if len(repo.deleted) != 1 || repo.deleted[0] != 22 {

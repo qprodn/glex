@@ -13,7 +13,7 @@ import (
 	"glex/internal/crossdomain/dict"
 	userdomain "glex/internal/domain/user"
 	userentity "glex/internal/domain/user/entity"
-	userrepo "glex/internal/domain/user/repository"
+	userservice "glex/internal/domain/user/service"
 	"glex/pkg/excelx"
 	"glex/pkg/listq"
 	"glex/pkg/logx"
@@ -408,7 +408,7 @@ func (s *UserApplication) listForExport(ctx context.Context, req *userv1.ExportU
 			return nil, err
 		}
 	}
-	users, err := s.svc.List(ctx, userrepo.ListUsersRequest{
+	users, err := s.svc.List(ctx, userservice.ListUsersRequest{
 		Query:   listq.Query{Filter: filter, OrderBy: orderBy, Limit: exportRowCap + 1},
 		DeptIDs: deptIDs,
 	})

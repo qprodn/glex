@@ -7,7 +7,6 @@ import (
 
 	orgv1 "glex/api/org/v1"
 	orgentity "glex/internal/domain/org/entity"
-	orgrepository "glex/internal/domain/org/repository"
 	orgservice "glex/internal/domain/org/service"
 )
 
@@ -36,7 +35,7 @@ func (f *fakePostAssignmentService) ListForUser(_ context.Context, req orgservic
 	return f.list, nil
 }
 
-func (f *fakePostAssignmentService) ReplaceForUser(ctx context.Context, req orgrepository.ReplaceUserPostsRequest) ([]*orgentity.PostAssignment, error) {
+func (f *fakePostAssignmentService) ReplaceForUser(ctx context.Context, req orgservice.ReplaceUserPostsRequest) ([]*orgentity.PostAssignment, error) {
 	f.replaceCalled++
 	f.replaceCtx, f.replacedUser, f.replacedIDs, f.replacedActor = ctx, req.UserID, append([]int64(nil), req.PostIDs...), req.ActorID
 	if f.replaceErr != nil {

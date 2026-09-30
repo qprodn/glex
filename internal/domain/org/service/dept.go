@@ -18,6 +18,13 @@ import (
 // caller's ambient transaction; the Application service owns the transaction
 // boundary. Every error a method returns to its caller first logs its Warn
 // breadcrumb (ADR 0011).
+// DeleteDeptRequest identifies the department a Delete withdraws and the
+// actor whose id lands in the audit fields (ADR 0005/0025).
+type DeleteDeptRequest struct {
+	ID      int64
+	ActorID int64
+}
+
 type Dept interface {
 	Get(ctx context.Context, id int64) (*entity.Dept, error)
 	// List returns every non-withdrawn department as a flat list ordered by
@@ -33,7 +40,7 @@ type Dept interface {
 	Update(ctx context.Context, d *entity.Dept) (*entity.Dept, error)
 	// Delete soft-deletes the department identified by req, refusing the
 	// seeded root and departments with children or posts.
-	Delete(ctx context.Context, req repository.DeleteDeptRequest) error
+	Delete(ctx context.Context, req DeleteDeptRequest) error
 	// SubtreeIDs resolves deptID plus every descendant id — the
 	// department-subtree filter behind the org contract. Disabled
 	// departments are included: disabling hides a department from selects,
@@ -176,7 +183,7 @@ func (s *deptImpl) Update(ctx context.Context, d *entity.Dept) (*entity.Dept, er
 	return result.Dept, nil
 }
 
-func (s *deptImpl) Delete(ctx context.Context, req repository.DeleteDeptRequest) error {
+func (s *deptImpl) Delete(ctx context.Context, req DeleteDeptRequest) error {
 	if _, err := s.depts.FindByID(ctx, req.ID); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.delete_dept", err)
 		return err
@@ -206,7 +213,7 @@ func (s *deptImpl) Delete(ctx context.Context, req repository.DeleteDeptRequest)
 		logx.Propagate(ctx, s.logger, "org.svc.delete_dept", err)
 		return err
 	}
-	if err := s.depts.DeleteDept(ctx, req); err != nil {
+	if err := s.depts.DeleteDept(ctx, repository.DeleteDeptRequest{ID: req.ID, ActorID: req.ActorID}); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.delete_dept", err)
 		return err
 	}

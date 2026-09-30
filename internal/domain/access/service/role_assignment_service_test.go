@@ -117,7 +117,7 @@ func TestListForUser_AllRolesWithFlags(t *testing.T) {
 func TestReplaceForUser_UserNotFound(t *testing.T) {
 	svc := newRoleAssignmentSvc(newFakeRoleRepo(), newFakeUserRoleRepo())
 
-	_, err := svc.ReplaceForUser(context.Background(), repository.ReplaceUserRolesRequest{UserID: 99, RoleIDs: []int64{1}})
+	_, err := svc.ReplaceForUser(context.Background(), ReplaceUserRolesRequest{UserID: 99, RoleIDs: []int64{1}})
 	if !errors.Is(err, access.ErrUserNotFound) {
 		t.Fatalf("expected ErrUserNotFound, got %v", err)
 	}
@@ -128,7 +128,7 @@ func TestReplaceForUser_UnknownRoleRejected(t *testing.T) {
 	link.roles = []*entity.Role{{ID: 1, RoleName: "管理员", RoleKey: "admin"}}
 	svc := newRoleAssignmentSvc(newFakeRoleRepo(), link)
 
-	_, err := svc.ReplaceForUser(context.Background(), repository.ReplaceUserRolesRequest{UserID: 10, RoleIDs: []int64{1, 99}})
+	_, err := svc.ReplaceForUser(context.Background(), ReplaceUserRolesRequest{UserID: 10, RoleIDs: []int64{1, 99}})
 	if !errors.Is(err, access.ErrRoleNotFound) {
 		t.Fatalf("expected ErrRoleNotFound, got %v", err)
 	}
@@ -148,7 +148,7 @@ func TestReplaceForUser_FullReplacement(t *testing.T) {
 	svc := newRoleAssignmentSvc(newFakeRoleRepo(), link)
 
 	// Replace with [2, 3] — duplicates are silently deduped.
-	result, err := svc.ReplaceForUser(context.Background(), repository.ReplaceUserRolesRequest{UserID: 10, RoleIDs: []int64{2, 3, 2}, ActorID: 42})
+	result, err := svc.ReplaceForUser(context.Background(), ReplaceUserRolesRequest{UserID: 10, RoleIDs: []int64{2, 3, 2}, ActorID: 42})
 	if err != nil {
 		t.Fatalf("update user roles: %v", err)
 	}
@@ -178,7 +178,7 @@ func TestReplaceForUser_EmptyClears(t *testing.T) {
 	link.links[10] = []int64{1}
 	svc := newRoleAssignmentSvc(newFakeRoleRepo(), link)
 
-	result, err := svc.ReplaceForUser(context.Background(), repository.ReplaceUserRolesRequest{UserID: 10, ActorID: 42})
+	result, err := svc.ReplaceForUser(context.Background(), ReplaceUserRolesRequest{UserID: 10, ActorID: 42})
 	if err != nil {
 		t.Fatalf("clear user roles: %v", err)
 	}
@@ -195,7 +195,7 @@ func TestListRoleUsers_RoleNotFound(t *testing.T) {
 
 	// The fake repo ignores the filter/order payload; the role gate is what
 	// the test exercises.
-	_, err := svc.ListRoleUsers(context.Background(), repository.ListRoleUsersRequest{Query: listq.Query{Limit: 20}, RoleID: 99})
+	_, err := svc.ListRoleUsers(context.Background(), ListRoleUsersRequest{Query: listq.Query{Limit: 20}, RoleID: 99})
 	if !errors.Is(err, access.ErrRoleNotFound) {
 		t.Fatalf("expected ErrRoleNotFound, got %v", err)
 	}

@@ -8,7 +8,6 @@ import (
 
 	accessv1 "glex/api/access/v1"
 	accessentity "glex/internal/domain/access/entity"
-	accessrepo "glex/internal/domain/access/repository"
 	accessservice "glex/internal/domain/access/service"
 )
 
@@ -46,7 +45,7 @@ func (f *fakeRoleAssignmentService) ListForUser(_ context.Context, userID int64)
 	return f.listed, nil
 }
 
-func (f *fakeRoleAssignmentService) ReplaceForUser(ctx context.Context, req accessrepo.ReplaceUserRolesRequest) (*accessservice.RoleAssignmentReplacement, error) {
+func (f *fakeRoleAssignmentService) ReplaceForUser(ctx context.Context, req accessservice.ReplaceUserRolesRequest) (*accessservice.RoleAssignmentReplacement, error) {
 	f.replaceCalled++
 	f.replaceCtx, f.replaceUserID, f.replaceRoleIDs, f.replaceActor = ctx, req.UserID, req.RoleIDs, req.ActorID
 	if f.replaceErr != nil {
@@ -55,7 +54,7 @@ func (f *fakeRoleAssignmentService) ReplaceForUser(ctx context.Context, req acce
 	return f.replacement, nil
 }
 
-func (f *fakeRoleAssignmentService) ListRoleUsers(_ context.Context, req accessrepo.ListRoleUsersRequest) ([]*accessentity.RoleUser, error) {
+func (f *fakeRoleAssignmentService) ListRoleUsers(_ context.Context, req accessservice.ListRoleUsersRequest) ([]*accessentity.RoleUser, error) {
 	f.usersRoleID, f.usersLimit, f.usersOffset = req.RoleID, req.Limit, req.Offset
 	if f.usersErr != nil {
 		return nil, f.usersErr

@@ -8,7 +8,6 @@ import (
 
 	accessv1 "glex/api/access/v1"
 	accessentity "glex/internal/domain/access/entity"
-	accessrepo "glex/internal/domain/access/repository"
 	accessservice "glex/internal/domain/access/service"
 	authnentity "glex/internal/domain/authn/entity"
 	authnservice "glex/internal/domain/authn/service"
@@ -77,7 +76,7 @@ func (f *fakeRoleService) List(_ context.Context, q listq.Query) ([]*accessentit
 	return f.list, nil
 }
 
-func (f *fakeRoleService) Create(ctx context.Context, req accessrepo.CreateRoleRequest) (*accessentity.Role, error) {
+func (f *fakeRoleService) Create(ctx context.Context, req accessservice.CreateRoleRequest) (*accessentity.Role, error) {
 	f.createCalled++
 	f.createCtx, f.createInput, f.createMenuIDs = ctx, req.Role, req.MenuIDs
 	if f.createErr != nil {
@@ -95,7 +94,7 @@ func (f *fakeRoleService) Update(ctx context.Context, r *accessentity.Role) (*ac
 	return f.update, nil
 }
 
-func (f *fakeRoleService) Delete(ctx context.Context, req accessrepo.DeleteRoleRequest) ([]int64, error) {
+func (f *fakeRoleService) Delete(ctx context.Context, req accessservice.DeleteRoleRequest) ([]int64, error) {
 	f.deleteCalled++
 	f.deleteCtx, f.deleteID, f.deleteActor = ctx, req.ID, req.ActorID
 	if f.deleteErr != nil {
@@ -112,7 +111,7 @@ func (f *fakeRoleService) CheckedMenuIDs(_ context.Context, roleID int64) ([]int
 	return f.checked, nil
 }
 
-func (f *fakeRoleService) ReplaceMenus(ctx context.Context, req accessrepo.ReplaceRoleMenusRequest) (*accessservice.MenuGrantReplacement, error) {
+func (f *fakeRoleService) ReplaceMenus(ctx context.Context, req accessservice.ReplaceRoleMenusRequest) (*accessservice.MenuGrantReplacement, error) {
 	f.replaceCalled++
 	f.replaceCtx, f.replaceRoleID, f.replaceMenuIDs = ctx, req.RoleID, req.MenuIDs
 	f.replaceStrict, f.replaceActor = req.MenuCheckStrictly, req.ActorID

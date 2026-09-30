@@ -203,7 +203,7 @@ func TestMenuDelete_HasChildrenRejected(t *testing.T) {
 	repo.byID[2] = &entity.Menu{ID: 2, ParentID: 1, MenuType: entity.MenuTypeMenu}
 	svc := newMenuSvc(repo)
 
-	if _, err := svc.Delete(context.Background(), repository.DeleteMenuRequest{ID: 1}); !errors.Is(err, access.ErrMenuHasChildren) {
+	if _, err := svc.Delete(context.Background(), DeleteMenuRequest{ID: 1}); !errors.Is(err, access.ErrMenuHasChildren) {
 		t.Fatalf("expected ErrMenuHasChildren, got %v", err)
 	}
 }
@@ -213,7 +213,7 @@ func TestMenuDelete_LeafSuccess(t *testing.T) {
 	repo.byID[2] = &entity.Menu{ID: 2, ParentID: 1, MenuType: entity.MenuTypeMenu}
 	svc := newMenuSvc(repo)
 
-	if _, err := svc.Delete(context.Background(), repository.DeleteMenuRequest{ID: 2}); err != nil {
+	if _, err := svc.Delete(context.Background(), DeleteMenuRequest{ID: 2}); err != nil {
 		t.Fatalf("delete leaf: %v", err)
 	}
 	if _, ok := repo.byID[2]; ok {

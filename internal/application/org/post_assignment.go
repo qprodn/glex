@@ -7,7 +7,6 @@ import (
 	orgv1 "glex/api/org/v1"
 	"glex/internal/bizpkg"
 	orgentity "glex/internal/domain/org/entity"
-	orgrepository "glex/internal/domain/org/repository"
 	orgservice "glex/internal/domain/org/service"
 	"glex/pkg/logx"
 )
@@ -55,7 +54,7 @@ func (s *PostAssignmentApplication) UpdateUserPosts(ctx context.Context, req *or
 	var items []*orgentity.PostAssignment
 	if err := s.tx.InTx(ctx, func(ctx context.Context) error {
 		var err error
-		items, err = s.svc.ReplaceForUser(ctx, orgrepository.ReplaceUserPostsRequest{
+		items, err = s.svc.ReplaceForUser(ctx, orgservice.ReplaceUserPostsRequest{
 			UserID:  req.GetUserId(),
 			PostIDs: req.GetPostIds(),
 			ActorID: bizpkg.AuditActor(ctx),

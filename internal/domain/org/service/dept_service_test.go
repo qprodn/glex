@@ -393,7 +393,7 @@ func TestUpdateDept_EnableAlreadyEnabledNoCascade(t *testing.T) {
 func TestDeleteDept_RootProtected(t *testing.T) {
 	repo := newFakeDeptRepo(&entity.Dept{ID: org.RootDeptID, ParentID: 0, DeptName: "seed root"})
 	svc := newDeptSvc(repo)
-	err := svc.Delete(context.Background(), repository.DeleteDeptRequest{ID: org.RootDeptID, ActorID: 1})
+	err := svc.Delete(context.Background(), DeleteDeptRequest{ID: org.RootDeptID, ActorID: 1})
 	if !errors.Is(err, org.ErrDeptRootProtected) {
 		t.Fatalf("err = %v, want ErrDeptRootProtected", err)
 	}
@@ -401,7 +401,7 @@ func TestDeleteDept_RootProtected(t *testing.T) {
 
 func TestDeleteDept_HasChildrenRejected(t *testing.T) {
 	svc := newDeptSvc(newFakeDeptRepo(seedTree()...))
-	err := svc.Delete(context.Background(), repository.DeleteDeptRequest{ID: 2, ActorID: 1})
+	err := svc.Delete(context.Background(), DeleteDeptRequest{ID: 2, ActorID: 1})
 	if !errors.Is(err, org.ErrDeptHasChildren) {
 		t.Fatalf("err = %v, want ErrDeptHasChildren", err)
 	}
@@ -410,7 +410,7 @@ func TestDeleteDept_HasChildrenRejected(t *testing.T) {
 func TestDeleteDept_Leaf(t *testing.T) {
 	repo := newFakeDeptRepo(seedTree()...)
 	svc := newDeptSvc(repo)
-	if err := svc.Delete(context.Background(), repository.DeleteDeptRequest{ID: 3, ActorID: 1}); err != nil {
+	if err := svc.Delete(context.Background(), DeleteDeptRequest{ID: 3, ActorID: 1}); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 	if len(repo.deleted) != 1 || repo.deleted[0] != 3 {
@@ -420,7 +420,7 @@ func TestDeleteDept_Leaf(t *testing.T) {
 
 func TestDeleteDept_Missing(t *testing.T) {
 	svc := newDeptSvc(newFakeDeptRepo(seedTree()...))
-	err := svc.Delete(context.Background(), repository.DeleteDeptRequest{ID: 99, ActorID: 1})
+	err := svc.Delete(context.Background(), DeleteDeptRequest{ID: 99, ActorID: 1})
 	if !errors.Is(err, org.ErrDeptNotFound) {
 		t.Fatalf("err = %v, want ErrDeptNotFound", err)
 	}
@@ -545,7 +545,7 @@ func TestDeleteDept_HasPostsRejected(t *testing.T) {
 	repo := newFakeDeptRepo(seedTree()...)
 	posts := newFakePostRepo(&entity.Post{ID: 21, DeptID: 3, PostCode: "x", PostName: "开发"})
 	svc := NewDeptService(repo, posts, testLogger())
-	err := svc.Delete(context.Background(), repository.DeleteDeptRequest{ID: 3, ActorID: 1})
+	err := svc.Delete(context.Background(), DeleteDeptRequest{ID: 3, ActorID: 1})
 	if !errors.Is(err, org.ErrDeptHasPosts) {
 		t.Fatalf("err = %v, want ErrDeptHasPosts", err)
 	}

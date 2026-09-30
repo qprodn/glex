@@ -133,7 +133,7 @@ func TestCreateRole_PersistsValidatedRole(t *testing.T) {
 	repo := newFakeRoleRepo()
 	svc := newRoleSvc(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	created, err := svc.Create(context.Background(), repository.CreateRoleRequest{Role: &entity.Role{RoleName: "超级管理员", RoleKey: "superadmin", MenuCheckStrictly: true}})
+	created, err := svc.Create(context.Background(), CreateRoleRequest{Role: &entity.Role{RoleName: "超级管理员", RoleKey: "superadmin", MenuCheckStrictly: true}})
 	if err != nil {
 		t.Fatalf("create role: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestCreateRole_PersistsValidatedRole(t *testing.T) {
 func TestCreateRole_BlankNameRejected(t *testing.T) {
 	svc := newRoleSvc(newFakeRoleRepo(), newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	_, err := svc.Create(context.Background(), repository.CreateRoleRequest{Role: &entity.Role{RoleName: "", RoleKey: "superadmin"}})
+	_, err := svc.Create(context.Background(), CreateRoleRequest{Role: &entity.Role{RoleName: "", RoleKey: "superadmin"}})
 	if !errors.Is(err, access.ErrRoleInvalid) {
 		t.Fatalf("expected ErrRoleInvalid, got %v", err)
 	}
@@ -162,7 +162,7 @@ func TestCreateRole_BlankNameRejected(t *testing.T) {
 func TestCreateRole_BlankKeyRejected(t *testing.T) {
 	svc := newRoleSvc(newFakeRoleRepo(), newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	_, err := svc.Create(context.Background(), repository.CreateRoleRequest{Role: &entity.Role{RoleName: "超级管理员", RoleKey: ""}})
+	_, err := svc.Create(context.Background(), CreateRoleRequest{Role: &entity.Role{RoleName: "超级管理员", RoleKey: ""}})
 	if !errors.Is(err, access.ErrRoleInvalid) {
 		t.Fatalf("expected ErrRoleInvalid, got %v", err)
 	}
@@ -173,7 +173,7 @@ func TestCreateRole_NameConflict(t *testing.T) {
 	repo.byName["超级管理员"] = &entity.Role{ID: 7, RoleName: "超级管理员", RoleKey: "other"}
 	svc := newRoleSvc(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	_, err := svc.Create(context.Background(), repository.CreateRoleRequest{Role: &entity.Role{RoleName: "超级管理员", RoleKey: "superadmin"}})
+	_, err := svc.Create(context.Background(), CreateRoleRequest{Role: &entity.Role{RoleName: "超级管理员", RoleKey: "superadmin"}})
 	if !errors.Is(err, access.ErrRoleNameConflict) {
 		t.Fatalf("expected ErrRoleNameConflict, got %v", err)
 	}
@@ -184,7 +184,7 @@ func TestCreateRole_KeyConflict(t *testing.T) {
 	repo.byKey["superadmin"] = &entity.Role{ID: 7, RoleName: "other", RoleKey: "superadmin"}
 	svc := newRoleSvc(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	_, err := svc.Create(context.Background(), repository.CreateRoleRequest{Role: &entity.Role{RoleName: "超级管理员", RoleKey: "superadmin"}})
+	_, err := svc.Create(context.Background(), CreateRoleRequest{Role: &entity.Role{RoleName: "超级管理员", RoleKey: "superadmin"}})
 	if !errors.Is(err, access.ErrRoleKeyConflict) {
 		t.Fatalf("expected ErrRoleKeyConflict, got %v", err)
 	}
@@ -200,7 +200,7 @@ func TestCreateRole_WithMenus_Success(t *testing.T) {
 	})
 	svc := newRoleSvc(repo, menus, newFakeUserRoleRepo())
 
-	created, err := svc.Create(context.Background(), repository.CreateRoleRequest{
+	created, err := svc.Create(context.Background(), CreateRoleRequest{
 		Role:    &entity.Role{RoleName: "运营", RoleKey: "operator", MenuCheckStrictly: false},
 		MenuIDs: []int64{10, 11},
 	})
@@ -221,7 +221,7 @@ func TestCreateRole_UnknownMenuRejected(t *testing.T) {
 	menus := newFakeMenuRepoForRole(map[int64]*entity.Menu{10: {MenuName: "系统管理"}})
 	svc := newRoleSvc(repo, menus, newFakeUserRoleRepo())
 
-	_, err := svc.Create(context.Background(), repository.CreateRoleRequest{
+	_, err := svc.Create(context.Background(), CreateRoleRequest{
 		Role:    &entity.Role{RoleName: "运营", RoleKey: "operator"},
 		MenuIDs: []int64{10, 99},
 	})
@@ -238,7 +238,7 @@ func TestCreateRole_MenuDuplicatesDeduped(t *testing.T) {
 	menus := newFakeMenuRepoForRole(map[int64]*entity.Menu{10: {MenuName: "系统管理"}})
 	svc := newRoleSvc(repo, menus, newFakeUserRoleRepo())
 
-	created, err := svc.Create(context.Background(), repository.CreateRoleRequest{
+	created, err := svc.Create(context.Background(), CreateRoleRequest{
 		Role:    &entity.Role{RoleName: "运营", RoleKey: "operator"},
 		MenuIDs: []int64{10, 10, 10},
 	})
@@ -279,7 +279,7 @@ func TestRoleDelete_AssignedRejected(t *testing.T) {
 	link.links[10] = []int64{3}
 	svc := newRoleSvc(repo, newFakeMenuRepo(), link)
 
-	_, err := svc.Delete(context.Background(), repository.DeleteRoleRequest{ID: 3})
+	_, err := svc.Delete(context.Background(), DeleteRoleRequest{ID: 3})
 	if !errors.Is(err, access.ErrRoleAssigned) {
 		t.Fatalf("expected ErrRoleAssigned, got %v", err)
 	}
@@ -294,7 +294,7 @@ func TestRoleDelete_UnassignedAllowed(t *testing.T) {
 	repo.deleteAffected = []int64{10}
 	svc := newRoleSvc(repo, newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	affected, err := svc.Delete(context.Background(), repository.DeleteRoleRequest{ID: 3})
+	affected, err := svc.Delete(context.Background(), DeleteRoleRequest{ID: 3})
 	if err != nil {
 		t.Fatalf("delete unassigned role: %v", err)
 	}
@@ -309,7 +309,7 @@ func TestRoleDelete_UnassignedAllowed(t *testing.T) {
 func TestRoleDelete_NotFound(t *testing.T) {
 	svc := newRoleSvc(newFakeRoleRepo(), newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	if _, err := svc.Delete(context.Background(), repository.DeleteRoleRequest{ID: 99}); !errors.Is(err, access.ErrRoleNotFound) {
+	if _, err := svc.Delete(context.Background(), DeleteRoleRequest{ID: 99}); !errors.Is(err, access.ErrRoleNotFound) {
 		t.Fatalf("expected ErrRoleNotFound, got %v", err)
 	}
 }
@@ -380,7 +380,7 @@ func TestReplaceMenus_ReplacesGrant(t *testing.T) {
 	})
 	svc := newRoleSvc(repo, menus, newFakeUserRoleRepo())
 
-	result, err := svc.ReplaceMenus(context.Background(), repository.ReplaceRoleMenusRequest{
+	result, err := svc.ReplaceMenus(context.Background(), ReplaceRoleMenusRequest{
 		RoleID:            5,
 		MenuIDs:           []int64{1, 2, 3},
 		MenuCheckStrictly: true,
@@ -404,7 +404,7 @@ func TestReplaceMenus_ReplacesGrant(t *testing.T) {
 	}
 
 	// Full replacement: an empty list clears the grant and flips the flag.
-	result, err = svc.ReplaceMenus(context.Background(), repository.ReplaceRoleMenusRequest{
+	result, err = svc.ReplaceMenus(context.Background(), ReplaceRoleMenusRequest{
 		RoleID:            5,
 		MenuCheckStrictly: false,
 		ActorID:           42,
@@ -429,7 +429,7 @@ func TestReplaceMenus_UnknownMenuRejected(t *testing.T) {
 	menus := newFakeMenuRepoForRole(map[int64]*entity.Menu{1: {MenuName: "系统管理"}})
 	svc := newRoleSvc(repo, menus, newFakeUserRoleRepo())
 
-	_, err := svc.ReplaceMenus(context.Background(), repository.ReplaceRoleMenusRequest{
+	_, err := svc.ReplaceMenus(context.Background(), ReplaceRoleMenusRequest{
 		RoleID:            5,
 		MenuIDs:           []int64{1, 99},
 		MenuCheckStrictly: true,
@@ -446,7 +446,7 @@ func TestReplaceMenus_UnknownMenuRejected(t *testing.T) {
 func TestReplaceMenus_RoleNotFound(t *testing.T) {
 	svc := newRoleSvc(newFakeRoleRepo(), newFakeMenuRepo(), newFakeUserRoleRepo())
 
-	_, err := svc.ReplaceMenus(context.Background(), repository.ReplaceRoleMenusRequest{
+	_, err := svc.ReplaceMenus(context.Background(), ReplaceRoleMenusRequest{
 		RoleID:            99,
 		MenuCheckStrictly: true,
 		ActorID:           42,

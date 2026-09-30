@@ -8,6 +8,7 @@ import (
 	"glex/internal/domain/org"
 	"glex/internal/domain/org/entity"
 	"glex/internal/domain/org/repository"
+	"glex/pkg/listq"
 	"glex/pkg/logx"
 )
 
@@ -17,9 +18,24 @@ import (
 // across all posts. Methods join the caller's ambient transaction; the
 // Application service owns the transaction boundary. Every error a method
 // returns to its caller first logs its Warn breadcrumb (ADR 0011).
+// ListPostsRequest is the post-list read as the service states it: the
+// shared query shape plus the department subtree filter the application
+// resolved server-side (ADR 0005/0025).
+type ListPostsRequest struct {
+	listq.Query
+	DeptIDs []int64
+}
+
+// DeletePostRequest identifies the post a Delete withdraws and the actor
+// whose id lands in the audit fields (ADR 0005/0025).
+type DeletePostRequest struct {
+	ID      int64
+	ActorID int64
+}
+
 type Post interface {
 	Get(ctx context.Context, id int64) (*entity.Post, error)
-	List(ctx context.Context, req repository.ListPostsRequest) ([]*entity.Post, error)
+	List(ctx context.Context, req ListPostsRequest) ([]*entity.Post, error)
 	// Create validates the post (shape, department exists, name per dept and
 	// code globally unique) and persists it.
 	Create(ctx context.Context, p *entity.Post) (*entity.Post, error)
@@ -28,7 +44,7 @@ type Post interface {
 	Update(ctx context.Context, p *entity.Post) (*entity.Post, error)
 	// Delete soft-deletes the post identified by req, refusing while users
 	// are still assigned.
-	Delete(ctx context.Context, req repository.DeletePostRequest) error
+	Delete(ctx context.Context, req DeletePostRequest) error
 }
 
 type postImpl struct {
@@ -59,8 +75,8 @@ func (s *postImpl) Get(ctx context.Context, id int64) (*entity.Post, error) {
 	return p, nil
 }
 
-func (s *postImpl) List(ctx context.Context, req repository.ListPostsRequest) ([]*entity.Post, error) {
-	ps, err := s.posts.ListPosts(ctx, req)
+func (s *postImpl) List(ctx context.Context, req ListPostsRequest) ([]*entity.Post, error) {
+	ps, err := s.posts.ListPosts(ctx, repository.ListPostsRequest{Query: req.Query, DeptIDs: req.DeptIDs})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.list_posts", err)
 		return nil, err
@@ -136,7 +152,7 @@ func (s *postImpl) Update(ctx context.Context, p *entity.Post) (*entity.Post, er
 	return result.Post, nil
 }
 
-func (s *postImpl) Delete(ctx context.Context, req repository.DeletePostRequest) error {
+func (s *postImpl) Delete(ctx context.Context, req DeletePostRequest) error {
 	if _, err := s.posts.FindByID(ctx, req.ID); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.delete_post", err)
 		return err
@@ -151,7 +167,7 @@ func (s *postImpl) Delete(ctx context.Context, req repository.DeletePostRequest)
 		logx.Propagate(ctx, s.logger, "org.svc.delete_post", err)
 		return err
 	}
-	if err := s.posts.DeletePost(ctx, req); err != nil {
+	if err := s.posts.DeletePost(ctx, repository.DeletePostRequest{ID: req.ID, ActorID: req.ActorID}); err != nil {
 		logx.Propagate(ctx, s.logger, "org.svc.delete_post", err)
 		return err
 	}

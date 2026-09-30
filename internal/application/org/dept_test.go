@@ -14,7 +14,7 @@ import (
 	authnservice "glex/internal/domain/authn/service"
 	orgdomain "glex/internal/domain/org"
 	orgentity "glex/internal/domain/org/entity"
-	orgrepository "glex/internal/domain/org/repository"
+	orgservice "glex/internal/domain/org/service"
 )
 
 // fakeDeptService is a hand-rolled orgservice.Dept fake for the application
@@ -79,7 +79,7 @@ func (f *fakeDeptService) Update(ctx context.Context, d *orgentity.Dept) (*orgen
 	return f.update, nil
 }
 
-func (f *fakeDeptService) Delete(ctx context.Context, req orgrepository.DeleteDeptRequest) error {
+func (f *fakeDeptService) Delete(ctx context.Context, req orgservice.DeleteDeptRequest) error {
 	f.deleteCalled++
 	f.deleteCtx, f.deleteID, f.deleteActor = ctx, req.ID, req.ActorID
 	return f.deleteErr

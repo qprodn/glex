@@ -231,7 +231,7 @@ func TestDelete_DelegatesWithActorAndReturnsAffectedIDs(t *testing.T) {
 	repo := newFakeUserRepo()
 	svc := NewUserService(repo, testLogger())
 
-	affected, err := svc.Delete(context.Background(), repository.DeleteUserRequest{ID: 42, ActorID: 7})
+	affected, err := svc.Delete(context.Background(), DeleteUserRequest{ID: 42, ActorID: 7})
 	if err != nil {
 		t.Fatalf("delete user: %v", err)
 	}

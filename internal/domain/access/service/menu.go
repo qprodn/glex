@@ -17,6 +17,9 @@ import (
 	"glex/internal/domain/access/entity"
 	"glex/internal/domain/access/repository"
 	"glex/pkg/logx"
+
+	"go.einride.tech/aip/filtering"
+	"go.einride.tech/aip/ordering"
 )
 
 // Menu is the access domain service behind the menu endpoints: the only path
@@ -24,9 +27,26 @@ import (
 // transaction; the Application service owns the transaction boundary and the
 // cross-domain revocation. Every error a method returns to its caller first
 // logs its Warn breadcrumb (ADR 0011).
+// ListMenusRequest is the menu-list read as the service states it: the raw
+// AIP-160 filter and AIP-132 order (no pagination — menus list unpaginated as
+// a small, tree-shaped set). Declared beside the consuming interface so the
+// application layer never reaches into the repository package (ADR 0005/0025).
+type ListMenusRequest struct {
+	Filter  filtering.Filter
+	OrderBy ordering.OrderBy
+}
+
+// DeleteMenuRequest identifies the menu a Delete withdraws and the actor
+// whose id lands in the audit fields. Declared beside the consuming
+// interface (ADR 0005/0025).
+type DeleteMenuRequest struct {
+	ID      int64
+	ActorID int64
+}
+
 type Menu interface {
 	Get(ctx context.Context, id int64) (*entity.Menu, error)
-	List(ctx context.Context, req repository.ListMenusRequest) ([]*entity.Menu, error)
+	List(ctx context.Context, req ListMenusRequest) ([]*entity.Menu, error)
 	// LoadRouteAccess freshly reads the System User's route authorization
 	// data (active Role Assignments, Menu Grants, and routeable menus).
 	LoadRouteAccess(ctx context.Context, systemUserID int64) (*entity.MenuRouteAccess, error)
@@ -39,7 +59,7 @@ type Menu interface {
 	Update(ctx context.Context, m *entity.Menu) (*entity.MenuUpdate, error)
 	// Delete soft-deletes the menu and its role links, refusing while it has
 	// children, and returns the identities reaching the menu.
-	Delete(ctx context.Context, req repository.DeleteMenuRequest) ([]int64, error)
+	Delete(ctx context.Context, req DeleteMenuRequest) ([]int64, error)
 }
 
 type menuImpl struct {
@@ -64,8 +84,8 @@ func (s *menuImpl) Get(ctx context.Context, id int64) (*entity.Menu, error) {
 	return m, nil
 }
 
-func (s *menuImpl) List(ctx context.Context, req repository.ListMenusRequest) ([]*entity.Menu, error) {
-	ms, err := s.menus.ListMenus(ctx, req)
+func (s *menuImpl) List(ctx context.Context, req ListMenusRequest) ([]*entity.Menu, error) {
+	ms, err := s.menus.ListMenus(ctx, repository.ListMenusRequest{Filter: req.Filter, OrderBy: req.OrderBy})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.list_menus", err)
 		return nil, err
@@ -121,7 +141,7 @@ func (s *menuImpl) Update(ctx context.Context, m *entity.Menu) (*entity.MenuUpda
 	return updated, nil
 }
 
-func (s *menuImpl) Delete(ctx context.Context, req repository.DeleteMenuRequest) ([]int64, error) {
+func (s *menuImpl) Delete(ctx context.Context, req DeleteMenuRequest) ([]int64, error) {
 	has, err := s.menus.HasChildren(ctx, req.ID)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.delete_menu", err)
@@ -132,7 +152,7 @@ func (s *menuImpl) Delete(ctx context.Context, req repository.DeleteMenuRequest)
 		logx.Propagate(ctx, s.logger, "access.svc.delete_menu", err)
 		return nil, err
 	}
-	revoked, err := s.menus.DeleteMenu(ctx, req)
+	revoked, err := s.menus.DeleteMenu(ctx, repository.DeleteMenuRequest{ID: req.ID, ActorID: req.ActorID})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.delete_menu", err)
 		return nil, err

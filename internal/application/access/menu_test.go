@@ -7,7 +7,7 @@ import (
 
 	accessv1 "glex/api/access/v1"
 	accessentity "glex/internal/domain/access/entity"
-	accessrepo "glex/internal/domain/access/repository"
+	accessservice "glex/internal/domain/access/service"
 
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
@@ -53,7 +53,7 @@ func (f *fakeMenuService) Get(_ context.Context, _ int64) (*accessentity.Menu, e
 	return f.get, nil
 }
 
-func (f *fakeMenuService) List(_ context.Context, _ accessrepo.ListMenusRequest) ([]*accessentity.Menu, error) {
+func (f *fakeMenuService) List(_ context.Context, _ accessservice.ListMenusRequest) ([]*accessentity.Menu, error) {
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
@@ -86,7 +86,7 @@ func (f *fakeMenuService) Update(ctx context.Context, m *accessentity.Menu) (*ac
 	return f.update, nil
 }
 
-func (f *fakeMenuService) Delete(ctx context.Context, req accessrepo.DeleteMenuRequest) ([]int64, error) {
+func (f *fakeMenuService) Delete(ctx context.Context, req accessservice.DeleteMenuRequest) ([]int64, error) {
 	f.deleteCalled++
 	f.deleteCtx, f.deleteID, f.deleteActor = ctx, req.ID, req.ActorID
 	if f.deleteErr != nil {

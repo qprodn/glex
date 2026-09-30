@@ -17,24 +17,49 @@ import (
 // Methods join the caller's ambient transaction; the Application service
 // owns the transaction boundary and the cross-domain revocation. Every error
 // a method returns to its caller first logs its Warn breadcrumb (ADR 0011).
+// CreateRoleRequest is one role creation as the service states it: the role
+// to persist and the menu ids of its initial Menu Grant (ADR 0005/0025).
+type CreateRoleRequest struct {
+	Role    *entity.Role
+	MenuIDs []int64
+}
+
+// DeleteRoleRequest identifies the role a Delete withdraws and the actor
+// whose id lands in the audit fields (ADR 0005/0025).
+type DeleteRoleRequest struct {
+	ID      int64
+	ActorID int64
+}
+
+// ReplaceRoleMenusRequest is one full replacement of a role's Menu Grant as
+// the service states it: the role, the menu ids to store, the
+// menu_check_strictly flag written alongside them, and the actor stamped
+// into the audit fields (ADR 0005/0025).
+type ReplaceRoleMenusRequest struct {
+	RoleID            int64
+	MenuIDs           []int64
+	MenuCheckStrictly bool
+	ActorID           int64
+}
+
 type Role interface {
 	Get(ctx context.Context, id int64) (*entity.Role, error)
 	List(ctx context.Context, q listq.Query) ([]*entity.Role, error)
 	// Create validates the role and its initial Menu Grant and persists both.
-	Create(ctx context.Context, req repository.CreateRoleRequest) (*entity.Role, error)
+	Create(ctx context.Context, req CreateRoleRequest) (*entity.Role, error)
 	// Update validates the change (shape, uniqueness, disable guard) and
 	// persists it, returning the write with its pre-image and assigned users.
 	Update(ctx context.Context, r *entity.Role) (*entity.RoleUpdate, error)
 	// Delete soft-deletes the role and its Menu Grant, refusing while users
 	// are still assigned, and returns the assigned identities.
-	Delete(ctx context.Context, req repository.DeleteRoleRequest) ([]int64, error)
+	Delete(ctx context.Context, req DeleteRoleRequest) ([]int64, error)
 	// CheckedMenuIDs returns the role's granted menu ids shaped by
 	// menu_check_strictly (the role editor's checked keys).
 	CheckedMenuIDs(ctx context.Context, roleID int64) ([]int64, error)
 	// ReplaceMenus validates and dedupes req.MenuIDs, replaces the role's Menu
 	// Grant together with req.MenuCheckStrictly, and returns the stored grant
 	// with the assigned identities whose snapshots the write invalidates.
-	ReplaceMenus(ctx context.Context, req repository.ReplaceRoleMenusRequest) (*MenuGrantReplacement, error)
+	ReplaceMenus(ctx context.Context, req ReplaceRoleMenusRequest) (*MenuGrantReplacement, error)
 }
 
 // MenuGrantReplacement is the ReplaceMenus result: the stored (deduped) Menu
@@ -82,7 +107,7 @@ func (s *roleImpl) List(ctx context.Context, q listq.Query) ([]*entity.Role, err
 	return rs, nil
 }
 
-func (s *roleImpl) Create(ctx context.Context, req repository.CreateRoleRequest) (*entity.Role, error) {
+func (s *roleImpl) Create(ctx context.Context, req CreateRoleRequest) (*entity.Role, error) {
 	if err := ValidateRole(req.Role); err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.create_role", err)
 		return nil, err
@@ -125,7 +150,7 @@ func (s *roleImpl) Update(ctx context.Context, r *entity.Role) (*entity.RoleUpda
 	return updated, nil
 }
 
-func (s *roleImpl) Delete(ctx context.Context, req repository.DeleteRoleRequest) ([]int64, error) {
+func (s *roleImpl) Delete(ctx context.Context, req DeleteRoleRequest) ([]int64, error) {
 	if _, err := s.roles.FindByID(ctx, req.ID); err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.delete_role", err)
 		return nil, err
@@ -140,7 +165,7 @@ func (s *roleImpl) Delete(ctx context.Context, req repository.DeleteRoleRequest)
 		logx.Propagate(ctx, s.logger, "access.svc.delete_role", err)
 		return nil, err
 	}
-	revoked, err := s.roles.DeleteRole(ctx, req)
+	revoked, err := s.roles.DeleteRole(ctx, repository.DeleteRoleRequest{ID: req.ID, ActorID: req.ActorID})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.delete_role", err)
 		return nil, err
@@ -162,7 +187,7 @@ func (s *roleImpl) CheckedMenuIDs(ctx context.Context, roleID int64) ([]int64, e
 	return checkedMenuIDs(role, links), nil
 }
 
-func (s *roleImpl) ReplaceMenus(ctx context.Context, req repository.ReplaceRoleMenusRequest) (*MenuGrantReplacement, error) {
+func (s *roleImpl) ReplaceMenus(ctx context.Context, req ReplaceRoleMenusRequest) (*MenuGrantReplacement, error) {
 	if _, err := s.roles.FindByID(ctx, req.RoleID); err != nil {
 		logx.Propagate(ctx, s.logger, "access.svc.replace_menus", err)
 		return nil, err

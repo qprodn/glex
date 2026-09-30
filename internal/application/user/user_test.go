@@ -15,7 +15,6 @@ import (
 	orgdomain "glex/internal/domain/org"
 	userdomain "glex/internal/domain/user"
 	userentity "glex/internal/domain/user/entity"
-	userrepo "glex/internal/domain/user/repository"
 	userservice "glex/internal/domain/user/service"
 
 	userv1 "glex/api/user/v1"
@@ -103,7 +102,7 @@ func (s *fakeUserService) Get(_ context.Context, id int64) (*userentity.User, er
 	return u, nil
 }
 
-func (s *fakeUserService) List(_ context.Context, req userrepo.ListUsersRequest) ([]*userentity.User, error) {
+func (s *fakeUserService) List(_ context.Context, req userservice.ListUsersRequest) ([]*userentity.User, error) {
 	s.lastListCall.limit = req.Limit
 	s.lastListCall.offset = req.Offset
 	if req.Offset >= len(s.list) {
@@ -135,7 +134,7 @@ func (s *fakeUserService) Update(_ context.Context, u *userentity.User) (*useren
 	return &userentity.UserUpdate{User: u, Previous: previous}, nil
 }
 
-func (s *fakeUserService) Delete(_ context.Context, req userrepo.DeleteUserRequest) ([]int64, error) {
+func (s *fakeUserService) Delete(_ context.Context, req userservice.DeleteUserRequest) ([]int64, error) {
 	s.deletedIDs = append(s.deletedIDs, req.ID)
 	s.deletedBy = append(s.deletedBy, req.ActorID)
 	delete(s.byID, req.ID)
