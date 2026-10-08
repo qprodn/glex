@@ -85,4 +85,4 @@ domain (cross-module calls go through crossdomain contracts only).
   `application/*/transaction.go` and the repo port comments. Comments citing
   ADR 0013/0016/0017 (numbers ported from coze's docs that never existed
   here) are repointed to this ADR; no backfilled stubs.
-- CONTEXT.md is untouched: this is architecture, not domain vocabulary.
+- GLOSSARY.md is untouched: this is architecture, not domain vocabulary.

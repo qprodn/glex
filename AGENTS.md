@@ -107,7 +107,7 @@ Issues live as markdown files under `.scratch/<feature>/`. See
 
 ## Domain docs
 
-_Authority: `CONTEXT.md` and `docs/adr/`._
+_Authority: `GLOSSARY.md` and `docs/adr/`._
 
-Single-context: one root `CONTEXT.md` plus `docs/adr/`. See
+Single-context: one root `GLOSSARY.md` plus `docs/adr/`. See
 `docs/agents/domain.md`.

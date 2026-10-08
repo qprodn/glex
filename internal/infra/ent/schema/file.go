@@ -10,7 +10,7 @@ import (
 
 // File holds the schema for the Stored File entity (存储文件), named sys_file
 // here and continuing the lineage of RuoYi's sys_oss (renamed — see
-// CONTEXT.md). Each row pairs one accepted upload's metadata with the bytes
+// GLOSSARY.md). Each row pairs one accepted upload's metadata with the bytes
 // in object storage; withdrawal soft-deletes the row and removes the bytes
 // (ADR 0009). No FKs and no edges — the bytes live outside PostgreSQL.
 type File struct {
@@ -57,7 +57,7 @@ func (File) Annotations() []entschema.Annotation {
 }
 
 // Indexes keeps the Content Fingerprint queryable for a future integrity
-// audit; deliberately NOT unique — no dedup exists (see CONTEXT.md).
+// audit; deliberately NOT unique — no dedup exists (see GLOSSARY.md).
 func (File) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("content_hash"),

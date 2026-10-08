@@ -2589,7 +2589,7 @@ components:
             description: |-
                 Role is a named bundle of permissions (角色), ported from RuoYi sys_role.
                  Back-office CRUD plus the role↔menu link (**Menu Grant**); user↔role and
-                 data-scope links are deferred (see CONTEXT.md).
+                 data-scope links are deferred (see GLOSSARY.md).
         access.v1.RoleAssignment:
             type: object
             properties:
@@ -2914,7 +2914,7 @@ components:
             description: |-
                 DictEntry is one labeled option inside a Dict Type (字典项), ported from
                  RuoYi sys_dict_data (the domain noun was renamed; the table keeps RuoYi's
-                 name — see CONTEXT.md). The owning type key is set at create and not
+                 name — see GLOSSARY.md). The owning type key is set at create and not
                  updatable (ADR 0006): UpdateDictEntry ignores it.
         dict.v1.DictEntryOption:
             type: object

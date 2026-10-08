@@ -47,7 +47,7 @@ export type DictTypeSet = {
 
 // DictEntry is one labeled option inside a Dict Type (字典项), ported from
 // RuoYi sys_dict_data (the domain noun was renamed; the table keeps RuoYi's
-// name — see CONTEXT.md). The owning type key is set at create and not
+// name — see GLOSSARY.md). The owning type key is set at create and not
 // updatable (ADR 0006): UpdateDictEntry ignores it.
 export type DictEntry = {
   // Snowflake ID. Server-assigned on create.

@@ -10,7 +10,7 @@ import (
 )
 
 // DictData holds the schema for the Dict Entry rows (字典项), ported from
-// RuoYi sys_dict_data. The domain noun is Dict Entry (CONTEXT.md renamed
+// RuoYi sys_dict_data. The domain noun is Dict Entry (GLOSSARY.md renamed
 // RuoYi's "dict data"); the table and columns keep RuoYi's names. The owning
 // type is referenced by its key (dict_type, no FK — RuoYi style) and is set
 // at create only (ADR 0006); css_class was dropped and status never existed

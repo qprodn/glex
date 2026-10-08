@@ -15,7 +15,7 @@ Department is still referenced by users, for its withdraw and disable guards)
 
 - **Chosen:** new org module. Follows the codebase precedent that a link table
   lives with the module owning the aggregate it links to (user↔role links live
-  in access, not user), keeps CONTEXT.md's user module narrow — "the operator's
+  in access, not user), keeps GLOSSARY.md's user module narrow — "the operator's
   profile" — since organization structure is not profile, and leaves a clean
   seam for the deferred data-permission port (access ↔ dept).
 - **Rejected:** fold into the user module. Zero contracts and a single

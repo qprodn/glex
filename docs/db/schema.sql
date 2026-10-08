@@ -308,11 +308,11 @@ create table if not exists sys_file (
 );
 
 -- Deliberately NOT unique: no dedup exists — identical bytes accepted twice
--- yield two Stored Files (CONTEXT.md "Content Fingerprint").
+-- yield two Stored Files (GLOSSARY.md "Content Fingerprint").
 create index if not exists file_content_hash
     on sys_file (content_hash);
 
-comment on table sys_file is '存储文件表（RuoYi sys_oss 的改名延续，见 CONTEXT.md）';
+comment on table sys_file is '存储文件表（RuoYi sys_oss 的改名延续，见 GLOSSARY.md）';
 
 comment on column sys_file.id is '主键ID（雪花；同时出现在 Stored Key 中）';
 comment on column sys_file.original_name is '原始文件名';

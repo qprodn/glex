@@ -4,11 +4,11 @@ job 模块是 glex 的第八个模块（ADR 0023），为后台提供**定时任
 
 本文面向后续接手本模块的开发者，分三层展开：**它为什么这样设计**（第 2–4 章）、**日常怎么用**（第 5 章）、**将来换成 xxl-job 等外部调度器时改哪里**（第 6 章）。
 
-相关文档：[ADR 0023](../adr/0023-job-scheduler-in-process.md)（设计决策全文）、[ADR 0003](../adr/0003-redis-distributed-lock.md)（分布式锁）、`CONTEXT.md` 的 job 术语节。
+相关文档：[ADR 0023](../adr/0023-job-scheduler-in-process.md)（设计决策全文）、[ADR 0003](../adr/0003-redis-distributed-lock.md)（分布式锁）、`GLOSSARY.md` 的 job 术语节。
 
 ## 1. 核心概念
 
-三个概念构成整个模块的词汇表（术语与 `CONTEXT.md` 一致）：
+三个概念构成整个模块的词汇表（术语与 `GLOSSARY.md` 一致）：
 
 | 概念 | 中文 | 本质 | 存活处 |
 |---|---|---|---|

@@ -27,7 +27,7 @@ const (
 
 // Role is a named bundle of permissions (角色), ported from RuoYi sys_role.
 // Back-office CRUD plus the role↔menu link (**Menu Grant**); user↔role and
-// data-scope links are deferred (see CONTEXT.md).
+// data-scope links are deferred (see GLOSSARY.md).
 type Role struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Snowflake ID. Server-assigned on create.

@@ -31,7 +31,7 @@ on conflict do nothing;
 
 -- ---------------------------------------------------------------------------
 -- 角色
--- role_key = 'superadmin' 在授权解析中被特殊处理（CONTEXT.md "Superadmin"），
+-- role_key = 'superadmin' 在授权解析中被特殊处理（GLOSSARY.md "Superadmin"），
 -- 不可改名；menu_check_strictly 仅影响角色编辑器的菜单树展示。
 -- ---------------------------------------------------------------------------
 

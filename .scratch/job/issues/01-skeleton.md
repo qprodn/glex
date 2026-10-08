@@ -12,6 +12,6 @@
 - `conf.proto` 增 `Job job = 7`(enabled/tick_seconds/
   default_timeout_seconds/timezone),`make config`;config.yaml `job:` 段。
 - app.go 挂 jobinfra.Module;main.go Supply bc.Job;go.mod 加 robfig/cron/v3。
-- docs/db/schema.sql 同步 DDL;ADR 0023;CONTEXT.md job 语言;本目录文档。
+- docs/db/schema.sql 同步 DDL;ADR 0023;GLOSSARY.md job 语言;本目录文档。
 
 验收:go build/vet/test 全绿;`go run ./cmd/glex` fx 图通过、迁移建表。

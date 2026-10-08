@@ -4,7 +4,7 @@ param 模块是 glex 的第十个模块,为后台提供**运行时参数**能力
 
 本文记录设计定稿(2026-09-30,与用户逐问确认)及日常使用方式。
 
-相关文档:`CONTEXT.md` 的 param 术语节;沿用 [ADR 0001](../adr/0001-single-tenant.md)(单租户)、[ADR 0002](../adr/0002-audit-fields-on-every-table.md)(审计字段)、[ADR 0005](../adr/0005-application-calls-domain-services-not-repositories.md)(分层)、[ADR 0024](../adr/0024-listq-deep-module-for-list-queries.md)(列表)、[ADR 0025](../adr/0025-two-value-signatures-for-layer-facing-functions.md)(签名)。
+相关文档:`GLOSSARY.md` 的 param 术语节;沿用 [ADR 0001](../adr/0001-single-tenant.md)(单租户)、[ADR 0002](../adr/0002-audit-fields-on-every-table.md)(审计字段)、[ADR 0005](../adr/0005-application-calls-domain-services-not-repositories.md)(分层)、[ADR 0024](../adr/0024-listq-deep-module-for-list-queries.md)(列表)、[ADR 0025](../adr/0025-two-value-signatures-for-layer-facing-functions.md)(签名)。
 
 ## 1. 核心概念
 

@@ -70,7 +70,7 @@
 
 | 文件 | 修正 |
 |---|---|
-| `CONTEXT.md` | 模块枚举 "six modules" → **"nine modules"**，补入遗漏的 **audit**（并说明它无对外 API 服务，由中间件与 authn 写入）；补入 `sys_oper_log` / `sys_logininfor` 两个 RuoYi 来源表名；把"第七/第八个模块"改为不绑死序号的表述 |
+| `GLOSSARY.md` | 模块枚举 "six modules" → **"nine modules"**，补入遗漏的 **audit**（并说明它无对外 API 服务，由中间件与 authn 写入）；补入 `sys_oper_log` / `sys_logininfor` 两个 RuoYi 来源表名；把"第七/第八个模块"改为不绑死序号的表述 |
 | `docs/adr/0005-...md` | handler 枚举标注为 **2026-08-28 快照**（当时只有 access/authn/user 三模块）。**规则本身未动**——它是引用密度最高的 ADR（130 处），且由三条 depguard 规则强制 |
 | `AGENTS.md` | 每个 `##` 小节首行加 `_Authority: …_` 标注，让双写漂移可被审计。**各小节内容保留**：AGENTS.md 是 agent 每次任务都要加载的口袋规则，刻意与 ADR 双写 |
 | `docs/adr/0001-single-tenant.md` | 加 `_Status: background — in force, but cited by nothing._` 标记，解释"零引用不等于失效" |
@@ -163,7 +163,7 @@ web/src/pages/monitor/joblog/index.tsx:28   (ADR 2023)  →  (ADR 0023)
 
 ## 6. 后续建议（本次未做）
 
-1. **`CONTEXT.md` 缺 audit 术语节**：模块枚举已补 audit，但 Language 部分没有 audit 的
+1. **`GLOSSARY.md` 缺 audit 术语节**：模块枚举已补 audit，但 Language 部分没有 audit 的
    词汇条目，而 "Oper Log" / "Login Log" 被 ADR 0012 与 AGENTS.md 使用。建议按现有格式
    补一节（本次只做删除与纠错，未新增术语，以免超出范围）。
 2. **已部署数据库的 `sys_file.bucket` 列注释**仍写 `ADR 0007`，需手工执行一次
@@ -175,9 +175,9 @@ web/src/pages/monitor/joblog/index.tsx:28   (ADR 2023)  →  (ADR 0023)
 
 ## 取证方法
 
-- 引用扫描覆盖 `internal/` `pkg/` `api/` `cmd/` `web/src/` `docs/` `CONTEXT.md`
+- 引用扫描覆盖 `internal/` `pkg/` `api/` `cmd/` `web/src/` `docs/` `GLOSSARY.md`
   `AGENTS.md` `.scratch/`，按编号归一化后统计。
-- 逐文件通读 26 份 ADR、3 份 `docs/agents/`、`CONTEXT.md`、`AGENTS.md`、`CLAUDE.md`。
+- 逐文件通读 26 份 ADR、3 份 `docs/agents/`、`GLOSSARY.md`、`AGENTS.md`、`CLAUDE.md`。
 - "未落地"判定以产物存在性为准：`pkg/middleware/errnormalize` 目录、`INTERNAL_ERROR`
   字面量、`recovery.WithHandler` 调用三者全无。
 - **踩坑记录**：BSD `grep -E` 不支持 `\b`，首轮 "ADR 0001 零引用" 的统计因该问题得出了

@@ -345,7 +345,7 @@ type wellKnownEmpty = Record<never, never>;
 
 // Role is a named bundle of permissions (角色), ported from RuoYi sys_role.
 // Back-office CRUD plus the role↔menu link (**Menu Grant**); user↔role and
-// data-scope links are deferred (see CONTEXT.md).
+// data-scope links are deferred (see GLOSSARY.md).
 export type Role = {
   // Snowflake ID. Server-assigned on create.
   roleId: number | undefined;

@@ -9,7 +9,7 @@ import React from "react";
 
 /**
  * Online Session monitor (the monitoring view over active Login Sessions —
- * CONTEXT.md): admins list every active session and force-revoke (强退) by the
+ * GLOSSARY.md): admins list every active session and force-revoke (强退) by the
  * non-secret Session ID. There is deliberately no bulk logout.
  */
 const OnlineSessionList: React.FC = () => {
