@@ -13,8 +13,8 @@ require (
 	github.com/bsm/redislock v0.10.0
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/go-kratos/aip-go/ents v0.0.0-20251213081434-74ffa1fc1588
-	github.com/go-kratos/kratos/contrib/otel/v3 v3.0.0-20260617100506-4e232a3eff59
-	github.com/go-kratos/kratos/v3 v3.0.0
+	github.com/go-kratos/kratos/contrib/otel/v3 v3.0.0-20261026152050-dd0fb7df1e32
+	github.com/go-kratos/kratos/v3 v3.0.1-0.20261026152050-dd0fb7df1e32
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/mileusna/useragent v1.3.5
@@ -33,8 +33,6 @@ require (
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.11
 )
-
-replace github.com/go-kratos/kratos/v3 v3.0.0 => github.com/go-kratos/kratos/v3 v3.0.0-20260617100506-4e232a3eff59
 
 require (
 	ariga.io/atlas v1.2.2 // indirect
