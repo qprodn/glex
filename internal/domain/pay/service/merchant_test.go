@@ -234,6 +234,8 @@ func (g *fakeChannelGateway) Probe(ctx context.Context, m *payentity.MerchantAcc
 	return g.probeErr
 }
 
+func (g *fakeChannelGateway) AckSuccess() string { return "" }
+
 // ---- fixtures ----
 
 const (

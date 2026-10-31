@@ -122,9 +122,12 @@ var appModule = fx.Options(
 		// net/http filter shape (ADR 0020).
 		func(l *payinfra.NotifyRateLimiter) server.NotifyLimiter { return l.Filter },
 		// The pay module's event publisher: the bus producer bound to the
-		// pay topic (ADR 0022).
+		// pay topic, adapted onto the domain port (ADR 0022, ADR 0027).
 		func(f eventbusinfra.ProducerFactory) eventbus.Producer {
 			return f(payentity.TopicPayEvents)
+		},
+		func(p eventbus.Producer) payservice.CompletedPublisher {
+			return payinfra.AdaptProducer(p)
 		},
 	),
 )

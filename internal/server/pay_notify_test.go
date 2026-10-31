@@ -29,7 +29,6 @@ import (
 	payentity "glex/internal/domain/pay/entity"
 	payrepo "glex/internal/domain/pay/repository"
 	payservice "glex/internal/domain/pay/service"
-	"glex/internal/eventbus"
 	"glex/internal/infra/pay/adapter"
 	"glex/internal/infra/pay/adapter/wechat"
 	"glex/internal/infra/pay/crypt"
@@ -330,7 +329,8 @@ type goldNotifyRepo struct {
 
 func (r *goldNotifyRepo) Insert(ctx context.Context, n *payentity.ChannelNotification) (bool, error) {
 	key := fmt.Sprintf("%d|%s", n.Channel, n.NotifyID)
-	if _, dup := r.rows[key]; dup {
+	if row, dup := r.rows[key]; dup {
+		n.ID = row.notif.ID
 		return false, nil
 	}
 	cp := *n
@@ -407,15 +407,14 @@ func newGoldFixture(t *testing.T) *goldFixture {
 	merchantSvc := payservice.NewMerchantService(merchantRepo, &goldCatalog{}, cipher, registry, slog.New(slog.DiscardHandler))
 	paymentSvc := payservice.NewPaymentService(payments, merchantRepo, registry, slog.New(slog.DiscardHandler))
 	refundSvc := payservice.NewRefundService(nil, payments, merchantRepo, registry, slog.New(slog.DiscardHandler))
-	notificationSvc := payservice.NewNotificationService(notifyRepo)
+	intake := payservice.NewIntake(merchantSvc, paymentSvc, refundSvc, notifyRepo, goldPublisher{}, slog.New(slog.DiscardHandler))
 
 	app := pay.NewPayApplication(
 		merchantSvc,
 		paymentSvc,
 		refundSvc,
-		notificationSvc,
+		intake,
 		nil, nil,
-		noopEventProducer{},
 		&conf.Pay{NotifyBaseUrl: "https://pay.example.com"},
 		slog.New(slog.DiscardHandler),
 	)
@@ -604,10 +603,9 @@ func TestNotifyGarbagePathIs400(t *testing.T) {
 	}
 }
 
-// noopEventProducer stands in for the eventbus in the gold test: the
-// Payment Completed publish is best-effort and its content is asserted in
-// the application tests, so the integration path only needs it non-nil.
-type noopEventProducer struct{}
+// goldPublisher stands in for the Payment Completed port. The event body
+// is asserted on the domain intake; this path only needs the publish to
+// succeed.
+type goldPublisher struct{}
 
-func (noopEventProducer) Send(context.Context, []byte, ...eventbus.SendOpt) error        { return nil }
-func (noopEventProducer) BatchSend(context.Context, [][]byte, ...eventbus.SendOpt) error { return nil }
+func (goldPublisher) Publish(context.Context, []byte) error { return nil }

@@ -118,6 +118,8 @@ func (f *fakeGateway) ParseNotification(ctx context.Context, req payservice.Noti
 
 func (f *fakeGateway) Probe(ctx context.Context, m *payentity.MerchantAccount) error { return nil }
 
+func (f *fakeGateway) AckSuccess() string { return "" }
+
 type fakeFactory struct{ channel payentity.Channel }
 
 func (f *fakeFactory) Schema() payentity.ChannelSchema {

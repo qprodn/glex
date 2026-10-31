@@ -7,6 +7,7 @@ import (
 	"glex/internal/domain/pay/entity"
 	payrepo "glex/internal/domain/pay/repository"
 	"glex/internal/infra/ent"
+	"glex/internal/infra/ent/paynotifylog"
 	"glex/internal/infra/store"
 )
 
@@ -54,6 +55,20 @@ func (r *notifyLogRepo) Insert(ctx context.Context, n *entity.ChannelNotificatio
 	}
 	if _, err := create.Save(ctx); err != nil {
 		if ent.IsConstraintError(err) {
+			// The kept row is the evidence. Hand its id back so the
+			// processed flag lands on that row, not on the id this
+			// delivery minted and never inserted.
+			existing, findErr := r.data.DB.PayNotifyLog(ctx).Query().
+				Where(
+					paynotifylog.ChannelEQ(int16(n.Channel)),
+					paynotifylog.NotifyIDEQ(n.NotifyID),
+					paynotifylog.DeletedAtIsNil(),
+				).
+				OnlyID(ctx)
+			if findErr != nil {
+				return false, r.storeError(ctx, "pay.notify_log.insert", findErr)
+			}
+			n.ID = existing
 			return false, nil
 		}
 		return false, r.storeError(ctx, "pay.notify_log.insert", err)

@@ -8,7 +8,6 @@ import (
 	"glex/internal/bizpkg"
 	"glex/internal/conf"
 	payservice "glex/internal/domain/pay/service"
-	"glex/internal/eventbus"
 	"glex/internal/lock"
 )
 
@@ -18,15 +17,14 @@ import (
 type PayApplication struct {
 	payv1.UnimplementedPayServiceServer
 
-	merchants     payservice.Merchant
-	payments      payservice.Payment
-	refunds       payservice.Refund
-	notifications payservice.Notification
-	tx            Transaction
-	locker        lock.Locker
-	events        eventbus.Producer
-	payConfig     *conf.Pay
-	logger        *slog.Logger
+	merchants payservice.Merchant
+	payments  payservice.Payment
+	refunds   payservice.Refund
+	intake    payservice.Intake
+	tx        Transaction
+	locker    lock.Locker
+	payConfig *conf.Pay
+	logger    *slog.Logger
 }
 
 // NewPayApplication creates the PayApplication.
@@ -34,23 +32,21 @@ func NewPayApplication(
 	merchants payservice.Merchant,
 	payments payservice.Payment,
 	refunds payservice.Refund,
-	notifications payservice.Notification,
+	intake payservice.Intake,
 	tx Transaction,
 	locker lock.Locker,
-	events eventbus.Producer,
 	payConfig *conf.Pay,
 	logger *slog.Logger,
 ) *PayApplication {
 	return &PayApplication{
-		merchants:     merchants,
-		payments:      payments,
-		refunds:       refunds,
-		notifications: notifications,
-		tx:            tx,
-		locker:        locker,
-		events:        events,
-		payConfig:     payConfig,
-		logger:        logger.With(slog.String("component", "application.pay")),
+		merchants: merchants,
+		payments:  payments,
+		refunds:   refunds,
+		intake:    intake,
+		tx:        tx,
+		locker:    locker,
+		payConfig: payConfig,
+		logger:    logger.With(slog.String("component", "application.pay")),
 	}
 }
 

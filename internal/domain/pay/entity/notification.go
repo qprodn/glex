@@ -12,8 +12,8 @@ const (
 
 // ChannelNotification is the canonical shape every adapter parses a
 // Channel push into after signature verification succeeds (ADR 0020). It
-// doubles as the notify-log row's intake: the handler records the raw
-// evidence (RawBody, SignHeaders, Verified) before any state advances.
+// doubles as the notify-log row: the intake records the raw evidence
+// (RawBody, SignHeaders, Verified) before any state advances.
 type ChannelNotification struct {
 	// ID is the notify-log row's identity, minted by the intake path
 	// before the write-once insert.

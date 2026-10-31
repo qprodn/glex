@@ -317,6 +317,12 @@ func (g *gateway) Probe(ctx context.Context, m *payentity.MerchantAccount) error
 	return fmt.Errorf("alipay: %s: %s", rsp.SubCode, rsp.SubMsg)
 }
 
+// AckSuccess is Alipay's success body. Anything else makes the channel
+// retry (ADR 0020).
+func (g *gateway) AckSuccess() string {
+	return "success"
+}
+
 // ---- helpers ----
 
 // mapTradeStatus normalizes the channel's trade_status. TRADE_FINISHED is

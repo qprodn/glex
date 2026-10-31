@@ -75,10 +75,9 @@ func TestCreateRefundConcurrentCapRaceExactlyOneWins(t *testing.T) {
 		&fakeMerchantSvc{},
 		&fakePaymentSvc{},
 		refunds,
-		&fakeNotificationSvc{},
+		nil,
 		&fakeTx{},
 		locker,
-		&fakeEventProducer{},
 		&conf.Pay{},
 		slog.New(slog.DiscardHandler),
 	)

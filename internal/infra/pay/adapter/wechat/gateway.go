@@ -327,6 +327,12 @@ func (g *gateway) Probe(ctx context.Context, m *payentity.MerchantAccount) error
 	return mapAPIError(err)
 }
 
+// AckSuccess is WeChat Pay v3's success envelope. Anything else makes the
+// channel retry (ADR 0020).
+func (g *gateway) AckSuccess() string {
+	return `{"code":"SUCCESS","message":"成功"}`
+}
+
 // ---- helpers ----
 
 // mapTradeState normalizes the channel's trade_state to the module's

@@ -139,6 +139,8 @@ func (g *scriptRefundGateway) Probe(ctx context.Context, m *payentity.MerchantAc
 	return nil
 }
 
+func (g *scriptRefundGateway) AckSuccess() string { return "" }
+
 // newTestRefundService builds the refund service over a PAID fixture
 // payment of 100 fen on merchant/registry fixtures from the payment
 // tests.

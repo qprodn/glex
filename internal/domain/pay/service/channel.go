@@ -140,6 +140,9 @@ type ChannelGateway interface {
 	// Probe runs the Connectivity Test: one cheap authenticated call that
 	// moves no money and leaves no Payment.
 	Probe(ctx context.Context, m *entity.MerchantAccount) error
+	// AckSuccess is the channel's success response body. The intake writes
+	// it only after it has accepted the delivery (ADR 0020, ADR 0027).
+	AckSuccess() string
 }
 
 // ErrChannelAlreadyPaid is returned by Close when the Channel reports the

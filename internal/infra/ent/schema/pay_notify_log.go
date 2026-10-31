@@ -14,8 +14,8 @@ import (
 // 回调流水) — write-once evidence per ADR 0020. Each accepted notification
 // is recorded with its raw body and signature headers before any state
 // advances; the (channel, notify_id) partial unique absorbs the channels'
-// guaranteed redelivery, so duplicates are ACKed without re-processing.
-// The row sits outside the oper log: channels push without a Principal,
+// guaranteed redelivery, so a duplicate insert is not a second evidence
+// row. The row sits outside the oper log: channels push without a Principal,
 // so create_by is 0 (the system itself received it).
 type PayNotifyLog struct {
 	ent.Schema

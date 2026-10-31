@@ -248,6 +248,8 @@ func (g *scriptGateway) ParseNotification(ctx context.Context, req NotificationR
 
 func (g *scriptGateway) Probe(ctx context.Context, m *payentity.MerchantAccount) error { return nil }
 
+func (g *scriptGateway) AckSuccess() string { return "" }
+
 // scriptGateways feeds the registry port a single scriptable gateway.
 type scriptGateways struct {
 	gw ChannelGateway

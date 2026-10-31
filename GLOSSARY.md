@@ -290,8 +290,9 @@ _Avoid_: 退款记录, chargeback (a card-dispute concept, the Channel's concern
 A Channel's asynchronous assertion about a Payment or Refund, pushed to the
 module's notify endpoint and accepted only with a valid request signature —
 the signature is the authentication (ADR 0020). Each is recorded write-once
-with its raw body as the evidence stream; redelivery is absorbed, never
-re-processed.
+with its raw body as the evidence stream. A redelivery keeps that one row
+and applies no second state change, though a state change that did not
+finish can finish on a later delivery.
 _Avoid_: webhook, 异步通知 (unqualified), callback.
 
 **Connectivity Test** (连通性测试):

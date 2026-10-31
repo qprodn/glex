@@ -14,8 +14,10 @@ import (
 type NotifyLogRepo interface {
 	// Insert records one notification write-once under the caller-minted
 	// ID (NextID). ok is false when the (channel, notify_id) pair already
-	// exists — a duplicate delivery to ACK without re-processing, never
-	// an error.
+	// exists — a duplicate delivery, never an error. On that path n.ID is
+	// replaced with the kept row's id. The intake still runs the advance:
+	// a state change that did not finish can finish on a later delivery,
+	// and a repeat CAS applies no second change.
 	Insert(ctx context.Context, n *entity.ChannelNotification) (ok bool, err error)
 	// MarkProcessed flips the processed flag after the state advance ran.
 	MarkProcessed(ctx context.Context, id int64) error

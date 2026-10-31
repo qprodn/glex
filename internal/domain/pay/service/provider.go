@@ -9,6 +9,6 @@ var Module = fx.Module("pay-domain-service",
 		fx.Annotate(NewMerchantService, fx.As(new(Merchant))),
 		fx.Annotate(NewPaymentService, fx.As(new(Payment))),
 		fx.Annotate(NewRefundService, fx.As(new(Refund))),
-		fx.Annotate(NewNotificationService, fx.As(new(Notification))),
+		fx.Annotate(NewIntake, fx.As(new(Intake))),
 	),
 )

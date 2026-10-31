@@ -10,6 +10,7 @@ import (
 	payapp "glex/internal/application/pay"
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
+	payservice "glex/internal/domain/pay/service"
 
 	khttp "github.com/go-kratos/kratos/v3/transport/http"
 )
@@ -72,7 +73,7 @@ func payNotifyHandler(app *payapp.PayApplication) khttp.HandlerFunc {
 			return payNotifyInvalid(errNotifyBodyTooLarge)
 		}
 		h := ctx.Middleware(func(requestCtx context.Context, _ any) (any, error) {
-			return app.HandleChannelNotification(requestCtx, &payapp.ChannelNotificationRequest{
+			return app.HandleChannelNotification(requestCtx, &payservice.ChannelNotificationRequest{
 				Channel:    channel,
 				MerchantID: merchantID,
 				Headers:    ctx.Header(),
@@ -88,7 +89,7 @@ func payNotifyHandler(app *payapp.PayApplication) khttp.HandlerFunc {
 			return err
 		}
 		// Durable processing done: answer in the channel's own dialect.
-		ack := out.(*payapp.NotifyOutcome).AckBody
+		ack := out.(*payservice.ChannelNotificationResult).AckBody
 		ctx.Response().Header().Set("Content-Type", "application/json")
 		ctx.Response().WriteHeader(stdhttp.StatusOK)
 		_, _ = ctx.Response().Write([]byte(ack))
