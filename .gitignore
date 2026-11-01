@@ -44,5 +44,6 @@ go-wind-admin/*
 .zcodeignore
 .workbuddy/
 
-# Local build output of `go build` inside cmd/glex (make build targets ./bin)
+# Local build output (`go build` at the repo root, or inside cmd/glex)
+/glex
 /cmd/glex/glex
