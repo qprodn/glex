@@ -19,6 +19,7 @@ func TestAuthnHTTPRoutesMatchConfirmedContract(t *testing.T) {
 		path string
 	}
 	want := map[protoreflect.FullName]route{
+		"authn.v1.AuthService.IssueLoginChallenge":            {verb: "POST", path: "/auth/login-challenge"},
 		"authn.v1.AuthService.Login":                          {verb: "POST", path: "/auth/login"},
 		"authn.v1.AuthService.Logout":                         {verb: "POST", path: "/auth/logout"},
 		"authn.v1.OnlineSessionService.ListOnlineSessions":    {verb: "GET", path: "/monitor/online/list"},

@@ -18,11 +18,16 @@ var _ = new(context.Context)
 
 const _ = http.SupportPackageIsVersion3
 
+const OperationAuthServiceIssueLoginChallenge = "/authn.v1.AuthService/IssueLoginChallenge"
 const OperationAuthServiceLogin = "/authn.v1.AuthService/Login"
 const OperationAuthServiceLogout = "/authn.v1.AuthService/Logout"
 
 type AuthServiceHTTPServer interface {
-	// Login Login creates one Login Session from a username and password.
+	// IssueLoginChallenge IssueLoginChallenge mints one Login Challenge. The call is anonymous:
+	// possession of the id does not authenticate anything.
+	IssueLoginChallenge(context.Context, *emptypb.Empty) (*IssueLoginChallengeReply, error)
+	// Login Login creates one Login Session from a username and password after the
+	// Login Challenge is spent.
 	Login(context.Context, *LoginRequest) (*LoginReply, error)
 	// Logout Logout idempotently revokes the presented valid Login Session. Missing or
 	// confirmed-invalid credentials also succeed under OPTIONAL authentication.
@@ -31,8 +36,28 @@ type AuthServiceHTTPServer interface {
 
 func RegisterAuthServiceHTTPServer(s *http.Server, srv AuthServiceHTTPServer) {
 	r := s.Route("/")
+	r.Handle("POST", "/auth/login-challenge", _AuthService_IssueLoginChallenge0_HTTP_Handler(srv))
 	r.Handle("POST", "/auth/login", _AuthService_Login0_HTTP_Handler(srv))
 	r.Handle("POST", "/auth/logout", _AuthService_Logout0_HTTP_Handler(srv))
+}
+
+func _AuthService_IssueLoginChallenge0_HTTP_Handler(srv AuthServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in emptypb.Empty
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAuthServiceIssueLoginChallenge)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.IssueLoginChallenge(ctx, req.(*emptypb.Empty))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*IssueLoginChallengeReply)
+		return ctx.Result(200, reply)
+	}
 }
 
 func _AuthService_Login0_HTTP_Handler(srv AuthServiceHTTPServer) func(ctx http.Context) error {
@@ -74,7 +99,11 @@ func _AuthService_Logout0_HTTP_Handler(srv AuthServiceHTTPServer) func(ctx http.
 }
 
 type AuthServiceHTTPClient interface {
-	// Login Login creates one Login Session from a username and password.
+	// IssueLoginChallenge IssueLoginChallenge mints one Login Challenge. The call is anonymous:
+	// possession of the id does not authenticate anything.
+	IssueLoginChallenge(ctx context.Context, req *emptypb.Empty, opts ...http.CallOption) (rsp *IssueLoginChallengeReply, err error)
+	// Login Login creates one Login Session from a username and password after the
+	// Login Challenge is spent.
 	Login(ctx context.Context, req *LoginRequest, opts ...http.CallOption) (rsp *LoginReply, err error)
 	// Logout Logout idempotently revokes the presented valid Login Session. Missing or
 	// confirmed-invalid credentials also succeed under OPTIONAL authentication.
@@ -89,7 +118,27 @@ func NewAuthServiceHTTPClient(client *http.Client) AuthServiceHTTPClient {
 	return &AuthServiceHTTPClientImpl{client}
 }
 
-// Login Login creates one Login Session from a username and password.
+// IssueLoginChallenge IssueLoginChallenge mints one Login Challenge. The call is anonymous:
+// possession of the id does not authenticate anything.
+func (c *AuthServiceHTTPClientImpl) IssueLoginChallenge(ctx context.Context, in *emptypb.Empty, opts ...http.CallOption) (*IssueLoginChallengeReply, error) {
+	var out IssueLoginChallengeReply
+	pattern := "/auth/login-challenge"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationAuthServiceIssueLoginChallenge),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// Login Login creates one Login Session from a username and password after the
+// Login Challenge is spent.
 func (c *AuthServiceHTTPClientImpl) Login(ctx context.Context, in *LoginRequest, opts ...http.CallOption) (*LoginReply, error) {
 	var out LoginReply
 	pattern := "/auth/login"

@@ -22,12 +22,15 @@ import (
 )
 
 // LoginRequest contains credentials and authoritative request metadata for
-// the login operation. Password exists only while the operation verifies it.
+// the login operation. Password and the challenge answer exist only while the
+// operation verifies them.
 type LoginRequest struct {
-	UserName  string
-	Password  string
-	SourceIP  string
-	UserAgent string
+	UserName        string
+	Password        string
+	ChallengeID     string
+	ChallengeAnswer string
+	SourceIP        string
+	UserAgent       string
 }
 
 // LoginApplication implements the authn-owned proto AuthService: the
@@ -72,10 +75,12 @@ func NewLoginApplication(login authnservice.Login, authorizer access.Authorizati
 func (s *LoginApplication) Login(ctx context.Context, req *authnv1.LoginRequest) (*authnv1.LoginReply, error) {
 	sourceIP, userAgent := requestMetadata(ctx)
 	result, err := s.authenticate(ctx, &LoginRequest{
-		UserName:  req.GetUsername(),
-		Password:  req.GetPassword(),
-		SourceIP:  sourceIP,
-		UserAgent: userAgent,
+		UserName:        req.GetUsername(),
+		Password:        req.GetPassword(),
+		ChallengeID:     req.GetChallengeId(),
+		ChallengeAnswer: req.GetChallengeAnswer(),
+		SourceIP:        sourceIP,
+		UserAgent:       userAgent,
 	})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "authn.login", err)
@@ -84,6 +89,19 @@ func (s *LoginApplication) Login(ctx context.Context, req *authnv1.LoginRequest)
 	return &authnv1.LoginReply{
 		AccessToken: result.AccessToken,
 		ExpireIn:    int64(result.ExpiresIn / time.Second),
+	}, nil
+}
+
+// IssueLoginChallenge mints one Login Challenge for the anonymous login page.
+func (s *LoginApplication) IssueLoginChallenge(ctx context.Context, _ *emptypb.Empty) (*authnv1.IssueLoginChallengeReply, error) {
+	issued, err := s.login.IssueChallenge(ctx)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "authn.issue_login_challenge", err)
+		return nil, err
+	}
+	return &authnv1.IssueLoginChallengeReply{
+		ChallengeId: issued.ID,
+		ImagePng:    issued.Image,
 	}, nil
 }
 
@@ -124,12 +142,21 @@ func (s *LoginApplication) Logout(ctx context.Context, _ *emptypb.Empty) (*empty
 	return &emptypb.Empty{}, nil
 }
 
-// login verifies credentials without revealing whether the account exists,
-// enforces the two failure counters, validates account state only after the
-// password matches, and delegates token/snapshot creation to the login
-// service. Credential issuance is deliberately the last transaction step; a
-// commit failure after it is compensated by discarding the credential.
+// authenticate spends the Login Challenge before it verifies credentials.
+// A challenge failure returns immediately: no account lookup, no failure
+// counter, no Login Log. After the challenge is spent, login verifies
+// credentials without revealing whether the account exists, enforces the two
+// failure counters, validates account state only after the password matches,
+// and delegates token/snapshot creation to the login service. Credential
+// issuance is deliberately the last transaction step; a commit failure after
+// it is compensated by discarding the credential.
 func (s *LoginApplication) authenticate(ctx context.Context, req *LoginRequest) (*authnentity.LoginResult, error) {
+	if err := s.login.ConsumeChallenge(ctx, authnservice.ConsumeChallengeRequest{
+		ChallengeID: req.ChallengeID,
+		Answer:      req.ChallengeAnswer,
+	}); err != nil {
+		return nil, err
+	}
 	userName := strings.TrimSpace(req.UserName)
 	account, err := s.login.VerifyPassword(ctx, authnservice.VerifyPasswordRequest{
 		UserName: userName,

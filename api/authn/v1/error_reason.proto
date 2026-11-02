@@ -30,4 +30,8 @@ enum ErrorReason {
 
   // Authentication/session backend failure (HTTP 503).
   AUTH_BACKEND_UNAVAILABLE = 12;
+
+  // The Login Challenge was missing, wrong, expired, or already spent
+  // (HTTP 401). The Credential was not checked.
+  LOGIN_CHALLENGE_INVALID = 13;
 }

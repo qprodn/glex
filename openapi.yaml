@@ -10,7 +10,9 @@ paths:
         post:
             tags:
                 - AuthService
-            description: Login creates one Login Session from a username and password.
+            description: |-
+                Login creates one Login Session from a username and password after the
+                 Login Challenge is spent.
             operationId: AuthService_Login
             requestBody:
                 content:
@@ -25,6 +27,25 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/authn.v1.LoginReply'
+    /auth/login-challenge:
+        post:
+            tags:
+                - AuthService
+            description: |-
+                IssueLoginChallenge mints one Login Challenge. The call is anonymous:
+                 possession of the id does not authenticate anything.
+            operationId: AuthService_IssueLoginChallenge
+            requestBody:
+                content:
+                    application/json: {}
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/authn.v1.IssueLoginChallengeReply'
     /auth/logout:
         post:
             tags:
@@ -2813,6 +2834,17 @@ components:
                     type: string
                     description: Opaque token for the next page; empty when on the last page.
             description: OperLogSet is a page of oper logs.
+        authn.v1.IssueLoginChallengeReply:
+            type: object
+            properties:
+                challengeId:
+                    type: string
+                imagePng:
+                    type: string
+                    format: bytes
+            description: |-
+                IssueLoginChallengeReply is one freshly issued Login Challenge. image_png is
+                 the picture the caller must read; the answer stays on the server.
         authn.v1.LoginReply:
             type: object
             properties:
@@ -2834,7 +2866,16 @@ components:
                     type: string
                 password:
                     type: string
-            description: LoginRequest contains the credentials used to create one Login Session.
+                challengeId:
+                    type: string
+                challengeAnswer:
+                    type: string
+            description: |-
+                LoginRequest contains the credentials used to create one Login Session.
+                 challenge_id and challenge_answer are required by the login flow, but they
+                 are not field_behavior REQUIRED: a missing value is LOGIN_CHALLENGE_INVALID,
+                 the same reason as a wrong, expired, or already-spent Login Challenge, and
+                 the required-field middleware would turn an absence into a different error.
         authn.v1.OnlineSession:
             type: object
             properties:

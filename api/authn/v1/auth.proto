@@ -11,9 +11,22 @@ option java_multiple_files = true;
 option java_package = "api.authn.v1";
 
 // LoginRequest contains the credentials used to create one Login Session.
+// challenge_id and challenge_answer are required by the login flow, but they
+// are not field_behavior REQUIRED: a missing value is LOGIN_CHALLENGE_INVALID,
+// the same reason as a wrong, expired, or already-spent Login Challenge, and
+// the required-field middleware would turn an absence into a different error.
 message LoginRequest {
   string username = 1 [(google.api.field_behavior) = REQUIRED];
   string password = 2 [(google.api.field_behavior) = REQUIRED];
+  string challenge_id = 3;
+  string challenge_answer = 4;
+}
+
+// IssueLoginChallengeReply is one freshly issued Login Challenge. image_png is
+// the picture the caller must read; the answer stays on the server.
+message IssueLoginChallengeReply {
+  string challenge_id = 1;
+  bytes image_png = 2;
 }
 
 // LoginReply returns the bearer credential exactly once, at login. The token
@@ -37,7 +50,16 @@ message Principal {
 // AuthService owns login/logout for Login Sessions. The user↔role link it
 // once hosted moved to access.v1.RoleAssignmentService.
 service AuthService {
-  // Login creates one Login Session from a username and password.
+  // IssueLoginChallenge mints one Login Challenge. The call is anonymous:
+  // possession of the id does not authenticate anything.
+  rpc IssueLoginChallenge(google.protobuf.Empty) returns (IssueLoginChallengeReply) {
+    option (google.api.http) = {
+      post: "/auth/login-challenge"
+      body: "*"
+    };
+  }
+  // Login creates one Login Session from a username and password after the
+  // Login Challenge is spent.
   rpc Login(LoginRequest) returns (LoginReply) {
     option (google.api.http) = {
       post: "/auth/login"

@@ -14,6 +14,8 @@ import (
 	authndomain "glex/internal/domain/authn"
 	authnentity "glex/internal/domain/authn/entity"
 	authnservice "glex/internal/domain/authn/service"
+
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // fakeLoginLogWriter stands in for the audit crossdomain contract: it
@@ -34,13 +36,19 @@ func (w *fakeLoginLogWriter) RecordLoginLog(_ context.Context, request *auditmod
 }
 
 // fakeLoginService stands in for the login domain service: it records every
-// orchestration step in order (verify → clear → lock → snapshot → record →
-// issue, Redis last) and answers each call from preloaded fields, so tests can
-// assert the sequencing, the snapshot fill, and the commit-failure
+// orchestration step in order (challenge → verify → clear → lock → snapshot →
+// record → issue, Redis last) and answers each call from preloaded fields, so
+// tests can assert the sequencing, the snapshot fill, and the commit-failure
 // compensation without touching the domain rules themselves.
 type fakeLoginService struct {
 	account   *authnentity.LoginAccount
 	verifyErr error
+
+	consumeErr        error
+	consumedID        string
+	consumedAnswer    string
+	issuedChallenge   *authnentity.LoginChallenge
+	issueChallengeErr error
 
 	verifyName string
 	steps      []string
@@ -59,6 +67,24 @@ type fakeLoginService struct {
 	discarded      []string
 	logoutIDs      []string
 	logoutErr      error
+}
+
+func (s *fakeLoginService) IssueChallenge(context.Context) (*authnentity.LoginChallenge, error) {
+	s.steps = append(s.steps, "issue-challenge")
+	if s.issueChallengeErr != nil {
+		return nil, s.issueChallengeErr
+	}
+	if s.issuedChallenge == nil {
+		s.issuedChallenge = &authnentity.LoginChallenge{ID: "cid", Image: []byte{0x89, 0x50}}
+	}
+	return s.issuedChallenge, nil
+}
+
+func (s *fakeLoginService) ConsumeChallenge(_ context.Context, req authnservice.ConsumeChallengeRequest) error {
+	s.steps = append(s.steps, "challenge")
+	s.consumedID = req.ChallengeID
+	s.consumedAnswer = req.Answer
+	return s.consumeErr
 }
 
 func (s *fakeLoginService) VerifyPassword(_ context.Context, req authnservice.VerifyPasswordRequest) (*authnentity.LoginAccount, error) {
@@ -177,6 +203,19 @@ func newLoginAppWithAuthorizer(login *fakeLoginService, authorizer access.Author
 	return app
 }
 
+func TestIssueLoginChallengeReturnsThePicture(t *testing.T) {
+	login := &fakeLoginService{issuedChallenge: &authnentity.LoginChallenge{ID: "cid", Image: []byte{1, 2, 3}}}
+
+	reply, err := newLoginApp(login).IssueLoginChallenge(t.Context(), &emptypb.Empty{})
+	if err != nil {
+		t.Fatalf("IssueLoginChallenge: %v", err)
+	}
+	if reply.GetChallengeId() != "cid" || string(reply.GetImagePng()) != string([]byte{1, 2, 3}) {
+		t.Fatalf("reply = %q/%v", reply.GetChallengeId(), reply.GetImagePng())
+	}
+	assertSteps(t, &login.steps, "issue-challenge")
+}
+
 func TestLoginMapsTheIssuedCredentialOntoTheReply(t *testing.T) {
 	login := &fakeLoginService{result: &authnentity.LoginResult{
 		AccessToken: "secret",
@@ -204,7 +243,7 @@ func TestLoginPropagatesVerificationFailure(t *testing.T) {
 	}
 	// A failed verification never opens the transaction: nothing was cleared,
 	// recorded, or issued.
-	assertSteps(t, &login.steps, "verify")
+	assertSteps(t, &login.steps, "challenge", "verify")
 }
 
 func TestLoginClearFailureAbortsBeforeTheTransaction(t *testing.T) {
@@ -214,7 +253,7 @@ func TestLoginClearFailureAbortsBeforeTheTransaction(t *testing.T) {
 	if !errors.Is(err, authndomain.ErrAuthBackendUnavailable) {
 		t.Fatalf("Login error = %v, want the counter-clearing failure", err)
 	}
-	assertSteps(t, &login.steps, "verify", "clear")
+	assertSteps(t, &login.steps, "challenge", "verify", "clear")
 }
 
 func TestLoginSuccessRunsServiceStepsThenIssuesCredentialLast(t *testing.T) {
@@ -242,7 +281,7 @@ func TestLoginSuccessRunsServiceStepsThenIssuesCredentialLast(t *testing.T) {
 	}
 	// Orchestration order: lock → snapshot → record (PostgreSQL) → issue
 	// (Redis, deliberately last); nothing after it inside the closure.
-	assertSteps(t, &login.steps, "verify", "clear", "lock", "snapshot", "record", "issue")
+	assertSteps(t, &login.steps, "challenge", "verify", "clear", "lock", "snapshot", "record", "issue")
 	if login.issued == nil {
 		t.Fatal("no Login Session was registered")
 	}
@@ -271,7 +310,7 @@ func TestLoginRevalidationFailureFeedsTheCounter(t *testing.T) {
 	if login.failures != 1 {
 		t.Fatalf("failures = %d, want 1 (a stale hash counts as a failed attempt)", login.failures)
 	}
-	assertSteps(t, &login.steps, "verify", "clear", "lock", "fail")
+	assertSteps(t, &login.steps, "challenge", "verify", "clear", "lock", "fail")
 }
 
 func TestLoginIssueFailureRollsBackWithoutCompensation(t *testing.T) {
@@ -290,7 +329,7 @@ func TestLoginIssueFailureRollsBackWithoutCompensation(t *testing.T) {
 	if len(login.discarded) != 0 {
 		t.Fatalf("discarded = %v, want none on issue failure", login.discarded)
 	}
-	assertSteps(t, &login.steps, "verify", "clear", "lock", "snapshot", "record", "issue")
+	assertSteps(t, &login.steps, "challenge", "verify", "clear", "lock", "snapshot", "record", "issue")
 }
 
 func TestLoginCommitFailureDiscardsTheCredential(t *testing.T) {
@@ -308,7 +347,7 @@ func TestLoginCommitFailureDiscardsTheCredential(t *testing.T) {
 	if len(login.discarded) != 1 || login.discarded[0] != "leaked" {
 		t.Fatalf("discarded = %v, want [leaked]", login.discarded)
 	}
-	assertSteps(t, &login.steps, "verify", "clear", "lock", "snapshot", "record", "issue", "discard")
+	assertSteps(t, &login.steps, "challenge", "verify", "clear", "lock", "snapshot", "record", "issue", "discard")
 }
 
 func TestLoginResolutionFailureIsAuthBackendUnavailable(t *testing.T) {
@@ -325,7 +364,7 @@ func TestLoginResolutionFailureIsAuthBackendUnavailable(t *testing.T) {
 	}
 	// Resolution happens between revalidation and the last-login write; the
 	// credential is never issued.
-	assertSteps(t, &login.steps, "verify", "clear", "lock", "snapshot")
+	assertSteps(t, &login.steps, "challenge", "verify", "clear", "lock", "snapshot")
 }
 
 func TestLoginFillsSnapshotFromTheAccessContract(t *testing.T) {

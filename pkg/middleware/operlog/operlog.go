@@ -71,6 +71,7 @@ const recordTimeout = 3 * time.Second
 // persisted; matching is by JSON key, at any depth.
 var secretKeys = map[string]bool{
 	"password":         true,
+	"challenge_answer": true,
 	"old_password":     true,
 	"new_password":     true,
 	"confirm_password": true,

@@ -43,6 +43,9 @@ const (
 	ErrorReason_PERMISSION_DENIED ErrorReason = 11
 	// Authentication/session backend failure (HTTP 503).
 	ErrorReason_AUTH_BACKEND_UNAVAILABLE ErrorReason = 12
+	// The Login Challenge was missing, wrong, expired, or already spent
+	// (HTTP 401). The Credential was not checked.
+	ErrorReason_LOGIN_CHALLENGE_INVALID ErrorReason = 13
 )
 
 // Enum value maps for ErrorReason.
@@ -61,6 +64,7 @@ var (
 		10: "SESSION_REPLACED",
 		11: "PERMISSION_DENIED",
 		12: "AUTH_BACKEND_UNAVAILABLE",
+		13: "LOGIN_CHALLENGE_INVALID",
 	}
 	ErrorReason_value = map[string]int32{
 		"ERROR_REASON_UNSPECIFIED": 0,
@@ -76,6 +80,7 @@ var (
 		"SESSION_REPLACED":         10,
 		"PERMISSION_DENIED":        11,
 		"AUTH_BACKEND_UNAVAILABLE": 12,
+		"LOGIN_CHALLENGE_INVALID":  13,
 	}
 )
 
@@ -110,7 +115,7 @@ var File_authn_v1_error_reason_proto protoreflect.FileDescriptor
 
 const file_authn_v1_error_reason_proto_rawDesc = "" +
 	"\n" +
-	"\x1bauthn/v1/error_reason.proto\x12\bauthn.v1*\xbf\x02\n" +
+	"\x1bauthn/v1/error_reason.proto\x12\bauthn.v1*\xdc\x02\n" +
 	"\vErrorReason\x12\x1c\n" +
 	"\x18ERROR_REASON_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13INVALID_CREDENTIALS\x10\x01\x12\x14\n" +
@@ -125,7 +130,8 @@ const file_authn_v1_error_reason_proto_rawDesc = "" +
 	"\x10SESSION_REPLACED\x10\n" +
 	"\x12\x15\n" +
 	"\x11PERMISSION_DENIED\x10\v\x12\x1c\n" +
-	"\x18AUTH_BACKEND_UNAVAILABLE\x10\fB&\n" +
+	"\x18AUTH_BACKEND_UNAVAILABLE\x10\f\x12\x1b\n" +
+	"\x17LOGIN_CHALLENGE_INVALID\x10\rB&\n" +
 	"\fapi.authn.v1P\x01Z\x14glex/api/authn/v1;v1b\x06proto3"
 
 var (

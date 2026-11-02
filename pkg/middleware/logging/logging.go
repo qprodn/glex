@@ -87,7 +87,16 @@ func classify(err error) (slog.Level, string) {
 	return slog.LevelError, stack
 }
 
+// redacter is the seam Kratos logging.Server uses: a request that carries a
+// secret implements Redact so the transport log records the masked form.
+type redacter interface {
+	Redact() string
+}
+
 func extractArgs(req any) string {
+	if redacter, ok := req.(redacter); ok {
+		return redacter.Redact()
+	}
 	if stringer, ok := req.(fmt.Stringer); ok {
 		return stringer.String()
 	}

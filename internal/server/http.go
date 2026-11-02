@@ -50,6 +50,7 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 			operlog.Server(operLogRecorder{audit: auditDomain},
 				operlog.WithLogger(logger),
 				operlog.WithSkip(
+					authnv1.OperationAuthServiceIssueLoginChallenge,
 					authnv1.OperationAuthServiceLogin,
 					authnv1.OperationAuthServiceLogout,
 					// The notify route records itself in pay_notify_log

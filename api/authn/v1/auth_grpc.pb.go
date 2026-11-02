@@ -20,8 +20,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_Login_FullMethodName  = "/authn.v1.AuthService/Login"
-	AuthService_Logout_FullMethodName = "/authn.v1.AuthService/Logout"
+	AuthService_IssueLoginChallenge_FullMethodName = "/authn.v1.AuthService/IssueLoginChallenge"
+	AuthService_Login_FullMethodName               = "/authn.v1.AuthService/Login"
+	AuthService_Logout_FullMethodName              = "/authn.v1.AuthService/Logout"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -31,7 +32,11 @@ const (
 // AuthService owns login/logout for Login Sessions. The user↔role link it
 // once hosted moved to access.v1.RoleAssignmentService.
 type AuthServiceClient interface {
-	// Login creates one Login Session from a username and password.
+	// IssueLoginChallenge mints one Login Challenge. The call is anonymous:
+	// possession of the id does not authenticate anything.
+	IssueLoginChallenge(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*IssueLoginChallengeReply, error)
+	// Login creates one Login Session from a username and password after the
+	// Login Challenge is spent.
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginReply, error)
 	// Logout idempotently revokes the presented valid Login Session. Missing or
 	// confirmed-invalid credentials also succeed under OPTIONAL authentication.
@@ -44,6 +49,16 @@ type authServiceClient struct {
 
 func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
 	return &authServiceClient{cc}
+}
+
+func (c *authServiceClient) IssueLoginChallenge(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*IssueLoginChallengeReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(IssueLoginChallengeReply)
+	err := c.cc.Invoke(ctx, AuthService_IssueLoginChallenge_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *authServiceClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginReply, error) {
@@ -73,7 +88,11 @@ func (c *authServiceClient) Logout(ctx context.Context, in *emptypb.Empty, opts 
 // AuthService owns login/logout for Login Sessions. The user↔role link it
 // once hosted moved to access.v1.RoleAssignmentService.
 type AuthServiceServer interface {
-	// Login creates one Login Session from a username and password.
+	// IssueLoginChallenge mints one Login Challenge. The call is anonymous:
+	// possession of the id does not authenticate anything.
+	IssueLoginChallenge(context.Context, *emptypb.Empty) (*IssueLoginChallengeReply, error)
+	// Login creates one Login Session from a username and password after the
+	// Login Challenge is spent.
 	Login(context.Context, *LoginRequest) (*LoginReply, error)
 	// Logout idempotently revokes the presented valid Login Session. Missing or
 	// confirmed-invalid credentials also succeed under OPTIONAL authentication.
@@ -88,6 +107,9 @@ type AuthServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedAuthServiceServer struct{}
 
+func (UnimplementedAuthServiceServer) IssueLoginChallenge(context.Context, *emptypb.Empty) (*IssueLoginChallengeReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method IssueLoginChallenge not implemented")
+}
 func (UnimplementedAuthServiceServer) Login(context.Context, *LoginRequest) (*LoginReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method Login not implemented")
 }
@@ -113,6 +135,24 @@ func RegisterAuthServiceServer(s grpc.ServiceRegistrar, srv AuthServiceServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&AuthService_ServiceDesc, srv)
+}
+
+func _AuthService_IssueLoginChallenge_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).IssueLoginChallenge(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_IssueLoginChallenge_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).IssueLoginChallenge(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _AuthService_Login_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -158,6 +198,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "authn.v1.AuthService",
 	HandlerType: (*AuthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "IssueLoginChallenge",
+			Handler:    _AuthService_IssueLoginChallenge_Handler,
+		},
 		{
 			MethodName: "Login",
 			Handler:    _AuthService_Login_Handler,

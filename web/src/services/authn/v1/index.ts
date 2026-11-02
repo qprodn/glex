@@ -3,6 +3,10 @@
 // @ts-nocheck
 
 // LoginRequest contains the credentials used to create one Login Session.
+// challenge_id and challenge_answer are required by the login flow, but they
+// are not field_behavior REQUIRED: a missing value is LOGIN_CHALLENGE_INVALID,
+// the same reason as a wrong, expired, or already-spent Login Challenge, and
+// the required-field middleware would turn an absence into a different error.
 export type LoginRequest = {
   //
   // Behaviors: REQUIRED
@@ -10,6 +14,15 @@ export type LoginRequest = {
   //
   // Behaviors: REQUIRED
   password: string | undefined;
+  challengeId: string | undefined;
+  challengeAnswer: string | undefined;
+};
+
+// IssueLoginChallengeReply is one freshly issued Login Challenge. image_png is
+// the picture the caller must read; the answer stays on the server.
+export type IssueLoginChallengeReply = {
+  challengeId: string | undefined;
+  imagePng: string | undefined;
 };
 
 // LoginReply returns the bearer credential exactly once, at login. The token
@@ -33,7 +46,11 @@ export type Principal = {
 // AuthService owns login/logout for Login Sessions. The user↔role link it
 // once hosted moved to access.v1.RoleAssignmentService.
 export interface AuthService {
-  // Login creates one Login Session from a username and password.
+  // IssueLoginChallenge mints one Login Challenge. The call is anonymous:
+  // possession of the id does not authenticate anything.
+  IssueLoginChallenge(request: wellKnownEmpty): Promise<IssueLoginChallengeReply>;
+  // Login creates one Login Session from a username and password after the
+  // Login Challenge is spent.
   Login(request: LoginRequest): Promise<LoginReply>;
   // Logout idempotently revokes the presented valid Login Session. Missing or
   // confirmed-invalid credentials also succeed under OPTIONAL authentication.
@@ -52,6 +69,23 @@ export function createAuthServiceClient(
   handler: RequestHandler
 ): AuthService {
   return {
+    IssueLoginChallenge(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `auth/login-challenge`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "AuthService",
+        method: "IssueLoginChallenge",
+      }) as Promise<IssueLoginChallengeReply>;
+    },
     Login(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
       const path = `auth/login`; // eslint-disable-line quotes
       const body = JSON.stringify(request);
@@ -110,7 +144,10 @@ export type ErrorReason =
   // Authorization failure (HTTP 403).
   | "PERMISSION_DENIED"
   // Authentication/session backend failure (HTTP 503).
-  | "AUTH_BACKEND_UNAVAILABLE";
+  | "AUTH_BACKEND_UNAVAILABLE"
+  // The Login Challenge was missing, wrong, expired, or already spent
+  // (HTTP 401). The Credential was not checked.
+  | "LOGIN_CHALLENGE_INVALID";
 // OnlineSession is the safe management view of one Login Session. token_id is
 // the non-secret Session ID retained for RuoYi-compatible JSON naming.
 export type OnlineSession = {

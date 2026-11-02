@@ -24,12 +24,18 @@ const (
 )
 
 // LoginRequest contains the credentials used to create one Login Session.
+// challenge_id and challenge_answer are required by the login flow, but they
+// are not field_behavior REQUIRED: a missing value is LOGIN_CHALLENGE_INVALID,
+// the same reason as a wrong, expired, or already-spent Login Challenge, and
+// the required-field middleware would turn an absence into a different error.
 type LoginRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Username        string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	Password        string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	ChallengeId     string                 `protobuf:"bytes,3,opt,name=challenge_id,json=challengeId,proto3" json:"challenge_id,omitempty"`
+	ChallengeAnswer string                 `protobuf:"bytes,4,opt,name=challenge_answer,json=challengeAnswer,proto3" json:"challenge_answer,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *LoginRequest) Reset() {
@@ -76,6 +82,74 @@ func (x *LoginRequest) GetPassword() string {
 	return ""
 }
 
+func (x *LoginRequest) GetChallengeId() string {
+	if x != nil {
+		return x.ChallengeId
+	}
+	return ""
+}
+
+func (x *LoginRequest) GetChallengeAnswer() string {
+	if x != nil {
+		return x.ChallengeAnswer
+	}
+	return ""
+}
+
+// IssueLoginChallengeReply is one freshly issued Login Challenge. image_png is
+// the picture the caller must read; the answer stays on the server.
+type IssueLoginChallengeReply struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ChallengeId   string                 `protobuf:"bytes,1,opt,name=challenge_id,json=challengeId,proto3" json:"challenge_id,omitempty"`
+	ImagePng      []byte                 `protobuf:"bytes,2,opt,name=image_png,json=imagePng,proto3" json:"image_png,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *IssueLoginChallengeReply) Reset() {
+	*x = IssueLoginChallengeReply{}
+	mi := &file_authn_v1_auth_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IssueLoginChallengeReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IssueLoginChallengeReply) ProtoMessage() {}
+
+func (x *IssueLoginChallengeReply) ProtoReflect() protoreflect.Message {
+	mi := &file_authn_v1_auth_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IssueLoginChallengeReply.ProtoReflect.Descriptor instead.
+func (*IssueLoginChallengeReply) Descriptor() ([]byte, []int) {
+	return file_authn_v1_auth_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *IssueLoginChallengeReply) GetChallengeId() string {
+	if x != nil {
+		return x.ChallengeId
+	}
+	return ""
+}
+
+func (x *IssueLoginChallengeReply) GetImagePng() []byte {
+	if x != nil {
+		return x.ImagePng
+	}
+	return nil
+}
+
 // LoginReply returns the bearer credential exactly once, at login. The token
 // is never included in Principal or OnlineSession.
 type LoginReply struct {
@@ -89,7 +163,7 @@ type LoginReply struct {
 
 func (x *LoginReply) Reset() {
 	*x = LoginReply{}
-	mi := &file_authn_v1_auth_proto_msgTypes[1]
+	mi := &file_authn_v1_auth_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -101,7 +175,7 @@ func (x *LoginReply) String() string {
 func (*LoginReply) ProtoMessage() {}
 
 func (x *LoginReply) ProtoReflect() protoreflect.Message {
-	mi := &file_authn_v1_auth_proto_msgTypes[1]
+	mi := &file_authn_v1_auth_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -114,7 +188,7 @@ func (x *LoginReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginReply.ProtoReflect.Descriptor instead.
 func (*LoginReply) Descriptor() ([]byte, []int) {
-	return file_authn_v1_auth_proto_rawDescGZIP(), []int{1}
+	return file_authn_v1_auth_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *LoginReply) GetAccessToken() string {
@@ -146,7 +220,7 @@ type Principal struct {
 
 func (x *Principal) Reset() {
 	*x = Principal{}
-	mi := &file_authn_v1_auth_proto_msgTypes[2]
+	mi := &file_authn_v1_auth_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -158,7 +232,7 @@ func (x *Principal) String() string {
 func (*Principal) ProtoMessage() {}
 
 func (x *Principal) ProtoReflect() protoreflect.Message {
-	mi := &file_authn_v1_auth_proto_msgTypes[2]
+	mi := &file_authn_v1_auth_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -171,7 +245,7 @@ func (x *Principal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Principal.ProtoReflect.Descriptor instead.
 func (*Principal) Descriptor() ([]byte, []int) {
-	return file_authn_v1_auth_proto_rawDescGZIP(), []int{2}
+	return file_authn_v1_auth_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Principal) GetUserId() int64 {
@@ -213,10 +287,15 @@ var File_authn_v1_auth_proto protoreflect.FileDescriptor
 
 const file_authn_v1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x13authn/v1/auth.proto\x12\bauthn.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1bgoogle/protobuf/empty.proto\"P\n" +
+	"\x13authn/v1/auth.proto\x12\bauthn.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x9e\x01\n" +
 	"\fLoginRequest\x12\x1f\n" +
 	"\busername\x18\x01 \x01(\tB\x03\xe0A\x02R\busername\x12\x1f\n" +
-	"\bpassword\x18\x02 \x01(\tB\x03\xe0A\x02R\bpassword\"L\n" +
+	"\bpassword\x18\x02 \x01(\tB\x03\xe0A\x02R\bpassword\x12!\n" +
+	"\fchallenge_id\x18\x03 \x01(\tR\vchallengeId\x12)\n" +
+	"\x10challenge_answer\x18\x04 \x01(\tR\x0fchallengeAnswer\"Z\n" +
+	"\x18IssueLoginChallengeReply\x12!\n" +
+	"\fchallenge_id\x18\x01 \x01(\tR\vchallengeId\x12\x1b\n" +
+	"\timage_png\x18\x02 \x01(\fR\bimagePng\"L\n" +
 	"\n" +
 	"LoginReply\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12\x1b\n" +
@@ -227,8 +306,9 @@ const file_authn_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x03 \x01(\tR\tsessionId\x12\x1b\n" +
 	"\trole_keys\x18\x04 \x03(\tR\broleKeys\x12 \n" +
-	"\vpermissions\x18\x05 \x03(\tR\vpermissions2\xaf\x01\n" +
-	"\vAuthService\x12M\n" +
+	"\vpermissions\x18\x05 \x03(\tR\vpermissions2\xa4\x02\n" +
+	"\vAuthService\x12s\n" +
+	"\x13IssueLoginChallenge\x12\x16.google.protobuf.Empty\x1a\".authn.v1.IssueLoginChallengeReply\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/auth/login-challenge\x12M\n" +
 	"\x05Login\x12\x16.authn.v1.LoginRequest\x1a\x14.authn.v1.LoginReply\"\x16\x82\xd3\xe4\x93\x02\x10:\x01*\"\v/auth/login\x12Q\n" +
 	"\x06Logout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/auth/logoutB&\n" +
 	"\fapi.authn.v1P\x01Z\x14glex/api/authn/v1;v1b\x06proto3"
@@ -245,20 +325,23 @@ func file_authn_v1_auth_proto_rawDescGZIP() []byte {
 	return file_authn_v1_auth_proto_rawDescData
 }
 
-var file_authn_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_authn_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_authn_v1_auth_proto_goTypes = []any{
-	(*LoginRequest)(nil),  // 0: authn.v1.LoginRequest
-	(*LoginReply)(nil),    // 1: authn.v1.LoginReply
-	(*Principal)(nil),     // 2: authn.v1.Principal
-	(*emptypb.Empty)(nil), // 3: google.protobuf.Empty
+	(*LoginRequest)(nil),             // 0: authn.v1.LoginRequest
+	(*IssueLoginChallengeReply)(nil), // 1: authn.v1.IssueLoginChallengeReply
+	(*LoginReply)(nil),               // 2: authn.v1.LoginReply
+	(*Principal)(nil),                // 3: authn.v1.Principal
+	(*emptypb.Empty)(nil),            // 4: google.protobuf.Empty
 }
 var file_authn_v1_auth_proto_depIdxs = []int32{
-	0, // 0: authn.v1.AuthService.Login:input_type -> authn.v1.LoginRequest
-	3, // 1: authn.v1.AuthService.Logout:input_type -> google.protobuf.Empty
-	1, // 2: authn.v1.AuthService.Login:output_type -> authn.v1.LoginReply
-	3, // 3: authn.v1.AuthService.Logout:output_type -> google.protobuf.Empty
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
+	4, // 0: authn.v1.AuthService.IssueLoginChallenge:input_type -> google.protobuf.Empty
+	0, // 1: authn.v1.AuthService.Login:input_type -> authn.v1.LoginRequest
+	4, // 2: authn.v1.AuthService.Logout:input_type -> google.protobuf.Empty
+	1, // 3: authn.v1.AuthService.IssueLoginChallenge:output_type -> authn.v1.IssueLoginChallengeReply
+	2, // 4: authn.v1.AuthService.Login:output_type -> authn.v1.LoginReply
+	4, // 5: authn.v1.AuthService.Logout:output_type -> google.protobuf.Empty
+	3, // [3:6] is the sub-list for method output_type
+	0, // [0:3] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -275,7 +358,7 @@ func file_authn_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_authn_v1_auth_proto_rawDesc), len(file_authn_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

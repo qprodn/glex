@@ -141,6 +141,12 @@ is stored alongside the System User record; changing or resetting it goes
 through authn, orchestrated by the caller's flow.
 _Avoid_: Password (ambiguous on its own — say Credential or password policy).
 
+**Login Challenge** (登录挑战):
+Proof, belonging to one login attempt, that the caller could read a picture. It
+is spent before the Credential is checked. It is not a Credential and not a
+Login Session.
+_Avoid_: Captcha, 验证码, Token.
+
 **Login Session** (登录会话):
 One revocable sign-in by a System User on a client device. A System User may
 hold several Login Sessions at once, and each is represented by its own token.

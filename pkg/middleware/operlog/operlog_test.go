@@ -159,8 +159,8 @@ func TestSwallowsRecorderFailures(t *testing.T) {
 
 func TestScrubMasksSecretKeys(t *testing.T) {
 	o := newTestOptions()
-	got := o.scrub(`{"user_name":"alice","password":"hunter2","profile":{"old_password":"a,b\"c"},"remark":"keep","tags":["x","y"]}`)
-	want := `{"user_name":"alice","password":"***","profile":{"old_password":"***"},"remark":"keep","tags":["x","y"]}`
+	got := o.scrub(`{"user_name":"alice","password":"hunter2","challenge_answer":"AB23","profile":{"old_password":"a,b\"c"},"remark":"keep","tags":["x","y"]}`)
+	want := `{"user_name":"alice","password":"***","challenge_answer":"***","profile":{"old_password":"***"},"remark":"keep","tags":["x","y"]}`
 	if got != want {
 		t.Fatalf("scrub = %s, want %s", got, want)
 	}

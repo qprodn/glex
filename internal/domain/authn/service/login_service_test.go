@@ -85,8 +85,40 @@ func (r *fakeSessionRepo) Logout(_ context.Context, sessionID string) error {
 	return nil
 }
 
+// fakeChallengeRepo stores answers in memory and deletes them on consume,
+// matching the real store's one-shot behavior.
+type fakeChallengeRepo struct {
+	answers  map[string]string
+	issued   *entity.LoginChallenge
+	err      error
+	consumes int
+}
+
+func (r *fakeChallengeRepo) Issue(context.Context) (*entity.LoginChallenge, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+	if r.issued == nil {
+		r.issued = &entity.LoginChallenge{ID: "cid", Image: []byte{0x89, 0x50, 0x4e, 0x47}}
+	}
+	return r.issued, nil
+}
+
+func (r *fakeChallengeRepo) Consume(_ context.Context, challengeID string) (string, error) {
+	r.consumes++
+	if r.err != nil {
+		return "", r.err
+	}
+	answer, ok := r.answers[challengeID]
+	if !ok {
+		return "", authn.ErrLoginChallengeInvalid
+	}
+	delete(r.answers, challengeID)
+	return answer, nil
+}
+
 func newLoginServiceForTest(backend repository.AuthLoginBackend, counters repository.LoginCounterRepo) Login {
-	return NewLoginService(backend, counters, &fakeSessionRepo{}, testLogger())
+	return NewLoginService(backend, counters, &fakeSessionRepo{}, &fakeChallengeRepo{}, testLogger())
 }
 
 func accountWithPassword(userName, password string) *entity.LoginAccount {
@@ -214,7 +246,7 @@ func TestVerifyPasswordSuccessReturnsThePreTransactionAccount(t *testing.T) {
 func TestRecordFailureReportsTheRemainingLockWhenThresholdReached(t *testing.T) {
 	counters := &fakeCounterRepo{failRemaining: 10 * time.Minute}
 
-	err := NewLoginService(&fakeLoginBackend{}, counters, &fakeSessionRepo{}, testLogger()).RecordFailure(t.Context(), LoginAttemptRequest{UserName: "alice", SourceIP: "192.0.2.10"})
+	err := NewLoginService(&fakeLoginBackend{}, counters, &fakeSessionRepo{}, &fakeChallengeRepo{}, testLogger()).RecordFailure(t.Context(), LoginAttemptRequest{UserName: "alice", SourceIP: "192.0.2.10"})
 	if kratoserrors.Reason(err) != "LOGIN_LOCKED" {
 		t.Fatalf("reason = %q, want LOGIN_LOCKED", kratoserrors.Reason(err))
 	}
@@ -226,7 +258,7 @@ func TestRecordFailureReportsTheRemainingLockWhenThresholdReached(t *testing.T) 
 func TestRecordFailureReturnsGenericReasonBelowThreshold(t *testing.T) {
 	counters := &fakeCounterRepo{}
 
-	err := NewLoginService(&fakeLoginBackend{}, counters, &fakeSessionRepo{}, testLogger()).RecordFailure(t.Context(), LoginAttemptRequest{UserName: "alice", SourceIP: "192.0.2.10"})
+	err := NewLoginService(&fakeLoginBackend{}, counters, &fakeSessionRepo{}, &fakeChallengeRepo{}, testLogger()).RecordFailure(t.Context(), LoginAttemptRequest{UserName: "alice", SourceIP: "192.0.2.10"})
 	if !errors.Is(err, authn.ErrInvalidCredentials) {
 		t.Fatalf("RecordFailure error = %v, want ErrInvalidCredentials", err)
 	}
@@ -238,7 +270,7 @@ func TestRecordFailureReturnsGenericReasonBelowThreshold(t *testing.T) {
 func TestClearFailuresClearsTheUserNameCounter(t *testing.T) {
 	counters := &fakeCounterRepo{}
 
-	if err := NewLoginService(&fakeLoginBackend{}, counters, &fakeSessionRepo{}, testLogger()).ClearFailures(t.Context(), "alice"); err != nil {
+	if err := NewLoginService(&fakeLoginBackend{}, counters, &fakeSessionRepo{}, &fakeChallengeRepo{}, testLogger()).ClearFailures(t.Context(), "alice"); err != nil {
 		t.Fatalf("ClearFailures: %v", err)
 	}
 	if len(counters.cleared) != 1 || counters.cleared[0] != "alice" {
@@ -249,10 +281,65 @@ func TestClearFailuresClearsTheUserNameCounter(t *testing.T) {
 func TestLogoutRevokesThroughTheSessionStore(t *testing.T) {
 	sessions := &fakeSessionRepo{}
 
-	if err := NewLoginService(&fakeLoginBackend{}, &fakeCounterRepo{}, sessions, testLogger()).Logout(t.Context(), "current-session"); err != nil {
+	if err := NewLoginService(&fakeLoginBackend{}, &fakeCounterRepo{}, sessions, &fakeChallengeRepo{}, testLogger()).Logout(t.Context(), "current-session"); err != nil {
 		t.Fatalf("Logout: %v", err)
 	}
 	if len(sessions.logoutIDs) != 1 || sessions.logoutIDs[0] != "current-session" {
 		t.Fatalf("Logout IDs = %v, want [current-session]", sessions.logoutIDs)
+	}
+}
+
+func TestConsumeChallengeMissesDoNotTouchTheFailureCounters(t *testing.T) {
+	counters := &fakeCounterRepo{}
+	challenges := &fakeChallengeRepo{answers: map[string]string{"cid": "AB23", "other": "K7NP"}}
+	svc := NewLoginService(&fakeLoginBackend{}, counters, &fakeSessionRepo{}, challenges, testLogger())
+
+	if err := svc.ConsumeChallenge(t.Context(), ConsumeChallengeRequest{}); !errors.Is(err, authn.ErrLoginChallengeInvalid) {
+		t.Fatalf("empty id = %v, want ErrLoginChallengeInvalid", err)
+	}
+	if challenges.consumes != 0 {
+		t.Fatalf("consumes = %d, want 0 for an empty id", challenges.consumes)
+	}
+	if err := svc.ConsumeChallenge(t.Context(), ConsumeChallengeRequest{ChallengeID: "missing", Answer: "AB23"}); !errors.Is(err, authn.ErrLoginChallengeInvalid) {
+		t.Fatalf("missing = %v, want ErrLoginChallengeInvalid", err)
+	}
+	if err := svc.ConsumeChallenge(t.Context(), ConsumeChallengeRequest{ChallengeID: "cid", Answer: "ZZZZ"}); !errors.Is(err, authn.ErrLoginChallengeInvalid) {
+		t.Fatalf("wrong answer = %v, want ErrLoginChallengeInvalid", err)
+	}
+	if _, ok := challenges.answers["cid"]; ok {
+		t.Fatal("wrong answer left the challenge spendable")
+	}
+	if err := svc.ConsumeChallenge(t.Context(), ConsumeChallengeRequest{ChallengeID: "cid", Answer: "AB23"}); !errors.Is(err, authn.ErrLoginChallengeInvalid) {
+		t.Fatalf("reuse = %v, want ErrLoginChallengeInvalid", err)
+	}
+	if _, err := challenges.Consume(t.Context(), "other"); err != nil {
+		t.Fatalf("sibling challenge was spent: %v", err)
+	}
+	if counters.failures != 0 {
+		t.Fatalf("failures = %d, want 0", counters.failures)
+	}
+}
+
+func TestConsumeChallengeAcceptsADifferentCase(t *testing.T) {
+	counters := &fakeCounterRepo{}
+	challenges := &fakeChallengeRepo{answers: map[string]string{"cid": "AB23"}}
+	svc := NewLoginService(&fakeLoginBackend{}, counters, &fakeSessionRepo{}, challenges, testLogger())
+
+	if err := svc.ConsumeChallenge(t.Context(), ConsumeChallengeRequest{ChallengeID: " cid ", Answer: " ab23 "}); err != nil {
+		t.Fatalf("ConsumeChallenge: %v", err)
+	}
+	if counters.failures != 0 {
+		t.Fatalf("failures = %d, want 0", counters.failures)
+	}
+}
+
+func TestIssueChallengeReturnsTheStorePicture(t *testing.T) {
+	challenges := &fakeChallengeRepo{issued: &entity.LoginChallenge{ID: "cid", Image: []byte{1, 2, 3}}}
+	got, err := NewLoginService(&fakeLoginBackend{}, &fakeCounterRepo{}, &fakeSessionRepo{}, challenges, testLogger()).IssueChallenge(t.Context())
+	if err != nil {
+		t.Fatalf("IssueChallenge: %v", err)
+	}
+	if got.ID != "cid" || len(got.Image) != 3 {
+		t.Fatalf("challenge = %#v", got)
 	}
 }

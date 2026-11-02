@@ -8,8 +8,10 @@ package service
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"log/slog"
+	"strings"
 	"time"
 
 	"glex/internal/domain/authn"
@@ -17,6 +19,13 @@ import (
 	"glex/internal/domain/authn/repository"
 	"glex/pkg/logx"
 )
+
+// ConsumeChallengeRequest spends one Login Challenge: its id and the answer
+// the caller read from the picture.
+type ConsumeChallengeRequest struct {
+	ChallengeID string
+	Answer      string
+}
 
 // VerifyPasswordRequest is one credential verification attempt: the login
 // identifier, the plaintext password, and the source IP the attempt arrived
@@ -64,13 +73,19 @@ type DiscardCredentialRequest struct {
 }
 
 // Login is the authn domain service behind the Login/Logout endpoints: the
-// only path to the login backend, failure counters, and Login Session store
-// (ADR 0005). The Application service owns the transaction boundary, the
-// Authorization Snapshot fill through the access crossdomain contract, and
-// the commit-failure compensation; these methods are the steps it orchestrates.
-// Every error a method returns to its caller first logs its Warn breadcrumb
-// (ADR 0011).
+// only path to the login backend, failure counters, Login Challenges, and
+// Login Session store (ADR 0005). The Application service owns the transaction
+// boundary, the Authorization Snapshot fill through the access crossdomain
+// contract, and the commit-failure compensation; these methods are the steps
+// it orchestrates. Every error a method returns to its caller first logs its
+// Warn breadcrumb (ADR 0011).
 type Login interface {
+	// IssueChallenge mints one Login Challenge. The answer stays in the store.
+	IssueChallenge(ctx context.Context) (*entity.LoginChallenge, error)
+	// ConsumeChallenge spends the challenge named by req. A missing, wrong,
+	// expired, or already-spent challenge is ErrLoginChallengeInvalid and does
+	// not touch the failure counters.
+	ConsumeChallenge(ctx context.Context, req ConsumeChallengeRequest) error
 	// VerifyPassword gates the attempt on the failure counters, looks up the
 	// account without revealing whether it exists, verifies the password, and
 	// validates account state — returning the pre-transaction account view on
@@ -98,22 +113,69 @@ type Login interface {
 }
 
 type loginImpl struct {
-	backend  repository.AuthLoginBackend
-	counters repository.LoginCounterRepo
-	sessions repository.LoginSessionRepo
-	logger   *slog.Logger
+	backend    repository.AuthLoginBackend
+	counters   repository.LoginCounterRepo
+	sessions   repository.LoginSessionRepo
+	challenges repository.LoginChallengeRepo
+	logger     *slog.Logger
 }
 
 // NewLoginService creates the login domain service. backend reads and writes
 // the transactional login account; counters own the Redis failure counters;
-// sessions back Logout.
-func NewLoginService(backend repository.AuthLoginBackend, counters repository.LoginCounterRepo, sessions repository.LoginSessionRepo, logger *slog.Logger) Login {
+// sessions back Logout; challenges store Login Challenges.
+func NewLoginService(backend repository.AuthLoginBackend, counters repository.LoginCounterRepo, sessions repository.LoginSessionRepo, challenges repository.LoginChallengeRepo, logger *slog.Logger) Login {
 	return &loginImpl{
-		backend:  backend,
-		counters: counters,
-		sessions: sessions,
-		logger:   logger.With(slog.String("component", "domain.authn.svc")),
+		backend:    backend,
+		counters:   counters,
+		sessions:   sessions,
+		challenges: challenges,
+		logger:     logger.With(slog.String("component", "domain.authn.svc")),
 	}
+}
+
+func (s *loginImpl) IssueChallenge(ctx context.Context) (*entity.LoginChallenge, error) {
+	issued, err := s.challenges.Issue(ctx)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "authn.svc.issue_challenge", err)
+		return nil, err
+	}
+	return issued, nil
+}
+
+func (s *loginImpl) ConsumeChallenge(ctx context.Context, req ConsumeChallengeRequest) error {
+	id := strings.TrimSpace(req.ChallengeID)
+	if id == "" {
+		err := authn.ErrLoginChallengeInvalid
+		logx.Propagate(ctx, s.logger, "authn.svc.consume_challenge", err)
+		return err
+	}
+	stored, err := s.challenges.Consume(ctx, id)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "authn.svc.consume_challenge", err)
+		return err
+	}
+	if !challengeAnswersMatch(stored, req.Answer) {
+		err := authn.ErrLoginChallengeInvalid
+		logx.Propagate(ctx, s.logger, "authn.svc.consume_challenge", err)
+		return err
+	}
+	return nil
+}
+
+// challengeAnswersMatch compares a stored answer with what the caller typed.
+// Comparison is case-insensitive. A length mismatch is simply a miss; the
+// challenge is already spent by the time this runs.
+func challengeAnswersMatch(stored, presented string) bool {
+	want := normalizeChallengeAnswer(stored)
+	got := normalizeChallengeAnswer(presented)
+	if len(want) != len(got) {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(want), []byte(got)) == 1
+}
+
+func normalizeChallengeAnswer(answer string) string {
+	return strings.ToUpper(strings.TrimSpace(answer))
 }
 
 func (s *loginImpl) VerifyPassword(ctx context.Context, req VerifyPasswordRequest) (*entity.LoginAccount, error) {

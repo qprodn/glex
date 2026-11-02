@@ -26,6 +26,9 @@ var (
 	// one active account answering the login identifier. Login maps it onto
 	// the generic invalid-credentials path.
 	ErrLoginAccountAmbiguous = errors.Conflict("LOGIN_ACCOUNT_AMBIGUOUS", "login account is ambiguous")
+	// ErrLoginChallengeInvalid: the Login Challenge was missing, wrong,
+	// expired, or already spent. The Credential was not checked.
+	ErrLoginChallengeInvalid = errors.Unauthorized("LOGIN_CHALLENGE_INVALID", "login challenge is invalid")
 )
 
 // NewLoginLocked returns the stable LOGIN_LOCKED reason together with a

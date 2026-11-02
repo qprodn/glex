@@ -7,7 +7,7 @@ import { LoginForm, ProFormText } from "@ant-design/pro-components";
 import { FormattedMessage, Helmet, SelectLang, useIntl } from "@umijs/max";
 import { App } from "antd";
 import { createStyles } from "antd-style";
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Settings from "../../../../config/defaultSettings";
 
 const useStyles = createStyles(({ token }) => {
@@ -32,6 +32,26 @@ const useStyles = createStyles(({ token }) => {
         "linear-gradient(135deg, #1677ff 0%, #36cfc9 100%)",
       backgroundSize: "100% 100%",
     },
+    challenge: {
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 8,
+    },
+    challengeInput: {
+      flex: 1,
+      minWidth: 0,
+    },
+    challengeImage: {
+      marginTop: 0,
+      padding: 0,
+      border: `1px solid ${token.colorBorder}`,
+      borderRadius: token.borderRadius,
+      background: token.colorBgContainer,
+      cursor: "pointer",
+      height: 40,
+      minWidth: 96,
+      overflow: "hidden",
+    },
   };
 });
 
@@ -49,11 +69,41 @@ const Login: React.FC = () => {
   const { styles } = useStyles();
   const { message } = App.useApp();
   const intl = useIntl();
+  const [challengeId, setChallengeId] = useState<string>();
+  const [imageSrc, setImageSrc] = useState<string>();
+  const challengeSeq = useRef(0);
+
+  const loadChallenge = async () => {
+    const seq = ++challengeSeq.current;
+    try {
+      const reply = await services.auth.IssueLoginChallenge({});
+      if (seq !== challengeSeq.current) {
+        return;
+      }
+      setChallengeId(reply.challengeId);
+      setImageSrc(reply.imagePng ? `data:image/png;base64,${reply.imagePng}` : undefined);
+    } catch {
+      if (seq !== challengeSeq.current) {
+        return;
+      }
+      // The global handler reports the failure. A click on the picture retries.
+      setChallengeId(undefined);
+      setImageSrc(undefined);
+    }
+  };
+
+  useEffect(() => {
+    void loadChallenge();
+  }, []);
 
   const handleSubmit = async (req: LoginRequest) => {
     try {
-      const reply = await services.auth.Login(req);
+      const reply = await services.auth.Login({
+        ...req,
+        challengeId,
+      });
       if (!reply.accessToken) {
+        await loadChallenge();
         return;
       }
       // The bearer credential is handed out exactly once (ADR 0018); keep it
@@ -69,7 +119,9 @@ const Login: React.FC = () => {
       window.location.href = safe;
     } catch {
       // Reporting the failure is handled globally in requestErrorConfig, which
-      // maps `reason` to the wording for this locale.
+      // maps `reason` to the wording for this locale. The submitted challenge
+      // is already spent, so the next attempt needs a new picture.
+      await loadChallenge();
     }
   };
 
@@ -144,6 +196,54 @@ const Login: React.FC = () => {
               },
             ]}
           />
+          <div className={styles.challenge}>
+            <div className={styles.challengeInput}>
+              <ProFormText
+                name="challengeAnswer"
+                fieldProps={{
+                  size: "large",
+                  autoComplete: "off",
+                }}
+                placeholder={intl.formatMessage({
+                  id: "pages.login.challenge.placeholder",
+                  defaultMessage: "验证码",
+                })}
+                rules={[
+                  {
+                    required: true,
+                    message: (
+                      <FormattedMessage
+                        id="pages.login.challenge.required"
+                        defaultMessage="请输入验证码！"
+                      />
+                    ),
+                  },
+                ]}
+              />
+            </div>
+            <button
+              type="button"
+              className={styles.challengeImage}
+              onClick={() => {
+                void loadChallenge();
+              }}
+              title={intl.formatMessage({
+                id: "pages.login.challenge.refresh",
+                defaultMessage: "看不清？点击换一张",
+              })}
+            >
+              {imageSrc ? (
+                <img
+                  alt={intl.formatMessage({
+                    id: "pages.login.challenge.placeholder",
+                    defaultMessage: "验证码",
+                  })}
+                  src={imageSrc}
+                  style={{ height: 40, display: "block" }}
+                />
+              ) : null}
+            </button>
+          </div>
         </LoginForm>
       </div>
       <Footer />

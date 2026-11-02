@@ -7,6 +7,7 @@ import { LOGIN_PATH, redirectToLogin } from "@/utils/token";
 // to the server message. Kept aligned with api/*/v1/error_reason.proto.
 const reasonMessageId: Record<string, string> = {
   INVALID_CREDENTIALS: "pages.login.invalidCredentials",
+  LOGIN_CHALLENGE_INVALID: "pages.login.challenge.invalid",
   ACCOUNT_DISABLED: "pages.login.accountDisabled",
   LOGIN_LOCKED: "pages.login.loginLocked",
   PERMISSION_DENIED: "pages.error.permissionDenied",

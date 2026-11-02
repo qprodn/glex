@@ -36,6 +36,24 @@ func TestClassifyLevels(t *testing.T) {
 	}
 }
 
+type redactedRequest struct{}
+
+func (redactedRequest) String() string { return `password:"secret"` }
+func (redactedRequest) Redact() string { return `password:"***"` }
+
+type plainRequest struct{}
+
+func (plainRequest) String() string { return "username:\"ada\"" }
+
+func TestExtractArgsPrefersRedact(t *testing.T) {
+	if got := extractArgs(redactedRequest{}); got != `password:"***"` {
+		t.Fatalf("extractArgs(redacted) = %q", got)
+	}
+	if got := extractArgs(plainRequest{}); got != `username:"ada"` {
+		t.Fatalf("extractArgs(plain) = %q", got)
+	}
+}
+
 func TestClassifyStackOnlyAtError(t *testing.T) {
 	if _, stack := classify(kratoserrors.NotFound("USER_NOT_FOUND", "user not found")); stack != "" {
 		t.Fatalf("expected no stack on a Warn business rejection, got %q", stack)

@@ -15,7 +15,7 @@ func TestServiceReceivesComponentLogger(t *testing.T) {
 	var output bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&output, nil))
 
-	NewLoginService(nil, nil, nil, logger).(*loginImpl).logger.Info("configured")
+	NewLoginService(nil, nil, nil, nil, logger).(*loginImpl).logger.Info("configured")
 	NewCredentialService(nil, logger).(*credentialImpl).logger.Info("configured")
 	NewOnlineSessionService(nil, logger).(*onlineSessionImpl).logger.Info("configured")
 

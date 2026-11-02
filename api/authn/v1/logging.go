@@ -11,5 +11,8 @@ func (x *LoginRequest) Redact() string {
 	if redacted.Password != "" {
 		redacted.Password = "***"
 	}
+	if redacted.ChallengeAnswer != "" {
+		redacted.ChallengeAnswer = "***"
+	}
 	return redacted.String()
 }

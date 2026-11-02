@@ -21,6 +21,7 @@ func TestAuthnErrorReasonsAreStableAndComplete(t *testing.T) {
 		"SESSION_REPLACED",
 		"PERMISSION_DENIED",
 		"AUTH_BACKEND_UNAVAILABLE",
+		"LOGIN_CHALLENGE_INVALID",
 	}
 
 	descriptor := authnv1.ErrorReason_ERROR_REASON_UNSPECIFIED.Descriptor()

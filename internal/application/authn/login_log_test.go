@@ -18,6 +18,31 @@ import (
 // revocation (logout, 强退, self-revoke) records its session-end row. A
 // recording failure never changes the operation's outcome.
 
+func TestLoginChallengeFailureWritesNoLoginLog(t *testing.T) {
+	login := &fakeLoginService{consumeErr: authndomain.ErrLoginChallengeInvalid}
+	app, writer := newLoginAppWithWriter(login, newFakeTransaction())
+
+	_, err := app.Login(t.Context(), &authnv1.LoginRequest{
+		Username:        "alice",
+		Password:        "secret",
+		ChallengeId:     "cid",
+		ChallengeAnswer: "nope",
+	})
+	if !errors.Is(err, authndomain.ErrLoginChallengeInvalid) {
+		t.Fatalf("Login error = %v, want ErrLoginChallengeInvalid", err)
+	}
+	if len(writer.logs) != 0 {
+		t.Fatalf("logs = %+v, want none for a challenge failure", writer.logs)
+	}
+	if login.failures != 0 {
+		t.Fatalf("failures = %d, want 0", login.failures)
+	}
+	if login.consumedID != "cid" || login.consumedAnswer != "nope" {
+		t.Fatalf("consumed = %q/%q, want cid/nope", login.consumedID, login.consumedAnswer)
+	}
+	assertSteps(t, &login.steps, "challenge")
+}
+
 func TestLoginRecordsSuccessAndFailureRows(t *testing.T) {
 	login := &fakeLoginService{result: &authnentity.LoginResult{AccessToken: "secret"}}
 	app, writer := newLoginAppWithWriter(login, newFakeTransaction())
