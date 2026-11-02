@@ -3,7 +3,7 @@ import type { LoginRequest } from "@/services/authn/v1";
 import { services } from "@/services";
 import { setToken } from "@/utils/token";
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import { LoginForm, ProFormText } from "@ant-design/pro-components";
+import { LoginForm, ProFormText, type ProFormInstance } from "@ant-design/pro-components";
 import { FormattedMessage, Helmet, SelectLang, useIntl } from "@umijs/max";
 import { App } from "antd";
 import { createStyles } from "antd-style";
@@ -72,6 +72,7 @@ const Login: React.FC = () => {
   const [challengeId, setChallengeId] = useState<string>();
   const [imageSrc, setImageSrc] = useState<string>();
   const challengeSeq = useRef(0);
+  const formRef = useRef<ProFormInstance>(undefined);
 
   const loadChallenge = async () => {
     const seq = ++challengeSeq.current;
@@ -82,6 +83,8 @@ const Login: React.FC = () => {
       }
       setChallengeId(reply.challengeId);
       setImageSrc(reply.imagePng ? `data:image/png;base64,${reply.imagePng}` : undefined);
+      // The previous answer cannot match the picture that just arrived.
+      formRef.current?.setFieldValue("challengeAnswer", "");
     } catch {
       if (seq !== challengeSeq.current) {
         return;
@@ -89,6 +92,7 @@ const Login: React.FC = () => {
       // The global handler reports the failure. A click on the picture retries.
       setChallengeId(undefined);
       setImageSrc(undefined);
+      formRef.current?.setFieldValue("challengeAnswer", "");
     }
   };
 
@@ -97,6 +101,12 @@ const Login: React.FC = () => {
   }, []);
 
   const handleSubmit = async (req: LoginRequest) => {
+    if (!challengeId) {
+      // The picture never arrived. Ask again instead of sending a login the
+      // server can only reject as an invalid challenge.
+      await loadChallenge();
+      return;
+    }
     try {
       const reply = await services.auth.Login({
         ...req,
@@ -144,6 +154,7 @@ const Login: React.FC = () => {
         }}
       >
         <LoginForm
+          formRef={formRef}
           contentStyle={{
             minWidth: 280,
             maxWidth: "75vw",
