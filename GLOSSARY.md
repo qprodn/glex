@@ -4,8 +4,9 @@ The domain concerned with **who can operate the system, the navigation they see,
 how their identity is established, the controlled vocabularies the back office
 renders choices from, the runtime parameters it tunes without a redeploy, the
 organization structure it groups people by, the
-files it stores, the payments it collects, and the recurring work it
-schedules**. It is organized as ten modules in one service: **user**
+files it stores, the payments it collects, the WeChat official accounts
+and mini programs it connects, and the recurring work it
+schedules**. It is organized as eleven modules in one service: **user**
 (System User accounts), **org** (organization structure — departments, posts,
 and post assignments), **access** (authorization — roles, menus, grants, and
 permission resolution), **authn** (authentication — credentials, login
@@ -20,10 +21,12 @@ from RuoYi-Vue-Plus's `sys_user`, `sys_dept`, `sys_post`, `sys_menu`,
 `sys_role`, `sys_user_role`, `sys_user_post`, `sys_dict_type`,
 `sys_dict_data`, `sys_config`, `sys_oper_log`, and `sys_logininfor`; the file module
 continues that lineage with its own `sys_file` (RuoYi's `sys_oss`, renamed).
-Two further modules, **pay** (payment — the Channel Merchant Accounts the back
-office configures and the payments and refunds collected through them) and
+Three further modules, **pay** (payment — the Channel Merchant Accounts the back
+office configures and the payments and refunds collected through them),
 **job** (scheduled tasks — the Scheduled Jobs the back office configures and
-the Job Executors they fire), are designed natively for glex rather than ported.
+the Job Executors they fire), and **wechat** (the WeChat Platforms and the
+WeChat Apps connected through one of them or held directly), are designed natively
+for glex rather than ported.
 
 ## Language
 
@@ -317,6 +320,138 @@ first fact on the pay module's Topic and the anchor use case of the
 eventbus (ADR 0022).
 _Avoid_: 支付成功通知 (a Channel Notification is the Channel telling us;
 this is us telling subscribers), callback, webhook.
+
+### wechat
+
+**WeChat Platform** (微信平台):
+A WeChat third-party platform registration this system holds; several may
+exist, and among those not withdrawn one component AppID identifies at most
+one (ADR 0029). Each Platform Authorization connects through exactly one and
+stays there, Direct Hold apps depend on none, and a platform cannot be
+withdrawn while an app still connects through it.
+_Avoid_: 服务商 (also the name of WeChat Pay's out-of-scope service-provider
+mode), 开放平台 (WeChat's own account), component.
+
+**WeChat App** (微信应用):
+One official account (公众号) or mini program (小程序) connected to this
+single system by either a Platform Authorization or a Direct Hold — never
+both, and not converted from one into the other (ADR 0029). Among apps not
+withdrawn, a WeChat AppID identifies at most one; a WeChat App is not a
+tenant, a Channel, or a Merchant Account.
+_Avoid_: 公众号 (one type), 小程序 (the other type), account (unqualified).
+
+**Service Account** (服务号):
+A kind of official-account WeChat App. WeChat reports it on a Platform
+Authorization; the operator states it on a Direct Hold. Custom Menus,
+Template Messages, Subscribe Notifications, and Web Authorization belong
+to this kind.
+_Avoid_: 公众号 (also covers Subscription Accounts), 订阅号.
+
+**Subscription Account** (订阅号):
+A kind of official-account WeChat App that can be connected, and that does
+not carry a Custom Menu, Template Message, Subscribe Notification, or Web
+Authorization.
+_Avoid_: 服务号, 公众号 (unqualified).
+
+**Platform Authorization** (平台授权):
+A WeChat App administrator's grant connecting that app through one WeChat
+Platform. Granting it again restores that same app on that same platform.
+It is not a Menu Grant and not a Web Authorization.
+_Avoid_: 授权 (unqualified), OAuth, Authorization (the access module's word).
+
+**Direct Hold** (直连):
+A WeChat App connected by this system holding that app's own secret. An app
+is never both directly held and platform-authorized.
+_Avoid_: 自建, 代填凭证.
+
+**Push Secret** (消息推送密钥):
+The Token and EncodingAESKey used to verify event pushes, accepted only in
+WeChat's encrypted mode. A Direct Hold's pair is generated here and shown in
+full only when generated or regenerated (ADR 0029); each WeChat Platform's
+pair is entered by the operator, and ordinary reads show a mask.
+_Avoid_: access token, AppSecret, session_key, 明文模式, 兼容模式.
+
+**WeChat User** (微信用户):
+A person as known to one WeChat App, identified by the openid that app
+assigns them (ADR 0029). The same person under another WeChat App is a
+different WeChat User. Recognizing one does not create a System User or a
+Login Session.
+_Avoid_: System User, Member, 粉丝, account.
+
+**Suspension** (停用):
+An operator's switch on a WeChat App. A suspended app still accepts a
+WeChat Connectivity Test, and rejects publishing, dispatch, Mini Program
+Login, and Web Authorization; its Platform Authorization or Direct Hold
+stays as it was.
+_Avoid_: Lapse, Withdrawal, 失效.
+
+**Lapse** (失效):
+A WeChat App WeChat has definitively refused, because its Platform
+Authorization was cancelled or its Direct Hold secret was rejected; a new
+grant or secret restores this same app. A timeout or an unready platform
+fails the call without lapsing it, and the app cannot be connectivity-tested
+until it is restored.
+_Avoid_: Suspension, Withdrawal, 停用.
+
+**Web Authorization** (网页授权):
+A WeChat User's grant letting a Service Account read that user's
+identity on the web. The caller claims that identity once with a Handoff
+Code. It is not a Platform Authorization and not a Login Session.
+_Avoid_: OAuth (unqualified), 登录.
+
+**Handoff Code** (交接短码):
+A single-use code a caller redeems for the openid and unionid a Web
+Authorization just yielded, plus nickname and avatar only when that app
+asked for them. It is not a Login Session, a Credential, or a token.
+_Avoid_: Session ID, access token, js_code.
+
+**Mini Program Login** (小程序登录):
+The exchange of a mini program's one-time login code for that WeChat App's
+openid and, when WeChat supplies one, the unionid. It does not open a Login
+Session.
+_Avoid_: 登录 (unqualified), Login Challenge, session_key.
+
+**Custom Menu** (自定义菜单):
+The default menu of a Service Account, kept in this system until published.
+Publishing replaces that app's whole default menu at WeChat. A button opens
+a web page or a mini program.
+_Avoid_: Menu (a back-office navigation node), 个性化菜单.
+
+**Template Message** (模板消息):
+A service notification a certified Service Account sends by
+filling a template that app has adopted.
+_Avoid_: Subscribe Notification, Subscribe Message.
+
+**Subscribe Notification** (订阅通知):
+A notification a certified Service Account may send only after
+the WeChat User has subscribed to it.
+_Avoid_: Template Message, Subscribe Message.
+
+**Subscribe Message** (订阅消息):
+A notification a mini-program WeChat App may send only after the WeChat User
+has subscribed inside that mini program.
+_Avoid_: Template Message, Subscribe Notification.
+
+**Adopted Template** (已选用模板):
+A template taken from WeChat's public library onto one WeChat App. Template
+Messages, Subscribe Notifications, and Subscribe Messages are filled only
+from adopted templates.
+_Avoid_: 自建模板, 公共模板 (WeChat's library, not yet on the app).
+
+**WeChat Dispatch** (微信下发):
+One attempt to send a Template Message, Subscribe Notification, or Subscribe
+Message to a single openid through one WeChat App. WeChat's acceptance or
+rejection belongs to that attempt, and a later delivery report updates the
+same attempt. Sending again is a new dispatch.
+_Avoid_: 群发, 消息 (unqualified), Channel Notification.
+
+**WeChat Connectivity Test** (微信连通性测试):
+An on-demand read-only call that proves a WeChat App's current token, or
+one WeChat Platform's registration, still works. An app test leaves no
+WeChat Dispatch and lapses that app only on a definitive refusal; the
+platform's test changes no WeChat App.
+_Avoid_: Connectivity Test (the pay module's, which proves a Merchant
+Account and leaves no Payment).
 
 ### job
 
