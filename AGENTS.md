@@ -111,3 +111,11 @@ _Authority: `GLOSSARY.md` and `docs/adr/`._
 
 Single-context: one root `GLOSSARY.md` plus `docs/adr/`. See
 `docs/agents/domain.md`.
+
+## Cursor Cloud specific instructions
+
+The API is `go run ./cmd/glex -conf ./configs` from the repo root (`:8000` HTTP, `:9000` gRPC). The console is `web/` via `pnpm run dev` (port 3000); `web/config/proxy.ts` forwards `/auth`, `/iam`, `/monitor`, `/file`, and `/pay` to the API. `DEPLOY_ENV=dev` only turns on SQL logging.
+
+The process fails fast unless PostgreSQL, Redis, and MinIO are already reachable at the addresses in `configs/config.yaml`. Ent does not migrate on startup (`internal/infra/store/data.go`): apply `docs/db/schema.sql`, then `docs/db/seed.sql`. Both files are safe to reapply. The seed login is `admin` / `admin123`. MinIO must answer `HeadBucket` before the HTTP server listens; the API creates the `glex` bucket itself.
+
+Checks that pass on a fresh tree: `go test ./...`, `make build`, `make lint` (golangci-lint v2), and `pnpm exec jest --watchAll=false` in `web/`. `pnpm run lint` stops in `tsc` on a pre-existing mock in `web/src/pages/user/login/login.test.tsx` (`LoginReply.expireIn` is required). `POST /iam/user` returns 503 `USER_STORE_UNAVAILABLE` because `docs/db/schema.sql` declares `sys_user.avatar` as `varchar` while `internal/infra/ent/schema/user.go` writes an `int64`. Listing users and creating runtime parameters both work.
