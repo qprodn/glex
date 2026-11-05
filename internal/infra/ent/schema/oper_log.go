@@ -34,24 +34,24 @@ func (OperLog) Fields() []ent.Field {
 		// repo on create (see the audit package's newSnowflakeID).
 		field.Int64("id").Unique().Immutable(),
 		// Kratos operation name (e.g. "/iam.v1.UserService/CreateUser").
-		field.String("operation"),
-		field.String("http_method").Default(""),
+		field.String("operation").MaxLen(256),
+		field.String("http_method").Default("").MaxLen(16),
 		field.Int64("oper_user_id").Default(0),
-		field.String("oper_user_name").Default(""),
-		field.String("ipaddr").Default(""),
+		field.String("oper_user_name").Default("").MaxLen(256),
+		field.String("ipaddr").Default("").MaxLen(256),
 		// Redacted request payload as protojson (secret keys scrubbed —
 		// ADR 0012); a placeholder when marshaling itself fails.
-		field.String("request").Default(""),
+		field.String("request").Default("").MaxLen(2048),
 		// 0 success, 1 failure (RuoYi status).
 		field.Int8("status").Default(0).SchemaType(map[string]string{
 			dialect.Postgres: "smallint",
 		}),
 		// Kratos error reason; empty on success.
-		field.String("reason").Default(""),
-		field.String("error_msg").Default(""),
+		field.String("reason").Default("").MaxLen(256),
+		field.String("error_msg").Default("").MaxLen(512),
 		field.Int64("latency_ms").Default(0),
 		// Request correlation with the structured request log.
-		field.String("request_id").Default(""),
+		field.String("request_id").Default("").MaxLen(64),
 	}
 }
 

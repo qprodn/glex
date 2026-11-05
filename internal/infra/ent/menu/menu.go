@@ -113,16 +113,24 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// MenuNameValidator is a validator for the "menu_name" field. It is called by the builders before save.
+	MenuNameValidator func(string) error
 	// DefaultParentID holds the default value on creation for the "parent_id" field.
 	DefaultParentID int64
 	// DefaultOrderNum holds the default value on creation for the "order_num" field.
 	DefaultOrderNum int
 	// DefaultPath holds the default value on creation for the "path" field.
 	DefaultPath string
+	// PathValidator is a validator for the "path" field. It is called by the builders before save.
+	PathValidator func(string) error
 	// DefaultComponent holds the default value on creation for the "component" field.
 	DefaultComponent string
+	// ComponentValidator is a validator for the "component" field. It is called by the builders before save.
+	ComponentValidator func(string) error
 	// DefaultQueryParam holds the default value on creation for the "query_param" field.
 	DefaultQueryParam string
+	// QueryParamValidator is a validator for the "query_param" field. It is called by the builders before save.
+	QueryParamValidator func(string) error
 	// DefaultIsFrame holds the default value on creation for the "is_frame" field.
 	DefaultIsFrame int8
 	// DefaultIsCache holds the default value on creation for the "is_cache" field.
@@ -133,12 +141,20 @@ var (
 	DefaultStatus int8
 	// DefaultPerms holds the default value on creation for the "perms" field.
 	DefaultPerms string
+	// PermsValidator is a validator for the "perms" field. It is called by the builders before save.
+	PermsValidator func(string) error
 	// DefaultIcon holds the default value on creation for the "icon" field.
 	DefaultIcon string
+	// IconValidator is a validator for the "icon" field. It is called by the builders before save.
+	IconValidator func(string) error
 	// DefaultActiveMenu holds the default value on creation for the "active_menu" field.
 	DefaultActiveMenu string
+	// ActiveMenuValidator is a validator for the "active_menu" field. It is called by the builders before save.
+	ActiveMenuValidator func(string) error
 	// DefaultExt holds the default value on creation for the "ext" field.
 	DefaultExt string
+	// ExtValidator is a validator for the "ext" field. It is called by the builders before save.
+	ExtValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the Menu queries.

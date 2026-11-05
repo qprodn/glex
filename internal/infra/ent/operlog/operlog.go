@@ -91,26 +91,42 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// OperationValidator is a validator for the "operation" field. It is called by the builders before save.
+	OperationValidator func(string) error
 	// DefaultHTTPMethod holds the default value on creation for the "http_method" field.
 	DefaultHTTPMethod string
+	// HTTPMethodValidator is a validator for the "http_method" field. It is called by the builders before save.
+	HTTPMethodValidator func(string) error
 	// DefaultOperUserID holds the default value on creation for the "oper_user_id" field.
 	DefaultOperUserID int64
 	// DefaultOperUserName holds the default value on creation for the "oper_user_name" field.
 	DefaultOperUserName string
+	// OperUserNameValidator is a validator for the "oper_user_name" field. It is called by the builders before save.
+	OperUserNameValidator func(string) error
 	// DefaultIpaddr holds the default value on creation for the "ipaddr" field.
 	DefaultIpaddr string
+	// IpaddrValidator is a validator for the "ipaddr" field. It is called by the builders before save.
+	IpaddrValidator func(string) error
 	// DefaultRequest holds the default value on creation for the "request" field.
 	DefaultRequest string
+	// RequestValidator is a validator for the "request" field. It is called by the builders before save.
+	RequestValidator func(string) error
 	// DefaultStatus holds the default value on creation for the "status" field.
 	DefaultStatus int8
 	// DefaultReason holds the default value on creation for the "reason" field.
 	DefaultReason string
+	// ReasonValidator is a validator for the "reason" field. It is called by the builders before save.
+	ReasonValidator func(string) error
 	// DefaultErrorMsg holds the default value on creation for the "error_msg" field.
 	DefaultErrorMsg string
+	// ErrorMsgValidator is a validator for the "error_msg" field. It is called by the builders before save.
+	ErrorMsgValidator func(string) error
 	// DefaultLatencyMs holds the default value on creation for the "latency_ms" field.
 	DefaultLatencyMs int64
 	// DefaultRequestID holds the default value on creation for the "request_id" field.
 	DefaultRequestID string
+	// RequestIDValidator is a validator for the "request_id" field. It is called by the builders before save.
+	RequestIDValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the OperLog queries.

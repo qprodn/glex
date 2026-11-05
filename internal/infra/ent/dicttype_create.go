@@ -192,11 +192,26 @@ func (_c *DictTypeCreate) check() error {
 	if _, ok := _c.mutation.DictName(); !ok {
 		return &ValidationError{Name: "dict_name", err: errors.New(`ent: missing required field "DictType.dict_name"`)}
 	}
+	if v, ok := _c.mutation.DictName(); ok {
+		if err := dicttype.DictNameValidator(v); err != nil {
+			return &ValidationError{Name: "dict_name", err: fmt.Errorf(`ent: validator failed for field "DictType.dict_name": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.DictType(); !ok {
 		return &ValidationError{Name: "dict_type", err: errors.New(`ent: missing required field "DictType.dict_type"`)}
 	}
+	if v, ok := _c.mutation.DictType(); ok {
+		if err := dicttype.DictTypeValidator(v); err != nil {
+			return &ValidationError{Name: "dict_type", err: fmt.Errorf(`ent: validator failed for field "DictType.dict_type": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Remark(); !ok {
 		return &ValidationError{Name: "remark", err: errors.New(`ent: missing required field "DictType.remark"`)}
+	}
+	if v, ok := _c.mutation.Remark(); ok {
+		if err := dicttype.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "DictType.remark": %w`, err)}
+		}
 	}
 	return nil
 }

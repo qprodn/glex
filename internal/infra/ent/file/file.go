@@ -79,8 +79,20 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// OriginalNameValidator is a validator for the "original_name" field. It is called by the builders before save.
+	OriginalNameValidator func(string) error
 	// DefaultSuffix holds the default value on creation for the "suffix" field.
 	DefaultSuffix string
+	// SuffixValidator is a validator for the "suffix" field. It is called by the builders before save.
+	SuffixValidator func(string) error
+	// MimeTypeValidator is a validator for the "mime_type" field. It is called by the builders before save.
+	MimeTypeValidator func(string) error
+	// BucketValidator is a validator for the "bucket" field. It is called by the builders before save.
+	BucketValidator func(string) error
+	// ObjKeyValidator is a validator for the "obj_key" field. It is called by the builders before save.
+	ObjKeyValidator func(string) error
+	// ContentHashValidator is a validator for the "content_hash" field. It is called by the builders before save.
+	ContentHashValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the File queries.

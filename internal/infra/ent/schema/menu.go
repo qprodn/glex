@@ -25,7 +25,7 @@ func (Menu) Fields() []ent.Field {
 		// Snowflake ID; stored in the id column. Set by the repo
 		// on create (see data.newSnowflakeID).
 		field.Int64("id").Unique().Immutable(),
-		field.String("menu_name"),
+		field.String("menu_name").MaxLen(256),
 		// Self-reference; 0 = root. No DB unique constraint on (parent_id,
 		// menu_name) — sibling uniqueness is a soft domain check.
 		field.Int64("parent_id").Default(0),
@@ -35,9 +35,9 @@ func (Menu) Fields() []ent.Field {
 		// Routing fields (path/component/query_param) are inert until the auth
 		// module's getRouters consumes them; modeled now so getRouters reads the
 		// same table with no later migration.
-		field.String("path").Default(""),
-		field.String("component").Default(""),
-		field.String("query_param").Default(""),
+		field.String("path").Default("").MaxLen(256),
+		field.String("component").Default("").MaxLen(256),
+		field.String("query_param").Default("").MaxLen(256),
 		// smallint in PG. is_frame/is_cache map RuoYi's Y/N to 0/1 (N=0, Y=1);
 		// menu_type is the MenuType enum (1/2/3); visible/status are 0/1.
 		field.Int8("is_frame").Default(0).SchemaType(map[string]string{
@@ -55,12 +55,11 @@ func (Menu) Fields() []ent.Field {
 		field.Int8("status").Default(0).SchemaType(map[string]string{
 			dialect.Postgres: "smallint",
 		}),
-		field.String("perms").Default(""),
-		field.String("icon").Default(""),
-		field.String("active_menu").Default(""),
-		// RuoYi uses varchar(2000) here; glex keeps varchar(256) for uniform
-		// ent↔schema.sql alignment (ADR convention).
-		field.String("ext").Default(""),
+		field.String("perms").Default("").MaxLen(256),
+		field.String("icon").Default("").MaxLen(256),
+		field.String("active_menu").Default("").MaxLen(256),
+		// RuoYi uses varchar(2000) here; schema.sql keeps varchar(256).
+		field.String("ext").Default("").MaxLen(256),
 	}
 }
 

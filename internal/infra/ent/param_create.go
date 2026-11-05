@@ -228,17 +228,37 @@ func (_c *ParamCreate) check() error {
 	if _, ok := _c.mutation.ConfigName(); !ok {
 		return &ValidationError{Name: "config_name", err: errors.New(`ent: missing required field "Param.config_name"`)}
 	}
+	if v, ok := _c.mutation.ConfigName(); ok {
+		if err := param.ConfigNameValidator(v); err != nil {
+			return &ValidationError{Name: "config_name", err: fmt.Errorf(`ent: validator failed for field "Param.config_name": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.ConfigKey(); !ok {
 		return &ValidationError{Name: "config_key", err: errors.New(`ent: missing required field "Param.config_key"`)}
 	}
+	if v, ok := _c.mutation.ConfigKey(); ok {
+		if err := param.ConfigKeyValidator(v); err != nil {
+			return &ValidationError{Name: "config_key", err: fmt.Errorf(`ent: validator failed for field "Param.config_key": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.ConfigValue(); !ok {
 		return &ValidationError{Name: "config_value", err: errors.New(`ent: missing required field "Param.config_value"`)}
+	}
+	if v, ok := _c.mutation.ConfigValue(); ok {
+		if err := param.ConfigValueValidator(v); err != nil {
+			return &ValidationError{Name: "config_value", err: fmt.Errorf(`ent: validator failed for field "Param.config_value": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.BuiltIn(); !ok {
 		return &ValidationError{Name: "built_in", err: errors.New(`ent: missing required field "Param.built_in"`)}
 	}
 	if _, ok := _c.mutation.Remark(); !ok {
 		return &ValidationError{Name: "remark", err: errors.New(`ent: missing required field "Param.remark"`)}
+	}
+	if v, ok := _c.mutation.Remark(); ok {
+		if err := param.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "Param.remark": %w`, err)}
+		}
 	}
 	return nil
 }

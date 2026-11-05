@@ -191,7 +191,30 @@ func (_u *DictTypeUpdate) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *DictTypeUpdate) check() error {
+	if v, ok := _u.mutation.DictName(); ok {
+		if err := dicttype.DictNameValidator(v); err != nil {
+			return &ValidationError{Name: "dict_name", err: fmt.Errorf(`ent: validator failed for field "DictType.dict_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.DictType(); ok {
+		if err := dicttype.DictTypeValidator(v); err != nil {
+			return &ValidationError{Name: "dict_type", err: fmt.Errorf(`ent: validator failed for field "DictType.dict_type": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Remark(); ok {
+		if err := dicttype.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "DictType.remark": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *DictTypeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(dicttype.Table, dicttype.Columns, sqlgraph.NewFieldSpec(dicttype.FieldID, field.TypeInt64))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -432,7 +455,30 @@ func (_u *DictTypeUpdateOne) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *DictTypeUpdateOne) check() error {
+	if v, ok := _u.mutation.DictName(); ok {
+		if err := dicttype.DictNameValidator(v); err != nil {
+			return &ValidationError{Name: "dict_name", err: fmt.Errorf(`ent: validator failed for field "DictType.dict_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.DictType(); ok {
+		if err := dicttype.DictTypeValidator(v); err != nil {
+			return &ValidationError{Name: "dict_type", err: fmt.Errorf(`ent: validator failed for field "DictType.dict_type": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Remark(); ok {
+		if err := dicttype.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "DictType.remark": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *DictTypeUpdateOne) sqlSave(ctx context.Context) (_node *DictType, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(dicttype.Table, dicttype.Columns, sqlgraph.NewFieldSpec(dicttype.FieldID, field.TypeInt64))
 	id, ok := _u.mutation.ID()
 	if !ok {

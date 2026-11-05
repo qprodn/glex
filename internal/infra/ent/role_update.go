@@ -321,7 +321,30 @@ func (_u *RoleUpdate) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *RoleUpdate) check() error {
+	if v, ok := _u.mutation.RoleName(); ok {
+		if err := role.RoleNameValidator(v); err != nil {
+			return &ValidationError{Name: "role_name", err: fmt.Errorf(`ent: validator failed for field "Role.role_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.RoleKey(); ok {
+		if err := role.RoleKeyValidator(v); err != nil {
+			return &ValidationError{Name: "role_key", err: fmt.Errorf(`ent: validator failed for field "Role.role_key": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Remark(); ok {
+		if err := role.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "Role.remark": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *RoleUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(role.Table, role.Columns, sqlgraph.NewFieldSpec(role.FieldID, field.TypeInt64))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -795,7 +818,30 @@ func (_u *RoleUpdateOne) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *RoleUpdateOne) check() error {
+	if v, ok := _u.mutation.RoleName(); ok {
+		if err := role.RoleNameValidator(v); err != nil {
+			return &ValidationError{Name: "role_name", err: fmt.Errorf(`ent: validator failed for field "Role.role_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.RoleKey(); ok {
+		if err := role.RoleKeyValidator(v); err != nil {
+			return &ValidationError{Name: "role_key", err: fmt.Errorf(`ent: validator failed for field "Role.role_key": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Remark(); ok {
+		if err := role.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "Role.remark": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *RoleUpdateOne) sqlSave(ctx context.Context) (_node *Role, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(role.Table, role.Columns, sqlgraph.NewFieldSpec(role.FieldID, field.TypeInt64))
 	id, ok := _u.mutation.ID()
 	if !ok {

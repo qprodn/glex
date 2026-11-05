@@ -261,7 +261,40 @@ func (_u *LoginLogUpdate) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *LoginLogUpdate) check() error {
+	if v, ok := _u.mutation.UserName(); ok {
+		if err := loginlog.UserNameValidator(v); err != nil {
+			return &ValidationError{Name: "user_name", err: fmt.Errorf(`ent: validator failed for field "LoginLog.user_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Ipaddr(); ok {
+		if err := loginlog.IpaddrValidator(v); err != nil {
+			return &ValidationError{Name: "ipaddr", err: fmt.Errorf(`ent: validator failed for field "LoginLog.ipaddr": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Browser(); ok {
+		if err := loginlog.BrowserValidator(v); err != nil {
+			return &ValidationError{Name: "browser", err: fmt.Errorf(`ent: validator failed for field "LoginLog.browser": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Os(); ok {
+		if err := loginlog.OsValidator(v); err != nil {
+			return &ValidationError{Name: "os", err: fmt.Errorf(`ent: validator failed for field "LoginLog.os": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Msg(); ok {
+		if err := loginlog.MsgValidator(v); err != nil {
+			return &ValidationError{Name: "msg", err: fmt.Errorf(`ent: validator failed for field "LoginLog.msg": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *LoginLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(loginlog.Table, loginlog.Columns, sqlgraph.NewFieldSpec(loginlog.FieldID, field.TypeInt64))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -590,7 +623,40 @@ func (_u *LoginLogUpdateOne) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *LoginLogUpdateOne) check() error {
+	if v, ok := _u.mutation.UserName(); ok {
+		if err := loginlog.UserNameValidator(v); err != nil {
+			return &ValidationError{Name: "user_name", err: fmt.Errorf(`ent: validator failed for field "LoginLog.user_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Ipaddr(); ok {
+		if err := loginlog.IpaddrValidator(v); err != nil {
+			return &ValidationError{Name: "ipaddr", err: fmt.Errorf(`ent: validator failed for field "LoginLog.ipaddr": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Browser(); ok {
+		if err := loginlog.BrowserValidator(v); err != nil {
+			return &ValidationError{Name: "browser", err: fmt.Errorf(`ent: validator failed for field "LoginLog.browser": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Os(); ok {
+		if err := loginlog.OsValidator(v); err != nil {
+			return &ValidationError{Name: "os", err: fmt.Errorf(`ent: validator failed for field "LoginLog.os": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Msg(); ok {
+		if err := loginlog.MsgValidator(v); err != nil {
+			return &ValidationError{Name: "msg", err: fmt.Errorf(`ent: validator failed for field "LoginLog.msg": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *LoginLogUpdateOne) sqlSave(ctx context.Context) (_node *LoginLog, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(loginlog.Table, loginlog.Columns, sqlgraph.NewFieldSpec(loginlog.FieldID, field.TypeInt64))
 	id, ok := _u.mutation.ID()
 	if !ok {

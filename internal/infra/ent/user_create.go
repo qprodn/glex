@@ -386,8 +386,28 @@ func (_c *UserCreate) check() error {
 	if _, ok := _c.mutation.UserName(); !ok {
 		return &ValidationError{Name: "user_name", err: errors.New(`ent: missing required field "User.user_name"`)}
 	}
+	if v, ok := _c.mutation.UserName(); ok {
+		if err := user.UserNameValidator(v); err != nil {
+			return &ValidationError{Name: "user_name", err: fmt.Errorf(`ent: validator failed for field "User.user_name": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.NickName(); !ok {
 		return &ValidationError{Name: "nick_name", err: errors.New(`ent: missing required field "User.nick_name"`)}
+	}
+	if v, ok := _c.mutation.NickName(); ok {
+		if err := user.NickNameValidator(v); err != nil {
+			return &ValidationError{Name: "nick_name", err: fmt.Errorf(`ent: validator failed for field "User.nick_name": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.Email(); ok {
+		if err := user.EmailValidator(v); err != nil {
+			return &ValidationError{Name: "email", err: fmt.Errorf(`ent: validator failed for field "User.email": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.PhoneNumber(); ok {
+		if err := user.PhoneNumberValidator(v); err != nil {
+			return &ValidationError{Name: "phone_number", err: fmt.Errorf(`ent: validator failed for field "User.phone_number": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.Gender(); !ok {
 		return &ValidationError{Name: "gender", err: errors.New(`ent: missing required field "User.gender"`)}
@@ -398,11 +418,26 @@ func (_c *UserCreate) check() error {
 	if _, ok := _c.mutation.Password(); !ok {
 		return &ValidationError{Name: "password", err: errors.New(`ent: missing required field "User.password"`)}
 	}
+	if v, ok := _c.mutation.Password(); ok {
+		if err := user.PasswordValidator(v); err != nil {
+			return &ValidationError{Name: "password", err: fmt.Errorf(`ent: validator failed for field "User.password": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Avatar(); !ok {
 		return &ValidationError{Name: "avatar", err: errors.New(`ent: missing required field "User.avatar"`)}
 	}
+	if v, ok := _c.mutation.Remark(); ok {
+		if err := user.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "User.remark": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.DeptID(); !ok {
 		return &ValidationError{Name: "dept_id", err: errors.New(`ent: missing required field "User.dept_id"`)}
+	}
+	if v, ok := _c.mutation.LoginIP(); ok {
+		if err := user.LoginIPValidator(v); err != nil {
+			return &ValidationError{Name: "login_ip", err: fmt.Errorf(`ent: validator failed for field "User.login_ip": %w`, err)}
+		}
 	}
 	return nil
 }

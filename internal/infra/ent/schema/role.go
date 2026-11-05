@@ -29,8 +29,8 @@ func (Role) Fields() []ent.Field {
 		// Uniqueness is enforced in code (domain checks against active rows), not
 		// by DB constraints — repo-wide convention (see .scratch/role/plan.md).
 		// Soft-deleted values are reusable.
-		field.String("role_name"),
-		field.String("role_key"),
+		field.String("role_name").MaxLen(256),
+		field.String("role_key").MaxLen(256),
 		field.Int("role_sort").Default(0).SchemaType(map[string]string{
 			dialect.Postgres: "integer",
 		}),
@@ -42,7 +42,7 @@ func (Role) Fields() []ent.Field {
 		// on; shapes how the role editor presents the menu tree, not what is
 		// stored in sys_role_menu (grants are always stored verbatim).
 		field.Bool("menu_check_strictly").Default(true),
-		field.String("remark").Default(""),
+		field.String("remark").Default("").MaxLen(256),
 	}
 }
 

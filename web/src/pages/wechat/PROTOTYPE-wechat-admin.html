@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>微信后台原型 · glex</title>
+<style>
+  :root {
+    --primary: #1890ff;
+    --primary-bg: #e6f7ff;
+    --primary-border: #91d5ff;
+    --text: rgba(0, 0, 0, 0.88);
+    --text-2: rgba(0, 0, 0, 0.65);
+    --text-3: rgba(0, 0, 0, 0.45);
+    --border: #f0f0f0;
+    --border-2: #d9d9d9;
+    --bg: #f0f2f5;
+    --danger: #ff4d4f;
+    --ok: #52c41a;
+    --warn: #faad14;
+    --radius: 6px;
+    --header: 56px;
+    --sider: 208px;
+    --state: 300px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  .banner {
+    background: #fffbe6;
+    border-bottom: 1px solid #ffe58f;
+    color: #614700;
+    padding: 8px 16px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .banner strong { font-weight: 600; }
+  .layout { min-height: calc(100% - 37px); display: flex; flex-direction: column; }
+  header.top {
+    height: var(--header);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 16px 0 12px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; width: calc(var(--sider) - 12px); }
+  .logo {
+    width: 32px; height: 32px; border-radius: 6px;
+    background: var(--primary); color: #fff;
+    display: grid; place-items: center; font-weight: 700;
+  }
+  .brand b { font-size: 16px; font-weight: 600; }
+  .top-spacer { flex: 1; }
+  .who { color: var(--text-2); }
+  .body { display: flex; flex: 1; min-height: 0; }
+  nav.sider {
+    width: var(--sider);
+    background: #fff;
+    border-right: 1px solid var(--border);
+    padding: 8px;
+    flex: none;
+  }
+  nav button.nav {
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    height: 40px;
+    border-radius: 8px;
+    padding: 0 12px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  nav button.nav.on { background: var(--primary-bg); color: var(--primary); }
+  nav button.nav:hover { background: rgba(0,0,0,0.04); }
+  nav button.nav.on:hover { background: var(--primary-bg); }
+  .work { flex: 1; min-width: 0; display: flex; }
+  .content { flex: 1; min-width: 0; padding: 16px 16px 32px; }
+  .page-head { margin-bottom: 16px; }
+  .crumb { color: var(--text-3); font-size: 13px; margin-bottom: 8px; }
+  .crumb button { border: 0; background: none; color: var(--primary); padding: 0; }
+  h1 { font-size: 20px; line-height: 32px; margin: 0; font-weight: 600; }
+  .lead { color: var(--text-2); margin: 4px 0 0; }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 16px 20px 20px;
+    margin-bottom: 16px;
+  }
+  .card h2 { margin: 0 0 12px; font-size: 16px; font-weight: 600; }
+  .hint { color: var(--text-3); font-size: 13px; margin: 0 0 12px; line-height: 1.6; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  .split { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 12px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: #fafafa; font-weight: 600; color: var(--text-2); font-size: 13px; }
+  tr:hover td { background: #fafafa; }
+  .ops { display: flex; gap: 10px; flex-wrap: wrap; }
+  .ops button, button.link {
+    border: 0; background: none; color: var(--primary); padding: 0;
+  }
+  .ops button.danger, button.link.danger { color: var(--danger); }
+  button.btn {
+    height: 32px; padding: 0 15px; border-radius: var(--radius);
+    border: 1px solid var(--border-2); background: #fff;
+  }
+  button.btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  button.btn.danger { color: var(--danger); border-color: #ffccc7; }
+  button.btn:disabled { color: var(--text-3); background: #f5f5f5; cursor: not-allowed; }
+  button.btn.primary:disabled { color: #fff; background: #91d5ff; border-color: #91d5ff; }
+  .tag {
+    display: inline-block; padding: 0 7px; line-height: 20px; font-size: 12px;
+    border-radius: 4px; border: 1px solid var(--border-2); background: #fafafa; margin-right: 4px;
+  }
+  .tag.success { color: var(--ok); background: #f6ffed; border-color: #b7eb8f; }
+  .tag.error { color: var(--danger); background: #fff2f0; border-color: #ffccc7; }
+  .tag.warning { color: #d48806; background: #fffbe6; border-color: #ffe58f; }
+  .tag.blue { color: var(--primary); background: var(--primary-bg); border-color: var(--primary-border); }
+  .desc { display: grid; grid-template-columns: 140px 1fr 140px 1fr; gap: 8px 12px; margin: 0; }
+  .desc dt { color: var(--text-3); }
+  .desc dd { margin: 0; word-break: break-all; }
+  .form-row { margin-bottom: 14px; }
+  .form-row label { display: block; margin-bottom: 6px; }
+  .form-row input, .form-row select, .form-row textarea {
+    width: 100%; height: 32px; border: 1px solid var(--border-2); border-radius: var(--radius); padding: 0 11px;
+  }
+  .form-row textarea { height: 64px; padding: 6px 11px; }
+  .checks label { display: inline-flex; align-items: center; gap: 6px; margin: 0 14px 8px 0; }
+  .notice {
+    border-radius: var(--radius); padding: 8px 12px; margin-bottom: 12px; line-height: 1.5;
+  }
+  .notice.success { background: #f6ffed; border: 1px solid #b7eb8f; }
+  .notice.error { background: #fff2f0; border: 1px solid #ffccc7; }
+  .reveal {
+    background: #fffbe6; border: 1px solid #ffe58f; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;
+  }
+  .reveal code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .menu-item, .tpl {
+    display: flex; justify-content: space-between; gap: 8px; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+  }
+  .state {
+    width: var(--state); flex: none; background: #fff; border-left: 1px solid var(--border);
+    padding: 16px; overflow: auto;
+  }
+  .state h2 { margin: 0 0 8px; font-size: 14px; }
+  .state dl { margin: 0 0 14px; }
+  .state dt { color: var(--text-3); font-size: 12px; margin-top: 8px; }
+  .state dd { margin: 2px 0 0; line-height: 1.45; }
+  .state .app-line { padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .steps { display: flex; flex-direction: column; gap: 8px; }
+  .step {
+    text-align: left; border: 1px solid var(--border-2); background: #fff;
+    border-radius: var(--radius); padding: 8px 10px; line-height: 1.4;
+  }
+  .step small { display: block; color: var(--text-3); }
+  .step.on { border-color: var(--primary); background: var(--primary-bg); }
+  .step.done { color: var(--text-3); }
+  .mask {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 50;
+    display: flex; align-items: flex-start; justify-content: center; padding: 80px 16px 16px;
+  }
+  .dialog { width: 520px; background: #fff; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,.08); }
+  .dialog header, .dialog footer { padding: 14px 20px; }
+  .dialog header { border-bottom: 1px solid var(--border); font-weight: 600; font-size: 16px; display: flex; justify-content: space-between; }
+  .dialog header button { border: 0; background: none; font-size: 18px; color: var(--text-3); }
+  .dialog .body { padding: 16px 20px 0; }
+  .dialog footer { text-align: right; display: flex; justify-content: flex-end; gap: 8px; }
+  .toast {
+    position: fixed; top: 72px; left: 50%; transform: translateX(-50%);
+    background: #fff; border-radius: 8px; padding: 10px 16px;
+    box-shadow: 0 6px 16px rgba(0,0,0,.12); z-index: 60; max-width: 560px;
+  }
+  .empty { color: var(--text-3); padding: 24px 0; text-align: center; }
+  @media (max-width: 1100px) {
+    .state { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="banner">
+    <strong>原型，可丢弃。</strong>
+    问题：约定过的后台操作能不能全部走通——合法操作只改该改的状态，停用、失效、平台未就绪、类型不符时会被拒绝。
+    风格按 glex 现有后台（Ant Design Pro，拂晓蓝 <code>#1890ff</code>，mix 浅色布局）手绘，不是生产页面。刷新即清空，数据只在内存里。
+  </div>
+  <div class="layout">
+    <header class="top">
+      <div class="brand"><div class="logo">G</div><b>glex</b></div>
+      <div class="top-spacer"></div>
+      <div class="who">原型操作员</div>
+    </header>
+    <div class="body">
+      <nav class="sider" id="sider"></nav>
+      <div class="work">
+        <div class="content" id="content"></div>
+        <aside class="state" id="state"></aside>
+      </div>
+    </div>
+  </div>
+  <div id="modal"></div>
+  <div id="toast"></div>
+  <script id="logic">
+(function () {
+  const PLATFORM_CALLBACK = "https://admin.glex.local/wechat/platform/callback";
+  const LIBRARY = [
+    { id: "lib_order", title: "订单进度通知", use: "template" },
+    { id: "lib_status", title: "服务状态订阅通知", use: "bizsubscribe" },
+    { id: "lib_activity", title: "活动开始提醒", use: "subscribe" },
+  ];
+  const CAP_LABEL = {
+    menu: "自定义菜单",
+    template: "模板消息",
+    bizsubscribe: "订阅通知",
+    oauth: "网页授权",
+    subscribe: "订阅消息",
+    login: "小程序登录",
+  };
+  const USE_LABEL = { template: "模板消息", bizsubscribe: "订阅通知", subscribe: "订阅消息" };
+
+  function initialState() {
+    return {
+      seq: 1,
+      platforms: [],
+      apps: [],
+      dispatches: [],
+      handoffs: [],
+      lastIdentity: null,
+      reveal: null,
+      eventsDropped: 0,
+      unsafeRejected: 0,
+      unmatchedDeliveries: 0,
+    };
+  }
+
+  function platformReady(p) {
+    return Boolean(p && !p.withdrawn && p.appId && p.secretSet && p.tokenSet && p.aesSet && p.ticket);
+  }
+  function platformOf(state, app) {
+    if (!app || !app.platformId) return null;
+    return state.platforms.find(function (p) { return p.id === app.platformId; }) || null;
+  }
+  function livePlatformConflict(state, appId) {
+    return state.platforms.some(function (p) { return !p.withdrawn && p.appId === appId; });
+  }
+
+  function fail(state, text) {
+    return { state, notice: { tone: "error", text } };
+  }
+  function ok(state, text, extra) {
+    return Object.assign({ state, notice: { tone: "success", text } }, extra || {});
+  }
+  function nid(s, prefix) {
+    s.seq += 1;
+    return prefix + s.seq;
+  }
+  function liveConflict(state, appId) {
+    return state.apps.some(function (a) { return !a.withdrawn && a.appId === appId; });
+  }
+  function typeName(app) {
+    if (app.type === "mini") return "小程序";
+    return app.kind === "service" ? "服务号" : "订阅号";
+  }
+  function capabilityError(app, cap) {
+    const officialOnly = cap === "menu" || cap === "template" || cap === "bizsubscribe" || cap === "oauth";
+    const miniOnly = cap === "subscribe" || cap === "login";
+    if (app.type === "mini" && officialOnly) return "小程序没有这项能力";
+    if (app.type === "official" && miniOnly) return "公众号不做这项";
+    if (app.type === "official" && app.kind === "subscription" && officialOnly) return "订阅号没有这项能力";
+    if (app.connection === "platform" && app.permissions.indexOf(cap) < 0) return "这次授权没有「" + CAP_LABEL[cap] + "」";
+    return null;
+  }
+  function gateCall(state, app) {
+    if (app.withdrawn) return "这条微信应用已撤回";
+    if (app.lapse) return "这条微信应用已失效，请先恢复";
+    if (app.suspended) return "这条微信应用已停用";
+    if (app.connection === "platform") {
+      const host = platformOf(state, app);
+      if (!host || host.withdrawn) return "挂着的微信平台已经不在了";
+      if (!platformReady(host)) return "这条微信平台未就绪，挂在它上面的应用暂时不能刷新令牌";
+    }
+    return null;
+  }
+  function gateTest(state, app) {
+    if (app.withdrawn) return "已撤回的应用不能测试";
+    if (app.lapse) return "失效的应用要先恢复，才能测试";
+    if (app.connection === "platform") {
+      const host = platformOf(state, app);
+      if (!host || host.withdrawn) return "挂着的微信平台已经不在了";
+      if (!platformReady(host)) return "这条微信平台未就绪，取不到令牌，测试没有发出";
+    }
+    return null;
+  }
+
+  function blankApp(s, fields) {
+    return {
+      id: nid(s, "wa"),
+      appId: fields.appId,
+      name: fields.name,
+      type: fields.type,
+      kind: fields.type === "official" ? fields.kind : null,
+      connection: fields.connection,
+      suspended: false,
+      lapse: null,
+      withdrawn: false,
+      secretSet: fields.connection === "direct",
+      permissions: fields.permissions || [],
+      platformId: fields.platformId || "",
+      pushGen: fields.connection === "direct" ? 1 : 0,
+      returnUrl: "",
+      oauthScope: "base",
+      menuDraft: [],
+      menuSaved: true,
+      menuPublished: [],
+      templates: [],
+    };
+  }
+
+  function revealFor(app) {
+    return {
+      appId: app.appId,
+      name: app.name,
+      generation: app.pushGen,
+      token: "TOKEN_" + app.appId + "_" + app.pushGen,
+      aes: ("AES_" + app.appId + "_" + app.pushGen).padEnd(43, "0"),
+    };
+  }
+
+  function reduce(state, action) {
+    switch (action.type) {
+      case "createPlatform": {
+        const name = (action.name || "").trim();
+        const appId = (action.appId || "").trim();
+        if (!name || !appId || !action.secret || !action.token || !action.aes) {
+          return fail(state, "名称、component AppID、密钥、Token、EncodingAESKey 都要填");
+        }
+        if (livePlatformConflict(state, appId)) return fail(state, "这个 component AppID 已经有一条未撤回的微信平台");
+        const s = structuredClone(state);
+        const platform = {
+          id: nid(s, "wp"),
+          name: name,
+          appId: appId,
+          secretSet: true,
+          tokenSet: true,
+          aesSet: true,
+          ticket: false,
+          withdrawn: false,
+          releaseTests: 0,
+        };
+        s.platforms.push(platform);
+        return ok(s, "微信平台已登记，凭证只显示掩码。还没收到验证票据，这条平台还不能用来授权。", { focusPlatformId: platform.id });
+      }
+      case "receiveTicket": {
+        const cur = state.platforms.find(function (p) { return p.id === action.id; });
+        if (!cur || cur.withdrawn) return fail(state, "找不到这条微信平台");
+        const s = structuredClone(state);
+        s.platforms.find(function (p) { return p.id === action.id; }).ticket = true;
+        return ok(s, "这条平台已收到验证票据。别的平台没有变。");
+      }
+      case "loseTicket": {
+        const cur = state.platforms.find(function (p) { return p.id === action.id; });
+        if (!cur || cur.withdrawn) return fail(state, "找不到这条微信平台");
+        const s = structuredClone(state);
+        s.platforms.find(function (p) { return p.id === action.id; }).ticket = false;
+        return ok(s, "这条平台的验证票据清掉了。只挡住挂在它上面的授权应用，应用本身不变成失效。");
+      }
+      case "testPlatform": {
+        const p = state.platforms.find(function (item) { return item.id === action.id; });
+        if (!p || p.withdrawn) return fail(state, "找不到这条微信平台");
+        if (!p.secretSet || !p.tokenSet || !p.aesSet) return fail(state, "这条平台的凭证还没配齐");
+        if (!p.ticket) return fail(state, "这条平台还没收到验证票据，令牌取不到");
+        return ok(state, "这条平台连通性测试成功。没有改动任何微信应用。");
+      }
+      case "releaseTest": {
+        const cur = state.platforms.find(function (p) { return p.id === action.id; });
+        if (!cur || cur.withdrawn) return fail(state, "找不到这条微信平台");
+        const s = structuredClone(state);
+        s.platforms.find(function (p) { return p.id === action.id; }).releaseTests += 1;
+        return ok(s, "已应答这条平台的全网发布测试报文。没有新建微信应用，也没有微信下发。");
+      }
+      case "withdrawPlatform": {
+        const cur = state.platforms.find(function (p) { return p.id === action.id; });
+        if (!cur || cur.withdrawn) return fail(state, "找不到可撤回的微信平台");
+        if (state.apps.some(function (a) { return !a.withdrawn && a.platformId === cur.id; })) {
+          return fail(state, "这条平台下还有未撤回的授权应用，不能撤回");
+        }
+        const s = structuredClone(state);
+        s.platforms.find(function (p) { return p.id === action.id; }).withdrawn = true;
+        return ok(s, "平台已撤回。已经撤回的应用和它们的微信下发还留着。");
+      }
+      case "createDirect": {
+        const name = (action.name || "").trim();
+        const appId = (action.appId || "").trim();
+        if (!name || !appId || !action.secret) return fail(state, "名称、AppID、AppSecret 都要填");
+        if (action.appType !== "mini" && action.appType !== "official") return fail(state, "要选小程序或公众号");
+        if (action.appType === "official" && action.kind !== "service" && action.kind !== "subscription") {
+          return fail(state, "直连公众号要标明是服务号还是订阅号");
+        }
+        if (liveConflict(state, appId)) return fail(state, "这个 AppID 已经有一条未撤回的微信应用");
+        const s = structuredClone(state);
+        const app = blankApp(s, {
+          name: name,
+          appId: appId,
+          type: action.appType,
+          kind: action.kind,
+          connection: "direct",
+        });
+        s.apps.push(app);
+        s.reveal = revealFor(app);
+        return ok(s, "直连应用已接入。消息密钥只这一次给全文，请抄进微信后台并选择安全模式。", { focusId: app.id });
+      }
+      case "authorize": {
+        const host = state.platforms.find(function (p) { return p.id === action.platformId; });
+        if (!host || host.withdrawn) return fail(state, "要先选定一条微信平台");
+        if (!platformReady(host)) return fail(state, "这条微信平台未就绪，不能发起新的平台授权");
+        const name = (action.name || "").trim();
+        const appId = (action.appId || "").trim();
+        if (!name || !appId) return fail(state, "名称和 AppID 都要填");
+        if (action.appType !== "mini" && action.appType !== "official") return fail(state, "要选小程序或公众号");
+        if (action.appType === "official" && action.kind !== "service" && action.kind !== "subscription") {
+          return fail(state, "微信没有返回这是服务号还是订阅号");
+        }
+        if (liveConflict(state, appId)) return fail(state, "这个 AppID 已经有一条未撤回的微信应用，不能再授权成第二条");
+        const s = structuredClone(state);
+        const app = blankApp(s, {
+          name: name,
+          appId: appId,
+          type: action.appType,
+          kind: action.kind,
+          connection: "platform",
+          permissions: action.permissions || [],
+          platformId: host.id,
+        });
+        s.apps.push(app);
+        return ok(s, "对方已授权，挂在「" + host.name + "」上。类型以微信返回的为准，不保存对方的 AppSecret。", { focusId: app.id });
+      }
+      case "acknowledgeReveal": {
+        if (!state.reveal) return fail(state, "当前没有待抄写的消息密钥");
+        const s = structuredClone(state);
+        s.reveal = null;
+        return ok(s, "全文已从页面撤下。之后只能看到掩码；要再看全文，只能重新生成。");
+      }
+      case "regeneratePush": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur) return fail(state, "找不到这张微信应用");
+        if (cur.withdrawn) return fail(state, "已撤回的应用不能重新生成密钥");
+        if (cur.connection !== "direct") return fail(state, "平台授权的应用没有我们生成的消息密钥");
+        const s = structuredClone(state);
+        const app = s.apps.find(function (a) { return a.id === action.id; });
+        app.pushGen += 1;
+        s.reveal = revealFor(app);
+        return ok(s, "已重新生成消息密钥。旧密钥立即作废，应用没有变成失效。在改完微信后台之前，验签会失败。");
+      }
+      case "setSuspended": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur || cur.withdrawn) return fail(state, "找不到可操作的微信应用");
+        const s = structuredClone(state);
+        const app = s.apps.find(function (a) { return a.id === action.id; });
+        app.suspended = Boolean(action.suspended);
+        return ok(s, app.suspended ? "已停用。连通性测试还可以做，发布、下发、登录和网页授权会被拒绝。" : "已重新启用。失效状态没有被这次操作改掉。");
+      }
+      case "withdraw": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur || cur.withdrawn) return fail(state, "找不到可撤回的微信应用");
+        const s = structuredClone(state);
+        s.apps.find(function (a) { return a.id === action.id; }).withdrawn = true;
+        return ok(s, "已撤回。这是软删除。微信下发还留在这条上；同一 AppID 可以按另一种接法新建一条。");
+      }
+      case "submitSecret": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur || cur.withdrawn) return fail(state, "找不到可操作的微信应用");
+        if (cur.connection !== "direct") return fail(state, "平台授权的应用不接收 AppSecret");
+        if (!action.secret) return fail(state, "新的 AppSecret 不能为空");
+        const s = structuredClone(state);
+        const app = s.apps.find(function (a) { return a.id === action.id; });
+        app.secretSet = true;
+        app.lapse = null;
+        return ok(s, "新密钥已保存，页面不回显明文。如果之前是失效，这条应用已经恢复。");
+      }
+      case "reauthorize": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur || cur.withdrawn) return fail(state, "找不到可操作的微信应用");
+        if (cur.connection !== "platform") return fail(state, "直连应用不能改成平台授权，要先撤回再新建");
+        const host = platformOf(state, cur);
+        if (!host || host.withdrawn || !platformReady(host)) return fail(state, "原来的微信平台未就绪，暂时不能重新授权");
+        const s = structuredClone(state);
+        const app = s.apps.find(function (a) { return a.id === action.id; });
+        app.permissions = action.permissions || [];
+        app.lapse = null;
+        return ok(s, "重新授权完成，恢复的仍是这一条，仍挂在「" + host.name + "」上。");
+      }
+      case "testApp": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur) return fail(state, "找不到这张微信应用");
+        const blocked = gateTest(state, cur);
+        if (blocked) return fail(state, blocked);
+        if (action.outcome === "timeout") return ok(state, "测试超时。应用状态没有变。");
+        if (action.outcome === "reject") {
+          const s = structuredClone(state);
+          const app = s.apps.find(function (a) { return a.id === action.id; });
+          app.lapse = app.connection === "direct" ? "secret" : "revoked";
+          return ok(s, "微信明确拒绝了凭证。这条应用已失效，没有产生微信下发。");
+        }
+        return ok(state, "连通性测试成功。没有产生微信下发，状态也没变。");
+      }
+      case "addMenuButton": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur || cur.withdrawn) return fail(state, "找不到可编辑菜单的微信应用");
+        const cap = capabilityError(cur, "menu");
+        if (cap) return fail(state, cap);
+        if (cur.menuDraft.length >= 3) return fail(state, "原型只画 3 个一级按钮");
+        if (!action.name) return fail(state, "按钮名称要填");
+        if (action.buttonType === "view" && !action.url) return fail(state, "打开网页要填 URL");
+        if (action.buttonType === "miniprogram" && (!action.miniAppId || !action.page)) return fail(state, "跳转小程序要填 AppID 和页面");
+        if (action.buttonType !== "view" && action.buttonType !== "miniprogram") return fail(state, "按钮只做打开网页和跳转小程序");
+        const s = structuredClone(state);
+        const app = s.apps.find(function (a) { return a.id === action.id; });
+        app.menuDraft.push({
+          id: nid(s, "mb"),
+          name: action.name,
+          buttonType: action.buttonType,
+          url: action.url || "",
+          miniAppId: action.miniAppId || "",
+          page: action.page || "",
+        });
+        app.menuSaved = false;
+        return ok(s, "按钮已放进本地草稿，还没有发给微信。");
+      }
+      case "removeMenuButton": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur || cur.withdrawn) return fail(state, "找不到这张微信应用");
+        const s = structuredClone(state);
+        const app = s.apps.find(function (a) { return a.id === action.id; });
+        app.menuDraft = app.menuDraft.filter(function (b) { return b.id !== action.buttonId; });
+        app.menuSaved = false;
+        return ok(s, "已从本地草稿去掉。微信上的菜单要等发布才会变。");
+      }
+      case "saveMenu": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur || cur.withdrawn) return fail(state, "找不到这张微信应用");
+        const cap = capabilityError(cur, "menu");
+        if (cap) return fail(state, cap);
+        const s = structuredClone(state);
+        s.apps.find(function (a) { return a.id === action.id; }).menuSaved = true;
+        return ok(s, "菜单已保存在本系统。微信上的默认菜单没有变。");
+      }
+      case "publishMenu": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur) return fail(state, "找不到这张微信应用");
+        const cap = capabilityError(cur, "menu");
+        if (cap) return fail(state, cap);
+        const blocked = gateCall(state, cur);
+        if (blocked) return fail(state, blocked);
+        const s = structuredClone(state);
+        const app = s.apps.find(function (a) { return a.id === action.id; });
+        app.menuPublished = structuredClone(app.menuDraft);
+        app.menuSaved = true;
+        return ok(s, "已整份替换该服务号在微信上的默认菜单。");
+      }
+      case "adoptTemplate": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur) return fail(state, "找不到这张微信应用");
+        const lib = LIBRARY.find(function (t) { return t.id === action.libId; });
+        if (!lib) return fail(state, "模板库里没有这一条");
+        const cap = capabilityError(cur, lib.use);
+        if (cap) return fail(state, cap);
+        const blocked = gateCall(state, cur);
+        if (blocked) return fail(state, blocked);
+        if (cur.templates.some(function (t) { return t.libId === lib.id; })) return fail(state, "这个模板已经选用过了");
+        const s = structuredClone(state);
+        const app = s.apps.find(function (a) { return a.id === action.id; });
+        app.templates.push({ id: nid(s, "tp"), libId: lib.id, title: lib.title, use: lib.use });
+        return ok(s, "已从微信公共模板库选用「" + lib.title + "」。用户还没在客户端订阅的话，发送会被微信拒绝。");
+      }
+      case "send": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur) return fail(state, "找不到这张微信应用");
+        const blocked = gateCall(state, cur);
+        if (blocked) return fail(state, blocked);
+        const tpl = cur.templates.find(function (t) { return t.id === action.templateId; });
+        if (!tpl) return fail(state, "先选用模板，再发送");
+        const cap = capabilityError(cur, tpl.use);
+        if (cap) return fail(state, cap);
+        const openid = (action.openid || "").trim();
+        if (!openid) return fail(state, "一次下发只发给一个 openid，这里不能空");
+        const s = structuredClone(state);
+        const accepted = action.outcome !== "reject";
+        const id = nid(s, "wd");
+        const row = {
+          id: id,
+          appInternalId: cur.id,
+          appId: cur.appId,
+          appName: cur.name,
+          use: tpl.use,
+          templateTitle: tpl.title,
+          openid: openid,
+          url: action.url || "",
+          miniAppId: action.miniAppId || "",
+          miniPage: action.miniPage || "",
+          status: accepted ? "accepted" : "rejected",
+          msgid: accepted ? "m" + id : "",
+          delivered: false,
+        };
+        s.dispatches.push(row);
+        const prefer = row.url && row.miniAppId ? "两个都填了，按微信的规则优先打开小程序。" : "";
+        const text = accepted
+          ? "微信已受理，这是一条新的下发" + (row.msgid ? "（" + row.msgid + "）。" : "。") + "受理还不等于用户已经收到。" + prefer
+          : "微信拒绝了这次发送（用户未订阅）。记录留着，没有 msgid。";
+        return ok(s, text);
+      }
+      case "delivery": {
+        const hit = state.dispatches.find(function (d) { return d.msgid && d.msgid === action.msgid; });
+        if (!hit) {
+          const s = structuredClone(state);
+          s.unmatchedDeliveries += 1;
+          return ok(s, "送达事件对不上号。已应答成功，没有新开微信下发。");
+        }
+        const s = structuredClone(state);
+        s.dispatches.find(function (d) { return d.msgid === action.msgid; }).delivered = true;
+        return ok(s, "送达结果已回写到原来的那条下发。");
+      }
+      case "otherEvent": {
+        const s = structuredClone(state);
+        s.eventsDropped += 1;
+        return ok(s, "已验签并应答。关注、文本和其他推送不落库，也不自动回复。");
+      }
+      case "unsafePush": {
+        const s = structuredClone(state);
+        s.unsafeRejected += 1;
+        return ok(s, "明文或兼容模式已拒绝。应用没有变成失效。");
+      }
+      case "setReturnUrl": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur || cur.withdrawn) return fail(state, "找不到这张微信应用");
+        const s = structuredClone(state);
+        s.apps.find(function (a) { return a.id === action.id; }).returnUrl = (action.returnUrl || "").trim();
+        return ok(s, "返回地址已保存在这条微信应用上。");
+      }
+      case "setScope": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur || cur.withdrawn) return fail(state, "找不到这张微信应用");
+        if (action.scope !== "base" && action.scope !== "userinfo") return fail(state, "范围只能是只取 openid，或同时要昵称和头像");
+        const s = structuredClone(state);
+        s.apps.find(function (a) { return a.id === action.id; }).oauthScope = action.scope;
+        return ok(s, action.scope === "base" ? "网页授权改为只取 openid。" : "网页授权改为同时要昵称和头像。");
+      }
+      case "login": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur) return fail(state, "找不到这张微信应用");
+        const cap = capabilityError(cur, "login");
+        if (cap) return fail(state, cap);
+        const blocked = gateCall(state, cur);
+        if (blocked) return fail(state, blocked);
+        const s = structuredClone(state);
+        const unionid = action.withUnionid ? "u_" + cur.appId : "";
+        s.lastIdentity = {
+          via: "小程序登录",
+          appId: cur.appId,
+          openid: "o_" + cur.appId + "_fan",
+          unionid: unionid,
+          nickname: "",
+        };
+        return ok(s, "登录结果：openid " + s.lastIdentity.openid + "，unionid " + (unionid || "（空）") + "。没有写入微信用户，也没有签发令牌。");
+      }
+      case "startWebAuth": {
+        const cur = state.apps.find(function (a) { return a.id === action.id; });
+        if (!cur) return fail(state, "找不到这张微信应用");
+        const cap = capabilityError(cur, "oauth");
+        if (cap) return fail(state, cap);
+        const blocked = gateCall(state, cur);
+        if (blocked) return fail(state, blocked);
+        if (!cur.returnUrl) return fail(state, "还没配置返回地址，网页授权不能开始");
+        const s = structuredClone(state);
+        const code = nid(s, "HC");
+        s.handoffs.push({ code: code, appInternalId: cur.id, used: false });
+        return ok(s, "浏览器将跳到返回地址，查询参数是一次性短码 " + code + "。");
+      }
+      case "redeem": {
+        const hit = state.handoffs.find(function (h) { return h.code === action.code; });
+        if (!hit) return fail(state, "没有这个短码");
+        if (hit.used) return fail(state, "这个短码已经用过");
+        const s = structuredClone(state);
+        const hand = s.handoffs.find(function (h) { return h.code === action.code; });
+        const app = s.apps.find(function (a) { return a.id === hand.appInternalId; });
+        hand.used = true;
+        const profile = app.oauthScope === "userinfo";
+        s.lastIdentity = {
+          via: "网页授权",
+          appId: app.appId,
+          openid: "o_" + app.appId + "_fan",
+          unionid: "u_" + app.appId,
+          nickname: profile ? "微信用户" : "",
+        };
+        return ok(s, profile
+          ? "短码已兑换：openid、unionid、昵称和头像。短码不能再用。"
+          : "短码已兑换：openid 和 unionid。这次没要昵称和头像。短码不能再用。");
+      }
+      default:
+        return fail(state, "没有这个操作");
+    }
+  }
+
+  function readyPlatform(state) {
+    state.platforms.push({
+      id: nid(state, "wp"),
+      name: "默认平台",
+      appId: "wxcomponent",
+      secretSet: true,
+      tokenSet: true,
+      aesSet: true,
+      ticket: true,
+      withdrawn: false,
+      releaseTests: 0,
+    });
+    return state;
+  }
+  function byPlatformAppId(state, appId) {
+    return state.platforms.find(function (p) { return p.appId === appId && !p.withdrawn; })
+      || state.platforms.find(function (p) { return p.appId === appId; });
+  }
+  function authOnReady(state, fields) {
+    return Object.assign({ type: "authorize", platformId: byPlatformAppId(state, "wxcomponent").id }, fields);
+  }
+
+  const scenarios = [
+    {
+      id: "mini",
+      title: "直连小程序的一天",
+      blurb: "新建直连小程序，抄走只出示一次的消息密钥，登录拿 openid / unionid，连发两次订阅消息。看：没有微信用户记录，第二次是一条新的下发。",
+      setup: initialState,
+      steps: [
+        { label: "新增直连小程序「演示小程序」", action: { type: "createDirect", name: "演示小程序", appId: "wxmini001", secret: "mini-secret", appType: "mini" } },
+        { label: "确认已经抄写消息密钥", action: { type: "acknowledgeReveal" } },
+        { label: "模拟登录，微信返回了 unionid", action: function (state) { return { type: "login", id: byAppId(state, "wxmini001").id, withUnionid: true }; } },
+        { label: "选用「活动开始提醒」", action: function (state) { return { type: "adoptTemplate", id: byAppId(state, "wxmini001").id, libId: "lib_activity" }; } },
+        { label: "发给一个 openid，微信受理", action: function (state) { const a = byAppId(state, "wxmini001"); return { type: "send", id: a.id, templateId: a.templates[0].id, openid: "o_wxmini001_fan", outcome: "accept" }; } },
+        { label: "再发一次", action: function (state) { const a = byAppId(state, "wxmini001"); return { type: "send", id: a.id, templateId: a.templates[0].id, openid: "o_wxmini001_fan", outcome: "accept" }; } },
+      ],
+    },
+    {
+      id: "platform",
+      title: "平台还没就绪",
+      blurb: "一条平台凭证齐全但没有票据时，测试失败，授权失败。另一条平台和直连小程序照常。票据到了之后才能在这条平台上授权。全网发布测试不产生业务记录。",
+      setup: initialState,
+      steps: [
+        { label: "新增一条平台，先不给票据", action: { type: "createPlatform", name: "甲平台", appId: "wxcomponent", secret: "c-secret", token: "c-token", aes: "c-aes-key" } },
+        { label: "做这条平台的连通性测试", action: function (state) { return { type: "testPlatform", id: byPlatformAppId(state, "wxcomponent").id }; } },
+        { label: "试图在这条平台上授权", action: function (state) { return { type: "authorize", platformId: byPlatformAppId(state, "wxcomponent").id, name: "过早的号", appId: "wxearly", appType: "official", kind: "service", permissions: ["menu"] }; } },
+        { label: "改为新增直连小程序", action: { type: "createDirect", name: "自己的小程序", appId: "wxown", secret: "own", appType: "mini" } },
+        { label: "这个小程序登录", action: function (state) { return { type: "login", id: byAppId(state, "wxown").id, withUnionid: false }; } },
+        { label: "这条平台收到验证票据", action: function (state) { return { type: "receiveTicket", id: byPlatformAppId(state, "wxcomponent").id }; } },
+        { label: "再测一次这条平台", action: function (state) { return { type: "testPlatform", id: byPlatformAppId(state, "wxcomponent").id }; } },
+        { label: "应答这条平台的全网发布测试", action: function (state) { return { type: "releaseTest", id: byPlatformAppId(state, "wxcomponent").id }; } },
+        { label: "现在在这条平台上授权服务号", action: function (state) { return authOnReady(state, { name: "客户服务号", appId: "wxsvc2", appType: "official", kind: "service", permissions: ["menu", "template", "bizsubscribe", "oauth"] }); } },
+      ],
+    },
+    {
+      id: "menu",
+      title: "菜单：订阅号拒绝，服务号整份发布",
+      blurb: "订阅号在本地就被拒绝。服务号先保存，微信上的菜单仍是空的；发布才整份替换。停用后再发布会被拒绝，已发布的内容留着。",
+      setup: function () { return readyPlatform(initialState()); },
+      steps: [
+        { label: "直连接入一个订阅号", action: { type: "createDirect", name: "订阅号甲", appId: "wxsub", secret: "sub", appType: "official", kind: "subscription" } },
+        { label: "给订阅号加一个菜单按钮", action: function (state) { return { type: "addMenuButton", id: byAppId(state, "wxsub").id, name: "官网", buttonType: "view", url: "https://example.com" }; } },
+        { label: "授权一个服务号", action: function (state) { return authOnReady(state, { name: "服务号乙", appId: "wxsvc", appType: "official", kind: "service", permissions: ["menu", "template", "bizsubscribe", "oauth"] }); } },
+        { label: "给服务号加「打开网页」", action: function (state) { return { type: "addMenuButton", id: byAppId(state, "wxsvc").id, name: "官网", buttonType: "view", url: "https://example.com" }; } },
+        { label: "只保存，不发布", action: function (state) { return { type: "saveMenu", id: byAppId(state, "wxsvc").id }; } },
+        { label: "发布到微信", action: function (state) { return { type: "publishMenu", id: byAppId(state, "wxsvc").id }; } },
+        { label: "停用这个服务号", action: function (state) { return { type: "setSuspended", id: byAppId(state, "wxsvc").id, suspended: true }; } },
+        { label: "停用后再发布", action: function (state) { return { type: "publishMenu", id: byAppId(state, "wxsvc").id }; } },
+      ],
+    },
+    {
+      id: "lapse",
+      title: "失效要先恢复，停用仍可测试",
+      blurb: "微信明确拒绝后变为失效，这时不能测试。重新授权恢复的是同一条。停用后测试仍成功，下发被拒绝。",
+      setup: function () { return readyPlatform(initialState()); },
+      steps: [
+        { label: "授权服务号", action: function (state) { return authOnReady(state, { name: "服务号丙", appId: "wxc", appType: "official", kind: "service", permissions: ["template", "menu"] }); } },
+        { label: "测试时微信明确拒绝", action: function (state) { return { type: "testApp", id: byAppId(state, "wxc").id, outcome: "reject" }; } },
+        { label: "失效后再测试", action: function (state) { return { type: "testApp", id: byAppId(state, "wxc").id, outcome: "ok" }; } },
+        { label: "重新授权，恢复这一条", action: function (state) { return { type: "reauthorize", id: byAppId(state, "wxc").id, permissions: ["template", "menu"] }; } },
+        { label: "停用", action: function (state) { return { type: "setSuspended", id: byAppId(state, "wxc").id, suspended: true }; } },
+        { label: "停用状态下测试", action: function (state) { return { type: "testApp", id: byAppId(state, "wxc").id, outcome: "ok" }; } },
+        { label: "停用状态下发", action: function (state) { return { type: "send", id: byAppId(state, "wxc").id, templateId: "missing", openid: "o_x", outcome: "accept" }; } },
+      ],
+    },
+    {
+      id: "secret",
+      title: "消息密钥与明文推送",
+      blurb: "全文只在生成时出现。重新生成不把应用打成失效。明文推送被拒绝，失效状态不变。",
+      setup: initialState,
+      steps: [
+        { label: "新增直连小程序", action: { type: "createDirect", name: "密钥演示", appId: "wxkey", secret: "k", appType: "mini" } },
+        { label: "确认抄写，全文撤下", action: { type: "acknowledgeReveal" } },
+        { label: "重新生成消息密钥", action: function (state) { return { type: "regeneratePush", id: byAppId(state, "wxkey").id }; } },
+        { label: "注入一条明文推送", action: { type: "unsafePush" } },
+      ],
+    },
+    {
+      id: "dispatch",
+      title: "下发、送达、撤回后仍在",
+      blurb: "受理后按 msgid 回写。对不上的送达不新开记录。撤回应用后，原来的下发还在，迟到的送达仍回写那一条。",
+      setup: function () { return readyPlatform(initialState()); },
+      steps: [
+        { label: "授权服务号并给足模板消息权限", action: function (state) { return authOnReady(state, { name: "服务号丁", appId: "wxd", appType: "official", kind: "service", permissions: ["template"] }); } },
+        { label: "选用订单进度通知", action: function (state) { return { type: "adoptTemplate", id: byAppId(state, "wxd").id, libId: "lib_order" }; } },
+        { label: "发送并让微信受理", action: function (state) { const a = byAppId(state, "wxd"); return { type: "send", id: a.id, templateId: a.templates[0].id, openid: "o_wxd_fan", url: "https://example.com/o", miniAppId: "wxmini001", miniPage: "pages/index", outcome: "accept" }; } },
+        { label: "送达事件回写", action: function (state) { return { type: "delivery", msgid: state.dispatches[0].msgid }; } },
+        { label: "一条对不上的 msgid", action: { type: "delivery", msgid: "m-no-such" } },
+        { label: "撤回这个服务号", action: function (state) { return { type: "withdraw", id: byAppId(state, "wxd").id }; } },
+        { label: "撤回之后迟到的送达再来一次", action: function (state) { return { type: "delivery", msgid: state.dispatches[0].msgid }; } },
+      ],
+    },
+    {
+      id: "switch",
+      title: "接法不能原地改",
+      blurb: "同一 AppID 不能同时有直连和平台授权。撤回之后才能按另一种接法新建，那是一条新记录，旧下发留在撤回的那条上。",
+      setup: function () { return readyPlatform(initialState()); },
+      steps: [
+        { label: "直连接入服务号 wxswap", action: { type: "createDirect", name: "先直连", appId: "wxswap", secret: "s", appType: "official", kind: "service" } },
+        { label: "选用模板并发送一条", action: function (state) { return { type: "adoptTemplate", id: byAppId(state, "wxswap").id, libId: "lib_order" }; } },
+        { label: "发出去", action: function (state) { const a = byAppId(state, "wxswap"); return { type: "send", id: a.id, templateId: a.templates[0].id, openid: "o_swap", outcome: "accept" }; } },
+        { label: "再用同一 AppID 去授权", action: function (state) { return authOnReady(state, { name: "想改接法", appId: "wxswap", appType: "official", kind: "service", permissions: ["template"] }); } },
+        { label: "撤回直连的那条", action: function (state) { return { type: "withdraw", id: byAppId(state, "wxswap").id }; } },
+        { label: "撤回后用同一 AppID 授权", action: function (state) { return authOnReady(state, { name: "改成授权", appId: "wxswap", appType: "official", kind: "service", permissions: ["template"] }); } },
+      ],
+    },
+    {
+      id: "oauth",
+      title: "网页授权只兑换一次",
+      blurb: "没有返回地址不能开始。短码换回 openid 和 unionid；只有打开了头像昵称才多带昵称。用过的短码再换会被拒绝。",
+      setup: function () { return readyPlatform(initialState()); },
+      steps: [
+        { label: "授权服务号", action: function (state) { return authOnReady(state, { name: "网页服务号", appId: "wxweb", appType: "official", kind: "service", permissions: ["oauth"] }); } },
+        { label: "还没配返回地址就发起", action: function (state) { return { type: "startWebAuth", id: byAppId(state, "wxweb").id }; } },
+        { label: "配上返回地址", action: function (state) { return { type: "setReturnUrl", id: byAppId(state, "wxweb").id, returnUrl: "https://h5.example/back" }; } },
+        { label: "发起网页授权", action: function (state) { return { type: "startWebAuth", id: byAppId(state, "wxweb").id }; } },
+        { label: "兑换短码", action: function (state) { return { type: "redeem", code: state.handoffs[0].code }; } },
+        { label: "再兑换同一次", action: function (state) { return { type: "redeem", code: state.handoffs[0].code }; } },
+        { label: "改成要昵称和头像", action: function (state) { return { type: "setScope", id: byAppId(state, "wxweb").id, scope: "userinfo" }; } },
+        { label: "再发起一次并兑换", action: function (state) { return { type: "startWebAuth", id: byAppId(state, "wxweb").id }; } },
+        { label: "兑换新短码", action: function (state) { const pending = state.handoffs.filter(function (h) { return !h.used; })[0]; return { type: "redeem", code: pending.code }; } },
+      ],
+    },
+  ];
+
+  function byAppId(state, appId) {
+    return state.apps.find(function (a) { return a.appId === appId && !a.withdrawn; })
+      || state.apps.find(function (a) { return a.appId === appId; });
+  }
+
+  const api = { reduce: reduce, initialState: initialState, scenarios: scenarios, platformReady: platformReady, LIBRARY: LIBRARY, CAP_LABEL: CAP_LABEL, USE_LABEL: USE_LABEL, PLATFORM_CALLBACK: PLATFORM_CALLBACK, typeName: typeName };
+  if (typeof globalThis !== "undefined") globalThis.WechatAdminPrototype = api;
+
+  if (typeof document === "undefined") return;
+
+  let domain = initialState();
+  const ui = {
+    page: "platform",
+    selectedId: null,
+    platformId: null,
+    scenarioId: "",
+    step: 0,
+    notice: null,
+    showWithdrawn: false,
+    showWithdrawnPlatforms: false,
+    dispatchFilter: "all",
+    modal: null,
+  };
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function tag(text, color) {
+    return '<span class="tag ' + color + '">' + esc(text) + "</span>";
+  }
+  function statusTags(app) {
+    if (app.withdrawn) return tag("已撤回", "default");
+    const parts = [];
+    if (app.lapse === "revoked") parts.push(tag("失效·授权已取消", "error"));
+    if (app.lapse === "secret") parts.push(tag("失效·密钥被拒", "error"));
+    if (app.suspended) parts.push(tag("停用", "warning"));
+    if (!parts.length) parts.push(tag("正常", "success"));
+    return parts.join("");
+  }
+  function maskGen(gen) {
+    return "****" + String(gen == null ? 0 : gen).padStart(2, "0");
+  }
+  function platformCallback(p) {
+    return "https://admin.glex.local/wechat/platforms/" + p.appId + "/callback";
+  }
+  function appCallback(app) {
+    if (app.connection === "platform") {
+      const host = domain.platforms.find(function (p) { return p.id === app.platformId; });
+      return host ? platformCallback(host) : "";
+    }
+    return "https://admin.glex.local/wechat/apps/" + app.appId + "/callback";
+  }
+  function selectedPlatform() {
+    return domain.platforms.find(function (p) { return p.id === ui.platformId; }) || null;
+  }
+  function selected() {
+    return domain.apps.find(function (a) { return a.id === ui.selectedId; }) || null;
+  }
+  function hostName(app) {
+    if (!app || app.connection !== "platform") return "—";
+    const host = domain.platforms.find(function (p) { return p.id === app.platformId; });
+    if (!host) return "未挂平台";
+    return host.name + (host.withdrawn ? "（已撤回）" : "");
+  }
+
+  function apply(action) {
+    const out = reduce(domain, action);
+    domain = out.state;
+    ui.notice = out.notice;
+    if (out.focusId) {
+      ui.selectedId = out.focusId;
+      ui.page = "detail";
+    }
+    if (out.focusPlatformId) {
+      ui.platformId = out.focusPlatformId;
+      ui.page = "platformDetail";
+    }
+    ui.modal = null;
+    render();
+  }
+
+  function render() {
+    document.getElementById("sider").innerHTML = [
+      ["platform", "微信平台"],
+      ["apps", "微信应用"],
+      ["dispatches", "微信下发"],
+    ].map(function (item) {
+      const on = ui.page === item[0] || (item[0] === "apps" && ui.page === "detail") || (item[0] === "platform" && ui.page === "platformDetail");
+      return '<button class="nav' + (on ? " on" : "") + '" data-act="goto" data-page="' + item[0] + '">' + item[1] + "</button>";
+    }).join("");
+
+    const pages = { platform: renderPlatform, platformDetail: renderPlatformDetail, apps: renderApps, detail: renderDetail, dispatches: renderDispatches };
+    document.getElementById("content").innerHTML = renderScenarioBar() + (pages[ui.page] || renderPlatform)();
+    document.getElementById("state").innerHTML = renderState();
+    document.getElementById("modal").innerHTML = renderModal();
+    const toast = document.getElementById("toast");
+    toast.innerHTML = ui.notice ? '<div class="toast">' + esc(ui.notice.text) + "</div>" : "";
+  }
+
+  function renderScenarioBar() {
+    const options = '<option value="">自由操作，不走查</option>' + scenarios.map(function (s) {
+      return '<option value="' + s.id + '"' + (ui.scenarioId === s.id ? " selected" : "") + ">" + esc(s.title) + "</option>";
+    }).join("");
+    const sc = scenarios.find(function (s) { return s.id === ui.scenarioId; });
+    let steps = "";
+    if (sc) {
+      steps = '<p class="hint">' + esc(sc.blurb) + "</p><div class=\"steps\">" + sc.steps.map(function (step, i) {
+        const cls = i < ui.step ? "step done" : i === ui.step ? "step on" : "step";
+        const dis = i === ui.step ? "" : " disabled";
+        return '<button class="' + cls + '" data-act="scenario-step"' + dis + ">" + (i + 1) + ". " + esc(step.label) + "</button>";
+      }).join("") + "</div>";
+      if (ui.step >= sc.steps.length) steps += '<p class="hint">这一走查的步骤已经走完。可以换一条，或回到自由操作。</p>';
+    }
+    return '<div class="card"><div class="split"><h2 style="margin:0">走查</h2><button class="btn" data-act="reset">清空，重新自由操作</button></div>'
+      + '<div class="form-row"><select data-act="pick-scenario" id="scenario-pick">' + options + "</select></div>" + steps + "</div>";
+  }
+
+  function noticeBanner() {
+    if (!ui.notice) return "";
+    return '<div class="notice ' + ui.notice.tone + '">' + esc(ui.notice.text) + "</div>";
+  }
+
+  function renderPlatform() {
+    const rows = domain.platforms.filter(function (p) { return ui.showWithdrawnPlatforms || !p.withdrawn; });
+    const body = rows.length ? rows.map(function (p) {
+      const hung = domain.apps.filter(function (a) { return !a.withdrawn && a.platformId === p.id; }).length;
+      return "<tr><td>" + esc(p.name) + "</td><td>" + esc(p.appId) + "</td><td>"
+        + (p.withdrawn ? tag("已撤回", "default") : platformReady(p) ? tag("就绪", "success") : tag("未就绪", "warning"))
+        + "</td><td>" + (p.ticket ? "已收到" : "还没有") + "</td><td>" + hung + "</td><td class=\"ops\">"
+        + '<button data-act="open-platform" data-id="' + esc(p.id) + '">详情</button>'
+        + (p.withdrawn ? "" : '<button class="danger" data-act="action" data-type="withdrawPlatform" data-id="' + esc(p.id) + '">撤回</button>')
+        + "</td></tr>";
+    }).join("") : '<tr><td colspan="6"><div class="empty">还没有微信平台。直连应用不需要平台。</div></td></tr>';
+    return '<div class="page-head"><div class="crumb">微信</div><h1>微信平台</h1><p class="lead">可以登记多条。一条没就绪，只挡住挂在它上面的授权应用。</p></div>'
+      + noticeBanner()
+      + '<div class="card"><div class="split"><button class="btn primary" data-act="open-modal" data-modal="createPlatform">新增平台</button>'
+      + '<label><input type="checkbox" data-act="toggle-withdrawn-platforms"' + (ui.showWithdrawnPlatforms ? " checked" : "") + " /> 显示已撤回</label></div>"
+      + "<table><thead><tr><th>名称</th><th>component AppID</th><th>状态</th><th>验证票据</th><th>未撤回的应用</th><th>操作</th></tr></thead><tbody>"
+      + body + "</tbody></table></div>";
+  }
+
+  function renderPlatformDetail() {
+    const p = selectedPlatform();
+    if (!p) {
+      return '<div class="page-head"><h1>微信平台</h1></div><div class="card"><div class="empty">请从列表打开一条平台。</div></div>';
+    }
+    const hung = domain.apps.filter(function (a) { return !a.withdrawn && a.platformId === p.id; }).length;
+    return '<div class="page-head"><div class="crumb"><button data-act="goto" data-page="platform">微信平台</button> / 详情</div><h1>' + esc(p.name) + "</h1>"
+      + "<p>" + (p.withdrawn ? tag("已撤回", "default") : platformReady(p) ? tag("就绪", "success") : tag("未就绪", "warning")) + "</p></div>"
+      + noticeBanner()
+      + '<div class="card"><h2>登记</h2><dl class="desc">'
+      + "<dt>component AppID</dt><dd>" + esc(p.appId) + "</dd><dt>未撤回的应用</dt><dd>" + hung + "</dd>"
+      + "<dt>平台密钥</dt><dd>" + (p.secretSet ? "****cret" : "未设置") + "</dd>"
+      + "<dt>消息 Token</dt><dd>" + (p.tokenSet ? "****oken" : "未设置") + "</dd>"
+      + "<dt>EncodingAESKey</dt><dd>" + (p.aesSet ? "****aes" : "未设置") + "</dd>"
+      + "<dt>验证票据</dt><dd>" + (p.ticket ? tag("已收到", "success") : tag("还没有", "warning")) + "</dd>"
+      + "<dt>事件地址</dt><dd>" + esc(platformCallback(p)) + "</dd>"
+      + "<dt>加密模式</dt><dd>只接受安全模式</dd>"
+      + "<dt>全网发布应答</dt><dd>" + p.releaseTests + "</dd>"
+      + "</dl><p class=\"hint\">密钥是运营填进来的，保存后不再回明文。Token 和 EncodingAESKey 要和这条平台在微信开放平台上的配置一致。</p>"
+      + (p.withdrawn ? "" : '<div class="toolbar"><button class="btn" data-act="action" data-type="receiveTicket" data-id="' + esc(p.id) + '">模拟收到验证票据</button>'
+        + '<button class="btn" data-act="action" data-type="loseTicket" data-id="' + esc(p.id) + '">模拟票据丢失</button>'
+        + '<button class="btn" data-act="action" data-type="testPlatform" data-id="' + esc(p.id) + '">连通性测试</button>'
+        + '<button class="btn" data-act="action" data-type="releaseTest" data-id="' + esc(p.id) + '">应答全网发布测试</button>'
+        + '<button class="btn" data-act="action" data-type="unsafePush">注入明文推送</button>'
+        + '<button class="btn danger" data-act="action" data-type="withdrawPlatform" data-id="' + esc(p.id) + '">撤回平台</button></div>')
+      + "</div>";
+  }
+
+  function field(label, name, type, value) {
+    return '<div class="form-row"><label>' + esc(label) + '</label><input name="' + name + '" type="' + type + '" value="' + esc(value || "") + '" /></div>';
+  }
+
+  function renderReveal() {
+    const r = domain.reveal;
+    return '<div class="reveal"><strong>消息密钥只出示这一次 · ' + esc(r.name) + "（" + esc(r.appId) + "）</strong>"
+      + "<p>Token：<code>" + esc(r.token) + "</code></p>"
+      + "<p>EncodingAESKey：<code>" + esc(r.aes) + "</code></p>"
+      + "<p class=\"hint\">填进该直连应用的微信后台，并选择安全模式。确认之后页面不再显示全文。</p>"
+      + '<button class="btn primary" data-act="action" data-type="acknowledgeReveal">我已抄写</button></div>';
+  }
+
+  function renderApps() {
+    const rows = domain.apps.filter(function (a) { return ui.showWithdrawn || !a.withdrawn; });
+    const body = rows.length ? rows.map(function (a) {
+      return "<tr><td>" + esc(a.name) + "</td><td>" + esc(a.appId) + "</td><td>" + esc(typeName(a)) + "</td><td>"
+        + tag(a.connection === "platform" ? "平台授权" : "直连", "blue") + "</td><td>" + esc(hostName(a)) + "</td><td>" + statusTags(a) + "</td><td class=\"ops\">"
+        + '<button data-act="open-detail" data-id="' + esc(a.id) + '">详情</button>'
+        + '<button data-act="action" data-type="testApp" data-id="' + esc(a.id) + '" data-outcome="ok">测试</button>'
+        + (a.withdrawn ? "" : '<button data-act="action" data-type="setSuspended" data-id="' + esc(a.id) + '" data-suspended="' + (a.suspended ? "0" : "1") + '">' + (a.suspended ? "启用" : "停用") + "</button>")
+        + (a.withdrawn ? "" : '<button class="danger" data-act="action" data-type="withdraw" data-id="' + esc(a.id) + '">撤回</button>')
+        + "</td></tr>";
+    }).join("") : '<tr><td colspan="7"><div class="empty">还没有微信应用。可以新增直连，或在一条就绪的平台上发起授权。</div></td></tr>';
+    return '<div class="page-head"><div class="crumb">微信</div><h1>微信应用</h1><p class="lead">一条应用只有一种接法。未撤回的 AppID 不能重复。</p></div>'
+      + noticeBanner()
+      + (domain.reveal ? renderReveal() : "")
+      + '<div class="card"><div class="split"><div class="toolbar" style="margin:0">'
+      + '<button class="btn primary" data-act="open-modal" data-modal="createDirect">新增直连</button>'
+      + '<button class="btn" data-act="open-modal" data-modal="authorize">发起平台授权</button>'
+      + '</div><label><input type="checkbox" data-act="toggle-withdrawn"' + (ui.showWithdrawn ? " checked" : "") + " /> 显示已撤回</label></div>"
+      + "<table><thead><tr><th>名称</th><th>AppID</th><th>类型</th><th>接法</th><th>平台</th><th>状态</th><th>操作</th></tr></thead><tbody>"
+      + body + "</tbody></table>"
+      + '<p class="hint">发起授权要选定一条已经就绪的平台。这条平台没就绪，只拒绝挂在它上面的授权，直连不受影响。</p></div>';
+  }
+
+  function renderDetail() {
+    const app = selected();
+    if (!app) {
+      return '<div class="page-head"><h1>微信应用</h1></div><div class="card"><div class="empty">请从列表打开一条应用。</div></div>';
+    }
+    const caps = app.connection === "platform"
+      ? (app.permissions.length ? app.permissions.map(function (p) { return CAP_LABEL[p] || p; }).join("、") : "这次授权没有业务权限")
+      : "直连，按类型能做的都可以做";
+    return '<div class="page-head"><div class="crumb"><button data-act="goto" data-page="apps">微信应用</button> / 详情</div><h1>' + esc(app.name) + "</h1>"
+      + "<p>" + statusTags(app) + tag(typeName(app), "blue") + tag(app.connection === "platform" ? "平台授权" : "直连", "blue") + "</p></div>"
+      + noticeBanner()
+      + (domain.reveal && domain.reveal.appId === app.appId ? renderReveal() : "")
+      + '<div class="card"><h2>登记</h2><dl class="desc">'
+      + "<dt>AppID</dt><dd>" + esc(app.appId) + "</dd><dt>内部编号</dt><dd>" + esc(app.id) + "</dd>"
+      + "<dt>AppSecret</dt><dd>" + (app.secretSet ? "****cret" : "不保存") + "</dd>"
+      + "<dt>所属平台</dt><dd>" + esc(hostName(app)) + "</dd>"
+      + "<dt>消息密钥</dt><dd>" + (app.connection === "direct" ? maskGen(app.pushGen) + " · 第 " + app.pushGen + " 次生成" : "用所属平台那一对") + "</dd>"
+      + "<dt>事件地址</dt><dd>" + esc(appCallback(app)) + "</dd>"
+      + "<dt>权限</dt><dd>" + esc(caps) + "</dd>"
+      + "<dt>返回地址</dt><dd>" + esc(app.returnUrl || "未配置") + "</dd>"
+      + "<dt>网页授权范围</dt><dd>" + (app.oauthScope === "userinfo" ? "openid、昵称、头像" : "只取 openid") + "</dd>"
+      + "</dl><div class=\"toolbar\" style=\"margin-top:16px\">"
+      + (app.withdrawn ? "" : '<button class="btn" data-act="action" data-type="setSuspended" data-id="' + esc(app.id) + '" data-suspended="' + (app.suspended ? "0" : "1") + '">' + (app.suspended ? "启用" : "停用") + "</button>")
+      + (app.withdrawn ? "" : '<button class="btn danger" data-act="action" data-type="withdraw" data-id="' + esc(app.id) + '">撤回</button>')
+      + '<button class="btn" data-act="action" data-type="testApp" data-id="' + esc(app.id) + '" data-outcome="ok">测试成功</button>'
+      + '<button class="btn" data-act="action" data-type="testApp" data-id="' + esc(app.id) + '" data-outcome="timeout">测试超时</button>'
+      + '<button class="btn" data-act="action" data-type="testApp" data-id="' + esc(app.id) + '" data-outcome="reject">测试被微信拒绝</button>'
+      + (app.connection === "direct" && !app.withdrawn ? '<button class="btn" data-act="open-modal" data-modal="secret">提交新 AppSecret</button>' : "")
+      + (app.connection === "direct" && !app.withdrawn ? '<button class="btn" data-act="action" data-type="regeneratePush" data-id="' + esc(app.id) + '">重新生成消息密钥</button>' : "")
+      + (app.connection === "platform" && !app.withdrawn ? '<button class="btn" data-act="open-modal" data-modal="reauthorize">重新授权</button>' : "")
+      + "</div></div>"
+      + renderMenuCard(app)
+      + renderTemplateCard(app)
+      + renderSendCard(app)
+      + renderCallerCard(app);
+  }
+
+  function buttonLine(b) {
+    const dest = b.buttonType === "view" ? esc(b.url) : esc(b.miniAppId) + " / " + esc(b.page);
+    return '<div class="menu-item"><div><b>' + esc(b.name) + "</b> · " + (b.buttonType === "view" ? "打开网页" : "跳转小程序") + "<div class=\"hint\" style=\"margin:0\">" + dest + "</div></div></div>";
+  }
+
+  function renderMenuCard(app) {
+    const draft = app.menuDraft.map(function (b) {
+      return '<div class="menu-item"><div><b>' + esc(b.name) + "</b> · " + (b.buttonType === "view" ? "打开网页" : "跳转小程序")
+        + '</div><button class="link danger" data-act="action" data-type="removeMenuButton" data-id="' + esc(app.id) + '" data-button-id="' + esc(b.id) + '">去掉</button></div>';
+    }).join("") || '<div class="empty">草稿是空的</div>';
+    const published = app.menuPublished.length ? app.menuPublished.map(buttonLine).join("") : '<div class="empty">微信上还没有这份菜单</div>';
+    return '<div class="card"><h2>自定义菜单</h2><p class="hint">只做默认菜单。按钮只有打开网页和跳转小程序。保存不调用微信，发布才整份替换。订阅号和小程序在本地拒绝。</p>'
+      + '<div class="toolbar"><button class="btn" data-act="open-modal" data-modal="menuButton">添加按钮</button>'
+      + '<button class="btn" data-act="action" data-type="saveMenu" data-id="' + esc(app.id) + '">保存</button>'
+      + '<button class="btn primary" data-act="action" data-type="publishMenu" data-id="' + esc(app.id) + '">发布</button>'
+      + "<span>" + (app.menuSaved ? tag("本地已保存", "success") : tag("草稿还没保存", "warning")) + "</span></div>"
+      + "<h2>本地草稿</h2>" + draft + "<h2 style=\"margin-top:16px\">微信上的默认菜单</h2>" + published + "</div>";
+  }
+
+  function renderTemplateCard(app) {
+    const mine = app.templates.map(function (t) {
+      return '<div class="tpl"><div>' + esc(t.title) + " · " + esc(USE_LABEL[t.use]) + "</div></div>";
+    }).join("") || '<div class="empty">还没有选用模板</div>';
+    const libs = LIBRARY.map(function (t) {
+      return '<button class="btn" data-act="action" data-type="adoptTemplate" data-id="' + esc(app.id) + '" data-lib="' + t.id + '">选用' + esc(t.title) + "（" + esc(USE_LABEL[t.use]) + "）</button>";
+    }).join("");
+    return '<div class="card"><h2>已选用模板</h2><p class="hint">模板来自微信公共模板库，不在这里自建。用户在微信客户端里的订阅不在这期。</p><div class="toolbar">' + libs + "</div>" + mine + "</div>";
+  }
+
+  function renderSendCard(app) {
+    const options = app.templates.map(function (t) {
+      return '<option value="' + esc(t.id) + '">' + esc(t.title) + "</option>";
+    }).join("");
+    return '<div class="card"><h2>发送</h2><p class="hint">一次一个人，同步等到微信受理或拒绝。再点一次是一条新的下发。网页和小程序跳转都填时，优先打开小程序。</p>'
+      + (options ? '<form data-form="send"><div class="form-row"><label>openid</label><input name="openid" /></div>'
+        + '<div class="form-row"><label>模板</label><select name="templateId">' + options + "</select></div>"
+        + '<div class="form-row"><label>跳转网页，可空</label><input name="url" /></div>'
+        + '<div class="form-row"><label>跳转小程序 AppID，可空</label><input name="miniAppId" /></div>'
+        + '<div class="form-row"><label>小程序页面，可空</label><input name="miniPage" /></div>'
+        + '<div class="form-row"><label>模拟微信的结果</label><select name="outcome"><option value="accept">受理</option><option value="reject">拒绝（用户未订阅）</option></select></div>'
+        + '<button class="btn primary" type="submit">发送</button></form>' : '<div class="empty">先选用模板</div>')
+      + "</div>";
+  }
+
+  function renderCallerCard(app) {
+    const codes = domain.handoffs.filter(function (h) { return h.appInternalId === app.id; }).map(function (h) {
+      return '<div class="menu-item"><div><code>' + esc(h.code) + "</code> · " + (h.used ? "已使用" : "未使用") + "</div>"
+        + (h.used ? "" : '<button class="link" data-act="action" data-type="redeem" data-code="' + esc(h.code) + '">兑换</button>') + "</div>";
+    }).join("") || '<div class="empty">还没有短码</div>';
+    const ident = domain.lastIdentity && domain.lastIdentity.appId === app.appId
+      ? "<p>最近一次交还（不是用户记录）：" + esc(domain.lastIdentity.via) + " · openid " + esc(domain.lastIdentity.openid)
+        + " · unionid " + esc(domain.lastIdentity.unionid || "（空）")
+        + (domain.lastIdentity.nickname ? " · 昵称 " + esc(domain.lastIdentity.nickname) : "") + "</p>"
+      : "";
+    return '<div class="card"><h2>调用模拟</h2><p class="hint">这不是后台菜单。小程序登录和网页授权是给外部调用方的，结果不落库。</p>'
+      + ident
+      + '<div class="toolbar"><button class="btn" data-act="action" data-type="login" data-id="' + esc(app.id) + '" data-unionid="1">小程序登录（有 unionid）</button>'
+      + '<button class="btn" data-act="action" data-type="login" data-id="' + esc(app.id) + '" data-unionid="0">小程序登录（没有 unionid）</button>'
+      + '<button class="btn" data-act="action" data-type="otherEvent">注入一条用户文本</button></div>'
+      + '<form data-form="returnUrl"><div class="form-row"><label>网页授权返回地址</label><input name="returnUrl" value="' + esc(app.returnUrl) + '" /></div>'
+      + '<button class="btn" type="submit">保存返回地址</button></form>'
+      + '<div class="toolbar"><button class="btn" data-act="action" data-type="setScope" data-id="' + esc(app.id) + '" data-scope="base">只取 openid</button>'
+      + '<button class="btn" data-act="action" data-type="setScope" data-id="' + esc(app.id) + '" data-scope="userinfo">同时要昵称和头像</button>'
+      + '<button class="btn primary" data-act="action" data-type="startWebAuth" data-id="' + esc(app.id) + '">发起网页授权</button></div>'
+      + codes + "</div>";
+  }
+
+  function renderDispatches() {
+    const rows = domain.dispatches.filter(function (d) {
+      return ui.dispatchFilter === "all" || d.appInternalId === ui.dispatchFilter;
+    });
+    const options = '<option value="all">全部应用，含已撤回</option>' + domain.apps.map(function (a) {
+      return '<option value="' + esc(a.id) + '"' + (ui.dispatchFilter === a.id ? " selected" : "") + ">" + esc(a.name) + (a.withdrawn ? "（已撤回）" : "") + "</option>";
+    }).join("");
+    const body = rows.length ? rows.map(function (d) {
+      const app = domain.apps.find(function (a) { return a.id === d.appInternalId; });
+      const jump = [d.url ? "网页" : "", d.miniAppId ? "小程序" : ""].filter(Boolean).join(" + ") || "无";
+      return "<tr><td>" + esc(d.id) + "</td><td>" + esc(d.appName) + (app && app.withdrawn ? " " + tag("应用已撤回", "default") : "") + "</td><td>"
+        + esc(USE_LABEL[d.use]) + "<div class=\"hint\" style=\"margin:0\">" + esc(d.templateTitle) + "</div></td><td>" + esc(d.openid) + "</td><td>"
+        + (d.status === "accepted" ? tag("已受理", "success") : tag("已拒绝", "error"))
+        + (d.delivered ? tag("已送达", "blue") : "")
+        + "</td><td>" + esc(d.msgid || "—") + "</td><td>" + esc(jump) + "</td></tr>";
+    }).join("") : '<tr><td colspan="7"><div class="empty">还没有微信下发</div></td></tr>';
+    return '<div class="page-head"><div class="crumb">微信</div><h1>微信下发</h1><p class="lead">一次发送一条记录。撤回应用不会把记录一起拿掉。</p></div>'
+      + noticeBanner()
+      + '<div class="card"><div class="form-row"><label>按应用筛选</label><select data-act="filter-dispatch">' + options + "</select></div>"
+      + "<table><thead><tr><th>编号</th><th>应用</th><th>种类</th><th>openid</th><th>结果</th><th>msgid</th><th>跳转</th></tr></thead><tbody>"
+      + body + "</tbody></table></div>";
+  }
+
+  function renderState() {
+    const ident = domain.lastIdentity;
+    const platforms = domain.platforms.map(function (p) {
+      return '<div class="app-line"><b>' + esc(p.name) + "</b> " + esc(p.appId)
+        + (p.withdrawn ? " · 已撤回" : platformReady(p) ? " · 就绪" : " · 未就绪")
+        + (p.ticket ? " · 有票据" : " · 无票据") + "</div>";
+    }).join("") || "<dd>无</dd>";
+    const apps = domain.apps.map(function (a) {
+      return '<div class="app-line"><b>' + esc(a.name) + "</b> " + esc(a.appId) + "<br />" + esc(typeName(a)) + " · " + (a.connection === "platform" ? "平台授权 · " + esc(hostName(a)) : "直连")
+        + (a.withdrawn ? " · 已撤回" : "") + (a.suspended ? " · 停用" : "") + (a.lapse ? " · 失效" : "")
+        + "<br />草稿 " + a.menuDraft.length + " / 已发布 " + a.menuPublished.length + " · 模板 " + a.templates.length + "</div>";
+    }).join("") || "<dd>无</dd>";
+    const releaseTests = domain.platforms.reduce(function (n, p) { return n + p.releaseTests; }, 0);
+    return "<h2>当前状态</h2><p class=\"hint\">每次操作之后整份重画。微信用户记录数固定是 0。</p>"
+      + "<dl><dt>微信平台 " + domain.platforms.length + "</dt><dd>" + platforms + "</dd>"
+      + "<dt>微信应用 " + domain.apps.length + "</dt><dd>" + apps + "</dd>"
+      + "<dt>微信下发</dt><dd>" + domain.dispatches.length + " 条 · 对不上的送达 " + domain.unmatchedDeliveries + "</dd>"
+      + "<dt>丢弃的普通推送</dt><dd>" + domain.eventsDropped + "</dd>"
+      + "<dt>拒绝的非安全模式</dt><dd>" + domain.unsafeRejected + "</dd>"
+      + "<dt>全网发布应答</dt><dd>" + releaseTests + "</dd>"
+      + "<dt>未使用的短码</dt><dd>" + domain.handoffs.filter(function (h) { return !h.used; }).length + "</dd>"
+      + "<dt>最近一次身份</dt><dd>" + (ident ? esc(ident.via) + " " + esc(ident.openid) + " / " + esc(ident.unionid || "unionid 空") : "还没有") + "</dd>"
+      + "<dt>微信用户记录</dt><dd>0</dd></dl>";
+  }
+
+  function renderModal() {
+    if (!ui.modal) return "";
+    const titles = { createPlatform: "新增微信平台", createDirect: "新增直连", authorize: "模拟对方扫码授权完成", secret: "提交新 AppSecret", reauthorize: "重新授权", menuButton: "添加菜单按钮" };
+    return '<div class="mask"><div class="dialog"><header>' + titles[ui.modal] + '<button data-act="close-modal">×</button></header><form data-form="' + ui.modal + '"><div class="body">'
+      + modalBody(ui.modal) + '</div><footer><button class="btn" type="button" data-act="close-modal">取消</button><button class="btn primary" type="submit">确定</button></footer></form></div></div>';
+  }
+
+  function kindSelect(hidden) {
+    return '<div class="form-row kind-row"' + (hidden ? " hidden" : "") + '><label>服务号还是订阅号</label><select name="kind"><option value="service">服务号</option><option value="subscription">订阅号</option></select></div>';
+  }
+  function permChecks(defaults) {
+    return '<div class="form-row checks"><label>这次授权的权限</label><div>' + Object.keys(CAP_LABEL).map(function (key) {
+      const on = !defaults || defaults.indexOf(key) >= 0 ? " checked" : "";
+      return '<label><input type="checkbox" name="perm" value="' + key + '"' + on + " />" + CAP_LABEL[key] + "</label>";
+    }).join("") + "</div></div>";
+  }
+  function modalBody(name) {
+    if (name === "createPlatform") {
+      return field("名称", "name", "text") + field("component AppID", "appId", "text")
+        + field("平台密钥", "secret", "password") + field("消息 Token", "token", "password") + field("EncodingAESKey", "aes", "password");
+    }
+    if (name === "createDirect") {
+      return field("名称", "name", "text") + field("AppID", "appId", "text") + field("AppSecret", "secret", "password")
+        + '<div class="form-row"><label>类型</label><select name="appType"><option value="mini">小程序</option><option value="official">公众号</option></select></div>'
+        + kindSelect(true);
+    }
+    if (name === "authorize") {
+      const ready = domain.platforms.filter(function (p) { return platformReady(p); });
+      const options = ready.length
+        ? ready.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + " · " + esc(p.appId) + "</option>"; }).join("")
+        : '<option value="">没有就绪的微信平台</option>';
+      return '<p class="hint">先选定一条已经就绪的微信平台。原型里由你填写微信授权完成后会返回的结果。</p>'
+        + '<div class="form-row"><label>挂到哪一条平台</label><select name="platformId">' + options + "</select></div>"
+        + field("名称", "name", "text") + field("AppID", "appId", "text")
+        + '<div class="form-row"><label>微信返回的类型</label><select name="appType"><option value="official">公众号</option><option value="mini">小程序</option></select></div>'
+        + kindSelect() + permChecks();
+    }
+    if (name === "secret") return field("新的 AppSecret", "secret", "password");
+    if (name === "reauthorize") {
+      const app = selected();
+      return permChecks(app ? app.permissions : []);
+    }
+    if (name === "menuButton") {
+      return field("名称", "name", "text")
+        + '<div class="form-row"><label>按钮</label><select name="buttonType"><option value="view">打开网页</option><option value="miniprogram">跳转小程序</option></select></div>'
+        + field("网页 URL", "url", "text") + field("小程序 AppID", "miniAppId", "text") + field("小程序页面", "page", "text");
+    }
+    return "";
+  }
+
+  document.body.addEventListener("click", function (event) {
+    const el = event.target.closest("[data-act]");
+    if (!el || el.tagName === "SELECT" || el.tagName === "INPUT") return;
+    const act = el.getAttribute("data-act");
+    if (act === "goto") {
+      ui.page = el.getAttribute("data-page");
+      render();
+      return;
+    }
+    if (act === "open-detail") {
+      ui.selectedId = el.getAttribute("data-id");
+      ui.page = "detail";
+      render();
+      return;
+    }
+    if (act === "open-platform") {
+      ui.platformId = el.getAttribute("data-id");
+      ui.page = "platformDetail";
+      render();
+      return;
+    }
+    if (act === "open-modal") {
+      ui.modal = el.getAttribute("data-modal");
+      render();
+      return;
+    }
+    if (act === "close-modal") {
+      ui.modal = null;
+      render();
+      return;
+    }
+    if (act === "reset") {
+      domain = initialState();
+      ui.scenarioId = "";
+      ui.step = 0;
+      ui.notice = { tone: "success", text: "已清空。" };
+      ui.page = "platform";
+      ui.selectedId = null;
+      ui.platformId = null;
+      ui.modal = null;
+      render();
+      return;
+    }
+    if (act === "scenario-step") {
+      const sc = scenarios.find(function (s) { return s.id === ui.scenarioId; });
+      if (!sc || ui.step >= sc.steps.length) return;
+      const step = sc.steps[ui.step];
+      const action = typeof step.action === "function" ? step.action(domain) : step.action;
+      const out = reduce(domain, action);
+      domain = out.state;
+      ui.notice = out.notice;
+      if (out.focusId) {
+        ui.selectedId = out.focusId;
+        ui.page = "detail";
+      }
+      if (out.focusPlatformId) {
+        ui.platformId = out.focusPlatformId;
+        ui.page = "platformDetail";
+      }
+      ui.step += 1;
+      render();
+      return;
+    }
+    if (act === "action") {
+      const type = el.getAttribute("data-type");
+      const action = { type: type };
+      if (el.hasAttribute("data-id")) action.id = el.getAttribute("data-id");
+      if (el.hasAttribute("data-outcome")) action.outcome = el.getAttribute("data-outcome");
+      if (el.hasAttribute("data-suspended")) action.suspended = el.getAttribute("data-suspended") === "1";
+      if (el.hasAttribute("data-button-id")) action.buttonId = el.getAttribute("data-button-id");
+      if (el.hasAttribute("data-lib")) action.libId = el.getAttribute("data-lib");
+      if (el.hasAttribute("data-unionid")) action.withUnionid = el.getAttribute("data-unionid") === "1";
+      if (el.hasAttribute("data-scope")) action.scope = el.getAttribute("data-scope");
+      if (el.hasAttribute("data-code")) action.code = el.getAttribute("data-code");
+      apply(action);
+    }
+  });
+
+  document.body.addEventListener("change", function (event) {
+    const el = event.target;
+    if (el.getAttribute("data-act") === "pick-scenario") {
+      ui.scenarioId = el.value;
+      ui.step = 0;
+      ui.modal = null;
+      if (!el.value) {
+        ui.notice = null;
+        render();
+        return;
+      }
+      const sc = scenarios.find(function (s) { return s.id === el.value; });
+      domain = sc.setup();
+      ui.notice = { tone: "success", text: "已重置到这条走查的起点。" };
+      ui.page = "platform";
+      ui.selectedId = null;
+      render();
+      return;
+    }
+    if (el.getAttribute("data-act") === "toggle-withdrawn") {
+      ui.showWithdrawn = el.checked;
+      render();
+      return;
+    }
+    if (el.getAttribute("data-act") === "toggle-withdrawn-platforms") {
+      ui.showWithdrawnPlatforms = el.checked;
+      render();
+      return;
+    }
+    if (el.getAttribute("data-act") === "filter-dispatch") {
+      ui.dispatchFilter = el.value;
+      render();
+      return;
+    }
+    if (el.name === "appType") {
+      document.querySelectorAll(".kind-row").forEach(function (row) { row.hidden = el.value !== "official"; });
+    }
+  });
+
+  document.body.addEventListener("submit", function (event) {
+    const form = event.target;
+    if (!form || !form.getAttribute) return;
+    const name = form.getAttribute("data-form");
+    if (!name) return;
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    if (name === "createPlatform") {
+      apply({ type: "createPlatform", name: data.name, appId: data.appId, secret: data.secret, token: data.token, aes: data.aes });
+      return;
+    }
+    if (name === "createDirect") {
+      apply({ type: "createDirect", name: data.name, appId: data.appId, secret: data.secret, appType: data.appType, kind: data.kind });
+      return;
+    }
+    if (name === "authorize") {
+      apply({ type: "authorize", platformId: data.platformId, name: data.name, appId: data.appId, appType: data.appType, kind: data.kind, permissions: new FormData(form).getAll("perm") });
+      return;
+    }
+    if (name === "secret") {
+      apply({ type: "submitSecret", id: ui.selectedId, secret: data.secret });
+      return;
+    }
+    if (name === "reauthorize") {
+      apply({ type: "reauthorize", id: ui.selectedId, permissions: new FormData(form).getAll("perm") });
+      return;
+    }
+    if (name === "menuButton") {
+      apply({ type: "addMenuButton", id: ui.selectedId, name: data.name, buttonType: data.buttonType, url: data.url, miniAppId: data.miniAppId, page: data.page });
+      return;
+    }
+    if (name === "send") {
+      apply({ type: "send", id: ui.selectedId, templateId: data.templateId, openid: data.openid, url: data.url, miniAppId: data.miniAppId, miniPage: data.miniPage, outcome: data.outcome });
+      return;
+    }
+    if (name === "returnUrl") {
+      apply({ type: "setReturnUrl", id: ui.selectedId, returnUrl: data.returnUrl });
+    }
+  });
+
+  render();
+})();
+  </script>
+</body>
+</html>

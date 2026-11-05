@@ -254,7 +254,40 @@ func (_u *DictDataUpdate) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *DictDataUpdate) check() error {
+	if v, ok := _u.mutation.DictLabel(); ok {
+		if err := dictdata.DictLabelValidator(v); err != nil {
+			return &ValidationError{Name: "dict_label", err: fmt.Errorf(`ent: validator failed for field "DictData.dict_label": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.DictValue(); ok {
+		if err := dictdata.DictValueValidator(v); err != nil {
+			return &ValidationError{Name: "dict_value", err: fmt.Errorf(`ent: validator failed for field "DictData.dict_value": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.DictType(); ok {
+		if err := dictdata.DictTypeValidator(v); err != nil {
+			return &ValidationError{Name: "dict_type", err: fmt.Errorf(`ent: validator failed for field "DictData.dict_type": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ListClass(); ok {
+		if err := dictdata.ListClassValidator(v); err != nil {
+			return &ValidationError{Name: "list_class", err: fmt.Errorf(`ent: validator failed for field "DictData.list_class": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Remark(); ok {
+		if err := dictdata.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "DictData.remark": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *DictDataUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(dictdata.Table, dictdata.Columns, sqlgraph.NewFieldSpec(dictdata.FieldID, field.TypeInt64))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -573,7 +606,40 @@ func (_u *DictDataUpdateOne) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *DictDataUpdateOne) check() error {
+	if v, ok := _u.mutation.DictLabel(); ok {
+		if err := dictdata.DictLabelValidator(v); err != nil {
+			return &ValidationError{Name: "dict_label", err: fmt.Errorf(`ent: validator failed for field "DictData.dict_label": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.DictValue(); ok {
+		if err := dictdata.DictValueValidator(v); err != nil {
+			return &ValidationError{Name: "dict_value", err: fmt.Errorf(`ent: validator failed for field "DictData.dict_value": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.DictType(); ok {
+		if err := dictdata.DictTypeValidator(v); err != nil {
+			return &ValidationError{Name: "dict_type", err: fmt.Errorf(`ent: validator failed for field "DictData.dict_type": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ListClass(); ok {
+		if err := dictdata.ListClassValidator(v); err != nil {
+			return &ValidationError{Name: "list_class", err: fmt.Errorf(`ent: validator failed for field "DictData.list_class": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Remark(); ok {
+		if err := dictdata.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "DictData.remark": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *DictDataUpdateOne) sqlSave(ctx context.Context) (_node *DictData, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(dictdata.Table, dictdata.Columns, sqlgraph.NewFieldSpec(dictdata.FieldID, field.TypeInt64))
 	id, ok := _u.mutation.ID()
 	if !ok {

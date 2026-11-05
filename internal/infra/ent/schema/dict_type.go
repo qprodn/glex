@@ -27,15 +27,15 @@ func (DictType) Fields() []ent.Field {
 		// Snowflake ID; stored in the id column. Set by the
 		// repo on create (see data.newSnowflakeID).
 		field.Int64("id").Unique().Immutable(),
-		field.String("dict_name"),
+		field.String("dict_name").MaxLen(256),
 		// Vocabulary key (^[a-z][a-z0-9_]*$), immutable after create
 		// (ADR 0006). Uniqueness among active rows is backed by the partial
 		// unique index below — a deliberate DB guarantee (the role module's
 		// code-only check does not scale to an exact-match identifier that
 		// every consumer references); the friendly pre-check lives in the
 		// domain service. Soft-deleted keys are reusable.
-		field.String("dict_type"),
-		field.String("remark").Default(""),
+		field.String("dict_type").MaxLen(256),
+		field.String("remark").Default("").MaxLen(256),
 	}
 }
 

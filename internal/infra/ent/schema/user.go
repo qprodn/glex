@@ -28,11 +28,11 @@ func (User) Fields() []ent.Field {
 		// Uniqueness is enforced in code (domain checks against active rows), not
 		// by DB constraints — repo-wide convention (see .scratch/role/plan.md).
 		// Soft-deleted values are reusable.
-		field.String("user_name"),
-		field.String("nick_name").Default(""),
+		field.String("user_name").MaxLen(256),
+		field.String("nick_name").Default("").MaxLen(256),
 		// Nullable: NULL when unset; uniqueness enforced in code when set.
-		field.String("email").Optional().Nillable(),
-		field.String("phone_number").Optional().Nillable(),
+		field.String("email").Optional().Nillable().MaxLen(256),
+		field.String("phone_number").Optional().Nillable().MaxLen(256),
 		// smallint in PG (RuoYi's char(1) enums made numeric).
 		field.Int8("gender").Default(0).SchemaType(map[string]string{
 			dialect.Postgres: "smallint",
@@ -43,18 +43,18 @@ func (User) Fields() []ent.Field {
 		// The credential column: read and written only by authn's adapters
 		// (ADR 0005); it stays on this table until a service split forces a
 		// dedicated credential store.
-		field.String("password").Default(""),
+		field.String("password").Default("").MaxLen(256),
 		// The user's avatar as a Stored File id (0 = none) — RuoYi's bigint
 		// avatar column. Resolved to a Display URL on reads via the
 		// crossdomain file contract (ADR 0016); no ent edge, no FK.
 		field.Int64("avatar").Default(0),
-		field.String("remark").Optional().Default(""),
+		field.String("remark").Optional().Default("").MaxLen(256),
 		// The user's place in the org structure (ADR 0013): a plain column
 		// referencing sys_dept, 0 = none. The org module validates it via the
 		// crossdomain org contract; no ent edge and no FK across modules.
 		field.Int64("dept_id").Default(0),
 		// Last-login fields; written by the authn module, read-only here.
-		field.String("login_ip").Optional().Default(""),
+		field.String("login_ip").Optional().Default("").MaxLen(256),
 		field.Time("login_date").Optional().Nillable(),
 	}
 }

@@ -445,7 +445,55 @@ func (_u *MenuUpdate) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *MenuUpdate) check() error {
+	if v, ok := _u.mutation.MenuName(); ok {
+		if err := menu.MenuNameValidator(v); err != nil {
+			return &ValidationError{Name: "menu_name", err: fmt.Errorf(`ent: validator failed for field "Menu.menu_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Path(); ok {
+		if err := menu.PathValidator(v); err != nil {
+			return &ValidationError{Name: "path", err: fmt.Errorf(`ent: validator failed for field "Menu.path": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Component(); ok {
+		if err := menu.ComponentValidator(v); err != nil {
+			return &ValidationError{Name: "component", err: fmt.Errorf(`ent: validator failed for field "Menu.component": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.QueryParam(); ok {
+		if err := menu.QueryParamValidator(v); err != nil {
+			return &ValidationError{Name: "query_param", err: fmt.Errorf(`ent: validator failed for field "Menu.query_param": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Perms(); ok {
+		if err := menu.PermsValidator(v); err != nil {
+			return &ValidationError{Name: "perms", err: fmt.Errorf(`ent: validator failed for field "Menu.perms": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Icon(); ok {
+		if err := menu.IconValidator(v); err != nil {
+			return &ValidationError{Name: "icon", err: fmt.Errorf(`ent: validator failed for field "Menu.icon": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ActiveMenu(); ok {
+		if err := menu.ActiveMenuValidator(v); err != nil {
+			return &ValidationError{Name: "active_menu", err: fmt.Errorf(`ent: validator failed for field "Menu.active_menu": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Ext(); ok {
+		if err := menu.ExtValidator(v); err != nil {
+			return &ValidationError{Name: "ext", err: fmt.Errorf(`ent: validator failed for field "Menu.ext": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *MenuUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(menu.Table, menu.Columns, sqlgraph.NewFieldSpec(menu.FieldID, field.TypeInt64))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -1041,7 +1089,55 @@ func (_u *MenuUpdateOne) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *MenuUpdateOne) check() error {
+	if v, ok := _u.mutation.MenuName(); ok {
+		if err := menu.MenuNameValidator(v); err != nil {
+			return &ValidationError{Name: "menu_name", err: fmt.Errorf(`ent: validator failed for field "Menu.menu_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Path(); ok {
+		if err := menu.PathValidator(v); err != nil {
+			return &ValidationError{Name: "path", err: fmt.Errorf(`ent: validator failed for field "Menu.path": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Component(); ok {
+		if err := menu.ComponentValidator(v); err != nil {
+			return &ValidationError{Name: "component", err: fmt.Errorf(`ent: validator failed for field "Menu.component": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.QueryParam(); ok {
+		if err := menu.QueryParamValidator(v); err != nil {
+			return &ValidationError{Name: "query_param", err: fmt.Errorf(`ent: validator failed for field "Menu.query_param": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Perms(); ok {
+		if err := menu.PermsValidator(v); err != nil {
+			return &ValidationError{Name: "perms", err: fmt.Errorf(`ent: validator failed for field "Menu.perms": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Icon(); ok {
+		if err := menu.IconValidator(v); err != nil {
+			return &ValidationError{Name: "icon", err: fmt.Errorf(`ent: validator failed for field "Menu.icon": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ActiveMenu(); ok {
+		if err := menu.ActiveMenuValidator(v); err != nil {
+			return &ValidationError{Name: "active_menu", err: fmt.Errorf(`ent: validator failed for field "Menu.active_menu": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Ext(); ok {
+		if err := menu.ExtValidator(v); err != nil {
+			return &ValidationError{Name: "ext", err: fmt.Errorf(`ent: validator failed for field "Menu.ext": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *MenuUpdateOne) sqlSave(ctx context.Context) (_node *Menu, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(menu.Table, menu.Columns, sqlgraph.NewFieldSpec(menu.FieldID, field.TypeInt64))
 	id, ok := _u.mutation.ID()
 	if !ok {

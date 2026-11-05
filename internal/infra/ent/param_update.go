@@ -226,7 +226,35 @@ func (_u *ParamUpdate) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *ParamUpdate) check() error {
+	if v, ok := _u.mutation.ConfigName(); ok {
+		if err := param.ConfigNameValidator(v); err != nil {
+			return &ValidationError{Name: "config_name", err: fmt.Errorf(`ent: validator failed for field "Param.config_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ConfigKey(); ok {
+		if err := param.ConfigKeyValidator(v); err != nil {
+			return &ValidationError{Name: "config_key", err: fmt.Errorf(`ent: validator failed for field "Param.config_key": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ConfigValue(); ok {
+		if err := param.ConfigValueValidator(v); err != nil {
+			return &ValidationError{Name: "config_value", err: fmt.Errorf(`ent: validator failed for field "Param.config_value": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Remark(); ok {
+		if err := param.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "Param.remark": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *ParamUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(param.Table, param.Columns, sqlgraph.NewFieldSpec(param.FieldID, field.TypeInt64))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -511,7 +539,35 @@ func (_u *ParamUpdateOne) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *ParamUpdateOne) check() error {
+	if v, ok := _u.mutation.ConfigName(); ok {
+		if err := param.ConfigNameValidator(v); err != nil {
+			return &ValidationError{Name: "config_name", err: fmt.Errorf(`ent: validator failed for field "Param.config_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ConfigKey(); ok {
+		if err := param.ConfigKeyValidator(v); err != nil {
+			return &ValidationError{Name: "config_key", err: fmt.Errorf(`ent: validator failed for field "Param.config_key": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ConfigValue(); ok {
+		if err := param.ConfigValueValidator(v); err != nil {
+			return &ValidationError{Name: "config_value", err: fmt.Errorf(`ent: validator failed for field "Param.config_value": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Remark(); ok {
+		if err := param.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "Param.remark": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *ParamUpdateOne) sqlSave(ctx context.Context) (_node *Param, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(param.Table, param.Columns, sqlgraph.NewFieldSpec(param.FieldID, field.TypeInt64))
 	id, ok := _u.mutation.ID()
 	if !ok {

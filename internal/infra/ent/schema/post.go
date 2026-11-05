@@ -29,8 +29,8 @@ func (Post) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int64("id").Unique().Immutable(),
 		field.Int64("dept_id"),
-		field.String("post_code"),
-		field.String("post_name"),
+		field.String("post_code").MaxLen(64),
+		field.String("post_name").MaxLen(50),
 		field.Int("post_sort").Default(0).SchemaType(map[string]string{
 			dialect.Postgres: "integer",
 		}),
@@ -38,7 +38,7 @@ func (Post) Fields() []ent.Field {
 		field.Int8("status").Default(0).SchemaType(map[string]string{
 			dialect.Postgres: "smallint",
 		}),
-		field.String("remark").Default(""),
+		field.String("remark").Default("").MaxLen(500),
 	}
 }
 

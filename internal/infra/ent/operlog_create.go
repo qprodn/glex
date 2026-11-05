@@ -348,8 +348,18 @@ func (_c *OperLogCreate) check() error {
 	if _, ok := _c.mutation.Operation(); !ok {
 		return &ValidationError{Name: "operation", err: errors.New(`ent: missing required field "OperLog.operation"`)}
 	}
+	if v, ok := _c.mutation.Operation(); ok {
+		if err := operlog.OperationValidator(v); err != nil {
+			return &ValidationError{Name: "operation", err: fmt.Errorf(`ent: validator failed for field "OperLog.operation": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.HTTPMethod(); !ok {
 		return &ValidationError{Name: "http_method", err: errors.New(`ent: missing required field "OperLog.http_method"`)}
+	}
+	if v, ok := _c.mutation.HTTPMethod(); ok {
+		if err := operlog.HTTPMethodValidator(v); err != nil {
+			return &ValidationError{Name: "http_method", err: fmt.Errorf(`ent: validator failed for field "OperLog.http_method": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.OperUserID(); !ok {
 		return &ValidationError{Name: "oper_user_id", err: errors.New(`ent: missing required field "OperLog.oper_user_id"`)}
@@ -357,11 +367,26 @@ func (_c *OperLogCreate) check() error {
 	if _, ok := _c.mutation.OperUserName(); !ok {
 		return &ValidationError{Name: "oper_user_name", err: errors.New(`ent: missing required field "OperLog.oper_user_name"`)}
 	}
+	if v, ok := _c.mutation.OperUserName(); ok {
+		if err := operlog.OperUserNameValidator(v); err != nil {
+			return &ValidationError{Name: "oper_user_name", err: fmt.Errorf(`ent: validator failed for field "OperLog.oper_user_name": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Ipaddr(); !ok {
 		return &ValidationError{Name: "ipaddr", err: errors.New(`ent: missing required field "OperLog.ipaddr"`)}
 	}
+	if v, ok := _c.mutation.Ipaddr(); ok {
+		if err := operlog.IpaddrValidator(v); err != nil {
+			return &ValidationError{Name: "ipaddr", err: fmt.Errorf(`ent: validator failed for field "OperLog.ipaddr": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Request(); !ok {
 		return &ValidationError{Name: "request", err: errors.New(`ent: missing required field "OperLog.request"`)}
+	}
+	if v, ok := _c.mutation.Request(); ok {
+		if err := operlog.RequestValidator(v); err != nil {
+			return &ValidationError{Name: "request", err: fmt.Errorf(`ent: validator failed for field "OperLog.request": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "OperLog.status"`)}
@@ -369,14 +394,29 @@ func (_c *OperLogCreate) check() error {
 	if _, ok := _c.mutation.Reason(); !ok {
 		return &ValidationError{Name: "reason", err: errors.New(`ent: missing required field "OperLog.reason"`)}
 	}
+	if v, ok := _c.mutation.Reason(); ok {
+		if err := operlog.ReasonValidator(v); err != nil {
+			return &ValidationError{Name: "reason", err: fmt.Errorf(`ent: validator failed for field "OperLog.reason": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.ErrorMsg(); !ok {
 		return &ValidationError{Name: "error_msg", err: errors.New(`ent: missing required field "OperLog.error_msg"`)}
+	}
+	if v, ok := _c.mutation.ErrorMsg(); ok {
+		if err := operlog.ErrorMsgValidator(v); err != nil {
+			return &ValidationError{Name: "error_msg", err: fmt.Errorf(`ent: validator failed for field "OperLog.error_msg": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.LatencyMs(); !ok {
 		return &ValidationError{Name: "latency_ms", err: errors.New(`ent: missing required field "OperLog.latency_ms"`)}
 	}
 	if _, ok := _c.mutation.RequestID(); !ok {
 		return &ValidationError{Name: "request_id", err: errors.New(`ent: missing required field "OperLog.request_id"`)}
+	}
+	if v, ok := _c.mutation.RequestID(); ok {
+		if err := operlog.RequestIDValidator(v); err != nil {
+			return &ValidationError{Name: "request_id", err: fmt.Errorf(`ent: validator failed for field "OperLog.request_id": %w`, err)}
+		}
 	}
 	return nil
 }

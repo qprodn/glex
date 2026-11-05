@@ -67,8 +67,14 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// DictNameValidator is a validator for the "dict_name" field. It is called by the builders before save.
+	DictNameValidator func(string) error
+	// DictTypeValidator is a validator for the "dict_type" field. It is called by the builders before save.
+	DictTypeValidator func(string) error
 	// DefaultRemark holds the default value on creation for the "remark" field.
 	DefaultRemark string
+	// RemarkValidator is a validator for the "remark" field. It is called by the builders before save.
+	RemarkValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the DictType queries.

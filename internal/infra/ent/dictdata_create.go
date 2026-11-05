@@ -255,20 +255,45 @@ func (_c *DictDataCreate) check() error {
 	if _, ok := _c.mutation.DictLabel(); !ok {
 		return &ValidationError{Name: "dict_label", err: errors.New(`ent: missing required field "DictData.dict_label"`)}
 	}
+	if v, ok := _c.mutation.DictLabel(); ok {
+		if err := dictdata.DictLabelValidator(v); err != nil {
+			return &ValidationError{Name: "dict_label", err: fmt.Errorf(`ent: validator failed for field "DictData.dict_label": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.DictValue(); !ok {
 		return &ValidationError{Name: "dict_value", err: errors.New(`ent: missing required field "DictData.dict_value"`)}
+	}
+	if v, ok := _c.mutation.DictValue(); ok {
+		if err := dictdata.DictValueValidator(v); err != nil {
+			return &ValidationError{Name: "dict_value", err: fmt.Errorf(`ent: validator failed for field "DictData.dict_value": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.DictType(); !ok {
 		return &ValidationError{Name: "dict_type", err: errors.New(`ent: missing required field "DictData.dict_type"`)}
 	}
+	if v, ok := _c.mutation.DictType(); ok {
+		if err := dictdata.DictTypeValidator(v); err != nil {
+			return &ValidationError{Name: "dict_type", err: fmt.Errorf(`ent: validator failed for field "DictData.dict_type": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.ListClass(); !ok {
 		return &ValidationError{Name: "list_class", err: errors.New(`ent: missing required field "DictData.list_class"`)}
+	}
+	if v, ok := _c.mutation.ListClass(); ok {
+		if err := dictdata.ListClassValidator(v); err != nil {
+			return &ValidationError{Name: "list_class", err: fmt.Errorf(`ent: validator failed for field "DictData.list_class": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.IsDefault(); !ok {
 		return &ValidationError{Name: "is_default", err: errors.New(`ent: missing required field "DictData.is_default"`)}
 	}
 	if _, ok := _c.mutation.Remark(); !ok {
 		return &ValidationError{Name: "remark", err: errors.New(`ent: missing required field "DictData.remark"`)}
+	}
+	if v, ok := _c.mutation.Remark(); ok {
+		if err := dictdata.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "DictData.remark": %w`, err)}
+		}
 	}
 	return nil
 }

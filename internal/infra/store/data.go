@@ -14,7 +14,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"glex/internal/conf"
 	"glex/internal/infra/ent"
-	"glex/internal/infra/ent/migrate"
 	"glex/internal/infra/snowflake"
 )
 
@@ -75,12 +74,9 @@ func NewData(c *conf.Data, logger *slog.Logger) (*Data, func(), error) {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
 	if os.Getenv("DEPLOY_ENV") == "dev" {
-		// Enable debug mode for detailed logging.
+		// SQL logging only. Tables are created and changed by hand from
+		// docs/db/schema.sql; startup does not migrate.
 		client = client.Debug()
-		// Run the auto migration tool.
-		if err = client.Schema.Create(context.Background(), migrate.WithDropIndex(true)); err != nil {
-			return nil, nil, err
-		}
 	}
 	rdb, readTimeout, writeTimeout, err := newRedisClient(c)
 	if err != nil {

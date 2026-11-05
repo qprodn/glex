@@ -35,19 +35,19 @@ func (Param) Fields() []ent.Field {
 		// KeyMaxLen); the explicit SchemaType keeps ent's DDL in step with
 		// docs/db/schema.sql and the validator instead of its varchar(255)
 		// default — a budget-length value must never fail the insert.
-		field.String("config_name").
+		field.String("config_name").MaxLen(256).
 			SchemaType(map[string]string{dialect.Postgres: "varchar(256)"}),
 		// Parameter key (^[A-Za-z0-9][A-Za-z0-9._-]*$). Uniqueness among
 		// active rows is backed by the partial unique index below — the exact
 		// same DB guarantee the dict key carries, since consumer code resolves
 		// parameters by this identifier; the friendly pre-check lives in the
 		// domain service. Soft-deleted keys are reusable.
-		field.String("config_key").
+		field.String("config_key").MaxLen(256).
 			SchemaType(map[string]string{dialect.Postgres: "varchar(256)"}),
 		// Plain string value; varchar(500) keeps RuoYi's headroom for values
 		// that carry data rather than labels (the repo's 256 default is a
 		// label-sized budget).
-		field.String("config_value").Default("").
+		field.String("config_value").Default("").MaxLen(500).
 			SchemaType(map[string]string{dialect.Postgres: "varchar(500)"}),
 		// Built-in Parameter flag (RuoYi config_type Y/N, normalized to the
 		// repo's smallint switch convention like is_frame/visible): 1 = the
@@ -55,7 +55,7 @@ func (Param) Fields() []ent.Field {
 		field.Int("built_in").Default(0).
 			SchemaType(map[string]string{dialect.Postgres: "smallint"}),
 		// Remark rides the same 500 budget as the value (param.RemarkMaxLen).
-		field.String("remark").Default("").
+		field.String("remark").Default("").MaxLen(500).
 			SchemaType(map[string]string{dialect.Postgres: "varchar(500)"}),
 	}
 }

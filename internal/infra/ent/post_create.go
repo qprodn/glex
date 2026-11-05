@@ -253,8 +253,18 @@ func (_c *PostCreate) check() error {
 	if _, ok := _c.mutation.PostCode(); !ok {
 		return &ValidationError{Name: "post_code", err: errors.New(`ent: missing required field "Post.post_code"`)}
 	}
+	if v, ok := _c.mutation.PostCode(); ok {
+		if err := post.PostCodeValidator(v); err != nil {
+			return &ValidationError{Name: "post_code", err: fmt.Errorf(`ent: validator failed for field "Post.post_code": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.PostName(); !ok {
 		return &ValidationError{Name: "post_name", err: errors.New(`ent: missing required field "Post.post_name"`)}
+	}
+	if v, ok := _c.mutation.PostName(); ok {
+		if err := post.PostNameValidator(v); err != nil {
+			return &ValidationError{Name: "post_name", err: fmt.Errorf(`ent: validator failed for field "Post.post_name": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.PostSort(); !ok {
 		return &ValidationError{Name: "post_sort", err: errors.New(`ent: missing required field "Post.post_sort"`)}
@@ -264,6 +274,11 @@ func (_c *PostCreate) check() error {
 	}
 	if _, ok := _c.mutation.Remark(); !ok {
 		return &ValidationError{Name: "remark", err: errors.New(`ent: missing required field "Post.remark"`)}
+	}
+	if v, ok := _c.mutation.Remark(); ok {
+		if err := post.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "Post.remark": %w`, err)}
+		}
 	}
 	return nil
 }

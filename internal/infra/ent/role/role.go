@@ -95,6 +95,10 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// RoleNameValidator is a validator for the "role_name" field. It is called by the builders before save.
+	RoleNameValidator func(string) error
+	// RoleKeyValidator is a validator for the "role_key" field. It is called by the builders before save.
+	RoleKeyValidator func(string) error
 	// DefaultRoleSort holds the default value on creation for the "role_sort" field.
 	DefaultRoleSort int
 	// DefaultStatus holds the default value on creation for the "status" field.
@@ -103,6 +107,8 @@ var (
 	DefaultMenuCheckStrictly bool
 	// DefaultRemark holds the default value on creation for the "remark" field.
 	DefaultRemark string
+	// RemarkValidator is a validator for the "remark" field. It is called by the builders before save.
+	RemarkValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the Role queries.

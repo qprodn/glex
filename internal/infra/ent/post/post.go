@@ -86,12 +86,18 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// PostCodeValidator is a validator for the "post_code" field. It is called by the builders before save.
+	PostCodeValidator func(string) error
+	// PostNameValidator is a validator for the "post_name" field. It is called by the builders before save.
+	PostNameValidator func(string) error
 	// DefaultPostSort holds the default value on creation for the "post_sort" field.
 	DefaultPostSort int
 	// DefaultStatus holds the default value on creation for the "status" field.
 	DefaultStatus int8
 	// DefaultRemark holds the default value on creation for the "remark" field.
 	DefaultRemark string
+	// RemarkValidator is a validator for the "remark" field. It is called by the builders before save.
+	RemarkValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the Post queries.

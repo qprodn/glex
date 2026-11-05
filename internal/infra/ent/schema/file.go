@@ -29,23 +29,23 @@ func (File) Fields() []ent.Field {
 		// before building the Stored Key so the key and the row correlate
 		// (see internal/infra/file snowflake.go).
 		field.Int64("id").Unique().Immutable(),
-		field.String("original_name"),
+		field.String("original_name").MaxLen(256),
 		// Lowercased extension without the dot ("" when none), derived from
 		// the original name at accept time.
-		field.String("suffix").Default(""),
+		field.String("suffix").Default("").MaxLen(16),
 		// Content type sniffed from the bytes at accept time; a client's
 		// declared Content-Type never reaches this column.
-		field.String("mime_type"),
+		field.String("mime_type").MaxLen(128),
 		field.Int64("size_bytes"),
 		// Bucket and Stored Key locate the bytes in object storage. No public
 		// URL exists — bytes are addressable only through the service
 		// (ADR 0008).
-		field.String("bucket"),
-		field.String("obj_key"),
+		field.String("bucket").MaxLen(128),
+		field.String("obj_key").MaxLen(512),
 		// SHA-256 hex digest of the bytes (the Content Fingerprint). Recorded
 		// for integrity; never used to unify — identical bytes accepted twice
 		// yield two Stored Files.
-		field.String("content_hash"),
+		field.String("content_hash").MaxLen(64),
 	}
 }
 

@@ -279,6 +279,11 @@ func (_c *DeptCreate) check() error {
 	if _, ok := _c.mutation.DeptName(); !ok {
 		return &ValidationError{Name: "dept_name", err: errors.New(`ent: missing required field "Dept.dept_name"`)}
 	}
+	if v, ok := _c.mutation.DeptName(); ok {
+		if err := dept.DeptNameValidator(v); err != nil {
+			return &ValidationError{Name: "dept_name", err: fmt.Errorf(`ent: validator failed for field "Dept.dept_name": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.OrderNum(); !ok {
 		return &ValidationError{Name: "order_num", err: errors.New(`ent: missing required field "Dept.order_num"`)}
 	}
@@ -288,8 +293,18 @@ func (_c *DeptCreate) check() error {
 	if _, ok := _c.mutation.Phone(); !ok {
 		return &ValidationError{Name: "phone", err: errors.New(`ent: missing required field "Dept.phone"`)}
 	}
+	if v, ok := _c.mutation.Phone(); ok {
+		if err := dept.PhoneValidator(v); err != nil {
+			return &ValidationError{Name: "phone", err: fmt.Errorf(`ent: validator failed for field "Dept.phone": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Email(); !ok {
 		return &ValidationError{Name: "email", err: errors.New(`ent: missing required field "Dept.email"`)}
+	}
+	if v, ok := _c.mutation.Email(); ok {
+		if err := dept.EmailValidator(v); err != nil {
+			return &ValidationError{Name: "email", err: fmt.Errorf(`ent: validator failed for field "Dept.email": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Dept.status"`)}

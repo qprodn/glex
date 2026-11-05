@@ -216,11 +216,26 @@ func (_c *FileCreate) check() error {
 	if _, ok := _c.mutation.OriginalName(); !ok {
 		return &ValidationError{Name: "original_name", err: errors.New(`ent: missing required field "File.original_name"`)}
 	}
+	if v, ok := _c.mutation.OriginalName(); ok {
+		if err := file.OriginalNameValidator(v); err != nil {
+			return &ValidationError{Name: "original_name", err: fmt.Errorf(`ent: validator failed for field "File.original_name": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Suffix(); !ok {
 		return &ValidationError{Name: "suffix", err: errors.New(`ent: missing required field "File.suffix"`)}
 	}
+	if v, ok := _c.mutation.Suffix(); ok {
+		if err := file.SuffixValidator(v); err != nil {
+			return &ValidationError{Name: "suffix", err: fmt.Errorf(`ent: validator failed for field "File.suffix": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.MimeType(); !ok {
 		return &ValidationError{Name: "mime_type", err: errors.New(`ent: missing required field "File.mime_type"`)}
+	}
+	if v, ok := _c.mutation.MimeType(); ok {
+		if err := file.MimeTypeValidator(v); err != nil {
+			return &ValidationError{Name: "mime_type", err: fmt.Errorf(`ent: validator failed for field "File.mime_type": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.SizeBytes(); !ok {
 		return &ValidationError{Name: "size_bytes", err: errors.New(`ent: missing required field "File.size_bytes"`)}
@@ -228,11 +243,26 @@ func (_c *FileCreate) check() error {
 	if _, ok := _c.mutation.Bucket(); !ok {
 		return &ValidationError{Name: "bucket", err: errors.New(`ent: missing required field "File.bucket"`)}
 	}
+	if v, ok := _c.mutation.Bucket(); ok {
+		if err := file.BucketValidator(v); err != nil {
+			return &ValidationError{Name: "bucket", err: fmt.Errorf(`ent: validator failed for field "File.bucket": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.ObjKey(); !ok {
 		return &ValidationError{Name: "obj_key", err: errors.New(`ent: missing required field "File.obj_key"`)}
 	}
+	if v, ok := _c.mutation.ObjKey(); ok {
+		if err := file.ObjKeyValidator(v); err != nil {
+			return &ValidationError{Name: "obj_key", err: fmt.Errorf(`ent: validator failed for field "File.obj_key": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.ContentHash(); !ok {
 		return &ValidationError{Name: "content_hash", err: errors.New(`ent: missing required field "File.content_hash"`)}
+	}
+	if v, ok := _c.mutation.ContentHash(); ok {
+		if err := file.ContentHashValidator(v); err != nil {
+			return &ValidationError{Name: "content_hash", err: fmt.Errorf(`ent: validator failed for field "File.content_hash": %w`, err)}
+		}
 	}
 	return nil
 }

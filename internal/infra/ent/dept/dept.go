@@ -81,14 +81,20 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultParentID holds the default value on creation for the "parent_id" field.
 	DefaultParentID int64
+	// DeptNameValidator is a validator for the "dept_name" field. It is called by the builders before save.
+	DeptNameValidator func(string) error
 	// DefaultOrderNum holds the default value on creation for the "order_num" field.
 	DefaultOrderNum int
 	// DefaultLeader holds the default value on creation for the "leader" field.
 	DefaultLeader int64
 	// DefaultPhone holds the default value on creation for the "phone" field.
 	DefaultPhone string
+	// PhoneValidator is a validator for the "phone" field. It is called by the builders before save.
+	PhoneValidator func(string) error
 	// DefaultEmail holds the default value on creation for the "email" field.
 	DefaultEmail string
+	// EmailValidator is a validator for the "email" field. It is called by the builders before save.
+	EmailValidator func(string) error
 	// DefaultStatus holds the default value on creation for the "status" field.
 	DefaultStatus int8
 )

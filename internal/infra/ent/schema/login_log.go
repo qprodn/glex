@@ -36,16 +36,16 @@ func (LoginLog) Fields() []ent.Field {
 		// The account the event is about; 0 when the attempt never
 		// resolved to an account (wrong name, withdrawn user).
 		field.Int64("user_id").Default(0),
-		field.String("user_name").Default(""),
-		field.String("ipaddr").Default(""),
-		field.String("browser").Default(""),
-		field.String("os").Default(""),
+		field.String("user_name").Default("").MaxLen(256),
+		field.String("ipaddr").Default("").MaxLen(256),
+		field.String("browser").Default("").MaxLen(256),
+		field.String("os").Default("").MaxLen(256),
 		// 0 success, 1 failure (RuoYi status).
 		field.Int8("status").Default(0).SchemaType(map[string]string{
 			dialect.Postgres: "smallint",
 		}),
 		// Human-readable outcome ("登录成功", "密码错误", "强制退出").
-		field.String("msg").Default(""),
+		field.String("msg").Default("").MaxLen(256),
 	}
 }
 

@@ -73,12 +73,20 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// ConfigNameValidator is a validator for the "config_name" field. It is called by the builders before save.
+	ConfigNameValidator func(string) error
+	// ConfigKeyValidator is a validator for the "config_key" field. It is called by the builders before save.
+	ConfigKeyValidator func(string) error
 	// DefaultConfigValue holds the default value on creation for the "config_value" field.
 	DefaultConfigValue string
+	// ConfigValueValidator is a validator for the "config_value" field. It is called by the builders before save.
+	ConfigValueValidator func(string) error
 	// DefaultBuiltIn holds the default value on creation for the "built_in" field.
 	DefaultBuiltIn int
 	// DefaultRemark holds the default value on creation for the "remark" field.
 	DefaultRemark string
+	// RemarkValidator is a validator for the "remark" field. It is called by the builders before save.
+	RemarkValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the Param queries.

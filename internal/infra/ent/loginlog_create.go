@@ -291,20 +291,45 @@ func (_c *LoginLogCreate) check() error {
 	if _, ok := _c.mutation.UserName(); !ok {
 		return &ValidationError{Name: "user_name", err: errors.New(`ent: missing required field "LoginLog.user_name"`)}
 	}
+	if v, ok := _c.mutation.UserName(); ok {
+		if err := loginlog.UserNameValidator(v); err != nil {
+			return &ValidationError{Name: "user_name", err: fmt.Errorf(`ent: validator failed for field "LoginLog.user_name": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Ipaddr(); !ok {
 		return &ValidationError{Name: "ipaddr", err: errors.New(`ent: missing required field "LoginLog.ipaddr"`)}
+	}
+	if v, ok := _c.mutation.Ipaddr(); ok {
+		if err := loginlog.IpaddrValidator(v); err != nil {
+			return &ValidationError{Name: "ipaddr", err: fmt.Errorf(`ent: validator failed for field "LoginLog.ipaddr": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.Browser(); !ok {
 		return &ValidationError{Name: "browser", err: errors.New(`ent: missing required field "LoginLog.browser"`)}
 	}
+	if v, ok := _c.mutation.Browser(); ok {
+		if err := loginlog.BrowserValidator(v); err != nil {
+			return &ValidationError{Name: "browser", err: fmt.Errorf(`ent: validator failed for field "LoginLog.browser": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Os(); !ok {
 		return &ValidationError{Name: "os", err: errors.New(`ent: missing required field "LoginLog.os"`)}
+	}
+	if v, ok := _c.mutation.Os(); ok {
+		if err := loginlog.OsValidator(v); err != nil {
+			return &ValidationError{Name: "os", err: fmt.Errorf(`ent: validator failed for field "LoginLog.os": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "LoginLog.status"`)}
 	}
 	if _, ok := _c.mutation.Msg(); !ok {
 		return &ValidationError{Name: "msg", err: errors.New(`ent: missing required field "LoginLog.msg"`)}
+	}
+	if v, ok := _c.mutation.Msg(); ok {
+		if err := loginlog.MsgValidator(v); err != nil {
+			return &ValidationError{Name: "msg", err: fmt.Errorf(`ent: validator failed for field "LoginLog.msg": %w`, err)}
+		}
 	}
 	return nil
 }

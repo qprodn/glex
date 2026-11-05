@@ -278,8 +278,18 @@ func (_c *RoleCreate) check() error {
 	if _, ok := _c.mutation.RoleName(); !ok {
 		return &ValidationError{Name: "role_name", err: errors.New(`ent: missing required field "Role.role_name"`)}
 	}
+	if v, ok := _c.mutation.RoleName(); ok {
+		if err := role.RoleNameValidator(v); err != nil {
+			return &ValidationError{Name: "role_name", err: fmt.Errorf(`ent: validator failed for field "Role.role_name": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.RoleKey(); !ok {
 		return &ValidationError{Name: "role_key", err: errors.New(`ent: missing required field "Role.role_key"`)}
+	}
+	if v, ok := _c.mutation.RoleKey(); ok {
+		if err := role.RoleKeyValidator(v); err != nil {
+			return &ValidationError{Name: "role_key", err: fmt.Errorf(`ent: validator failed for field "Role.role_key": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.RoleSort(); !ok {
 		return &ValidationError{Name: "role_sort", err: errors.New(`ent: missing required field "Role.role_sort"`)}
@@ -292,6 +302,11 @@ func (_c *RoleCreate) check() error {
 	}
 	if _, ok := _c.mutation.Remark(); !ok {
 		return &ValidationError{Name: "remark", err: errors.New(`ent: missing required field "Role.remark"`)}
+	}
+	if v, ok := _c.mutation.Remark(); ok {
+		if err := role.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "Role.remark": %w`, err)}
+		}
 	}
 	return nil
 }

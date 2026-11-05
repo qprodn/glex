@@ -113,22 +113,36 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// UserNameValidator is a validator for the "user_name" field. It is called by the builders before save.
+	UserNameValidator func(string) error
 	// DefaultNickName holds the default value on creation for the "nick_name" field.
 	DefaultNickName string
+	// NickNameValidator is a validator for the "nick_name" field. It is called by the builders before save.
+	NickNameValidator func(string) error
+	// EmailValidator is a validator for the "email" field. It is called by the builders before save.
+	EmailValidator func(string) error
+	// PhoneNumberValidator is a validator for the "phone_number" field. It is called by the builders before save.
+	PhoneNumberValidator func(string) error
 	// DefaultGender holds the default value on creation for the "gender" field.
 	DefaultGender int8
 	// DefaultStatus holds the default value on creation for the "status" field.
 	DefaultStatus int8
 	// DefaultPassword holds the default value on creation for the "password" field.
 	DefaultPassword string
+	// PasswordValidator is a validator for the "password" field. It is called by the builders before save.
+	PasswordValidator func(string) error
 	// DefaultAvatar holds the default value on creation for the "avatar" field.
 	DefaultAvatar int64
 	// DefaultRemark holds the default value on creation for the "remark" field.
 	DefaultRemark string
+	// RemarkValidator is a validator for the "remark" field. It is called by the builders before save.
+	RemarkValidator func(string) error
 	// DefaultDeptID holds the default value on creation for the "dept_id" field.
 	DefaultDeptID int64
 	// DefaultLoginIP holds the default value on creation for the "login_ip" field.
 	DefaultLoginIP string
+	// LoginIPValidator is a validator for the "login_ip" field. It is called by the builders before save.
+	LoginIPValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the User queries.

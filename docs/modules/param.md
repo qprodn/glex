@@ -36,7 +36,7 @@ param 模块是 glex 的第十个模块,为后台提供**运行时参数**能力
 
 ## 3. 数据模型
 
-一张表,ent schema(`internal/infra/ent/schema/param.go`,schema 类型叫 `Param`——ent 保留字 `config` 不可用)为真源,`docs/db/schema.sql` 人工镜像,dev 环境自动迁移。审计五件套走 mixin(ADR 0002),软删,无硬删。
+一张表,ent schema(`internal/infra/ent/schema/param.go`,schema 类型叫 `Param`——ent 保留字 `config` 不可用)为真源,`docs/db/schema.sql` 人工镜像并手工执行;进程启动不改表。审计五件套走 mixin(ADR 0002),软删,无硬删。
 
 ```sql
 -- ----------------------------

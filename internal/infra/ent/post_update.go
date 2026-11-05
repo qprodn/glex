@@ -291,7 +291,30 @@ func (_u *PostUpdate) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *PostUpdate) check() error {
+	if v, ok := _u.mutation.PostCode(); ok {
+		if err := post.PostCodeValidator(v); err != nil {
+			return &ValidationError{Name: "post_code", err: fmt.Errorf(`ent: validator failed for field "Post.post_code": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.PostName(); ok {
+		if err := post.PostNameValidator(v); err != nil {
+			return &ValidationError{Name: "post_name", err: fmt.Errorf(`ent: validator failed for field "Post.post_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Remark(); ok {
+		if err := post.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "Post.remark": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *PostUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(post.Table, post.Columns, sqlgraph.NewFieldSpec(post.FieldID, field.TypeInt64))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -694,7 +717,30 @@ func (_u *PostUpdateOne) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *PostUpdateOne) check() error {
+	if v, ok := _u.mutation.PostCode(); ok {
+		if err := post.PostCodeValidator(v); err != nil {
+			return &ValidationError{Name: "post_code", err: fmt.Errorf(`ent: validator failed for field "Post.post_code": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.PostName(); ok {
+		if err := post.PostNameValidator(v); err != nil {
+			return &ValidationError{Name: "post_name", err: fmt.Errorf(`ent: validator failed for field "Post.post_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Remark(); ok {
+		if err := post.RemarkValidator(v); err != nil {
+			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "Post.remark": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *PostUpdateOne) sqlSave(ctx context.Context) (_node *Post, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(post.Table, post.Columns, sqlgraph.NewFieldSpec(post.FieldID, field.TypeInt64))
 	id, ok := _u.mutation.ID()
 	if !ok {

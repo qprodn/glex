@@ -83,16 +83,26 @@ var (
 	DefaultUserID int64
 	// DefaultUserName holds the default value on creation for the "user_name" field.
 	DefaultUserName string
+	// UserNameValidator is a validator for the "user_name" field. It is called by the builders before save.
+	UserNameValidator func(string) error
 	// DefaultIpaddr holds the default value on creation for the "ipaddr" field.
 	DefaultIpaddr string
+	// IpaddrValidator is a validator for the "ipaddr" field. It is called by the builders before save.
+	IpaddrValidator func(string) error
 	// DefaultBrowser holds the default value on creation for the "browser" field.
 	DefaultBrowser string
+	// BrowserValidator is a validator for the "browser" field. It is called by the builders before save.
+	BrowserValidator func(string) error
 	// DefaultOs holds the default value on creation for the "os" field.
 	DefaultOs string
+	// OsValidator is a validator for the "os" field. It is called by the builders before save.
+	OsValidator func(string) error
 	// DefaultStatus holds the default value on creation for the "status" field.
 	DefaultStatus int8
 	// DefaultMsg holds the default value on creation for the "msg" field.
 	DefaultMsg string
+	// MsgValidator is a validator for the "msg" field. It is called by the builders before save.
+	MsgValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the LoginLog queries.

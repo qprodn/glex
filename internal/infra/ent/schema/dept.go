@@ -31,13 +31,13 @@ func (Dept) Fields() []ent.Field {
 		// Self-reference; 0 = root. No DB unique constraint on (parent_id,
 		// dept_name) — sibling uniqueness is a soft domain check.
 		field.Int64("parent_id").Default(0),
-		field.String("dept_name"),
+		field.String("dept_name").MaxLen(30),
 		field.Int("order_num").Default(0).SchemaType(map[string]string{
 			dialect.Postgres: "integer",
 		}),
 		field.Int64("leader").Default(0),
-		field.String("phone").Default(""),
-		field.String("email").Default(""),
+		field.String("phone").Default("").MaxLen(11),
+		field.String("email").Default("").MaxLen(50),
 		// smallint in PG (RuoYi's char(1) status made numeric); 0正常 1停用.
 		field.Int8("status").Default(0).SchemaType(map[string]string{
 			dialect.Postgres: "smallint",

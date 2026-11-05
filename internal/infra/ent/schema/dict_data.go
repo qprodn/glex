@@ -32,17 +32,17 @@ func (DictData) Fields() []ent.Field {
 		field.Int("dict_sort").Default(0).SchemaType(map[string]string{
 			dialect.Postgres: "integer",
 		}),
-		field.String("dict_label"),
-		field.String("dict_value"),
+		field.String("dict_label").MaxLen(256),
+		field.String("dict_value").MaxLen(256),
 		// Owning Dict Type key. Immutable after create (ADR 0006).
-		field.String("dict_type"),
+		field.String("dict_type").MaxLen(256),
 		// Tag color preset (default/primary/success/warning/danger/info),
 		// validated in the domain; proto calls it tag_style.
-		field.String("list_class").Default("default"),
+		field.String("list_class").Default("default").MaxLen(256),
 		// Whether forms should preselect this option. Multiple defaults may
 		// coexist (RuoYi semantics; RuoYi char Y/N made boolean).
 		field.Bool("is_default").Default(false),
-		field.String("remark").Default(""),
+		field.String("remark").Default("").MaxLen(256),
 	}
 }
 

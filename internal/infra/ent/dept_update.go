@@ -275,7 +275,30 @@ func (_u *DeptUpdate) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *DeptUpdate) check() error {
+	if v, ok := _u.mutation.DeptName(); ok {
+		if err := dept.DeptNameValidator(v); err != nil {
+			return &ValidationError{Name: "dept_name", err: fmt.Errorf(`ent: validator failed for field "Dept.dept_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Phone(); ok {
+		if err := dept.PhoneValidator(v); err != nil {
+			return &ValidationError{Name: "phone", err: fmt.Errorf(`ent: validator failed for field "Dept.phone": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Email(); ok {
+		if err := dept.EmailValidator(v); err != nil {
+			return &ValidationError{Name: "email", err: fmt.Errorf(`ent: validator failed for field "Dept.email": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *DeptUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(dept.Table, dept.Columns, sqlgraph.NewFieldSpec(dept.FieldID, field.TypeInt64))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -624,7 +647,30 @@ func (_u *DeptUpdateOne) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *DeptUpdateOne) check() error {
+	if v, ok := _u.mutation.DeptName(); ok {
+		if err := dept.DeptNameValidator(v); err != nil {
+			return &ValidationError{Name: "dept_name", err: fmt.Errorf(`ent: validator failed for field "Dept.dept_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Phone(); ok {
+		if err := dept.PhoneValidator(v); err != nil {
+			return &ValidationError{Name: "phone", err: fmt.Errorf(`ent: validator failed for field "Dept.phone": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Email(); ok {
+		if err := dept.EmailValidator(v); err != nil {
+			return &ValidationError{Name: "email", err: fmt.Errorf(`ent: validator failed for field "Dept.email": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *DeptUpdateOne) sqlSave(ctx context.Context) (_node *Dept, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(dept.Table, dept.Columns, sqlgraph.NewFieldSpec(dept.FieldID, field.TypeInt64))
 	id, ok := _u.mutation.ID()
 	if !ok {

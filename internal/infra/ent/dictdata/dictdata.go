@@ -81,12 +81,22 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultDictSort holds the default value on creation for the "dict_sort" field.
 	DefaultDictSort int
+	// DictLabelValidator is a validator for the "dict_label" field. It is called by the builders before save.
+	DictLabelValidator func(string) error
+	// DictValueValidator is a validator for the "dict_value" field. It is called by the builders before save.
+	DictValueValidator func(string) error
+	// DictTypeValidator is a validator for the "dict_type" field. It is called by the builders before save.
+	DictTypeValidator func(string) error
 	// DefaultListClass holds the default value on creation for the "list_class" field.
 	DefaultListClass string
+	// ListClassValidator is a validator for the "list_class" field. It is called by the builders before save.
+	ListClassValidator func(string) error
 	// DefaultIsDefault holds the default value on creation for the "is_default" field.
 	DefaultIsDefault bool
 	// DefaultRemark holds the default value on creation for the "remark" field.
 	DefaultRemark string
+	// RemarkValidator is a validator for the "remark" field. It is called by the builders before save.
+	RemarkValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the DictData queries.

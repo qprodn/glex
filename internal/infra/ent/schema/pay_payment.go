@@ -2,6 +2,7 @@ package schema
 
 import (
 	"entgo.io/ent"
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/entsql"
 	entschema "entgo.io/ent/schema"
 	"entgo.io/ent/schema/field"
@@ -39,7 +40,8 @@ func (PayPayment) Fields() []ent.Field {
 		// Minor units (fen for CNY) — `amount` is always minor units
 		// (ADR 0019); formatting to yuan happens only at display edges.
 		field.Int64("amount"),
-		field.String("currency").MaxLen(3).Default("CNY"),
+		field.String("currency").MaxLen(3).Default("CNY").
+			SchemaType(map[string]string{dialect.Postgres: "char(3)"}),
 		// 1 Native, 2 JSAPI, 3 H5, 4 App (only Native in the MVP).
 		field.Int16("pay_method").Default(1),
 		// 1 PENDING, 2 PAID, 3 FAILED, 4 CLOSED, 5 EXPIRED.

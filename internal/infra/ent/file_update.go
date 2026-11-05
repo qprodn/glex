@@ -254,7 +254,45 @@ func (_u *FileUpdate) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *FileUpdate) check() error {
+	if v, ok := _u.mutation.OriginalName(); ok {
+		if err := file.OriginalNameValidator(v); err != nil {
+			return &ValidationError{Name: "original_name", err: fmt.Errorf(`ent: validator failed for field "File.original_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Suffix(); ok {
+		if err := file.SuffixValidator(v); err != nil {
+			return &ValidationError{Name: "suffix", err: fmt.Errorf(`ent: validator failed for field "File.suffix": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.MimeType(); ok {
+		if err := file.MimeTypeValidator(v); err != nil {
+			return &ValidationError{Name: "mime_type", err: fmt.Errorf(`ent: validator failed for field "File.mime_type": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Bucket(); ok {
+		if err := file.BucketValidator(v); err != nil {
+			return &ValidationError{Name: "bucket", err: fmt.Errorf(`ent: validator failed for field "File.bucket": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ObjKey(); ok {
+		if err := file.ObjKeyValidator(v); err != nil {
+			return &ValidationError{Name: "obj_key", err: fmt.Errorf(`ent: validator failed for field "File.obj_key": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ContentHash(); ok {
+		if err := file.ContentHashValidator(v); err != nil {
+			return &ValidationError{Name: "content_hash", err: fmt.Errorf(`ent: validator failed for field "File.content_hash": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *FileUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(file.Table, file.Columns, sqlgraph.NewFieldSpec(file.FieldID, field.TypeInt64))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -573,7 +611,45 @@ func (_u *FileUpdateOne) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *FileUpdateOne) check() error {
+	if v, ok := _u.mutation.OriginalName(); ok {
+		if err := file.OriginalNameValidator(v); err != nil {
+			return &ValidationError{Name: "original_name", err: fmt.Errorf(`ent: validator failed for field "File.original_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Suffix(); ok {
+		if err := file.SuffixValidator(v); err != nil {
+			return &ValidationError{Name: "suffix", err: fmt.Errorf(`ent: validator failed for field "File.suffix": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.MimeType(); ok {
+		if err := file.MimeTypeValidator(v); err != nil {
+			return &ValidationError{Name: "mime_type", err: fmt.Errorf(`ent: validator failed for field "File.mime_type": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Bucket(); ok {
+		if err := file.BucketValidator(v); err != nil {
+			return &ValidationError{Name: "bucket", err: fmt.Errorf(`ent: validator failed for field "File.bucket": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ObjKey(); ok {
+		if err := file.ObjKeyValidator(v); err != nil {
+			return &ValidationError{Name: "obj_key", err: fmt.Errorf(`ent: validator failed for field "File.obj_key": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ContentHash(); ok {
+		if err := file.ContentHashValidator(v); err != nil {
+			return &ValidationError{Name: "content_hash", err: fmt.Errorf(`ent: validator failed for field "File.content_hash": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *FileUpdateOne) sqlSave(ctx context.Context) (_node *File, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(file.Table, file.Columns, sqlgraph.NewFieldSpec(file.FieldID, field.TypeInt64))
 	id, ok := _u.mutation.ID()
 	if !ok {

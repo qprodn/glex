@@ -424,6 +424,11 @@ func (_c *MenuCreate) check() error {
 	if _, ok := _c.mutation.MenuName(); !ok {
 		return &ValidationError{Name: "menu_name", err: errors.New(`ent: missing required field "Menu.menu_name"`)}
 	}
+	if v, ok := _c.mutation.MenuName(); ok {
+		if err := menu.MenuNameValidator(v); err != nil {
+			return &ValidationError{Name: "menu_name", err: fmt.Errorf(`ent: validator failed for field "Menu.menu_name": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.ParentID(); !ok {
 		return &ValidationError{Name: "parent_id", err: errors.New(`ent: missing required field "Menu.parent_id"`)}
 	}
@@ -433,11 +438,26 @@ func (_c *MenuCreate) check() error {
 	if _, ok := _c.mutation.Path(); !ok {
 		return &ValidationError{Name: "path", err: errors.New(`ent: missing required field "Menu.path"`)}
 	}
+	if v, ok := _c.mutation.Path(); ok {
+		if err := menu.PathValidator(v); err != nil {
+			return &ValidationError{Name: "path", err: fmt.Errorf(`ent: validator failed for field "Menu.path": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Component(); !ok {
 		return &ValidationError{Name: "component", err: errors.New(`ent: missing required field "Menu.component"`)}
 	}
+	if v, ok := _c.mutation.Component(); ok {
+		if err := menu.ComponentValidator(v); err != nil {
+			return &ValidationError{Name: "component", err: fmt.Errorf(`ent: validator failed for field "Menu.component": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.QueryParam(); !ok {
 		return &ValidationError{Name: "query_param", err: errors.New(`ent: missing required field "Menu.query_param"`)}
+	}
+	if v, ok := _c.mutation.QueryParam(); ok {
+		if err := menu.QueryParamValidator(v); err != nil {
+			return &ValidationError{Name: "query_param", err: fmt.Errorf(`ent: validator failed for field "Menu.query_param": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.IsFrame(); !ok {
 		return &ValidationError{Name: "is_frame", err: errors.New(`ent: missing required field "Menu.is_frame"`)}
@@ -457,14 +477,34 @@ func (_c *MenuCreate) check() error {
 	if _, ok := _c.mutation.Perms(); !ok {
 		return &ValidationError{Name: "perms", err: errors.New(`ent: missing required field "Menu.perms"`)}
 	}
+	if v, ok := _c.mutation.Perms(); ok {
+		if err := menu.PermsValidator(v); err != nil {
+			return &ValidationError{Name: "perms", err: fmt.Errorf(`ent: validator failed for field "Menu.perms": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Icon(); !ok {
 		return &ValidationError{Name: "icon", err: errors.New(`ent: missing required field "Menu.icon"`)}
+	}
+	if v, ok := _c.mutation.Icon(); ok {
+		if err := menu.IconValidator(v); err != nil {
+			return &ValidationError{Name: "icon", err: fmt.Errorf(`ent: validator failed for field "Menu.icon": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.ActiveMenu(); !ok {
 		return &ValidationError{Name: "active_menu", err: errors.New(`ent: missing required field "Menu.active_menu"`)}
 	}
+	if v, ok := _c.mutation.ActiveMenu(); ok {
+		if err := menu.ActiveMenuValidator(v); err != nil {
+			return &ValidationError{Name: "active_menu", err: fmt.Errorf(`ent: validator failed for field "Menu.active_menu": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Ext(); !ok {
 		return &ValidationError{Name: "ext", err: errors.New(`ent: missing required field "Menu.ext"`)}
+	}
+	if v, ok := _c.mutation.Ext(); ok {
+		if err := menu.ExtValidator(v); err != nil {
+			return &ValidationError{Name: "ext", err: fmt.Errorf(`ent: validator failed for field "Menu.ext": %w`, err)}
+		}
 	}
 	return nil
 }

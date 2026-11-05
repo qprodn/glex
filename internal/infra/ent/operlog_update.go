@@ -324,7 +324,55 @@ func (_u *OperLogUpdate) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *OperLogUpdate) check() error {
+	if v, ok := _u.mutation.Operation(); ok {
+		if err := operlog.OperationValidator(v); err != nil {
+			return &ValidationError{Name: "operation", err: fmt.Errorf(`ent: validator failed for field "OperLog.operation": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.HTTPMethod(); ok {
+		if err := operlog.HTTPMethodValidator(v); err != nil {
+			return &ValidationError{Name: "http_method", err: fmt.Errorf(`ent: validator failed for field "OperLog.http_method": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.OperUserName(); ok {
+		if err := operlog.OperUserNameValidator(v); err != nil {
+			return &ValidationError{Name: "oper_user_name", err: fmt.Errorf(`ent: validator failed for field "OperLog.oper_user_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Ipaddr(); ok {
+		if err := operlog.IpaddrValidator(v); err != nil {
+			return &ValidationError{Name: "ipaddr", err: fmt.Errorf(`ent: validator failed for field "OperLog.ipaddr": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Request(); ok {
+		if err := operlog.RequestValidator(v); err != nil {
+			return &ValidationError{Name: "request", err: fmt.Errorf(`ent: validator failed for field "OperLog.request": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Reason(); ok {
+		if err := operlog.ReasonValidator(v); err != nil {
+			return &ValidationError{Name: "reason", err: fmt.Errorf(`ent: validator failed for field "OperLog.reason": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ErrorMsg(); ok {
+		if err := operlog.ErrorMsgValidator(v); err != nil {
+			return &ValidationError{Name: "error_msg", err: fmt.Errorf(`ent: validator failed for field "OperLog.error_msg": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.RequestID(); ok {
+		if err := operlog.RequestIDValidator(v); err != nil {
+			return &ValidationError{Name: "request_id", err: fmt.Errorf(`ent: validator failed for field "OperLog.request_id": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *OperLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(operlog.Table, operlog.Columns, sqlgraph.NewFieldSpec(operlog.FieldID, field.TypeInt64))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -731,7 +779,55 @@ func (_u *OperLogUpdateOne) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *OperLogUpdateOne) check() error {
+	if v, ok := _u.mutation.Operation(); ok {
+		if err := operlog.OperationValidator(v); err != nil {
+			return &ValidationError{Name: "operation", err: fmt.Errorf(`ent: validator failed for field "OperLog.operation": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.HTTPMethod(); ok {
+		if err := operlog.HTTPMethodValidator(v); err != nil {
+			return &ValidationError{Name: "http_method", err: fmt.Errorf(`ent: validator failed for field "OperLog.http_method": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.OperUserName(); ok {
+		if err := operlog.OperUserNameValidator(v); err != nil {
+			return &ValidationError{Name: "oper_user_name", err: fmt.Errorf(`ent: validator failed for field "OperLog.oper_user_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Ipaddr(); ok {
+		if err := operlog.IpaddrValidator(v); err != nil {
+			return &ValidationError{Name: "ipaddr", err: fmt.Errorf(`ent: validator failed for field "OperLog.ipaddr": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Request(); ok {
+		if err := operlog.RequestValidator(v); err != nil {
+			return &ValidationError{Name: "request", err: fmt.Errorf(`ent: validator failed for field "OperLog.request": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Reason(); ok {
+		if err := operlog.ReasonValidator(v); err != nil {
+			return &ValidationError{Name: "reason", err: fmt.Errorf(`ent: validator failed for field "OperLog.reason": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ErrorMsg(); ok {
+		if err := operlog.ErrorMsgValidator(v); err != nil {
+			return &ValidationError{Name: "error_msg", err: fmt.Errorf(`ent: validator failed for field "OperLog.error_msg": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.RequestID(); ok {
+		if err := operlog.RequestIDValidator(v); err != nil {
+			return &ValidationError{Name: "request_id", err: fmt.Errorf(`ent: validator failed for field "OperLog.request_id": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *OperLogUpdateOne) sqlSave(ctx context.Context) (_node *OperLog, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(operlog.Table, operlog.Columns, sqlgraph.NewFieldSpec(operlog.FieldID, field.TypeInt64))
 	id, ok := _u.mutation.ID()
 	if !ok {
