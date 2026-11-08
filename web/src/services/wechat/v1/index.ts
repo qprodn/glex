@@ -38,7 +38,21 @@ export type ErrorReason =
   // Independent of component-AppID uniqueness on platforms.
   | "WECHAT_APP_DUPLICATE"
   // The AppID is fixed for the life of the row.
-  | "WECHAT_APP_ID_IMMUTABLE";
+  | "WECHAT_APP_ID_IMMUTABLE"
+  // A Custom Menu button is not a leaf that opens a web page or a mini
+  // program, and not a parent that only holds sub-buttons.
+  | "WECHAT_MENU_INVALID"
+  // WeChat did not accept the menu replacement. The app stays unlapsed.
+  | "WECHAT_MENU_REJECTED"
+  // This app's kind, or the capabilities a Platform Authorization was
+  // granted, cannot perform the call. WeChat is not called.
+  | "WECHAT_CAPABILITY_UNAVAILABLE"
+  // The operator has suspended this app, so publishing is refused.
+  | "WECHAT_APP_SUSPENDED"
+  // WeChat has definitively refused this app.
+  | "WECHAT_APP_LAPSED"
+  // The platform does not hold its secrets and a verify ticket.
+  | "WECHAT_PLATFORM_NOT_READY";
 // WechatAppType says whether a WeChat App is a mini program or an
 // official account.
 export type WechatAppType =
@@ -447,11 +461,79 @@ export type WechatWebIdentity = {
   avatarUrl: string | undefined;
 };
 
+// WechatMenuButton is one button of a Custom Menu. A parent holds
+// sub-buttons and does not itself open a page. A leaf sets either a web
+// URL or a mini program, not both.
+export type WechatMenuButton = {
+  name: string | undefined;
+  webUrl: string | undefined;
+  miniProgramAppId: string | undefined;
+  miniProgramPage: string | undefined;
+  subButtons: WechatMenuButton[] | undefined;
+};
+
+// WechatCustomMenu is one menu document, including nested sub-buttons.
+// There is no ceiling of three top-level buttons.
+export type WechatCustomMenu = {
+  buttons: WechatMenuButton[] | undefined;
+};
+
+// WechatAppMenu is the menu an operator can read on one WeChat App.
+// saved is the document kept in this system. accepted is the last menu
+// WeChat accepted; it is empty until a publish succeeds.
+export type WechatAppMenu = {
+  saved: WechatCustomMenu | undefined;
+  accepted: WechatCustomMenu | undefined;
+};
+
+export type GetWechatAppMenuRequest = {
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+};
+
+export type SaveWechatAppMenuRequest = {
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+  //
+  // Behaviors: REQUIRED
+  menu: WechatCustomMenu | undefined;
+};
+
+export type PublishWechatAppMenuRequest = {
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+};
+
+export type MiniProgramLoginRequest = {
+  // Required. WeChat AppID of the mini program. The caller does not
+  // send the row id or the connection.
+  //
+  // Behaviors: REQUIRED
+  wxAppId: string | undefined;
+  // Required. One-time login code from that mini program.
+  //
+  // Behaviors: REQUIRED
+  code: string | undefined;
+};
+
+// MiniProgramIdentity is the person as known to that one WeChat App.
+// unionid is empty when WeChat omitted it. session_key is not a field,
+// and neither is a system credential or a Login Session.
+export type MiniProgramIdentity = {
+  openid: string | undefined;
+  unionid: string | undefined;
+};
+
 // WechatService is the back-office surface for WeChat Platform
 // registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
-// are wechat:app:list, create, update, remove, and probe. The platform callback
-// is a separate unauthenticated route; it is not an RPC.
+// are wechat:app:list, create, update, remove, and probe. Mini Program Login
+// is not a back-office mutation: it requires no Principal and no menu
+// permission. The platform callback is a separate unauthenticated route; it
+// is not an RPC.
 export interface WechatService {
   // CreateWechatPlatform registers a platform. The response carries masks,
   // never the secrets the operator just typed.
@@ -528,6 +610,28 @@ export interface WechatService {
   // not issue, fails. The call creates no WeChat User, System User, or
   // Login Session, and it writes no Login Log.
   RedeemWechatHandoffCode(request: RedeemWechatHandoffCodeRequest): Promise<WechatWebIdentity>;
+  // GetWechatAppMenu returns the Custom Menu saved on one Service Account
+  // and the last menu WeChat accepted. Neither is a secret. Permission:
+  // wechat:app:list.
+  GetWechatAppMenu(request: GetWechatAppMenuRequest): Promise<WechatAppMenu>;
+  // SaveWechatAppMenu stores the Custom Menu in this system and does not
+  // call WeChat. The last menu WeChat accepted stays as it was.
+  // Permission: wechat:app:update.
+  SaveWechatAppMenu(request: SaveWechatAppMenuRequest): Promise<WechatAppMenu>;
+  // PublishWechatAppMenu sends the whole saved menu and replaces that
+  // Service Account's default menu at WeChat. A business refusal or a
+  // timeout leaves the previously accepted menu in place and does not
+  // lapse the app. A definitive refusal lapses the app and still leaves
+  // that menu. Permission: wechat:app:update.
+  PublishWechatAppMenu(request: PublishWechatAppMenuRequest): Promise<WechatAppMenu>;
+  // MiniProgramLogin exchanges one mini program's one-time login code for
+  // that WeChat App's openid and, when WeChat supplied one, its unionid.
+  // Direct Hold and Platform Authorization share this entry; the caller
+  // does not name the connection. No back-office Principal and no menu
+  // permission are required. The response carries no session_key and no
+  // system credential. The call creates no WeChat User, System User, or
+  // Login Session, and it writes no Login Log.
+  MiniProgramLogin(request: MiniProgramLoginRequest): Promise<MiniProgramIdentity>;
 }
 
 type RequestType = {
@@ -921,6 +1025,83 @@ export function createWechatServiceClient(
         service: "WechatService",
         method: "RedeemWechatHandoffCode",
       }) as Promise<WechatWebIdentity>;
+    },
+    GetWechatAppMenu(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.appId) {
+        throw new Error("missing required field request.app_id");
+      }
+      const path = `wechat/app/${request.appId}/menu`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "WechatService",
+        method: "GetWechatAppMenu",
+      }) as Promise<WechatAppMenu>;
+    },
+    SaveWechatAppMenu(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.appId) {
+        throw new Error("missing required field request.app_id");
+      }
+      const path = `wechat/app/${request.appId}/menu`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "PUT",
+        body,
+      }, {
+        service: "WechatService",
+        method: "SaveWechatAppMenu",
+      }) as Promise<WechatAppMenu>;
+    },
+    PublishWechatAppMenu(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.appId) {
+        throw new Error("missing required field request.app_id");
+      }
+      const path = `wechat/app/${request.appId}/menu/publish`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "WechatService",
+        method: "PublishWechatAppMenu",
+      }) as Promise<WechatAppMenu>;
+    },
+    MiniProgramLogin(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `wechat/mini-program/login`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "WechatService",
+        method: "MiniProgramLogin",
+      }) as Promise<MiniProgramIdentity>;
     },
   };
 }

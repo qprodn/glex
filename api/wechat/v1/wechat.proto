@@ -170,8 +170,10 @@ message WechatAppPushSecret {
 // WechatService is the back-office surface for WeChat Platform
 // registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
-// are wechat:app:list, create, update, remove, and probe. The platform callback
-// is a separate unauthenticated route; it is not an RPC.
+// are wechat:app:list, create, update, remove, and probe. Mini Program Login
+// is not a back-office mutation: it requires no Principal and no menu
+// permission. The platform callback is a separate unauthenticated route; it
+// is not an RPC.
 service WechatService {
   // CreateWechatPlatform registers a platform. The response carries masks,
   // never the secrets the operator just typed.
@@ -336,6 +338,47 @@ service WechatService {
   rpc RedeemWechatHandoffCode(RedeemWechatHandoffCodeRequest) returns (WechatWebIdentity) {
     option (google.api.http) = {
       post: "/wechat/web-authorization/handoff"
+      body: "*"
+    };
+  }
+  // GetWechatAppMenu returns the Custom Menu saved on one Service Account
+  // and the last menu WeChat accepted. Neither is a secret. Permission:
+  // wechat:app:list.
+  rpc GetWechatAppMenu(GetWechatAppMenuRequest) returns (WechatAppMenu) {
+    option (google.api.http) = {
+      get: "/wechat/app/{app_id}/menu"
+    };
+  }
+  // SaveWechatAppMenu stores the Custom Menu in this system and does not
+  // call WeChat. The last menu WeChat accepted stays as it was.
+  // Permission: wechat:app:update.
+  rpc SaveWechatAppMenu(SaveWechatAppMenuRequest) returns (WechatAppMenu) {
+    option (google.api.http) = {
+      put: "/wechat/app/{app_id}/menu"
+      body: "*"
+    };
+  }
+  // PublishWechatAppMenu sends the whole saved menu and replaces that
+  // Service Account's default menu at WeChat. A business refusal or a
+  // timeout leaves the previously accepted menu in place and does not
+  // lapse the app. A definitive refusal lapses the app and still leaves
+  // that menu. Permission: wechat:app:update.
+  rpc PublishWechatAppMenu(PublishWechatAppMenuRequest) returns (WechatAppMenu) {
+    option (google.api.http) = {
+      post: "/wechat/app/{app_id}/menu/publish"
+      body: "*"
+    };
+  }
+  // MiniProgramLogin exchanges one mini program's one-time login code for
+  // that WeChat App's openid and, when WeChat supplied one, its unionid.
+  // Direct Hold and Platform Authorization share this entry; the caller
+  // does not name the connection. No back-office Principal and no menu
+  // permission are required. The response carries no session_key and no
+  // system credential. The call creates no WeChat User, System User, or
+  // Login Session, and it writes no Login Log.
+  rpc MiniProgramLogin(MiniProgramLoginRequest) returns (MiniProgramIdentity) {
+    option (google.api.http) = {
+      post: "/wechat/mini-program/login"
       body: "*"
     };
   }
@@ -545,4 +588,58 @@ message WechatWebIdentity {
   string unionid = 2;
   string nickname = 3;
   string avatar_url = 4;
+}
+
+// WechatMenuButton is one button of a Custom Menu. A parent holds
+// sub-buttons and does not itself open a page. A leaf sets either a web
+// URL or a mini program, not both.
+message WechatMenuButton {
+  string name = 1;
+  string web_url = 2;
+  string mini_program_app_id = 3;
+  string mini_program_page = 4;
+  repeated WechatMenuButton sub_buttons = 5;
+}
+
+// WechatCustomMenu is one menu document, including nested sub-buttons.
+// There is no ceiling of three top-level buttons.
+message WechatCustomMenu {
+  repeated WechatMenuButton buttons = 1;
+}
+
+// WechatAppMenu is the menu an operator can read on one WeChat App.
+// saved is the document kept in this system. accepted is the last menu
+// WeChat accepted; it is empty until a publish succeeds.
+message WechatAppMenu {
+  WechatCustomMenu saved = 1;
+  WechatCustomMenu accepted = 2;
+}
+
+message GetWechatAppMenuRequest {
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message SaveWechatAppMenuRequest {
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+  WechatCustomMenu menu = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PublishWechatAppMenuRequest {
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message MiniProgramLoginRequest {
+  // Required. WeChat AppID of the mini program. The caller does not
+  // send the row id or the connection.
+  string wx_app_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. One-time login code from that mini program.
+  string code = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+// MiniProgramIdentity is the person as known to that one WeChat App.
+// unionid is empty when WeChat omitted it. session_key is not a field,
+// and neither is a system credential or a Login Session.
+message MiniProgramIdentity {
+  string openid = 1;
+  string unionid = 2;
 }

@@ -164,9 +164,15 @@ func authRoutes() map[string]authmw.Route {
 		// itself arrives on the platform callback and is not this route.
 		wechatv1.OperationWechatServiceListAuthorizationPlatforms: {Permission: "wechat:app:create"},
 		wechatv1.OperationWechatServiceStartWechatAuthorization:   {Permission: "wechat:app:create"},
-		// StartWechatWebAuthorization and RedeemWechatHandoffCode are
-		// absent: a browser and a caller complete them without a
-		// back-office Principal. The WeChat return route is absent too.
+		// Menu editing and publishing sit on the app and reuse update.
+		// Reading the saved menu reuses list, the same way GetWechatApp does.
+		wechatv1.OperationWechatServiceGetWechatAppMenu:     {Permission: "wechat:app:list"},
+		wechatv1.OperationWechatServiceSaveWechatAppMenu:    {Permission: "wechat:app:update"},
+		wechatv1.OperationWechatServicePublishWechatAppMenu: {Permission: "wechat:app:update"},
+		// Mini Program Login, StartWechatWebAuthorization, and
+		// RedeemWechatHandoffCode are absent: a mini program, a browser,
+		// and a caller complete them without a back-office Principal.
+		// The WeChat return route is absent too.
 
 		// job: scheduled-task console and run history (ADR 0023). The
 		// executor listing rides the list permission — it exists to power

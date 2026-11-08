@@ -39,6 +39,10 @@ const (
 	WechatService_ConfigureWechatWebAuthorization_FullMethodName = "/wechat.v1.WechatService/ConfigureWechatWebAuthorization"
 	WechatService_StartWechatWebAuthorization_FullMethodName     = "/wechat.v1.WechatService/StartWechatWebAuthorization"
 	WechatService_RedeemWechatHandoffCode_FullMethodName         = "/wechat.v1.WechatService/RedeemWechatHandoffCode"
+	WechatService_GetWechatAppMenu_FullMethodName                = "/wechat.v1.WechatService/GetWechatAppMenu"
+	WechatService_SaveWechatAppMenu_FullMethodName               = "/wechat.v1.WechatService/SaveWechatAppMenu"
+	WechatService_PublishWechatAppMenu_FullMethodName            = "/wechat.v1.WechatService/PublishWechatAppMenu"
+	WechatService_MiniProgramLogin_FullMethodName                = "/wechat.v1.WechatService/MiniProgramLogin"
 )
 
 // WechatServiceClient is the client API for WechatService service.
@@ -48,8 +52,10 @@ const (
 // WechatService is the back-office surface for WeChat Platform
 // registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
-// are wechat:app:list, create, update, remove, and probe. The platform callback
-// is a separate unauthenticated route; it is not an RPC.
+// are wechat:app:list, create, update, remove, and probe. Mini Program Login
+// is not a back-office mutation: it requires no Principal and no menu
+// permission. The platform callback is a separate unauthenticated route; it
+// is not an RPC.
 type WechatServiceClient interface {
 	// CreateWechatPlatform registers a platform. The response carries masks,
 	// never the secrets the operator just typed.
@@ -126,6 +132,28 @@ type WechatServiceClient interface {
 	// not issue, fails. The call creates no WeChat User, System User, or
 	// Login Session, and it writes no Login Log.
 	RedeemWechatHandoffCode(ctx context.Context, in *RedeemWechatHandoffCodeRequest, opts ...grpc.CallOption) (*WechatWebIdentity, error)
+	// GetWechatAppMenu returns the Custom Menu saved on one Service Account
+	// and the last menu WeChat accepted. Neither is a secret. Permission:
+	// wechat:app:list.
+	GetWechatAppMenu(ctx context.Context, in *GetWechatAppMenuRequest, opts ...grpc.CallOption) (*WechatAppMenu, error)
+	// SaveWechatAppMenu stores the Custom Menu in this system and does not
+	// call WeChat. The last menu WeChat accepted stays as it was.
+	// Permission: wechat:app:update.
+	SaveWechatAppMenu(ctx context.Context, in *SaveWechatAppMenuRequest, opts ...grpc.CallOption) (*WechatAppMenu, error)
+	// PublishWechatAppMenu sends the whole saved menu and replaces that
+	// Service Account's default menu at WeChat. A business refusal or a
+	// timeout leaves the previously accepted menu in place and does not
+	// lapse the app. A definitive refusal lapses the app and still leaves
+	// that menu. Permission: wechat:app:update.
+	PublishWechatAppMenu(ctx context.Context, in *PublishWechatAppMenuRequest, opts ...grpc.CallOption) (*WechatAppMenu, error)
+	// MiniProgramLogin exchanges one mini program's one-time login code for
+	// that WeChat App's openid and, when WeChat supplied one, its unionid.
+	// Direct Hold and Platform Authorization share this entry; the caller
+	// does not name the connection. No back-office Principal and no menu
+	// permission are required. The response carries no session_key and no
+	// system credential. The call creates no WeChat User, System User, or
+	// Login Session, and it writes no Login Log.
+	MiniProgramLogin(ctx context.Context, in *MiniProgramLoginRequest, opts ...grpc.CallOption) (*MiniProgramIdentity, error)
 }
 
 type wechatServiceClient struct {
@@ -326,6 +354,46 @@ func (c *wechatServiceClient) RedeemWechatHandoffCode(ctx context.Context, in *R
 	return out, nil
 }
 
+func (c *wechatServiceClient) GetWechatAppMenu(ctx context.Context, in *GetWechatAppMenuRequest, opts ...grpc.CallOption) (*WechatAppMenu, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatAppMenu)
+	err := c.cc.Invoke(ctx, WechatService_GetWechatAppMenu_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) SaveWechatAppMenu(ctx context.Context, in *SaveWechatAppMenuRequest, opts ...grpc.CallOption) (*WechatAppMenu, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatAppMenu)
+	err := c.cc.Invoke(ctx, WechatService_SaveWechatAppMenu_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) PublishWechatAppMenu(ctx context.Context, in *PublishWechatAppMenuRequest, opts ...grpc.CallOption) (*WechatAppMenu, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatAppMenu)
+	err := c.cc.Invoke(ctx, WechatService_PublishWechatAppMenu_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) MiniProgramLogin(ctx context.Context, in *MiniProgramLoginRequest, opts ...grpc.CallOption) (*MiniProgramIdentity, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MiniProgramIdentity)
+	err := c.cc.Invoke(ctx, WechatService_MiniProgramLogin_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WechatServiceServer is the server API for WechatService service.
 // All implementations must embed UnimplementedWechatServiceServer
 // for forward compatibility.
@@ -333,8 +401,10 @@ func (c *wechatServiceClient) RedeemWechatHandoffCode(ctx context.Context, in *R
 // WechatService is the back-office surface for WeChat Platform
 // registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
-// are wechat:app:list, create, update, remove, and probe. The platform callback
-// is a separate unauthenticated route; it is not an RPC.
+// are wechat:app:list, create, update, remove, and probe. Mini Program Login
+// is not a back-office mutation: it requires no Principal and no menu
+// permission. The platform callback is a separate unauthenticated route; it
+// is not an RPC.
 type WechatServiceServer interface {
 	// CreateWechatPlatform registers a platform. The response carries masks,
 	// never the secrets the operator just typed.
@@ -411,6 +481,28 @@ type WechatServiceServer interface {
 	// not issue, fails. The call creates no WeChat User, System User, or
 	// Login Session, and it writes no Login Log.
 	RedeemWechatHandoffCode(context.Context, *RedeemWechatHandoffCodeRequest) (*WechatWebIdentity, error)
+	// GetWechatAppMenu returns the Custom Menu saved on one Service Account
+	// and the last menu WeChat accepted. Neither is a secret. Permission:
+	// wechat:app:list.
+	GetWechatAppMenu(context.Context, *GetWechatAppMenuRequest) (*WechatAppMenu, error)
+	// SaveWechatAppMenu stores the Custom Menu in this system and does not
+	// call WeChat. The last menu WeChat accepted stays as it was.
+	// Permission: wechat:app:update.
+	SaveWechatAppMenu(context.Context, *SaveWechatAppMenuRequest) (*WechatAppMenu, error)
+	// PublishWechatAppMenu sends the whole saved menu and replaces that
+	// Service Account's default menu at WeChat. A business refusal or a
+	// timeout leaves the previously accepted menu in place and does not
+	// lapse the app. A definitive refusal lapses the app and still leaves
+	// that menu. Permission: wechat:app:update.
+	PublishWechatAppMenu(context.Context, *PublishWechatAppMenuRequest) (*WechatAppMenu, error)
+	// MiniProgramLogin exchanges one mini program's one-time login code for
+	// that WeChat App's openid and, when WeChat supplied one, its unionid.
+	// Direct Hold and Platform Authorization share this entry; the caller
+	// does not name the connection. No back-office Principal and no menu
+	// permission are required. The response carries no session_key and no
+	// system credential. The call creates no WeChat User, System User, or
+	// Login Session, and it writes no Login Log.
+	MiniProgramLogin(context.Context, *MiniProgramLoginRequest) (*MiniProgramIdentity, error)
 	mustEmbedUnimplementedWechatServiceServer()
 }
 
@@ -477,6 +569,18 @@ func (UnimplementedWechatServiceServer) StartWechatWebAuthorization(context.Cont
 }
 func (UnimplementedWechatServiceServer) RedeemWechatHandoffCode(context.Context, *RedeemWechatHandoffCodeRequest) (*WechatWebIdentity, error) {
 	return nil, status.Error(codes.Unimplemented, "method RedeemWechatHandoffCode not implemented")
+}
+func (UnimplementedWechatServiceServer) GetWechatAppMenu(context.Context, *GetWechatAppMenuRequest) (*WechatAppMenu, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetWechatAppMenu not implemented")
+}
+func (UnimplementedWechatServiceServer) SaveWechatAppMenu(context.Context, *SaveWechatAppMenuRequest) (*WechatAppMenu, error) {
+	return nil, status.Error(codes.Unimplemented, "method SaveWechatAppMenu not implemented")
+}
+func (UnimplementedWechatServiceServer) PublishWechatAppMenu(context.Context, *PublishWechatAppMenuRequest) (*WechatAppMenu, error) {
+	return nil, status.Error(codes.Unimplemented, "method PublishWechatAppMenu not implemented")
+}
+func (UnimplementedWechatServiceServer) MiniProgramLogin(context.Context, *MiniProgramLoginRequest) (*MiniProgramIdentity, error) {
+	return nil, status.Error(codes.Unimplemented, "method MiniProgramLogin not implemented")
 }
 func (UnimplementedWechatServiceServer) mustEmbedUnimplementedWechatServiceServer() {}
 func (UnimplementedWechatServiceServer) testEmbeddedByValue()                       {}
@@ -841,6 +945,78 @@ func _WechatService_RedeemWechatHandoffCode_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WechatService_GetWechatAppMenu_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWechatAppMenuRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).GetWechatAppMenu(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_GetWechatAppMenu_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).GetWechatAppMenu(ctx, req.(*GetWechatAppMenuRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_SaveWechatAppMenu_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveWechatAppMenuRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).SaveWechatAppMenu(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_SaveWechatAppMenu_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).SaveWechatAppMenu(ctx, req.(*SaveWechatAppMenuRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_PublishWechatAppMenu_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PublishWechatAppMenuRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).PublishWechatAppMenu(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_PublishWechatAppMenu_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).PublishWechatAppMenu(ctx, req.(*PublishWechatAppMenuRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_MiniProgramLogin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MiniProgramLoginRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).MiniProgramLogin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_MiniProgramLogin_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).MiniProgramLogin(ctx, req.(*MiniProgramLoginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WechatService_ServiceDesc is the grpc.ServiceDesc for WechatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -923,6 +1099,22 @@ var WechatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RedeemWechatHandoffCode",
 			Handler:    _WechatService_RedeemWechatHandoffCode_Handler,
+		},
+		{
+			MethodName: "GetWechatAppMenu",
+			Handler:    _WechatService_GetWechatAppMenu_Handler,
+		},
+		{
+			MethodName: "SaveWechatAppMenu",
+			Handler:    _WechatService_SaveWechatAppMenu_Handler,
+		},
+		{
+			MethodName: "PublishWechatAppMenu",
+			Handler:    _WechatService_PublishWechatAppMenu_Handler,
+		},
+		{
+			MethodName: "MiniProgramLogin",
+			Handler:    _WechatService_MiniProgramLogin_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

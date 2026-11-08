@@ -829,6 +829,14 @@ func cloneStoredApp(app *entity.App) *entity.App {
 	if app.Capabilities != nil {
 		cp.Capabilities = append([]string(nil), app.Capabilities...)
 	}
+	if app.SavedMenu != nil {
+		menu := cloneMenu(*app.SavedMenu)
+		cp.SavedMenu = &menu
+	}
+	if app.AcceptedMenu != nil {
+		menu := cloneMenu(*app.AcceptedMenu)
+		cp.AcceptedMenu = &menu
+	}
 	return &cp
 }
 

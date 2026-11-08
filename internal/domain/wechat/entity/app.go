@@ -39,6 +39,24 @@ const (
 	WebAuthScopeProfile = "profile"
 )
 
+// MenuButton is one button of a Custom Menu. A parent holds sub-buttons
+// and does not itself open a page. A leaf opens a web page or a mini
+// program.
+type MenuButton struct {
+	Name             string       `json:"name,omitempty"`
+	WebURL           string       `json:"web_url,omitempty"`
+	MiniProgramAppID string       `json:"mini_program_app_id,omitempty"`
+	MiniProgramPage  string       `json:"mini_program_page,omitempty"`
+	SubButtons       []MenuButton `json:"sub_buttons,omitempty"`
+}
+
+// CustomMenu is the default menu document of one Service Account,
+// including nested sub-buttons. The prototype's ceiling of three
+// top-level buttons is not a rule of this document.
+type CustomMenu struct {
+	Buttons []MenuButton `json:"buttons,omitempty"`
+}
+
 // App is one WeChat App (微信应用). Ordinary reads carry masks for the
 // AppSecret and the Push Secret and never the plaintext (ADR 0029). The
 // generated Token and EncodingAESKey travel beside this object only in
@@ -74,6 +92,13 @@ type App struct {
 	// WebAuthScope is openid only, or openid plus nickname and avatar.
 	// A new Service Account starts at openid only.
 	WebAuthScope string
+	// SavedMenu is the Custom Menu kept in this system. Saving it does
+	// not call WeChat. Nil means the operator has not saved one.
+	SavedMenu *CustomMenu
+	// AcceptedMenu is the last menu WeChat accepted as this Service
+	// Account's default menu. A refused or timed-out publish leaves it
+	// unchanged. Nil means WeChat has not accepted one.
+	AcceptedMenu *CustomMenu
 	KeyVersion   int
 	CreateBy     int64
 	UpdateBy     int64

@@ -53,6 +53,10 @@ const (
 	FieldReturnURL = "return_url"
 	// FieldWebAuthScope holds the string denoting the web_auth_scope field in the database.
 	FieldWebAuthScope = "web_auth_scope"
+	// FieldSavedMenu holds the string denoting the saved_menu field in the database.
+	FieldSavedMenu = "saved_menu"
+	// FieldAcceptedMenu holds the string denoting the accepted_menu field in the database.
+	FieldAcceptedMenu = "accepted_menu"
 	// FieldKeyVersion holds the string denoting the key_version field in the database.
 	FieldKeyVersion = "key_version"
 	// Table holds the table name of the wechatapp in the database.
@@ -82,6 +86,8 @@ var Columns = []string{
 	FieldLapsed,
 	FieldReturnURL,
 	FieldWebAuthScope,
+	FieldSavedMenu,
+	FieldAcceptedMenu,
 	FieldKeyVersion,
 }
 

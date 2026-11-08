@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"glex/internal/domain/wechat/entity"
 	"glex/internal/infra/ent/dept"
 	"glex/internal/infra/ent/dictdata"
 	"glex/internal/infra/ent/dicttype"
@@ -24425,6 +24426,8 @@ type WechatAppMutation struct {
 	lapsed                     *bool
 	return_url                 *string
 	web_auth_scope             *string
+	saved_menu                 **entity.CustomMenu
+	accepted_menu              **entity.CustomMenu
 	key_version                *int
 	addkey_version             *int
 	clearedFields              map[string]struct{}
@@ -25387,6 +25390,104 @@ func (m *WechatAppMutation) ResetWebAuthScope() {
 	m.web_auth_scope = nil
 }
 
+// SetSavedMenu sets the "saved_menu" field.
+func (m *WechatAppMutation) SetSavedMenu(em *entity.CustomMenu) {
+	m.saved_menu = &em
+}
+
+// SavedMenu returns the value of the "saved_menu" field in the mutation.
+func (m *WechatAppMutation) SavedMenu() (r *entity.CustomMenu, exists bool) {
+	v := m.saved_menu
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSavedMenu returns the old "saved_menu" field's value of the WechatApp entity.
+// If the WechatApp object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAppMutation) OldSavedMenu(ctx context.Context) (v *entity.CustomMenu, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSavedMenu is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSavedMenu requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSavedMenu: %w", err)
+	}
+	return oldValue.SavedMenu, nil
+}
+
+// ClearSavedMenu clears the value of the "saved_menu" field.
+func (m *WechatAppMutation) ClearSavedMenu() {
+	m.saved_menu = nil
+	m.clearedFields[wechatapp.FieldSavedMenu] = struct{}{}
+}
+
+// SavedMenuCleared returns if the "saved_menu" field was cleared in this mutation.
+func (m *WechatAppMutation) SavedMenuCleared() bool {
+	_, ok := m.clearedFields[wechatapp.FieldSavedMenu]
+	return ok
+}
+
+// ResetSavedMenu resets all changes to the "saved_menu" field.
+func (m *WechatAppMutation) ResetSavedMenu() {
+	m.saved_menu = nil
+	delete(m.clearedFields, wechatapp.FieldSavedMenu)
+}
+
+// SetAcceptedMenu sets the "accepted_menu" field.
+func (m *WechatAppMutation) SetAcceptedMenu(em *entity.CustomMenu) {
+	m.accepted_menu = &em
+}
+
+// AcceptedMenu returns the value of the "accepted_menu" field in the mutation.
+func (m *WechatAppMutation) AcceptedMenu() (r *entity.CustomMenu, exists bool) {
+	v := m.accepted_menu
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAcceptedMenu returns the old "accepted_menu" field's value of the WechatApp entity.
+// If the WechatApp object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAppMutation) OldAcceptedMenu(ctx context.Context) (v *entity.CustomMenu, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAcceptedMenu is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAcceptedMenu requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAcceptedMenu: %w", err)
+	}
+	return oldValue.AcceptedMenu, nil
+}
+
+// ClearAcceptedMenu clears the value of the "accepted_menu" field.
+func (m *WechatAppMutation) ClearAcceptedMenu() {
+	m.accepted_menu = nil
+	m.clearedFields[wechatapp.FieldAcceptedMenu] = struct{}{}
+}
+
+// AcceptedMenuCleared returns if the "accepted_menu" field was cleared in this mutation.
+func (m *WechatAppMutation) AcceptedMenuCleared() bool {
+	_, ok := m.clearedFields[wechatapp.FieldAcceptedMenu]
+	return ok
+}
+
+// ResetAcceptedMenu resets all changes to the "accepted_menu" field.
+func (m *WechatAppMutation) ResetAcceptedMenu() {
+	m.accepted_menu = nil
+	delete(m.clearedFields, wechatapp.FieldAcceptedMenu)
+}
+
 // SetKeyVersion sets the "key_version" field.
 func (m *WechatAppMutation) SetKeyVersion(i int) {
 	m.key_version = &i
@@ -25477,7 +25578,7 @@ func (m *WechatAppMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *WechatAppMutation) Fields() []string {
-	fields := make([]string, 0, 21)
+	fields := make([]string, 0, 23)
 	if m.create_by != nil {
 		fields = append(fields, wechatapp.FieldCreateBy)
 	}
@@ -25538,6 +25639,12 @@ func (m *WechatAppMutation) Fields() []string {
 	if m.web_auth_scope != nil {
 		fields = append(fields, wechatapp.FieldWebAuthScope)
 	}
+	if m.saved_menu != nil {
+		fields = append(fields, wechatapp.FieldSavedMenu)
+	}
+	if m.accepted_menu != nil {
+		fields = append(fields, wechatapp.FieldAcceptedMenu)
+	}
 	if m.key_version != nil {
 		fields = append(fields, wechatapp.FieldKeyVersion)
 	}
@@ -25589,6 +25696,10 @@ func (m *WechatAppMutation) Field(name string) (ent.Value, bool) {
 		return m.ReturnURL()
 	case wechatapp.FieldWebAuthScope:
 		return m.WebAuthScope()
+	case wechatapp.FieldSavedMenu:
+		return m.SavedMenu()
+	case wechatapp.FieldAcceptedMenu:
+		return m.AcceptedMenu()
 	case wechatapp.FieldKeyVersion:
 		return m.KeyVersion()
 	}
@@ -25640,6 +25751,10 @@ func (m *WechatAppMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldReturnURL(ctx)
 	case wechatapp.FieldWebAuthScope:
 		return m.OldWebAuthScope(ctx)
+	case wechatapp.FieldSavedMenu:
+		return m.OldSavedMenu(ctx)
+	case wechatapp.FieldAcceptedMenu:
+		return m.OldAcceptedMenu(ctx)
 	case wechatapp.FieldKeyVersion:
 		return m.OldKeyVersion(ctx)
 	}
@@ -25791,6 +25906,20 @@ func (m *WechatAppMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetWebAuthScope(v)
 		return nil
+	case wechatapp.FieldSavedMenu:
+		v, ok := value.(*entity.CustomMenu)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSavedMenu(v)
+		return nil
+	case wechatapp.FieldAcceptedMenu:
+		v, ok := value.(*entity.CustomMenu)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAcceptedMenu(v)
+		return nil
 	case wechatapp.FieldKeyVersion:
 		v, ok := value.(int)
 		if !ok {
@@ -25891,6 +26020,12 @@ func (m *WechatAppMutation) ClearedFields() []string {
 	if m.FieldCleared(wechatapp.FieldGrantedCapabilities) {
 		fields = append(fields, wechatapp.FieldGrantedCapabilities)
 	}
+	if m.FieldCleared(wechatapp.FieldSavedMenu) {
+		fields = append(fields, wechatapp.FieldSavedMenu)
+	}
+	if m.FieldCleared(wechatapp.FieldAcceptedMenu) {
+		fields = append(fields, wechatapp.FieldAcceptedMenu)
+	}
 	return fields
 }
 
@@ -25916,6 +26051,12 @@ func (m *WechatAppMutation) ClearField(name string) error {
 		return nil
 	case wechatapp.FieldGrantedCapabilities:
 		m.ClearGrantedCapabilities()
+		return nil
+	case wechatapp.FieldSavedMenu:
+		m.ClearSavedMenu()
+		return nil
+	case wechatapp.FieldAcceptedMenu:
+		m.ClearAcceptedMenu()
 		return nil
 	}
 	return fmt.Errorf("unknown WechatApp nullable field %s", name)
@@ -25984,6 +26125,12 @@ func (m *WechatAppMutation) ResetField(name string) error {
 		return nil
 	case wechatapp.FieldWebAuthScope:
 		m.ResetWebAuthScope()
+		return nil
+	case wechatapp.FieldSavedMenu:
+		m.ResetSavedMenu()
+		return nil
+	case wechatapp.FieldAcceptedMenu:
+		m.ResetAcceptedMenu()
 		return nil
 	case wechatapp.FieldKeyVersion:
 		m.ResetKeyVersion()

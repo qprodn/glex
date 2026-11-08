@@ -2656,6 +2656,85 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/wechat.v1.WechatApp'
+    /wechat/app/{appId}/menu:
+        get:
+            tags:
+                - WechatService
+            description: |-
+                GetWechatAppMenu returns the Custom Menu saved on one Service Account
+                 and the last menu WeChat accepted. Neither is a secret. Permission:
+                 wechat:app:list.
+            operationId: WechatService_GetWechatAppMenu
+            parameters:
+                - name: appId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatAppMenu'
+        put:
+            tags:
+                - WechatService
+            description: |-
+                SaveWechatAppMenu stores the Custom Menu in this system and does not
+                 call WeChat. The last menu WeChat accepted stays as it was.
+                 Permission: wechat:app:update.
+            operationId: WechatService_SaveWechatAppMenu
+            parameters:
+                - name: appId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.SaveWechatAppMenuRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatAppMenu'
+    /wechat/app/{appId}/menu/publish:
+        post:
+            tags:
+                - WechatService
+            description: |-
+                PublishWechatAppMenu sends the whole saved menu and replaces that
+                 Service Account's default menu at WeChat. A business refusal or a
+                 timeout leaves the previously accepted menu in place and does not
+                 lapse the app. A definitive refusal lapses the app and still leaves
+                 that menu. Permission: wechat:app:update.
+            operationId: WechatService_PublishWechatAppMenu
+            parameters:
+                - name: appId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.PublishWechatAppMenuRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatAppMenu'
     /wechat/app/{appId}/probe:
         post:
             tags:
@@ -2774,6 +2853,32 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/wechat.v1.WechatApp'
+    /wechat/mini-program/login:
+        post:
+            tags:
+                - WechatService
+            description: |-
+                MiniProgramLogin exchanges one mini program's one-time login code for
+                 that WeChat App's openid and, when WeChat supplied one, its unionid.
+                 Direct Hold and Platform Authorization share this entry; the caller
+                 does not name the connection. No back-office Principal and no menu
+                 permission are required. The response carries no session_key and no
+                 system credential. The call creates no WeChat User, System User, or
+                 Login Session, and it writes no Login Log.
+            operationId: WechatService_MiniProgramLogin
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.MiniProgramLoginRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.MiniProgramIdentity'
     /wechat/platform:
         get:
             tags:
@@ -4650,6 +4755,31 @@ components:
                 encodingAesKey:
                     type: string
                     description: Required. EncodingAESKey.
+        wechat.v1.MiniProgramIdentity:
+            type: object
+            properties:
+                openid:
+                    type: string
+                unionid:
+                    type: string
+            description: |-
+                MiniProgramIdentity is the person as known to that one WeChat App.
+                 unionid is empty when WeChat omitted it. session_key is not a field,
+                 and neither is a system credential or a Login Session.
+        wechat.v1.MiniProgramLoginRequest:
+            required:
+                - wxAppId
+                - code
+            type: object
+            properties:
+                wxAppId:
+                    type: string
+                    description: |-
+                        Required. WeChat AppID of the mini program. The caller does not
+                         send the row id or the connection.
+                code:
+                    type: string
+                    description: Required. One-time login code from that mini program.
         wechat.v1.ProbeWechatAppRequest:
             required:
                 - appId
@@ -4689,6 +4819,13 @@ components:
             description: |-
                 ProbeWechatPlatformResult is one WeChat Connectivity Test. ok is false
                  when the platform cannot yield a token. The test changes no WeChat App.
+        wechat.v1.PublishWechatAppMenuRequest:
+            required:
+                - appId
+            type: object
+            properties:
+                appId:
+                    type: string
         wechat.v1.RedeemWechatHandoffCodeRequest:
             required:
                 - code
@@ -4705,6 +4842,16 @@ components:
                 appId:
                     type: string
                     description: Required. The id of the Direct Hold whose Push Secret is regenerated.
+        wechat.v1.SaveWechatAppMenuRequest:
+            required:
+                - appId
+                - menu
+            type: object
+            properties:
+                appId:
+                    type: string
+                menu:
+                    $ref: '#/components/schemas/wechat.v1.WechatCustomMenu'
         wechat.v1.SetWechatAppSuspendedRequest:
             required:
                 - appId
@@ -4874,6 +5021,17 @@ components:
                  WechatAppPushSecret. A Platform Authorization carries no authorizer
                  AppSecret and no Push Secret; it is bound to one platform and lists
                  the capabilities WeChat granted.
+        wechat.v1.WechatAppMenu:
+            type: object
+            properties:
+                saved:
+                    $ref: '#/components/schemas/wechat.v1.WechatCustomMenu'
+                accepted:
+                    $ref: '#/components/schemas/wechat.v1.WechatCustomMenu'
+            description: |-
+                WechatAppMenu is the menu an operator can read on one WeChat App.
+                 saved is the document kept in this system. accepted is the last menu
+                 WeChat accepted; it is empty until a publish succeeds.
         wechat.v1.WechatAppPushSecret:
             type: object
             properties:
@@ -4929,6 +5087,35 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/wechat.v1.WechatAuthorizationPlatform'
+        wechat.v1.WechatCustomMenu:
+            type: object
+            properties:
+                buttons:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/wechat.v1.WechatMenuButton'
+            description: |-
+                WechatCustomMenu is one menu document, including nested sub-buttons.
+                 There is no ceiling of three top-level buttons.
+        wechat.v1.WechatMenuButton:
+            type: object
+            properties:
+                name:
+                    type: string
+                webUrl:
+                    type: string
+                miniProgramAppId:
+                    type: string
+                miniProgramPage:
+                    type: string
+                subButtons:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/wechat.v1.WechatMenuButton'
+            description: |-
+                WechatMenuButton is one button of a Custom Menu. A parent holds
+                 sub-buttons and does not itself open a page. A leaf sets either a web
+                 URL or a mini program, not both.
         wechat.v1.WechatPlatform:
             type: object
             properties:
@@ -5085,5 +5272,7 @@ tags:
         WechatService is the back-office surface for WeChat Platform
          registration and WeChat Apps. Platform permissions are
          wechat:platform:list, create, update, remove, and probe. App permissions
-         are wechat:app:list, create, update, remove, and probe. The platform callback
-         is a separate unauthenticated route; it is not an RPC.
+         are wechat:app:list, create, update, remove, and probe. Mini Program Login
+         is not a back-office mutation: it requires no Principal and no menu
+         permission. The platform callback is a separate unauthenticated route; it
+         is not an RPC.

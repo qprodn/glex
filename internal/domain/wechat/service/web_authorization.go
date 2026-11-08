@@ -191,7 +191,7 @@ func (s *appImpl) webAuthorizationAllowed(ctx context.Context, app *entity.App, 
 	if app.Connection != entity.ConnectionPlatformAuthorization {
 		return "", nil
 	}
-	if !hasCapability(app, entity.CapabilityWebAuthorization) {
+	if !hasCapability(app.Capabilities, entity.CapabilityWebAuthorization) {
 		err := wechat.ErrWebAuthorizationRefused
 		logx.Propagate(ctx, s.logger, op, err)
 		return "", err
@@ -312,15 +312,6 @@ func landingLocation(returnURL, code string) (string, error) {
 	u.RawQuery = query.Encode()
 	u.Fragment = ""
 	return u.String(), nil
-}
-
-func hasCapability(app *entity.App, capability string) bool {
-	for _, granted := range app.Capabilities {
-		if granted == capability {
-			return true
-		}
-	}
-	return false
 }
 
 func serviceAccount(app *entity.App) bool {

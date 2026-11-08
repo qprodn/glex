@@ -55,6 +55,9 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 					authnv1.OperationAuthServiceIssueLoginChallenge,
 					authnv1.OperationAuthServiceLogin,
 					authnv1.OperationAuthServiceLogout,
+					// Mini Program Login is an identity exchange, not a
+					// back-office mutation, and it writes no Login Log.
+					wechatv1.OperationWechatServiceMiniProgramLogin,
 					// The notify route records itself in pay_notify_log
 					// (ADR 0020) and carries no Principal — never an
 					// oper-log event.

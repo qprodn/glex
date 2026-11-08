@@ -1113,7 +1113,7 @@ func init() {
 	// wechatapp.WebAuthScopeValidator is a validator for the "web_auth_scope" field. It is called by the builders before save.
 	wechatapp.WebAuthScopeValidator = wechatappDescWebAuthScope.Validators[0].(func(string) error)
 	// wechatappDescKeyVersion is the schema descriptor for key_version field.
-	wechatappDescKeyVersion := wechatappFields[16].Descriptor()
+	wechatappDescKeyVersion := wechatappFields[18].Descriptor()
 	// wechatapp.DefaultKeyVersion holds the default value on creation for the key_version field.
 	wechatapp.DefaultKeyVersion = wechatappDescKeyVersion.Default.(int)
 	wechatplatformMixin := schema.WechatPlatform{}.Mixin()

@@ -1063,23 +1063,44 @@ func operatorView(p *entity.Platform) string {
 }
 
 type scriptedOpenAPI struct {
-	probeErr     error
-	acceptTicket string
-	probes       []ProbePlatformRequest
-	replies      []FullNetworkReply
-	replyErr     error
-	authLink     string
-	authErr      error
-	starts       []OpenAuthorizationStart
-	grant        *AuthorizationGrant
-	grantErr     error
-	completes    []OpenAuthorizationCode
-	appProbe     ProbeAppResult
-	appProbeErr  error
-	appProbes    []ProbeAppRequest
-	webGrant     *WebAuthorizationExchange
-	webGrantErr  error
-	webExchanges []ExchangeWebAuthorizationRequest
+	probeErr       error
+	acceptTicket   string
+	probes         []ProbePlatformRequest
+	replies        []FullNetworkReply
+	replyErr       error
+	authLink       string
+	authErr        error
+	starts         []OpenAuthorizationStart
+	grant          *AuthorizationGrant
+	grantErr       error
+	completes      []OpenAuthorizationCode
+	appProbe       ProbeAppResult
+	appProbeErr    error
+	appProbes      []ProbeAppRequest
+	webGrant       *WebAuthorizationExchange
+	webGrantErr    error
+	webExchanges   []ExchangeWebAuthorizationRequest
+	menuPublish    PublishMenuResult
+	menuPublishErr error
+	menuPublishes  []PublishMenuCall
+	miniLogin      MiniProgramLoginResult
+	miniLoginErr   error
+	miniLogins     []MiniProgramLoginCall
+}
+
+func (s *scriptedOpenAPI) PublishMenu(_ context.Context, req PublishMenuCall) (PublishMenuResult, error) {
+	if s == nil {
+		return PublishMenuResult{Class: CallSuccess, Message: "已替换默认菜单"}, nil
+	}
+	s.menuPublishes = append(s.menuPublishes, req)
+	if s.menuPublishErr != nil {
+		return PublishMenuResult{}, s.menuPublishErr
+	}
+	result := s.menuPublish
+	if result.Class == CallSuccess && result.Message == "" {
+		result.Message = "已替换默认菜单"
+	}
+	return result, nil
 }
 
 func (s *scriptedOpenAPI) ProbeApp(_ context.Context, req ProbeAppRequest) (ProbeAppResult, error) {
@@ -1095,6 +1116,17 @@ func (s *scriptedOpenAPI) ProbeApp(_ context.Context, req ProbeAppRequest) (Prob
 		result.Message = "连接成功"
 	}
 	return result, nil
+}
+
+func (s *scriptedOpenAPI) MiniProgramLogin(_ context.Context, req MiniProgramLoginCall) (MiniProgramLoginResult, error) {
+	if s == nil {
+		return MiniProgramLoginResult{}, nil
+	}
+	s.miniLogins = append(s.miniLogins, req)
+	if s.miniLoginErr != nil {
+		return MiniProgramLoginResult{}, s.miniLoginErr
+	}
+	return s.miniLogin, nil
 }
 
 func (s *scriptedOpenAPI) ProbePlatform(_ context.Context, req ProbePlatformRequest) error {

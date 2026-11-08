@@ -725,6 +725,8 @@ var (
 		{Name: "lapsed", Type: field.TypeBool, Default: false},
 		{Name: "return_url", Type: field.TypeString, Size: 2048, Default: ""},
 		{Name: "web_auth_scope", Type: field.TypeString, Size: 32, Default: "openid"},
+		{Name: "saved_menu", Type: field.TypeJSON, Nullable: true},
+		{Name: "accepted_menu", Type: field.TypeJSON, Nullable: true},
 		{Name: "key_version", Type: field.TypeInt, Default: 1},
 	}
 	// WechatAppTable holds the schema information for the "wechat_app" table.

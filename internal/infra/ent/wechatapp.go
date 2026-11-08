@@ -5,6 +5,7 @@ package ent
 import (
 	"encoding/json"
 	"fmt"
+	"glex/internal/domain/wechat/entity"
 	"glex/internal/infra/ent/wechatapp"
 	"strings"
 	"time"
@@ -58,6 +59,10 @@ type WechatApp struct {
 	ReturnURL string `json:"return_url,omitempty"`
 	// WebAuthScope holds the value of the "web_auth_scope" field.
 	WebAuthScope string `json:"web_auth_scope,omitempty"`
+	// SavedMenu holds the value of the "saved_menu" field.
+	SavedMenu *entity.CustomMenu `json:"saved_menu,omitempty"`
+	// AcceptedMenu holds the value of the "accepted_menu" field.
+	AcceptedMenu *entity.CustomMenu `json:"accepted_menu,omitempty"`
 	// KeyVersion holds the value of the "key_version" field.
 	KeyVersion   int `json:"key_version,omitempty"`
 	selectValues sql.SelectValues
@@ -68,7 +73,7 @@ func (*WechatApp) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case wechatapp.FieldGrantedCapabilities:
+		case wechatapp.FieldGrantedCapabilities, wechatapp.FieldSavedMenu, wechatapp.FieldAcceptedMenu:
 			values[i] = new([]byte)
 		case wechatapp.FieldSuspended, wechatapp.FieldLapsed:
 			values[i] = new(sql.NullBool)
@@ -222,6 +227,22 @@ func (_m *WechatApp) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.WebAuthScope = value.String
 			}
+		case wechatapp.FieldSavedMenu:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field saved_menu", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.SavedMenu); err != nil {
+					return fmt.Errorf("unmarshal field saved_menu: %w", err)
+				}
+			}
+		case wechatapp.FieldAcceptedMenu:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field accepted_menu", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.AcceptedMenu); err != nil {
+					return fmt.Errorf("unmarshal field accepted_menu: %w", err)
+				}
+			}
 		case wechatapp.FieldKeyVersion:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field key_version", values[i])
@@ -325,6 +346,12 @@ func (_m *WechatApp) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("web_auth_scope=")
 	builder.WriteString(_m.WebAuthScope)
+	builder.WriteString(", ")
+	builder.WriteString("saved_menu=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SavedMenu))
+	builder.WriteString(", ")
+	builder.WriteString("accepted_menu=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AcceptedMenu))
 	builder.WriteString(", ")
 	builder.WriteString("key_version=")
 	builder.WriteString(fmt.Sprintf("%v", _m.KeyVersion))

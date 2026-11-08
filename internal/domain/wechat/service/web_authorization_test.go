@@ -588,14 +588,3 @@ func (f *authFixture) readyWebService(t *testing.T, returnURL, scope string) *en
 	}
 	return saved
 }
-
-func serviceHold(appID string, actorID int64) CreateDirectHoldRequest {
-	return CreateDirectHoldRequest{
-		Name:      "服务号甲",
-		AppID:     appID,
-		AppType:   entity.AppTypeOfficialAccount,
-		Kind:      entity.AccountKindService,
-		AppSecret: testAppSecret,
-		ActorID:   actorID,
-	}
-}

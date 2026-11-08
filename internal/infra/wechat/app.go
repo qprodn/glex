@@ -44,6 +44,8 @@ func toBizApp(po *ent.WechatApp) *entity.App {
 		Lapsed:             po.Lapsed,
 		ReturnURL:          po.ReturnURL,
 		WebAuthScope:       webAuthScopeOrDefault(po.WebAuthScope),
+		SavedMenu:          po.SavedMenu,
+		AcceptedMenu:       po.AcceptedMenu,
 		KeyVersion:         po.KeyVersion,
 		CreateBy:           po.CreateBy,
 		UpdateBy:           po.UpdateBy,
@@ -209,6 +211,12 @@ func (r *appRepo) Create(ctx context.Context, req wechatrepo.SaveAppRequest) (*e
 	if app.Capabilities != nil {
 		create.SetGrantedCapabilities(app.Capabilities)
 	}
+	if app.SavedMenu != nil {
+		create.SetSavedMenu(app.SavedMenu)
+	}
+	if app.AcceptedMenu != nil {
+		create.SetAcceptedMenu(app.AcceptedMenu)
+	}
 	po, err := create.Save(ctx)
 	if err != nil {
 		if ent.IsConstraintError(err) {
@@ -231,6 +239,16 @@ func (r *appRepo) Update(ctx context.Context, req wechatrepo.SaveAppRequest) (*e
 		SetUpdateBy(req.ActorID)
 	if app.Capabilities != nil {
 		upd.SetGrantedCapabilities(app.Capabilities)
+	}
+	if app.SavedMenu != nil {
+		upd.SetSavedMenu(app.SavedMenu)
+	} else {
+		upd.ClearSavedMenu()
+	}
+	if app.AcceptedMenu != nil {
+		upd.SetAcceptedMenu(app.AcceptedMenu)
+	} else {
+		upd.ClearAcceptedMenu()
 	}
 	if req.ReplaceSecrets {
 		token, err := r.seal(req.Secrets)

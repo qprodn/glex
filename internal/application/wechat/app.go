@@ -226,6 +226,24 @@ func (s *WechatApplication) ProbeWechatApp(ctx context.Context, req *wechatv1.Pr
 	}, nil
 }
 
+// MiniProgramLogin exchanges a one-time login code for an openid. It
+// does not read a back-office Principal, does not write a Login Log,
+// and returns no session_key.
+func (s *WechatApplication) MiniProgramLogin(ctx context.Context, req *wechatv1.MiniProgramLoginRequest) (*wechatv1.MiniProgramIdentity, error) {
+	identity, err := s.apps.MiniProgramLogin(ctx, wechatservice.MiniProgramLoginRequest{
+		AppID: req.GetWxAppId(),
+		Code:  req.GetCode(),
+	})
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "wechat.mini_program_login", err)
+		return nil, err
+	}
+	return &wechatv1.MiniProgramIdentity{
+		Openid:  identity.OpenID,
+		Unionid: identity.UnionID,
+	}, nil
+}
+
 // WithdrawWechatApp soft-deletes the app.
 func (s *WechatApplication) WithdrawWechatApp(ctx context.Context, req *wechatv1.WithdrawWechatAppRequest) (*emptypb.Empty, error) {
 	if err := s.apps.Withdraw(ctx, wechatservice.WithdrawAppRequest{
