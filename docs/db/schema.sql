@@ -886,3 +886,85 @@ comment on column wechat_app.update_by is '更新者用户ID';
 comment on column wechat_app.created_at is '创建时间';
 comment on column wechat_app.updated_at is '更新时间';
 comment on column wechat_app.deleted_at is '软删除时间；NULL=未删除';
+
+create table if not exists wechat_adopted_template (
+    id                    bigint       not null,
+    app_id                bigint       not null,
+    library_template_id   varchar(128) not null,
+    wechat_template_id    varchar(128) not null default '',
+    title                 varchar(128) not null default '',
+    channel               varchar(64)  not null,
+    create_by             bigint       not null default 0,
+    update_by             bigint       not null default 0,
+    created_at            timestamptz  not null default now(),
+    updated_at            timestamptz  not null default now(),
+    deleted_at            timestamptz,
+    constraint wechat_adopted_template_pkey primary key (id)
+);
+
+-- 同一条未撤回的应用上，同一条公共模板只选用一次。撤回应用不撤回已选用模板。
+create unique index if not exists wechat_adopted_template_app_library
+    on wechat_adopted_template (app_id, library_template_id)
+    where deleted_at is null;
+
+create index if not exists wechat_adopted_template_app_id
+    on wechat_adopted_template (app_id);
+
+comment on table wechat_adopted_template is '已选用模板（从微信公共模板库选用到一条微信应用上；本系统不自建模板）';
+comment on column wechat_adopted_template.id is '主键ID（雪花）';
+comment on column wechat_adopted_template.app_id is '微信应用 ID；撤回应用不撤回这里的行';
+comment on column wechat_adopted_template.library_template_id is '微信公共模板库中的模板 ID';
+comment on column wechat_adopted_template.wechat_template_id is '微信在这条应用上分配的模板 ID；发送时使用';
+comment on column wechat_adopted_template.title is '微信返回的模板名称';
+comment on column wechat_adopted_template.channel is 'template_message、subscribe_notification 或 subscribe_message';
+comment on column wechat_adopted_template.create_by is '创建者用户ID';
+comment on column wechat_adopted_template.update_by is '更新者用户ID';
+comment on column wechat_adopted_template.created_at is '创建时间';
+comment on column wechat_adopted_template.updated_at is '更新时间';
+comment on column wechat_adopted_template.deleted_at is '软删除时间；NULL=未删除';
+
+create table if not exists wechat_dispatch (
+    id                    bigint        not null,
+    app_id                bigint        not null,
+    openid                varchar(64)   not null,
+    template_id           bigint        not null,
+    library_template_id   varchar(128)  not null default '',
+    wechat_template_id    varchar(128)  not null default '',
+    channel               varchar(64)   not null default '',
+    content               text          not null default '',
+    web_url               varchar(1024) not null default '',
+    mini_program_page     varchar(1024) not null default '',
+    accepted              boolean       not null default false,
+    msgid                 varchar(64)   not null default '',
+    create_by             bigint        not null default 0,
+    update_by             bigint        not null default 0,
+    created_at            timestamptz   not null default now(),
+    updated_at            timestamptz   not null default now(),
+    deleted_at            timestamptz,
+    constraint wechat_dispatch_pkey primary key (id)
+);
+
+create index if not exists wechat_dispatch_app_id
+    on wechat_dispatch (app_id);
+
+create index if not exists wechat_dispatch_msgid
+    on wechat_dispatch (msgid);
+
+comment on table wechat_dispatch is '微信下发（一次发送尝试发给一个 openid；受理和业务拒绝各留一行；超时不留已受理行）';
+comment on column wechat_dispatch.id is '主键ID（雪花）';
+comment on column wechat_dispatch.app_id is '微信应用 ID；撤回应用不撤回这里的行，列表仍可按应用筛选';
+comment on column wechat_dispatch.openid is '这一次发送的收件人 openid';
+comment on column wechat_dispatch.template_id is '已选用模板的行 ID';
+comment on column wechat_dispatch.library_template_id is '公共模板库 ID，便于列表辨认模板';
+comment on column wechat_dispatch.wechat_template_id is '交给微信的模板 ID';
+comment on column wechat_dispatch.channel is 'template_message、subscribe_notification 或 subscribe_message';
+comment on column wechat_dispatch.content is '填好的内容；不是密钥';
+comment on column wechat_dispatch.web_url is '选填的网页 URL；与小程序页面都填写时两条都记下';
+comment on column wechat_dispatch.mini_program_page is '选填的小程序页面';
+comment on column wechat_dispatch.accepted is '微信是否受理；业务拒绝为 false，且 msgid 为空';
+comment on column wechat_dispatch.msgid is '微信受理后返回的 msgid；拒绝时为空';
+comment on column wechat_dispatch.create_by is '创建者用户ID';
+comment on column wechat_dispatch.update_by is '更新者用户ID';
+comment on column wechat_dispatch.created_at is '创建时间';
+comment on column wechat_dispatch.updated_at is '更新时间';
+comment on column wechat_dispatch.deleted_at is '软删除时间；NULL=未删除';

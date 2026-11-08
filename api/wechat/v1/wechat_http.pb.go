@@ -18,12 +18,16 @@ var _ = new(context.Context)
 
 const _ = http.SupportPackageIsVersion3
 
+const OperationWechatServiceAdoptWechatTemplate = "/wechat.v1.WechatService/AdoptWechatTemplate"
 const OperationWechatServiceCreateWechatApp = "/wechat.v1.WechatService/CreateWechatApp"
+const OperationWechatServiceCreateWechatDispatch = "/wechat.v1.WechatService/CreateWechatDispatch"
 const OperationWechatServiceCreateWechatPlatform = "/wechat.v1.WechatService/CreateWechatPlatform"
 const OperationWechatServiceGetWechatApp = "/wechat.v1.WechatService/GetWechatApp"
 const OperationWechatServiceGetWechatPlatform = "/wechat.v1.WechatService/GetWechatPlatform"
+const OperationWechatServiceListAdoptedTemplates = "/wechat.v1.WechatService/ListAdoptedTemplates"
 const OperationWechatServiceListAuthorizationPlatforms = "/wechat.v1.WechatService/ListAuthorizationPlatforms"
 const OperationWechatServiceListWechatApps = "/wechat.v1.WechatService/ListWechatApps"
+const OperationWechatServiceListWechatDispatches = "/wechat.v1.WechatService/ListWechatDispatches"
 const OperationWechatServiceListWechatPlatforms = "/wechat.v1.WechatService/ListWechatPlatforms"
 const OperationWechatServiceProbeWechatApp = "/wechat.v1.WechatService/ProbeWechatApp"
 const OperationWechatServiceProbeWechatPlatform = "/wechat.v1.WechatService/ProbeWechatPlatform"
@@ -36,10 +40,19 @@ const OperationWechatServiceWithdrawWechatApp = "/wechat.v1.WechatService/Withdr
 const OperationWechatServiceWithdrawWechatPlatform = "/wechat.v1.WechatService/WithdrawWechatPlatform"
 
 type WechatServiceHTTPServer interface {
+	// AdoptWechatTemplate AdoptWechatTemplate takes one public-library template onto this app
+	// through the app's current token. The same library template is not
+	// adopted twice onto the same live app. This call does not invent a
+	// template. Permission: wechat:dispatch:create.
+	AdoptWechatTemplate(context.Context, *AdoptWechatTemplateRequest) (*AdoptedTemplate, error)
 	// CreateWechatApp CreateWechatApp connects a mini program, or an official account with
 	// a Service Account or Subscription Account kind, by Direct Hold. The
 	// response returns the generated Token and EncodingAESKey in full once.
 	CreateWechatApp(context.Context, *CreateWechatAppRequest) (*WechatAppPushSecret, error)
+	// CreateWechatDispatch CreateWechatDispatch sends one adopted template to one openid and
+	// waits until WeChat accepts or rejects. Acceptance and business
+	// rejection each leave a new dispatch. Permission: wechat:dispatch:create.
+	CreateWechatDispatch(context.Context, *CreateWechatDispatchRequest) (*WechatDispatch, error)
 	// CreateWechatPlatform CreateWechatPlatform registers a platform. The response carries masks,
 	// never the secrets the operator just typed.
 	CreateWechatPlatform(context.Context, *CreateWechatPlatformRequest) (*WechatPlatform, error)
@@ -48,6 +61,10 @@ type WechatServiceHTTPServer interface {
 	GetWechatApp(context.Context, *GetWechatAppRequest) (*WechatApp, error)
 	// GetWechatPlatform GetWechatPlatform retrieves one platform that is not withdrawn.
 	GetWechatPlatform(context.Context, *GetWechatPlatformRequest) (*WechatPlatform, error)
+	// ListAdoptedTemplates ListAdoptedTemplates lists templates adopted onto this app from
+	// WeChat's public library, including after the app is withdrawn.
+	// Permission: wechat:dispatch:list.
+	ListAdoptedTemplates(context.Context, *ListAdoptedTemplatesRequest) (*AdoptedTemplateSet, error)
 	// ListAuthorizationPlatforms ListAuthorizationPlatforms lists ready platforms an operator can
 	// choose when starting a Platform Authorization. Withdrawn and unready
 	// platforms are omitted. Masks and secrets are not returned. Permission:
@@ -56,6 +73,9 @@ type WechatServiceHTTPServer interface {
 	// ListWechatApps ListWechatApps lists apps that are not withdrawn. Responses carry
 	// masks only.
 	ListWechatApps(context.Context, *ListWechatAppsRequest) (*WechatAppSet, error)
+	// ListWechatDispatches ListWechatDispatches lists send attempts for live and withdrawn apps.
+	// app_id filters to one app. Permission: wechat:dispatch:list.
+	ListWechatDispatches(context.Context, *ListWechatDispatchesRequest) (*WechatDispatchSet, error)
 	// ListWechatPlatforms ListWechatPlatforms lists platforms that are not withdrawn. Responses
 	// carry masks only.
 	ListWechatPlatforms(context.Context, *ListWechatPlatformsRequest) (*WechatPlatformSet, error)
@@ -117,6 +137,10 @@ func RegisterWechatServiceHTTPServer(s *http.Server, srv WechatServiceHTTPServer
 	r.Handle("POST", "/wechat/app/{app_id}/probe", _WechatService_ProbeWechatApp0_HTTP_Handler(srv))
 	r.Handle("GET", "/wechat/app/authorization/platforms", _WechatService_ListAuthorizationPlatforms0_HTTP_Handler(srv))
 	r.Handle("POST", "/wechat/app/authorization", _WechatService_StartWechatAuthorization0_HTTP_Handler(srv))
+	r.Handle("GET", "/wechat/app/{app_id}/template", _WechatService_ListAdoptedTemplates0_HTTP_Handler(srv))
+	r.Handle("POST", "/wechat/app/{app_id}/template", _WechatService_AdoptWechatTemplate0_HTTP_Handler(srv))
+	r.Handle("GET", "/wechat/dispatch", _WechatService_ListWechatDispatches0_HTTP_Handler(srv))
+	r.Handle("POST", "/wechat/dispatch", _WechatService_CreateWechatDispatch0_HTTP_Handler(srv))
 }
 
 func _WechatService_CreateWechatPlatform0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
@@ -453,11 +477,102 @@ func _WechatService_StartWechatAuthorization0_HTTP_Handler(srv WechatServiceHTTP
 	}
 }
 
+func _WechatService_ListAdoptedTemplates0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListAdoptedTemplatesRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceListAdoptedTemplates)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListAdoptedTemplates(ctx, req.(*ListAdoptedTemplatesRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*AdoptedTemplateSet)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _WechatService_AdoptWechatTemplate0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in AdoptWechatTemplateRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceAdoptWechatTemplate)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.AdoptWechatTemplate(ctx, req.(*AdoptWechatTemplateRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*AdoptedTemplate)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _WechatService_ListWechatDispatches0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListWechatDispatchesRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceListWechatDispatches)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListWechatDispatches(ctx, req.(*ListWechatDispatchesRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatDispatchSet)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _WechatService_CreateWechatDispatch0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in CreateWechatDispatchRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceCreateWechatDispatch)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.CreateWechatDispatch(ctx, req.(*CreateWechatDispatchRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatDispatch)
+		return ctx.Result(200, reply)
+	}
+}
+
 type WechatServiceHTTPClient interface {
+	// AdoptWechatTemplate AdoptWechatTemplate takes one public-library template onto this app
+	// through the app's current token. The same library template is not
+	// adopted twice onto the same live app. This call does not invent a
+	// template. Permission: wechat:dispatch:create.
+	AdoptWechatTemplate(ctx context.Context, req *AdoptWechatTemplateRequest, opts ...http.CallOption) (rsp *AdoptedTemplate, err error)
 	// CreateWechatApp CreateWechatApp connects a mini program, or an official account with
 	// a Service Account or Subscription Account kind, by Direct Hold. The
 	// response returns the generated Token and EncodingAESKey in full once.
 	CreateWechatApp(ctx context.Context, req *CreateWechatAppRequest, opts ...http.CallOption) (rsp *WechatAppPushSecret, err error)
+	// CreateWechatDispatch CreateWechatDispatch sends one adopted template to one openid and
+	// waits until WeChat accepts or rejects. Acceptance and business
+	// rejection each leave a new dispatch. Permission: wechat:dispatch:create.
+	CreateWechatDispatch(ctx context.Context, req *CreateWechatDispatchRequest, opts ...http.CallOption) (rsp *WechatDispatch, err error)
 	// CreateWechatPlatform CreateWechatPlatform registers a platform. The response carries masks,
 	// never the secrets the operator just typed.
 	CreateWechatPlatform(ctx context.Context, req *CreateWechatPlatformRequest, opts ...http.CallOption) (rsp *WechatPlatform, err error)
@@ -466,6 +581,10 @@ type WechatServiceHTTPClient interface {
 	GetWechatApp(ctx context.Context, req *GetWechatAppRequest, opts ...http.CallOption) (rsp *WechatApp, err error)
 	// GetWechatPlatform GetWechatPlatform retrieves one platform that is not withdrawn.
 	GetWechatPlatform(ctx context.Context, req *GetWechatPlatformRequest, opts ...http.CallOption) (rsp *WechatPlatform, err error)
+	// ListAdoptedTemplates ListAdoptedTemplates lists templates adopted onto this app from
+	// WeChat's public library, including after the app is withdrawn.
+	// Permission: wechat:dispatch:list.
+	ListAdoptedTemplates(ctx context.Context, req *ListAdoptedTemplatesRequest, opts ...http.CallOption) (rsp *AdoptedTemplateSet, err error)
 	// ListAuthorizationPlatforms ListAuthorizationPlatforms lists ready platforms an operator can
 	// choose when starting a Platform Authorization. Withdrawn and unready
 	// platforms are omitted. Masks and secrets are not returned. Permission:
@@ -474,6 +593,9 @@ type WechatServiceHTTPClient interface {
 	// ListWechatApps ListWechatApps lists apps that are not withdrawn. Responses carry
 	// masks only.
 	ListWechatApps(ctx context.Context, req *ListWechatAppsRequest, opts ...http.CallOption) (rsp *WechatAppSet, err error)
+	// ListWechatDispatches ListWechatDispatches lists send attempts for live and withdrawn apps.
+	// app_id filters to one app. Permission: wechat:dispatch:list.
+	ListWechatDispatches(ctx context.Context, req *ListWechatDispatchesRequest, opts ...http.CallOption) (rsp *WechatDispatchSet, err error)
 	// ListWechatPlatforms ListWechatPlatforms lists platforms that are not withdrawn. Responses
 	// carry masks only.
 	ListWechatPlatforms(ctx context.Context, req *ListWechatPlatformsRequest, opts ...http.CallOption) (rsp *WechatPlatformSet, err error)
@@ -525,6 +647,27 @@ func NewWechatServiceHTTPClient(client *http.Client) WechatServiceHTTPClient {
 	return &WechatServiceHTTPClientImpl{client}
 }
 
+// AdoptWechatTemplate AdoptWechatTemplate takes one public-library template onto this app
+// through the app's current token. The same library template is not
+// adopted twice onto the same live app. This call does not invent a
+// template. Permission: wechat:dispatch:create.
+func (c *WechatServiceHTTPClientImpl) AdoptWechatTemplate(ctx context.Context, in *AdoptWechatTemplateRequest, opts ...http.CallOption) (*AdoptedTemplate, error) {
+	var out AdoptedTemplate
+	pattern := "/wechat/app/{app_id}/template"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationWechatServiceAdoptWechatTemplate),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // CreateWechatApp CreateWechatApp connects a mini program, or an official account with
 // a Service Account or Subscription Account kind, by Direct Hold. The
 // response returns the generated Token and EncodingAESKey in full once.
@@ -536,6 +679,26 @@ func (c *WechatServiceHTTPClientImpl) CreateWechatApp(ctx context.Context, in *C
 		http.Accept("application/protojson"),
 		http.ContentType("application/protojson"),
 		http.Operation(OperationWechatServiceCreateWechatApp),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// CreateWechatDispatch CreateWechatDispatch sends one adopted template to one openid and
+// waits until WeChat accepts or rejects. Acceptance and business
+// rejection each leave a new dispatch. Permission: wechat:dispatch:create.
+func (c *WechatServiceHTTPClientImpl) CreateWechatDispatch(ctx context.Context, in *CreateWechatDispatchRequest, opts ...http.CallOption) (*WechatDispatch, error) {
+	var out WechatDispatch
+	pattern := "/wechat/dispatch"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationWechatServiceCreateWechatDispatch),
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
@@ -599,6 +762,25 @@ func (c *WechatServiceHTTPClientImpl) GetWechatPlatform(ctx context.Context, in 
 	return &out, nil
 }
 
+// ListAdoptedTemplates ListAdoptedTemplates lists templates adopted onto this app from
+// WeChat's public library, including after the app is withdrawn.
+// Permission: wechat:dispatch:list.
+func (c *WechatServiceHTTPClientImpl) ListAdoptedTemplates(ctx context.Context, in *ListAdoptedTemplatesRequest, opts ...http.CallOption) (*AdoptedTemplateSet, error) {
+	var out AdoptedTemplateSet
+	pattern := "/wechat/app/{app_id}/template"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationWechatServiceListAdoptedTemplates),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ListAuthorizationPlatforms ListAuthorizationPlatforms lists ready platforms an operator can
 // choose when starting a Platform Authorization. Withdrawn and unready
 // platforms are omitted. Masks and secrets are not returned. Permission:
@@ -628,6 +810,24 @@ func (c *WechatServiceHTTPClientImpl) ListWechatApps(ctx context.Context, in *Li
 	opts = append([]http.CallOption{
 		http.Accept("application/protojson"),
 		http.Operation(OperationWechatServiceListWechatApps),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListWechatDispatches ListWechatDispatches lists send attempts for live and withdrawn apps.
+// app_id filters to one app. Permission: wechat:dispatch:list.
+func (c *WechatServiceHTTPClientImpl) ListWechatDispatches(ctx context.Context, in *ListWechatDispatchesRequest, opts ...http.CallOption) (*WechatDispatchSet, error) {
+	var out WechatDispatchSet
+	pattern := "/wechat/dispatch"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationWechatServiceListWechatDispatches),
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)

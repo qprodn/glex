@@ -179,9 +179,19 @@ func (db *Database) UserRole(ctx context.Context) *UserRoleClient {
 	return db.loadClient(ctx).UserRole
 }
 
+// WechatAdoptedTemplate is the client for interacting with the WechatAdoptedTemplate builders.
+func (db *Database) WechatAdoptedTemplate(ctx context.Context) *WechatAdoptedTemplateClient {
+	return db.loadClient(ctx).WechatAdoptedTemplate
+}
+
 // WechatApp is the client for interacting with the WechatApp builders.
 func (db *Database) WechatApp(ctx context.Context) *WechatAppClient {
 	return db.loadClient(ctx).WechatApp
+}
+
+// WechatDispatch is the client for interacting with the WechatDispatch builders.
+func (db *Database) WechatDispatch(ctx context.Context) *WechatDispatchClient {
+	return db.loadClient(ctx).WechatDispatch
 }
 
 // WechatPlatform is the client for interacting with the WechatPlatform builders.

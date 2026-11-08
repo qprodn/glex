@@ -1077,6 +1077,34 @@ type scriptedOpenAPI struct {
 	appProbe     ProbeAppResult
 	appProbeErr  error
 	appProbes    []ProbeAppRequest
+	adopt        AdoptLibraryTemplateResult
+	adoptErr     error
+	adopts       []AdoptLibraryTemplateRequest
+	send         SendMessageResult
+	sendErr      error
+	sends        []SendMessageRequest
+}
+
+func (s *scriptedOpenAPI) SendMessage(_ context.Context, req SendMessageRequest) (SendMessageResult, error) {
+	if s == nil {
+		return SendMessageResult{Class: CallSuccess}, nil
+	}
+	s.sends = append(s.sends, req)
+	if s.sendErr != nil {
+		return SendMessageResult{}, s.sendErr
+	}
+	return s.send, nil
+}
+
+func (s *scriptedOpenAPI) AdoptLibraryTemplate(_ context.Context, req AdoptLibraryTemplateRequest) (AdoptLibraryTemplateResult, error) {
+	if s == nil {
+		return AdoptLibraryTemplateResult{Class: CallSuccess}, nil
+	}
+	s.adopts = append(s.adopts, req)
+	if s.adoptErr != nil {
+		return AdoptLibraryTemplateResult{}, s.adoptErr
+	}
+	return s.adopt, nil
 }
 
 func (s *scriptedOpenAPI) ProbeApp(_ context.Context, req ProbeAppRequest) (ProbeAppResult, error) {

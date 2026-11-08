@@ -60,6 +60,26 @@ const (
 	ErrorReason_WECHAT_APP_DUPLICATE ErrorReason = 10
 	// The AppID is fixed for the life of the row.
 	ErrorReason_WECHAT_APP_ID_IMMUTABLE ErrorReason = 11
+	// The app is suspended, so adoption and sending are refused.
+	ErrorReason_WECHAT_APP_SUSPENDED ErrorReason = 12
+	// WeChat has definitively refused this app.
+	ErrorReason_WECHAT_APP_LAPSED ErrorReason = 13
+	// The platform is not ready, so a token-using call is refused.
+	ErrorReason_WECHAT_PLATFORM_NOT_READY ErrorReason = 14
+	// WeChat timed out or could not be reached. The app is not lapsed.
+	ErrorReason_WECHAT_UNAVAILABLE ErrorReason = 15
+	// The adopted template does not exist on this app.
+	ErrorReason_WECHAT_TEMPLATE_NOT_FOUND ErrorReason = 16
+	// This live app already adopted this public-library template.
+	ErrorReason_WECHAT_TEMPLATE_DUPLICATE ErrorReason = 17
+	// WeChat refused to adopt the library template. No template is stored.
+	ErrorReason_WECHAT_TEMPLATE_REJECTED ErrorReason = 18
+	// The send has no openid or no adopted template. No dispatch is stored.
+	ErrorReason_WECHAT_DISPATCH_INVALID ErrorReason = 19
+	// WeChat refused the send. A rejected dispatch is stored without an msgid.
+	ErrorReason_WECHAT_DISPATCH_REJECTED ErrorReason = 20
+	// The app's kind or granted capabilities do not include this send.
+	ErrorReason_WECHAT_CAPABILITY_DENIED ErrorReason = 21
 )
 
 // Enum value maps for ErrorReason.
@@ -77,6 +97,16 @@ var (
 		9:  "WECHAT_APP_INVALID",
 		10: "WECHAT_APP_DUPLICATE",
 		11: "WECHAT_APP_ID_IMMUTABLE",
+		12: "WECHAT_APP_SUSPENDED",
+		13: "WECHAT_APP_LAPSED",
+		14: "WECHAT_PLATFORM_NOT_READY",
+		15: "WECHAT_UNAVAILABLE",
+		16: "WECHAT_TEMPLATE_NOT_FOUND",
+		17: "WECHAT_TEMPLATE_DUPLICATE",
+		18: "WECHAT_TEMPLATE_REJECTED",
+		19: "WECHAT_DISPATCH_INVALID",
+		20: "WECHAT_DISPATCH_REJECTED",
+		21: "WECHAT_CAPABILITY_DENIED",
 	}
 	ErrorReason_value = map[string]int32{
 		"ERROR_REASON_UNSPECIFIED":         0,
@@ -91,6 +121,16 @@ var (
 		"WECHAT_APP_INVALID":               9,
 		"WECHAT_APP_DUPLICATE":             10,
 		"WECHAT_APP_ID_IMMUTABLE":          11,
+		"WECHAT_APP_SUSPENDED":             12,
+		"WECHAT_APP_LAPSED":                13,
+		"WECHAT_PLATFORM_NOT_READY":        14,
+		"WECHAT_UNAVAILABLE":               15,
+		"WECHAT_TEMPLATE_NOT_FOUND":        16,
+		"WECHAT_TEMPLATE_DUPLICATE":        17,
+		"WECHAT_TEMPLATE_REJECTED":         18,
+		"WECHAT_DISPATCH_INVALID":          19,
+		"WECHAT_DISPATCH_REJECTED":         20,
+		"WECHAT_CAPABILITY_DENIED":         21,
 	}
 )
 
@@ -125,7 +165,7 @@ var File_wechat_v1_error_reason_proto protoreflect.FileDescriptor
 
 const file_wechat_v1_error_reason_proto_rawDesc = "" +
 	"\n" +
-	"\x1cwechat/v1/error_reason.proto\x12\twechat.v1*\xf2\x02\n" +
+	"\x1cwechat/v1/error_reason.proto\x12\twechat.v1*\x8f\x05\n" +
 	"\vErrorReason\x12\x1c\n" +
 	"\x18ERROR_REASON_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19WECHAT_PLATFORM_NOT_FOUND\x10\x01\x12\x1b\n" +
@@ -139,7 +179,17 @@ const file_wechat_v1_error_reason_proto_rawDesc = "" +
 	"\x12WECHAT_APP_INVALID\x10\t\x12\x18\n" +
 	"\x14WECHAT_APP_DUPLICATE\x10\n" +
 	"\x12\x1b\n" +
-	"\x17WECHAT_APP_ID_IMMUTABLE\x10\vB(\n" +
+	"\x17WECHAT_APP_ID_IMMUTABLE\x10\v\x12\x18\n" +
+	"\x14WECHAT_APP_SUSPENDED\x10\f\x12\x15\n" +
+	"\x11WECHAT_APP_LAPSED\x10\r\x12\x1d\n" +
+	"\x19WECHAT_PLATFORM_NOT_READY\x10\x0e\x12\x16\n" +
+	"\x12WECHAT_UNAVAILABLE\x10\x0f\x12\x1d\n" +
+	"\x19WECHAT_TEMPLATE_NOT_FOUND\x10\x10\x12\x1d\n" +
+	"\x19WECHAT_TEMPLATE_DUPLICATE\x10\x11\x12\x1c\n" +
+	"\x18WECHAT_TEMPLATE_REJECTED\x10\x12\x12\x1b\n" +
+	"\x17WECHAT_DISPATCH_INVALID\x10\x13\x12\x1c\n" +
+	"\x18WECHAT_DISPATCH_REJECTED\x10\x14\x12\x1c\n" +
+	"\x18WECHAT_CAPABILITY_DENIED\x10\x15B(\n" +
 	"\rapi.wechat.v1P\x01Z\x15glex/api/wechat/v1;v1b\x06proto3"
 
 var (

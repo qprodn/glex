@@ -31,7 +31,9 @@ import (
 	"glex/internal/infra/ent/user"
 	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
+	"glex/internal/infra/ent/wechatadoptedtemplate"
 	"glex/internal/infra/ent/wechatapp"
+	"glex/internal/infra/ent/wechatdispatch"
 	"glex/internal/infra/ent/wechatplatform"
 
 	"entgo.io/ent"
@@ -87,8 +89,12 @@ type Client struct {
 	UserPost *UserPostClient
 	// UserRole is the client for interacting with the UserRole builders.
 	UserRole *UserRoleClient
+	// WechatAdoptedTemplate is the client for interacting with the WechatAdoptedTemplate builders.
+	WechatAdoptedTemplate *WechatAdoptedTemplateClient
 	// WechatApp is the client for interacting with the WechatApp builders.
 	WechatApp *WechatAppClient
+	// WechatDispatch is the client for interacting with the WechatDispatch builders.
+	WechatDispatch *WechatDispatchClient
 	// WechatPlatform is the client for interacting with the WechatPlatform builders.
 	WechatPlatform *WechatPlatformClient
 }
@@ -122,7 +128,9 @@ func (c *Client) init() {
 	c.User = NewUserClient(c.config)
 	c.UserPost = NewUserPostClient(c.config)
 	c.UserRole = NewUserRoleClient(c.config)
+	c.WechatAdoptedTemplate = NewWechatAdoptedTemplateClient(c.config)
 	c.WechatApp = NewWechatAppClient(c.config)
+	c.WechatDispatch = NewWechatDispatchClient(c.config)
 	c.WechatPlatform = NewWechatPlatformClient(c.config)
 }
 
@@ -214,30 +222,32 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:                ctx,
-		config:             cfg,
-		Dept:               NewDeptClient(cfg),
-		DictData:           NewDictDataClient(cfg),
-		DictType:           NewDictTypeClient(cfg),
-		File:               NewFileClient(cfg),
-		Job:                NewJobClient(cfg),
-		JobLog:             NewJobLogClient(cfg),
-		LoginLog:           NewLoginLogClient(cfg),
-		Menu:               NewMenuClient(cfg),
-		OperLog:            NewOperLogClient(cfg),
-		Param:              NewParamClient(cfg),
-		PayMerchantAccount: NewPayMerchantAccountClient(cfg),
-		PayNotifyLog:       NewPayNotifyLogClient(cfg),
-		PayPayment:         NewPayPaymentClient(cfg),
-		PayRefund:          NewPayRefundClient(cfg),
-		Post:               NewPostClient(cfg),
-		Role:               NewRoleClient(cfg),
-		RoleMenu:           NewRoleMenuClient(cfg),
-		User:               NewUserClient(cfg),
-		UserPost:           NewUserPostClient(cfg),
-		UserRole:           NewUserRoleClient(cfg),
-		WechatApp:          NewWechatAppClient(cfg),
-		WechatPlatform:     NewWechatPlatformClient(cfg),
+		ctx:                   ctx,
+		config:                cfg,
+		Dept:                  NewDeptClient(cfg),
+		DictData:              NewDictDataClient(cfg),
+		DictType:              NewDictTypeClient(cfg),
+		File:                  NewFileClient(cfg),
+		Job:                   NewJobClient(cfg),
+		JobLog:                NewJobLogClient(cfg),
+		LoginLog:              NewLoginLogClient(cfg),
+		Menu:                  NewMenuClient(cfg),
+		OperLog:               NewOperLogClient(cfg),
+		Param:                 NewParamClient(cfg),
+		PayMerchantAccount:    NewPayMerchantAccountClient(cfg),
+		PayNotifyLog:          NewPayNotifyLogClient(cfg),
+		PayPayment:            NewPayPaymentClient(cfg),
+		PayRefund:             NewPayRefundClient(cfg),
+		Post:                  NewPostClient(cfg),
+		Role:                  NewRoleClient(cfg),
+		RoleMenu:              NewRoleMenuClient(cfg),
+		User:                  NewUserClient(cfg),
+		UserPost:              NewUserPostClient(cfg),
+		UserRole:              NewUserRoleClient(cfg),
+		WechatAdoptedTemplate: NewWechatAdoptedTemplateClient(cfg),
+		WechatApp:             NewWechatAppClient(cfg),
+		WechatDispatch:        NewWechatDispatchClient(cfg),
+		WechatPlatform:        NewWechatPlatformClient(cfg),
 	}, nil
 }
 
@@ -255,30 +265,32 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:                ctx,
-		config:             cfg,
-		Dept:               NewDeptClient(cfg),
-		DictData:           NewDictDataClient(cfg),
-		DictType:           NewDictTypeClient(cfg),
-		File:               NewFileClient(cfg),
-		Job:                NewJobClient(cfg),
-		JobLog:             NewJobLogClient(cfg),
-		LoginLog:           NewLoginLogClient(cfg),
-		Menu:               NewMenuClient(cfg),
-		OperLog:            NewOperLogClient(cfg),
-		Param:              NewParamClient(cfg),
-		PayMerchantAccount: NewPayMerchantAccountClient(cfg),
-		PayNotifyLog:       NewPayNotifyLogClient(cfg),
-		PayPayment:         NewPayPaymentClient(cfg),
-		PayRefund:          NewPayRefundClient(cfg),
-		Post:               NewPostClient(cfg),
-		Role:               NewRoleClient(cfg),
-		RoleMenu:           NewRoleMenuClient(cfg),
-		User:               NewUserClient(cfg),
-		UserPost:           NewUserPostClient(cfg),
-		UserRole:           NewUserRoleClient(cfg),
-		WechatApp:          NewWechatAppClient(cfg),
-		WechatPlatform:     NewWechatPlatformClient(cfg),
+		ctx:                   ctx,
+		config:                cfg,
+		Dept:                  NewDeptClient(cfg),
+		DictData:              NewDictDataClient(cfg),
+		DictType:              NewDictTypeClient(cfg),
+		File:                  NewFileClient(cfg),
+		Job:                   NewJobClient(cfg),
+		JobLog:                NewJobLogClient(cfg),
+		LoginLog:              NewLoginLogClient(cfg),
+		Menu:                  NewMenuClient(cfg),
+		OperLog:               NewOperLogClient(cfg),
+		Param:                 NewParamClient(cfg),
+		PayMerchantAccount:    NewPayMerchantAccountClient(cfg),
+		PayNotifyLog:          NewPayNotifyLogClient(cfg),
+		PayPayment:            NewPayPaymentClient(cfg),
+		PayRefund:             NewPayRefundClient(cfg),
+		Post:                  NewPostClient(cfg),
+		Role:                  NewRoleClient(cfg),
+		RoleMenu:              NewRoleMenuClient(cfg),
+		User:                  NewUserClient(cfg),
+		UserPost:              NewUserPostClient(cfg),
+		UserRole:              NewUserRoleClient(cfg),
+		WechatAdoptedTemplate: NewWechatAdoptedTemplateClient(cfg),
+		WechatApp:             NewWechatAppClient(cfg),
+		WechatDispatch:        NewWechatDispatchClient(cfg),
+		WechatPlatform:        NewWechatPlatformClient(cfg),
 	}, nil
 }
 
@@ -311,7 +323,7 @@ func (c *Client) Use(hooks ...Hook) {
 		c.Dept, c.DictData, c.DictType, c.File, c.Job, c.JobLog, c.LoginLog, c.Menu,
 		c.OperLog, c.Param, c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment,
 		c.PayRefund, c.Post, c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
-		c.WechatApp, c.WechatPlatform,
+		c.WechatAdoptedTemplate, c.WechatApp, c.WechatDispatch, c.WechatPlatform,
 	} {
 		n.Use(hooks...)
 	}
@@ -324,7 +336,7 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.Dept, c.DictData, c.DictType, c.File, c.Job, c.JobLog, c.LoginLog, c.Menu,
 		c.OperLog, c.Param, c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment,
 		c.PayRefund, c.Post, c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
-		c.WechatApp, c.WechatPlatform,
+		c.WechatAdoptedTemplate, c.WechatApp, c.WechatDispatch, c.WechatPlatform,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -373,8 +385,12 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.UserPost.mutate(ctx, m)
 	case *UserRoleMutation:
 		return c.UserRole.mutate(ctx, m)
+	case *WechatAdoptedTemplateMutation:
+		return c.WechatAdoptedTemplate.mutate(ctx, m)
 	case *WechatAppMutation:
 		return c.WechatApp.mutate(ctx, m)
+	case *WechatDispatchMutation:
+		return c.WechatDispatch.mutate(ctx, m)
 	case *WechatPlatformMutation:
 		return c.WechatPlatform.mutate(ctx, m)
 	default:
@@ -3234,6 +3250,139 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 	}
 }
 
+// WechatAdoptedTemplateClient is a client for the WechatAdoptedTemplate schema.
+type WechatAdoptedTemplateClient struct {
+	config
+}
+
+// NewWechatAdoptedTemplateClient returns a client for the WechatAdoptedTemplate from the given config.
+func NewWechatAdoptedTemplateClient(c config) *WechatAdoptedTemplateClient {
+	return &WechatAdoptedTemplateClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `wechatadoptedtemplate.Hooks(f(g(h())))`.
+func (c *WechatAdoptedTemplateClient) Use(hooks ...Hook) {
+	c.hooks.WechatAdoptedTemplate = append(c.hooks.WechatAdoptedTemplate, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `wechatadoptedtemplate.Intercept(f(g(h())))`.
+func (c *WechatAdoptedTemplateClient) Intercept(interceptors ...Interceptor) {
+	c.inters.WechatAdoptedTemplate = append(c.inters.WechatAdoptedTemplate, interceptors...)
+}
+
+// Create returns a builder for creating a WechatAdoptedTemplate entity.
+func (c *WechatAdoptedTemplateClient) Create() *WechatAdoptedTemplateCreate {
+	mutation := newWechatAdoptedTemplateMutation(c.config, OpCreate)
+	return &WechatAdoptedTemplateCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of WechatAdoptedTemplate entities.
+func (c *WechatAdoptedTemplateClient) CreateBulk(builders ...*WechatAdoptedTemplateCreate) *WechatAdoptedTemplateCreateBulk {
+	return &WechatAdoptedTemplateCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *WechatAdoptedTemplateClient) MapCreateBulk(slice any, setFunc func(*WechatAdoptedTemplateCreate, int)) *WechatAdoptedTemplateCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &WechatAdoptedTemplateCreateBulk{err: fmt.Errorf("calling to WechatAdoptedTemplateClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*WechatAdoptedTemplateCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &WechatAdoptedTemplateCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for WechatAdoptedTemplate.
+func (c *WechatAdoptedTemplateClient) Update() *WechatAdoptedTemplateUpdate {
+	mutation := newWechatAdoptedTemplateMutation(c.config, OpUpdate)
+	return &WechatAdoptedTemplateUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *WechatAdoptedTemplateClient) UpdateOne(_m *WechatAdoptedTemplate) *WechatAdoptedTemplateUpdateOne {
+	mutation := newWechatAdoptedTemplateMutation(c.config, OpUpdateOne, withWechatAdoptedTemplate(_m))
+	return &WechatAdoptedTemplateUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *WechatAdoptedTemplateClient) UpdateOneID(id int64) *WechatAdoptedTemplateUpdateOne {
+	mutation := newWechatAdoptedTemplateMutation(c.config, OpUpdateOne, withWechatAdoptedTemplateID(id))
+	return &WechatAdoptedTemplateUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for WechatAdoptedTemplate.
+func (c *WechatAdoptedTemplateClient) Delete() *WechatAdoptedTemplateDelete {
+	mutation := newWechatAdoptedTemplateMutation(c.config, OpDelete)
+	return &WechatAdoptedTemplateDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *WechatAdoptedTemplateClient) DeleteOne(_m *WechatAdoptedTemplate) *WechatAdoptedTemplateDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *WechatAdoptedTemplateClient) DeleteOneID(id int64) *WechatAdoptedTemplateDeleteOne {
+	builder := c.Delete().Where(wechatadoptedtemplate.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &WechatAdoptedTemplateDeleteOne{builder}
+}
+
+// Query returns a query builder for WechatAdoptedTemplate.
+func (c *WechatAdoptedTemplateClient) Query() *WechatAdoptedTemplateQuery {
+	return &WechatAdoptedTemplateQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeWechatAdoptedTemplate},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a WechatAdoptedTemplate entity by its id.
+func (c *WechatAdoptedTemplateClient) Get(ctx context.Context, id int64) (*WechatAdoptedTemplate, error) {
+	return c.Query().Where(wechatadoptedtemplate.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *WechatAdoptedTemplateClient) GetX(ctx context.Context, id int64) *WechatAdoptedTemplate {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *WechatAdoptedTemplateClient) Hooks() []Hook {
+	return c.hooks.WechatAdoptedTemplate
+}
+
+// Interceptors returns the client interceptors.
+func (c *WechatAdoptedTemplateClient) Interceptors() []Interceptor {
+	return c.inters.WechatAdoptedTemplate
+}
+
+func (c *WechatAdoptedTemplateClient) mutate(ctx context.Context, m *WechatAdoptedTemplateMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&WechatAdoptedTemplateCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&WechatAdoptedTemplateUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&WechatAdoptedTemplateUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&WechatAdoptedTemplateDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown WechatAdoptedTemplate mutation op: %q", m.Op())
+	}
+}
+
 // WechatAppClient is a client for the WechatApp schema.
 type WechatAppClient struct {
 	config
@@ -3364,6 +3513,139 @@ func (c *WechatAppClient) mutate(ctx context.Context, m *WechatAppMutation) (Val
 		return (&WechatAppDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown WechatApp mutation op: %q", m.Op())
+	}
+}
+
+// WechatDispatchClient is a client for the WechatDispatch schema.
+type WechatDispatchClient struct {
+	config
+}
+
+// NewWechatDispatchClient returns a client for the WechatDispatch from the given config.
+func NewWechatDispatchClient(c config) *WechatDispatchClient {
+	return &WechatDispatchClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `wechatdispatch.Hooks(f(g(h())))`.
+func (c *WechatDispatchClient) Use(hooks ...Hook) {
+	c.hooks.WechatDispatch = append(c.hooks.WechatDispatch, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `wechatdispatch.Intercept(f(g(h())))`.
+func (c *WechatDispatchClient) Intercept(interceptors ...Interceptor) {
+	c.inters.WechatDispatch = append(c.inters.WechatDispatch, interceptors...)
+}
+
+// Create returns a builder for creating a WechatDispatch entity.
+func (c *WechatDispatchClient) Create() *WechatDispatchCreate {
+	mutation := newWechatDispatchMutation(c.config, OpCreate)
+	return &WechatDispatchCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of WechatDispatch entities.
+func (c *WechatDispatchClient) CreateBulk(builders ...*WechatDispatchCreate) *WechatDispatchCreateBulk {
+	return &WechatDispatchCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *WechatDispatchClient) MapCreateBulk(slice any, setFunc func(*WechatDispatchCreate, int)) *WechatDispatchCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &WechatDispatchCreateBulk{err: fmt.Errorf("calling to WechatDispatchClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*WechatDispatchCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &WechatDispatchCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for WechatDispatch.
+func (c *WechatDispatchClient) Update() *WechatDispatchUpdate {
+	mutation := newWechatDispatchMutation(c.config, OpUpdate)
+	return &WechatDispatchUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *WechatDispatchClient) UpdateOne(_m *WechatDispatch) *WechatDispatchUpdateOne {
+	mutation := newWechatDispatchMutation(c.config, OpUpdateOne, withWechatDispatch(_m))
+	return &WechatDispatchUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *WechatDispatchClient) UpdateOneID(id int64) *WechatDispatchUpdateOne {
+	mutation := newWechatDispatchMutation(c.config, OpUpdateOne, withWechatDispatchID(id))
+	return &WechatDispatchUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for WechatDispatch.
+func (c *WechatDispatchClient) Delete() *WechatDispatchDelete {
+	mutation := newWechatDispatchMutation(c.config, OpDelete)
+	return &WechatDispatchDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *WechatDispatchClient) DeleteOne(_m *WechatDispatch) *WechatDispatchDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *WechatDispatchClient) DeleteOneID(id int64) *WechatDispatchDeleteOne {
+	builder := c.Delete().Where(wechatdispatch.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &WechatDispatchDeleteOne{builder}
+}
+
+// Query returns a query builder for WechatDispatch.
+func (c *WechatDispatchClient) Query() *WechatDispatchQuery {
+	return &WechatDispatchQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeWechatDispatch},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a WechatDispatch entity by its id.
+func (c *WechatDispatchClient) Get(ctx context.Context, id int64) (*WechatDispatch, error) {
+	return c.Query().Where(wechatdispatch.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *WechatDispatchClient) GetX(ctx context.Context, id int64) *WechatDispatch {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *WechatDispatchClient) Hooks() []Hook {
+	return c.hooks.WechatDispatch
+}
+
+// Interceptors returns the client interceptors.
+func (c *WechatDispatchClient) Interceptors() []Interceptor {
+	return c.inters.WechatDispatch
+}
+
+func (c *WechatDispatchClient) mutate(ctx context.Context, m *WechatDispatchMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&WechatDispatchCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&WechatDispatchUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&WechatDispatchUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&WechatDispatchDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown WechatDispatch mutation op: %q", m.Op())
 	}
 }
 
@@ -3505,12 +3787,14 @@ type (
 	hooks struct {
 		Dept, DictData, DictType, File, Job, JobLog, LoginLog, Menu, OperLog, Param,
 		PayMerchantAccount, PayNotifyLog, PayPayment, PayRefund, Post, Role, RoleMenu,
-		User, UserPost, UserRole, WechatApp, WechatPlatform []ent.Hook
+		User, UserPost, UserRole, WechatAdoptedTemplate, WechatApp, WechatDispatch,
+		WechatPlatform []ent.Hook
 	}
 	inters struct {
 		Dept, DictData, DictType, File, Job, JobLog, LoginLog, Menu, OperLog, Param,
 		PayMerchantAccount, PayNotifyLog, PayPayment, PayRefund, Post, Role, RoleMenu,
-		User, UserPost, UserRole, WechatApp, WechatPlatform []ent.Interceptor
+		User, UserPost, UserRole, WechatAdoptedTemplate, WechatApp, WechatDispatch,
+		WechatPlatform []ent.Interceptor
 	}
 )
 

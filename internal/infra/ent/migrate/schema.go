@@ -702,6 +702,41 @@ var (
 			},
 		},
 	}
+	// WechatAdoptedTemplateColumns holds the columns for the "wechat_adopted_template" table.
+	WechatAdoptedTemplateColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "app_id", Type: field.TypeInt64},
+		{Name: "library_template_id", Type: field.TypeString, Size: 128},
+		{Name: "wechat_template_id", Type: field.TypeString, Size: 128, Default: ""},
+		{Name: "title", Type: field.TypeString, Size: 128, Default: ""},
+		{Name: "channel", Type: field.TypeString, Size: 64},
+	}
+	// WechatAdoptedTemplateTable holds the schema information for the "wechat_adopted_template" table.
+	WechatAdoptedTemplateTable = &schema.Table{
+		Name:       "wechat_adopted_template",
+		Columns:    WechatAdoptedTemplateColumns,
+		PrimaryKey: []*schema.Column{WechatAdoptedTemplateColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "wechatadoptedtemplate_app_id_library_template_id",
+				Unique:  true,
+				Columns: []*schema.Column{WechatAdoptedTemplateColumns[6], WechatAdoptedTemplateColumns[7]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+			{
+				Name:    "wechatadoptedtemplate_app_id",
+				Unique:  false,
+				Columns: []*schema.Column{WechatAdoptedTemplateColumns[6]},
+			},
+		},
+	}
 	// WechatAppColumns holds the columns for the "wechat_app" table.
 	WechatAppColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -743,6 +778,44 @@ var (
 				Name:    "wechatapp_platform_id",
 				Unique:  false,
 				Columns: []*schema.Column{WechatAppColumns[11]},
+			},
+		},
+	}
+	// WechatDispatchColumns holds the columns for the "wechat_dispatch" table.
+	WechatDispatchColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "app_id", Type: field.TypeInt64},
+		{Name: "openid", Type: field.TypeString, Size: 64},
+		{Name: "template_id", Type: field.TypeInt64},
+		{Name: "library_template_id", Type: field.TypeString, Size: 128, Default: ""},
+		{Name: "wechat_template_id", Type: field.TypeString, Size: 128, Default: ""},
+		{Name: "channel", Type: field.TypeString, Size: 64, Default: ""},
+		{Name: "content", Type: field.TypeString, Size: 2147483647, Default: ""},
+		{Name: "web_url", Type: field.TypeString, Size: 1024, Default: ""},
+		{Name: "mini_program_page", Type: field.TypeString, Size: 1024, Default: ""},
+		{Name: "accepted", Type: field.TypeBool, Default: false},
+		{Name: "msgid", Type: field.TypeString, Size: 64, Default: ""},
+	}
+	// WechatDispatchTable holds the schema information for the "wechat_dispatch" table.
+	WechatDispatchTable = &schema.Table{
+		Name:       "wechat_dispatch",
+		Columns:    WechatDispatchColumns,
+		PrimaryKey: []*schema.Column{WechatDispatchColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "wechatdispatch_app_id",
+				Unique:  false,
+				Columns: []*schema.Column{WechatDispatchColumns[6]},
+			},
+			{
+				Name:    "wechatdispatch_msgid",
+				Unique:  false,
+				Columns: []*schema.Column{WechatDispatchColumns[16]},
 			},
 		},
 	}
@@ -801,7 +874,9 @@ var (
 		SysUserTable,
 		SysUserPostTable,
 		SysUserRoleTable,
+		WechatAdoptedTemplateTable,
 		WechatAppTable,
+		WechatDispatchTable,
 		WechatPlatformTable,
 	}
 )
@@ -873,8 +948,14 @@ func init() {
 	SysUserRoleTable.Annotation = &entsql.Annotation{
 		Table: "sys_user_role",
 	}
+	WechatAdoptedTemplateTable.Annotation = &entsql.Annotation{
+		Table: "wechat_adopted_template",
+	}
 	WechatAppTable.Annotation = &entsql.Annotation{
 		Table: "wechat_app",
+	}
+	WechatDispatchTable.Annotation = &entsql.Annotation{
+		Table: "wechat_dispatch",
 	}
 	WechatPlatformTable.Annotation = &entsql.Annotation{
 		Table: "wechat_platform",

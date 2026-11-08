@@ -24,7 +24,9 @@ import (
 	"glex/internal/infra/ent/user"
 	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
+	"glex/internal/infra/ent/wechatadoptedtemplate"
 	"glex/internal/infra/ent/wechatapp"
+	"glex/internal/infra/ent/wechatdispatch"
 	"glex/internal/infra/ent/wechatplatform"
 	"time"
 )
@@ -1031,6 +1033,49 @@ func init() {
 	userrole.DefaultUpdatedAt = userroleDescUpdatedAt.Default.(func() time.Time)
 	// userrole.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	userrole.UpdateDefaultUpdatedAt = userroleDescUpdatedAt.UpdateDefault.(func() time.Time)
+	wechatadoptedtemplateMixin := schema.WechatAdoptedTemplate{}.Mixin()
+	wechatadoptedtemplateMixinFields0 := wechatadoptedtemplateMixin[0].Fields()
+	_ = wechatadoptedtemplateMixinFields0
+	wechatadoptedtemplateFields := schema.WechatAdoptedTemplate{}.Fields()
+	_ = wechatadoptedtemplateFields
+	// wechatadoptedtemplateDescCreateBy is the schema descriptor for create_by field.
+	wechatadoptedtemplateDescCreateBy := wechatadoptedtemplateMixinFields0[0].Descriptor()
+	// wechatadoptedtemplate.DefaultCreateBy holds the default value on creation for the create_by field.
+	wechatadoptedtemplate.DefaultCreateBy = wechatadoptedtemplateDescCreateBy.Default.(int64)
+	// wechatadoptedtemplateDescUpdateBy is the schema descriptor for update_by field.
+	wechatadoptedtemplateDescUpdateBy := wechatadoptedtemplateMixinFields0[1].Descriptor()
+	// wechatadoptedtemplate.DefaultUpdateBy holds the default value on creation for the update_by field.
+	wechatadoptedtemplate.DefaultUpdateBy = wechatadoptedtemplateDescUpdateBy.Default.(int64)
+	// wechatadoptedtemplateDescCreatedAt is the schema descriptor for created_at field.
+	wechatadoptedtemplateDescCreatedAt := wechatadoptedtemplateMixinFields0[2].Descriptor()
+	// wechatadoptedtemplate.DefaultCreatedAt holds the default value on creation for the created_at field.
+	wechatadoptedtemplate.DefaultCreatedAt = wechatadoptedtemplateDescCreatedAt.Default.(func() time.Time)
+	// wechatadoptedtemplateDescUpdatedAt is the schema descriptor for updated_at field.
+	wechatadoptedtemplateDescUpdatedAt := wechatadoptedtemplateMixinFields0[3].Descriptor()
+	// wechatadoptedtemplate.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	wechatadoptedtemplate.DefaultUpdatedAt = wechatadoptedtemplateDescUpdatedAt.Default.(func() time.Time)
+	// wechatadoptedtemplate.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	wechatadoptedtemplate.UpdateDefaultUpdatedAt = wechatadoptedtemplateDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// wechatadoptedtemplateDescLibraryTemplateID is the schema descriptor for library_template_id field.
+	wechatadoptedtemplateDescLibraryTemplateID := wechatadoptedtemplateFields[2].Descriptor()
+	// wechatadoptedtemplate.LibraryTemplateIDValidator is a validator for the "library_template_id" field. It is called by the builders before save.
+	wechatadoptedtemplate.LibraryTemplateIDValidator = wechatadoptedtemplateDescLibraryTemplateID.Validators[0].(func(string) error)
+	// wechatadoptedtemplateDescWechatTemplateID is the schema descriptor for wechat_template_id field.
+	wechatadoptedtemplateDescWechatTemplateID := wechatadoptedtemplateFields[3].Descriptor()
+	// wechatadoptedtemplate.DefaultWechatTemplateID holds the default value on creation for the wechat_template_id field.
+	wechatadoptedtemplate.DefaultWechatTemplateID = wechatadoptedtemplateDescWechatTemplateID.Default.(string)
+	// wechatadoptedtemplate.WechatTemplateIDValidator is a validator for the "wechat_template_id" field. It is called by the builders before save.
+	wechatadoptedtemplate.WechatTemplateIDValidator = wechatadoptedtemplateDescWechatTemplateID.Validators[0].(func(string) error)
+	// wechatadoptedtemplateDescTitle is the schema descriptor for title field.
+	wechatadoptedtemplateDescTitle := wechatadoptedtemplateFields[4].Descriptor()
+	// wechatadoptedtemplate.DefaultTitle holds the default value on creation for the title field.
+	wechatadoptedtemplate.DefaultTitle = wechatadoptedtemplateDescTitle.Default.(string)
+	// wechatadoptedtemplate.TitleValidator is a validator for the "title" field. It is called by the builders before save.
+	wechatadoptedtemplate.TitleValidator = wechatadoptedtemplateDescTitle.Validators[0].(func(string) error)
+	// wechatadoptedtemplateDescChannel is the schema descriptor for channel field.
+	wechatadoptedtemplateDescChannel := wechatadoptedtemplateFields[5].Descriptor()
+	// wechatadoptedtemplate.ChannelValidator is a validator for the "channel" field. It is called by the builders before save.
+	wechatadoptedtemplate.ChannelValidator = wechatadoptedtemplateDescChannel.Validators[0].(func(string) error)
 	wechatappMixin := schema.WechatApp{}.Mixin()
 	wechatappMixinFields0 := wechatappMixin[0].Fields()
 	_ = wechatappMixinFields0
@@ -1104,6 +1149,77 @@ func init() {
 	wechatappDescKeyVersion := wechatappFields[14].Descriptor()
 	// wechatapp.DefaultKeyVersion holds the default value on creation for the key_version field.
 	wechatapp.DefaultKeyVersion = wechatappDescKeyVersion.Default.(int)
+	wechatdispatchMixin := schema.WechatDispatch{}.Mixin()
+	wechatdispatchMixinFields0 := wechatdispatchMixin[0].Fields()
+	_ = wechatdispatchMixinFields0
+	wechatdispatchFields := schema.WechatDispatch{}.Fields()
+	_ = wechatdispatchFields
+	// wechatdispatchDescCreateBy is the schema descriptor for create_by field.
+	wechatdispatchDescCreateBy := wechatdispatchMixinFields0[0].Descriptor()
+	// wechatdispatch.DefaultCreateBy holds the default value on creation for the create_by field.
+	wechatdispatch.DefaultCreateBy = wechatdispatchDescCreateBy.Default.(int64)
+	// wechatdispatchDescUpdateBy is the schema descriptor for update_by field.
+	wechatdispatchDescUpdateBy := wechatdispatchMixinFields0[1].Descriptor()
+	// wechatdispatch.DefaultUpdateBy holds the default value on creation for the update_by field.
+	wechatdispatch.DefaultUpdateBy = wechatdispatchDescUpdateBy.Default.(int64)
+	// wechatdispatchDescCreatedAt is the schema descriptor for created_at field.
+	wechatdispatchDescCreatedAt := wechatdispatchMixinFields0[2].Descriptor()
+	// wechatdispatch.DefaultCreatedAt holds the default value on creation for the created_at field.
+	wechatdispatch.DefaultCreatedAt = wechatdispatchDescCreatedAt.Default.(func() time.Time)
+	// wechatdispatchDescUpdatedAt is the schema descriptor for updated_at field.
+	wechatdispatchDescUpdatedAt := wechatdispatchMixinFields0[3].Descriptor()
+	// wechatdispatch.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	wechatdispatch.DefaultUpdatedAt = wechatdispatchDescUpdatedAt.Default.(func() time.Time)
+	// wechatdispatch.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	wechatdispatch.UpdateDefaultUpdatedAt = wechatdispatchDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// wechatdispatchDescOpenid is the schema descriptor for openid field.
+	wechatdispatchDescOpenid := wechatdispatchFields[2].Descriptor()
+	// wechatdispatch.OpenidValidator is a validator for the "openid" field. It is called by the builders before save.
+	wechatdispatch.OpenidValidator = wechatdispatchDescOpenid.Validators[0].(func(string) error)
+	// wechatdispatchDescLibraryTemplateID is the schema descriptor for library_template_id field.
+	wechatdispatchDescLibraryTemplateID := wechatdispatchFields[4].Descriptor()
+	// wechatdispatch.DefaultLibraryTemplateID holds the default value on creation for the library_template_id field.
+	wechatdispatch.DefaultLibraryTemplateID = wechatdispatchDescLibraryTemplateID.Default.(string)
+	// wechatdispatch.LibraryTemplateIDValidator is a validator for the "library_template_id" field. It is called by the builders before save.
+	wechatdispatch.LibraryTemplateIDValidator = wechatdispatchDescLibraryTemplateID.Validators[0].(func(string) error)
+	// wechatdispatchDescWechatTemplateID is the schema descriptor for wechat_template_id field.
+	wechatdispatchDescWechatTemplateID := wechatdispatchFields[5].Descriptor()
+	// wechatdispatch.DefaultWechatTemplateID holds the default value on creation for the wechat_template_id field.
+	wechatdispatch.DefaultWechatTemplateID = wechatdispatchDescWechatTemplateID.Default.(string)
+	// wechatdispatch.WechatTemplateIDValidator is a validator for the "wechat_template_id" field. It is called by the builders before save.
+	wechatdispatch.WechatTemplateIDValidator = wechatdispatchDescWechatTemplateID.Validators[0].(func(string) error)
+	// wechatdispatchDescChannel is the schema descriptor for channel field.
+	wechatdispatchDescChannel := wechatdispatchFields[6].Descriptor()
+	// wechatdispatch.DefaultChannel holds the default value on creation for the channel field.
+	wechatdispatch.DefaultChannel = wechatdispatchDescChannel.Default.(string)
+	// wechatdispatch.ChannelValidator is a validator for the "channel" field. It is called by the builders before save.
+	wechatdispatch.ChannelValidator = wechatdispatchDescChannel.Validators[0].(func(string) error)
+	// wechatdispatchDescContent is the schema descriptor for content field.
+	wechatdispatchDescContent := wechatdispatchFields[7].Descriptor()
+	// wechatdispatch.DefaultContent holds the default value on creation for the content field.
+	wechatdispatch.DefaultContent = wechatdispatchDescContent.Default.(string)
+	// wechatdispatchDescWebURL is the schema descriptor for web_url field.
+	wechatdispatchDescWebURL := wechatdispatchFields[8].Descriptor()
+	// wechatdispatch.DefaultWebURL holds the default value on creation for the web_url field.
+	wechatdispatch.DefaultWebURL = wechatdispatchDescWebURL.Default.(string)
+	// wechatdispatch.WebURLValidator is a validator for the "web_url" field. It is called by the builders before save.
+	wechatdispatch.WebURLValidator = wechatdispatchDescWebURL.Validators[0].(func(string) error)
+	// wechatdispatchDescMiniProgramPage is the schema descriptor for mini_program_page field.
+	wechatdispatchDescMiniProgramPage := wechatdispatchFields[9].Descriptor()
+	// wechatdispatch.DefaultMiniProgramPage holds the default value on creation for the mini_program_page field.
+	wechatdispatch.DefaultMiniProgramPage = wechatdispatchDescMiniProgramPage.Default.(string)
+	// wechatdispatch.MiniProgramPageValidator is a validator for the "mini_program_page" field. It is called by the builders before save.
+	wechatdispatch.MiniProgramPageValidator = wechatdispatchDescMiniProgramPage.Validators[0].(func(string) error)
+	// wechatdispatchDescAccepted is the schema descriptor for accepted field.
+	wechatdispatchDescAccepted := wechatdispatchFields[10].Descriptor()
+	// wechatdispatch.DefaultAccepted holds the default value on creation for the accepted field.
+	wechatdispatch.DefaultAccepted = wechatdispatchDescAccepted.Default.(bool)
+	// wechatdispatchDescMsgid is the schema descriptor for msgid field.
+	wechatdispatchDescMsgid := wechatdispatchFields[11].Descriptor()
+	// wechatdispatch.DefaultMsgid holds the default value on creation for the msgid field.
+	wechatdispatch.DefaultMsgid = wechatdispatchDescMsgid.Default.(string)
+	// wechatdispatch.MsgidValidator is a validator for the "msgid" field. It is called by the builders before save.
+	wechatdispatch.MsgidValidator = wechatdispatchDescMsgid.Validators[0].(func(string) error)
 	wechatplatformMixin := schema.WechatPlatform{}.Mixin()
 	wechatplatformMixinFields0 := wechatplatformMixin[0].Fields()
 	_ = wechatplatformMixinFields0

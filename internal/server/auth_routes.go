@@ -163,6 +163,12 @@ func authRoutes() map[string]authmw.Route {
 		// itself arrives on the platform callback and is not this route.
 		wechatv1.OperationWechatServiceListAuthorizationPlatforms: {Permission: "wechat:app:create"},
 		wechatv1.OperationWechatServiceStartWechatAuthorization:   {Permission: "wechat:app:create"},
+		// Adopting a library template and sending both live on the app.
+		// The dispatch list includes attempts whose app was withdrawn.
+		wechatv1.OperationWechatServiceListAdoptedTemplates: {Permission: "wechat:dispatch:list"},
+		wechatv1.OperationWechatServiceAdoptWechatTemplate:  {Permission: "wechat:dispatch:create"},
+		wechatv1.OperationWechatServiceListWechatDispatches: {Permission: "wechat:dispatch:list"},
+		wechatv1.OperationWechatServiceCreateWechatDispatch: {Permission: "wechat:dispatch:create"},
 
 		// job: scheduled-task console and run history (ADR 0023). The
 		// executor listing rides the list permission — it exists to power

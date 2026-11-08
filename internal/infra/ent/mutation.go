@@ -27,7 +27,9 @@ import (
 	"glex/internal/infra/ent/user"
 	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
+	"glex/internal/infra/ent/wechatadoptedtemplate"
 	"glex/internal/infra/ent/wechatapp"
+	"glex/internal/infra/ent/wechatdispatch"
 	"glex/internal/infra/ent/wechatplatform"
 	"sync"
 	"time"
@@ -45,28 +47,30 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeDept               = "Dept"
-	TypeDictData           = "DictData"
-	TypeDictType           = "DictType"
-	TypeFile               = "File"
-	TypeJob                = "Job"
-	TypeJobLog             = "JobLog"
-	TypeLoginLog           = "LoginLog"
-	TypeMenu               = "Menu"
-	TypeOperLog            = "OperLog"
-	TypeParam              = "Param"
-	TypePayMerchantAccount = "PayMerchantAccount"
-	TypePayNotifyLog       = "PayNotifyLog"
-	TypePayPayment         = "PayPayment"
-	TypePayRefund          = "PayRefund"
-	TypePost               = "Post"
-	TypeRole               = "Role"
-	TypeRoleMenu           = "RoleMenu"
-	TypeUser               = "User"
-	TypeUserPost           = "UserPost"
-	TypeUserRole           = "UserRole"
-	TypeWechatApp          = "WechatApp"
-	TypeWechatPlatform     = "WechatPlatform"
+	TypeDept                  = "Dept"
+	TypeDictData              = "DictData"
+	TypeDictType              = "DictType"
+	TypeFile                  = "File"
+	TypeJob                   = "Job"
+	TypeJobLog                = "JobLog"
+	TypeLoginLog              = "LoginLog"
+	TypeMenu                  = "Menu"
+	TypeOperLog               = "OperLog"
+	TypeParam                 = "Param"
+	TypePayMerchantAccount    = "PayMerchantAccount"
+	TypePayNotifyLog          = "PayNotifyLog"
+	TypePayPayment            = "PayPayment"
+	TypePayRefund             = "PayRefund"
+	TypePost                  = "Post"
+	TypeRole                  = "Role"
+	TypeRoleMenu              = "RoleMenu"
+	TypeUser                  = "User"
+	TypeUserPost              = "UserPost"
+	TypeUserRole              = "UserRole"
+	TypeWechatAdoptedTemplate = "WechatAdoptedTemplate"
+	TypeWechatApp             = "WechatApp"
+	TypeWechatDispatch        = "WechatDispatch"
+	TypeWechatPlatform        = "WechatPlatform"
 )
 
 // DeptMutation represents an operation that mutates the Dept nodes in the graph.
@@ -24395,6 +24399,988 @@ func (m *UserRoleMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown UserRole edge %s", name)
 }
 
+// WechatAdoptedTemplateMutation represents an operation that mutates the WechatAdoptedTemplate nodes in the graph.
+type WechatAdoptedTemplateMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *int64
+	create_by           *int64
+	addcreate_by        *int64
+	update_by           *int64
+	addupdate_by        *int64
+	created_at          *time.Time
+	updated_at          *time.Time
+	deleted_at          *time.Time
+	app_id              *int64
+	addapp_id           *int64
+	library_template_id *string
+	wechat_template_id  *string
+	title               *string
+	channel             *string
+	clearedFields       map[string]struct{}
+	done                bool
+	oldValue            func(context.Context) (*WechatAdoptedTemplate, error)
+	predicates          []predicate.WechatAdoptedTemplate
+}
+
+var _ ent.Mutation = (*WechatAdoptedTemplateMutation)(nil)
+
+// wechatadoptedtemplateOption allows management of the mutation configuration using functional options.
+type wechatadoptedtemplateOption func(*WechatAdoptedTemplateMutation)
+
+// newWechatAdoptedTemplateMutation creates new mutation for the WechatAdoptedTemplate entity.
+func newWechatAdoptedTemplateMutation(c config, op Op, opts ...wechatadoptedtemplateOption) *WechatAdoptedTemplateMutation {
+	m := &WechatAdoptedTemplateMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeWechatAdoptedTemplate,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withWechatAdoptedTemplateID sets the ID field of the mutation.
+func withWechatAdoptedTemplateID(id int64) wechatadoptedtemplateOption {
+	return func(m *WechatAdoptedTemplateMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *WechatAdoptedTemplate
+		)
+		m.oldValue = func(ctx context.Context) (*WechatAdoptedTemplate, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().WechatAdoptedTemplate.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withWechatAdoptedTemplate sets the old WechatAdoptedTemplate of the mutation.
+func withWechatAdoptedTemplate(node *WechatAdoptedTemplate) wechatadoptedtemplateOption {
+	return func(m *WechatAdoptedTemplateMutation) {
+		m.oldValue = func(context.Context) (*WechatAdoptedTemplate, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m WechatAdoptedTemplateMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m WechatAdoptedTemplateMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of WechatAdoptedTemplate entities.
+func (m *WechatAdoptedTemplateMutation) SetID(id int64) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *WechatAdoptedTemplateMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *WechatAdoptedTemplateMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().WechatAdoptedTemplate.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreateBy sets the "create_by" field.
+func (m *WechatAdoptedTemplateMutation) SetCreateBy(i int64) {
+	m.create_by = &i
+	m.addcreate_by = nil
+}
+
+// CreateBy returns the value of the "create_by" field in the mutation.
+func (m *WechatAdoptedTemplateMutation) CreateBy() (r int64, exists bool) {
+	v := m.create_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreateBy returns the old "create_by" field's value of the WechatAdoptedTemplate entity.
+// If the WechatAdoptedTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAdoptedTemplateMutation) OldCreateBy(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreateBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreateBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreateBy: %w", err)
+	}
+	return oldValue.CreateBy, nil
+}
+
+// AddCreateBy adds i to the "create_by" field.
+func (m *WechatAdoptedTemplateMutation) AddCreateBy(i int64) {
+	if m.addcreate_by != nil {
+		*m.addcreate_by += i
+	} else {
+		m.addcreate_by = &i
+	}
+}
+
+// AddedCreateBy returns the value that was added to the "create_by" field in this mutation.
+func (m *WechatAdoptedTemplateMutation) AddedCreateBy() (r int64, exists bool) {
+	v := m.addcreate_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearCreateBy clears the value of the "create_by" field.
+func (m *WechatAdoptedTemplateMutation) ClearCreateBy() {
+	m.create_by = nil
+	m.addcreate_by = nil
+	m.clearedFields[wechatadoptedtemplate.FieldCreateBy] = struct{}{}
+}
+
+// CreateByCleared returns if the "create_by" field was cleared in this mutation.
+func (m *WechatAdoptedTemplateMutation) CreateByCleared() bool {
+	_, ok := m.clearedFields[wechatadoptedtemplate.FieldCreateBy]
+	return ok
+}
+
+// ResetCreateBy resets all changes to the "create_by" field.
+func (m *WechatAdoptedTemplateMutation) ResetCreateBy() {
+	m.create_by = nil
+	m.addcreate_by = nil
+	delete(m.clearedFields, wechatadoptedtemplate.FieldCreateBy)
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (m *WechatAdoptedTemplateMutation) SetUpdateBy(i int64) {
+	m.update_by = &i
+	m.addupdate_by = nil
+}
+
+// UpdateBy returns the value of the "update_by" field in the mutation.
+func (m *WechatAdoptedTemplateMutation) UpdateBy() (r int64, exists bool) {
+	v := m.update_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdateBy returns the old "update_by" field's value of the WechatAdoptedTemplate entity.
+// If the WechatAdoptedTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAdoptedTemplateMutation) OldUpdateBy(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdateBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdateBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdateBy: %w", err)
+	}
+	return oldValue.UpdateBy, nil
+}
+
+// AddUpdateBy adds i to the "update_by" field.
+func (m *WechatAdoptedTemplateMutation) AddUpdateBy(i int64) {
+	if m.addupdate_by != nil {
+		*m.addupdate_by += i
+	} else {
+		m.addupdate_by = &i
+	}
+}
+
+// AddedUpdateBy returns the value that was added to the "update_by" field in this mutation.
+func (m *WechatAdoptedTemplateMutation) AddedUpdateBy() (r int64, exists bool) {
+	v := m.addupdate_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearUpdateBy clears the value of the "update_by" field.
+func (m *WechatAdoptedTemplateMutation) ClearUpdateBy() {
+	m.update_by = nil
+	m.addupdate_by = nil
+	m.clearedFields[wechatadoptedtemplate.FieldUpdateBy] = struct{}{}
+}
+
+// UpdateByCleared returns if the "update_by" field was cleared in this mutation.
+func (m *WechatAdoptedTemplateMutation) UpdateByCleared() bool {
+	_, ok := m.clearedFields[wechatadoptedtemplate.FieldUpdateBy]
+	return ok
+}
+
+// ResetUpdateBy resets all changes to the "update_by" field.
+func (m *WechatAdoptedTemplateMutation) ResetUpdateBy() {
+	m.update_by = nil
+	m.addupdate_by = nil
+	delete(m.clearedFields, wechatadoptedtemplate.FieldUpdateBy)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *WechatAdoptedTemplateMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *WechatAdoptedTemplateMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the WechatAdoptedTemplate entity.
+// If the WechatAdoptedTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAdoptedTemplateMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *WechatAdoptedTemplateMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *WechatAdoptedTemplateMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *WechatAdoptedTemplateMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the WechatAdoptedTemplate entity.
+// If the WechatAdoptedTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAdoptedTemplateMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *WechatAdoptedTemplateMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *WechatAdoptedTemplateMutation) SetDeletedAt(t time.Time) {
+	m.deleted_at = &t
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *WechatAdoptedTemplateMutation) DeletedAt() (r time.Time, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the WechatAdoptedTemplate entity.
+// If the WechatAdoptedTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAdoptedTemplateMutation) OldDeletedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (m *WechatAdoptedTemplateMutation) ClearDeletedAt() {
+	m.deleted_at = nil
+	m.clearedFields[wechatadoptedtemplate.FieldDeletedAt] = struct{}{}
+}
+
+// DeletedAtCleared returns if the "deleted_at" field was cleared in this mutation.
+func (m *WechatAdoptedTemplateMutation) DeletedAtCleared() bool {
+	_, ok := m.clearedFields[wechatadoptedtemplate.FieldDeletedAt]
+	return ok
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *WechatAdoptedTemplateMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	delete(m.clearedFields, wechatadoptedtemplate.FieldDeletedAt)
+}
+
+// SetAppID sets the "app_id" field.
+func (m *WechatAdoptedTemplateMutation) SetAppID(i int64) {
+	m.app_id = &i
+	m.addapp_id = nil
+}
+
+// AppID returns the value of the "app_id" field in the mutation.
+func (m *WechatAdoptedTemplateMutation) AppID() (r int64, exists bool) {
+	v := m.app_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAppID returns the old "app_id" field's value of the WechatAdoptedTemplate entity.
+// If the WechatAdoptedTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAdoptedTemplateMutation) OldAppID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAppID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAppID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAppID: %w", err)
+	}
+	return oldValue.AppID, nil
+}
+
+// AddAppID adds i to the "app_id" field.
+func (m *WechatAdoptedTemplateMutation) AddAppID(i int64) {
+	if m.addapp_id != nil {
+		*m.addapp_id += i
+	} else {
+		m.addapp_id = &i
+	}
+}
+
+// AddedAppID returns the value that was added to the "app_id" field in this mutation.
+func (m *WechatAdoptedTemplateMutation) AddedAppID() (r int64, exists bool) {
+	v := m.addapp_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAppID resets all changes to the "app_id" field.
+func (m *WechatAdoptedTemplateMutation) ResetAppID() {
+	m.app_id = nil
+	m.addapp_id = nil
+}
+
+// SetLibraryTemplateID sets the "library_template_id" field.
+func (m *WechatAdoptedTemplateMutation) SetLibraryTemplateID(s string) {
+	m.library_template_id = &s
+}
+
+// LibraryTemplateID returns the value of the "library_template_id" field in the mutation.
+func (m *WechatAdoptedTemplateMutation) LibraryTemplateID() (r string, exists bool) {
+	v := m.library_template_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLibraryTemplateID returns the old "library_template_id" field's value of the WechatAdoptedTemplate entity.
+// If the WechatAdoptedTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAdoptedTemplateMutation) OldLibraryTemplateID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLibraryTemplateID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLibraryTemplateID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLibraryTemplateID: %w", err)
+	}
+	return oldValue.LibraryTemplateID, nil
+}
+
+// ResetLibraryTemplateID resets all changes to the "library_template_id" field.
+func (m *WechatAdoptedTemplateMutation) ResetLibraryTemplateID() {
+	m.library_template_id = nil
+}
+
+// SetWechatTemplateID sets the "wechat_template_id" field.
+func (m *WechatAdoptedTemplateMutation) SetWechatTemplateID(s string) {
+	m.wechat_template_id = &s
+}
+
+// WechatTemplateID returns the value of the "wechat_template_id" field in the mutation.
+func (m *WechatAdoptedTemplateMutation) WechatTemplateID() (r string, exists bool) {
+	v := m.wechat_template_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWechatTemplateID returns the old "wechat_template_id" field's value of the WechatAdoptedTemplate entity.
+// If the WechatAdoptedTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAdoptedTemplateMutation) OldWechatTemplateID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWechatTemplateID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWechatTemplateID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWechatTemplateID: %w", err)
+	}
+	return oldValue.WechatTemplateID, nil
+}
+
+// ResetWechatTemplateID resets all changes to the "wechat_template_id" field.
+func (m *WechatAdoptedTemplateMutation) ResetWechatTemplateID() {
+	m.wechat_template_id = nil
+}
+
+// SetTitle sets the "title" field.
+func (m *WechatAdoptedTemplateMutation) SetTitle(s string) {
+	m.title = &s
+}
+
+// Title returns the value of the "title" field in the mutation.
+func (m *WechatAdoptedTemplateMutation) Title() (r string, exists bool) {
+	v := m.title
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTitle returns the old "title" field's value of the WechatAdoptedTemplate entity.
+// If the WechatAdoptedTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAdoptedTemplateMutation) OldTitle(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTitle is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTitle requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTitle: %w", err)
+	}
+	return oldValue.Title, nil
+}
+
+// ResetTitle resets all changes to the "title" field.
+func (m *WechatAdoptedTemplateMutation) ResetTitle() {
+	m.title = nil
+}
+
+// SetChannel sets the "channel" field.
+func (m *WechatAdoptedTemplateMutation) SetChannel(s string) {
+	m.channel = &s
+}
+
+// Channel returns the value of the "channel" field in the mutation.
+func (m *WechatAdoptedTemplateMutation) Channel() (r string, exists bool) {
+	v := m.channel
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChannel returns the old "channel" field's value of the WechatAdoptedTemplate entity.
+// If the WechatAdoptedTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAdoptedTemplateMutation) OldChannel(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChannel is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChannel requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChannel: %w", err)
+	}
+	return oldValue.Channel, nil
+}
+
+// ResetChannel resets all changes to the "channel" field.
+func (m *WechatAdoptedTemplateMutation) ResetChannel() {
+	m.channel = nil
+}
+
+// Where appends a list predicates to the WechatAdoptedTemplateMutation builder.
+func (m *WechatAdoptedTemplateMutation) Where(ps ...predicate.WechatAdoptedTemplate) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the WechatAdoptedTemplateMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *WechatAdoptedTemplateMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.WechatAdoptedTemplate, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *WechatAdoptedTemplateMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *WechatAdoptedTemplateMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (WechatAdoptedTemplate).
+func (m *WechatAdoptedTemplateMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *WechatAdoptedTemplateMutation) Fields() []string {
+	fields := make([]string, 0, 10)
+	if m.create_by != nil {
+		fields = append(fields, wechatadoptedtemplate.FieldCreateBy)
+	}
+	if m.update_by != nil {
+		fields = append(fields, wechatadoptedtemplate.FieldUpdateBy)
+	}
+	if m.created_at != nil {
+		fields = append(fields, wechatadoptedtemplate.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, wechatadoptedtemplate.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, wechatadoptedtemplate.FieldDeletedAt)
+	}
+	if m.app_id != nil {
+		fields = append(fields, wechatadoptedtemplate.FieldAppID)
+	}
+	if m.library_template_id != nil {
+		fields = append(fields, wechatadoptedtemplate.FieldLibraryTemplateID)
+	}
+	if m.wechat_template_id != nil {
+		fields = append(fields, wechatadoptedtemplate.FieldWechatTemplateID)
+	}
+	if m.title != nil {
+		fields = append(fields, wechatadoptedtemplate.FieldTitle)
+	}
+	if m.channel != nil {
+		fields = append(fields, wechatadoptedtemplate.FieldChannel)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *WechatAdoptedTemplateMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case wechatadoptedtemplate.FieldCreateBy:
+		return m.CreateBy()
+	case wechatadoptedtemplate.FieldUpdateBy:
+		return m.UpdateBy()
+	case wechatadoptedtemplate.FieldCreatedAt:
+		return m.CreatedAt()
+	case wechatadoptedtemplate.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case wechatadoptedtemplate.FieldDeletedAt:
+		return m.DeletedAt()
+	case wechatadoptedtemplate.FieldAppID:
+		return m.AppID()
+	case wechatadoptedtemplate.FieldLibraryTemplateID:
+		return m.LibraryTemplateID()
+	case wechatadoptedtemplate.FieldWechatTemplateID:
+		return m.WechatTemplateID()
+	case wechatadoptedtemplate.FieldTitle:
+		return m.Title()
+	case wechatadoptedtemplate.FieldChannel:
+		return m.Channel()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *WechatAdoptedTemplateMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case wechatadoptedtemplate.FieldCreateBy:
+		return m.OldCreateBy(ctx)
+	case wechatadoptedtemplate.FieldUpdateBy:
+		return m.OldUpdateBy(ctx)
+	case wechatadoptedtemplate.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case wechatadoptedtemplate.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case wechatadoptedtemplate.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case wechatadoptedtemplate.FieldAppID:
+		return m.OldAppID(ctx)
+	case wechatadoptedtemplate.FieldLibraryTemplateID:
+		return m.OldLibraryTemplateID(ctx)
+	case wechatadoptedtemplate.FieldWechatTemplateID:
+		return m.OldWechatTemplateID(ctx)
+	case wechatadoptedtemplate.FieldTitle:
+		return m.OldTitle(ctx)
+	case wechatadoptedtemplate.FieldChannel:
+		return m.OldChannel(ctx)
+	}
+	return nil, fmt.Errorf("unknown WechatAdoptedTemplate field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WechatAdoptedTemplateMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case wechatadoptedtemplate.FieldCreateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreateBy(v)
+		return nil
+	case wechatadoptedtemplate.FieldUpdateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdateBy(v)
+		return nil
+	case wechatadoptedtemplate.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case wechatadoptedtemplate.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case wechatadoptedtemplate.FieldDeletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case wechatadoptedtemplate.FieldAppID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAppID(v)
+		return nil
+	case wechatadoptedtemplate.FieldLibraryTemplateID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLibraryTemplateID(v)
+		return nil
+	case wechatadoptedtemplate.FieldWechatTemplateID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWechatTemplateID(v)
+		return nil
+	case wechatadoptedtemplate.FieldTitle:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTitle(v)
+		return nil
+	case wechatadoptedtemplate.FieldChannel:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChannel(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WechatAdoptedTemplate field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *WechatAdoptedTemplateMutation) AddedFields() []string {
+	var fields []string
+	if m.addcreate_by != nil {
+		fields = append(fields, wechatadoptedtemplate.FieldCreateBy)
+	}
+	if m.addupdate_by != nil {
+		fields = append(fields, wechatadoptedtemplate.FieldUpdateBy)
+	}
+	if m.addapp_id != nil {
+		fields = append(fields, wechatadoptedtemplate.FieldAppID)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *WechatAdoptedTemplateMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case wechatadoptedtemplate.FieldCreateBy:
+		return m.AddedCreateBy()
+	case wechatadoptedtemplate.FieldUpdateBy:
+		return m.AddedUpdateBy()
+	case wechatadoptedtemplate.FieldAppID:
+		return m.AddedAppID()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WechatAdoptedTemplateMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case wechatadoptedtemplate.FieldCreateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCreateBy(v)
+		return nil
+	case wechatadoptedtemplate.FieldUpdateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddUpdateBy(v)
+		return nil
+	case wechatadoptedtemplate.FieldAppID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAppID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WechatAdoptedTemplate numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *WechatAdoptedTemplateMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(wechatadoptedtemplate.FieldCreateBy) {
+		fields = append(fields, wechatadoptedtemplate.FieldCreateBy)
+	}
+	if m.FieldCleared(wechatadoptedtemplate.FieldUpdateBy) {
+		fields = append(fields, wechatadoptedtemplate.FieldUpdateBy)
+	}
+	if m.FieldCleared(wechatadoptedtemplate.FieldDeletedAt) {
+		fields = append(fields, wechatadoptedtemplate.FieldDeletedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *WechatAdoptedTemplateMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *WechatAdoptedTemplateMutation) ClearField(name string) error {
+	switch name {
+	case wechatadoptedtemplate.FieldCreateBy:
+		m.ClearCreateBy()
+		return nil
+	case wechatadoptedtemplate.FieldUpdateBy:
+		m.ClearUpdateBy()
+		return nil
+	case wechatadoptedtemplate.FieldDeletedAt:
+		m.ClearDeletedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown WechatAdoptedTemplate nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *WechatAdoptedTemplateMutation) ResetField(name string) error {
+	switch name {
+	case wechatadoptedtemplate.FieldCreateBy:
+		m.ResetCreateBy()
+		return nil
+	case wechatadoptedtemplate.FieldUpdateBy:
+		m.ResetUpdateBy()
+		return nil
+	case wechatadoptedtemplate.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case wechatadoptedtemplate.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case wechatadoptedtemplate.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case wechatadoptedtemplate.FieldAppID:
+		m.ResetAppID()
+		return nil
+	case wechatadoptedtemplate.FieldLibraryTemplateID:
+		m.ResetLibraryTemplateID()
+		return nil
+	case wechatadoptedtemplate.FieldWechatTemplateID:
+		m.ResetWechatTemplateID()
+		return nil
+	case wechatadoptedtemplate.FieldTitle:
+		m.ResetTitle()
+		return nil
+	case wechatadoptedtemplate.FieldChannel:
+		m.ResetChannel()
+		return nil
+	}
+	return fmt.Errorf("unknown WechatAdoptedTemplate field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *WechatAdoptedTemplateMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *WechatAdoptedTemplateMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *WechatAdoptedTemplateMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *WechatAdoptedTemplateMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *WechatAdoptedTemplateMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *WechatAdoptedTemplateMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *WechatAdoptedTemplateMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown WechatAdoptedTemplate unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *WechatAdoptedTemplateMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown WechatAdoptedTemplate edge %s", name)
+}
+
 // WechatAppMutation represents an operation that mutates the WechatApp nodes in the graph.
 type WechatAppMutation struct {
 	config
@@ -25930,6 +26916,1345 @@ func (m *WechatAppMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *WechatAppMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown WechatApp edge %s", name)
+}
+
+// WechatDispatchMutation represents an operation that mutates the WechatDispatch nodes in the graph.
+type WechatDispatchMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *int64
+	create_by           *int64
+	addcreate_by        *int64
+	update_by           *int64
+	addupdate_by        *int64
+	created_at          *time.Time
+	updated_at          *time.Time
+	deleted_at          *time.Time
+	app_id              *int64
+	addapp_id           *int64
+	openid              *string
+	template_id         *int64
+	addtemplate_id      *int64
+	library_template_id *string
+	wechat_template_id  *string
+	channel             *string
+	content             *string
+	web_url             *string
+	mini_program_page   *string
+	accepted            *bool
+	msgid               *string
+	clearedFields       map[string]struct{}
+	done                bool
+	oldValue            func(context.Context) (*WechatDispatch, error)
+	predicates          []predicate.WechatDispatch
+}
+
+var _ ent.Mutation = (*WechatDispatchMutation)(nil)
+
+// wechatdispatchOption allows management of the mutation configuration using functional options.
+type wechatdispatchOption func(*WechatDispatchMutation)
+
+// newWechatDispatchMutation creates new mutation for the WechatDispatch entity.
+func newWechatDispatchMutation(c config, op Op, opts ...wechatdispatchOption) *WechatDispatchMutation {
+	m := &WechatDispatchMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeWechatDispatch,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withWechatDispatchID sets the ID field of the mutation.
+func withWechatDispatchID(id int64) wechatdispatchOption {
+	return func(m *WechatDispatchMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *WechatDispatch
+		)
+		m.oldValue = func(ctx context.Context) (*WechatDispatch, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().WechatDispatch.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withWechatDispatch sets the old WechatDispatch of the mutation.
+func withWechatDispatch(node *WechatDispatch) wechatdispatchOption {
+	return func(m *WechatDispatchMutation) {
+		m.oldValue = func(context.Context) (*WechatDispatch, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m WechatDispatchMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m WechatDispatchMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of WechatDispatch entities.
+func (m *WechatDispatchMutation) SetID(id int64) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *WechatDispatchMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *WechatDispatchMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().WechatDispatch.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreateBy sets the "create_by" field.
+func (m *WechatDispatchMutation) SetCreateBy(i int64) {
+	m.create_by = &i
+	m.addcreate_by = nil
+}
+
+// CreateBy returns the value of the "create_by" field in the mutation.
+func (m *WechatDispatchMutation) CreateBy() (r int64, exists bool) {
+	v := m.create_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreateBy returns the old "create_by" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldCreateBy(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreateBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreateBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreateBy: %w", err)
+	}
+	return oldValue.CreateBy, nil
+}
+
+// AddCreateBy adds i to the "create_by" field.
+func (m *WechatDispatchMutation) AddCreateBy(i int64) {
+	if m.addcreate_by != nil {
+		*m.addcreate_by += i
+	} else {
+		m.addcreate_by = &i
+	}
+}
+
+// AddedCreateBy returns the value that was added to the "create_by" field in this mutation.
+func (m *WechatDispatchMutation) AddedCreateBy() (r int64, exists bool) {
+	v := m.addcreate_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearCreateBy clears the value of the "create_by" field.
+func (m *WechatDispatchMutation) ClearCreateBy() {
+	m.create_by = nil
+	m.addcreate_by = nil
+	m.clearedFields[wechatdispatch.FieldCreateBy] = struct{}{}
+}
+
+// CreateByCleared returns if the "create_by" field was cleared in this mutation.
+func (m *WechatDispatchMutation) CreateByCleared() bool {
+	_, ok := m.clearedFields[wechatdispatch.FieldCreateBy]
+	return ok
+}
+
+// ResetCreateBy resets all changes to the "create_by" field.
+func (m *WechatDispatchMutation) ResetCreateBy() {
+	m.create_by = nil
+	m.addcreate_by = nil
+	delete(m.clearedFields, wechatdispatch.FieldCreateBy)
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (m *WechatDispatchMutation) SetUpdateBy(i int64) {
+	m.update_by = &i
+	m.addupdate_by = nil
+}
+
+// UpdateBy returns the value of the "update_by" field in the mutation.
+func (m *WechatDispatchMutation) UpdateBy() (r int64, exists bool) {
+	v := m.update_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdateBy returns the old "update_by" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldUpdateBy(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdateBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdateBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdateBy: %w", err)
+	}
+	return oldValue.UpdateBy, nil
+}
+
+// AddUpdateBy adds i to the "update_by" field.
+func (m *WechatDispatchMutation) AddUpdateBy(i int64) {
+	if m.addupdate_by != nil {
+		*m.addupdate_by += i
+	} else {
+		m.addupdate_by = &i
+	}
+}
+
+// AddedUpdateBy returns the value that was added to the "update_by" field in this mutation.
+func (m *WechatDispatchMutation) AddedUpdateBy() (r int64, exists bool) {
+	v := m.addupdate_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearUpdateBy clears the value of the "update_by" field.
+func (m *WechatDispatchMutation) ClearUpdateBy() {
+	m.update_by = nil
+	m.addupdate_by = nil
+	m.clearedFields[wechatdispatch.FieldUpdateBy] = struct{}{}
+}
+
+// UpdateByCleared returns if the "update_by" field was cleared in this mutation.
+func (m *WechatDispatchMutation) UpdateByCleared() bool {
+	_, ok := m.clearedFields[wechatdispatch.FieldUpdateBy]
+	return ok
+}
+
+// ResetUpdateBy resets all changes to the "update_by" field.
+func (m *WechatDispatchMutation) ResetUpdateBy() {
+	m.update_by = nil
+	m.addupdate_by = nil
+	delete(m.clearedFields, wechatdispatch.FieldUpdateBy)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *WechatDispatchMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *WechatDispatchMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *WechatDispatchMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *WechatDispatchMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *WechatDispatchMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *WechatDispatchMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *WechatDispatchMutation) SetDeletedAt(t time.Time) {
+	m.deleted_at = &t
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *WechatDispatchMutation) DeletedAt() (r time.Time, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldDeletedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (m *WechatDispatchMutation) ClearDeletedAt() {
+	m.deleted_at = nil
+	m.clearedFields[wechatdispatch.FieldDeletedAt] = struct{}{}
+}
+
+// DeletedAtCleared returns if the "deleted_at" field was cleared in this mutation.
+func (m *WechatDispatchMutation) DeletedAtCleared() bool {
+	_, ok := m.clearedFields[wechatdispatch.FieldDeletedAt]
+	return ok
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *WechatDispatchMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	delete(m.clearedFields, wechatdispatch.FieldDeletedAt)
+}
+
+// SetAppID sets the "app_id" field.
+func (m *WechatDispatchMutation) SetAppID(i int64) {
+	m.app_id = &i
+	m.addapp_id = nil
+}
+
+// AppID returns the value of the "app_id" field in the mutation.
+func (m *WechatDispatchMutation) AppID() (r int64, exists bool) {
+	v := m.app_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAppID returns the old "app_id" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldAppID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAppID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAppID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAppID: %w", err)
+	}
+	return oldValue.AppID, nil
+}
+
+// AddAppID adds i to the "app_id" field.
+func (m *WechatDispatchMutation) AddAppID(i int64) {
+	if m.addapp_id != nil {
+		*m.addapp_id += i
+	} else {
+		m.addapp_id = &i
+	}
+}
+
+// AddedAppID returns the value that was added to the "app_id" field in this mutation.
+func (m *WechatDispatchMutation) AddedAppID() (r int64, exists bool) {
+	v := m.addapp_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAppID resets all changes to the "app_id" field.
+func (m *WechatDispatchMutation) ResetAppID() {
+	m.app_id = nil
+	m.addapp_id = nil
+}
+
+// SetOpenid sets the "openid" field.
+func (m *WechatDispatchMutation) SetOpenid(s string) {
+	m.openid = &s
+}
+
+// Openid returns the value of the "openid" field in the mutation.
+func (m *WechatDispatchMutation) Openid() (r string, exists bool) {
+	v := m.openid
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOpenid returns the old "openid" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldOpenid(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOpenid is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOpenid requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOpenid: %w", err)
+	}
+	return oldValue.Openid, nil
+}
+
+// ResetOpenid resets all changes to the "openid" field.
+func (m *WechatDispatchMutation) ResetOpenid() {
+	m.openid = nil
+}
+
+// SetTemplateID sets the "template_id" field.
+func (m *WechatDispatchMutation) SetTemplateID(i int64) {
+	m.template_id = &i
+	m.addtemplate_id = nil
+}
+
+// TemplateID returns the value of the "template_id" field in the mutation.
+func (m *WechatDispatchMutation) TemplateID() (r int64, exists bool) {
+	v := m.template_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTemplateID returns the old "template_id" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldTemplateID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTemplateID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTemplateID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTemplateID: %w", err)
+	}
+	return oldValue.TemplateID, nil
+}
+
+// AddTemplateID adds i to the "template_id" field.
+func (m *WechatDispatchMutation) AddTemplateID(i int64) {
+	if m.addtemplate_id != nil {
+		*m.addtemplate_id += i
+	} else {
+		m.addtemplate_id = &i
+	}
+}
+
+// AddedTemplateID returns the value that was added to the "template_id" field in this mutation.
+func (m *WechatDispatchMutation) AddedTemplateID() (r int64, exists bool) {
+	v := m.addtemplate_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTemplateID resets all changes to the "template_id" field.
+func (m *WechatDispatchMutation) ResetTemplateID() {
+	m.template_id = nil
+	m.addtemplate_id = nil
+}
+
+// SetLibraryTemplateID sets the "library_template_id" field.
+func (m *WechatDispatchMutation) SetLibraryTemplateID(s string) {
+	m.library_template_id = &s
+}
+
+// LibraryTemplateID returns the value of the "library_template_id" field in the mutation.
+func (m *WechatDispatchMutation) LibraryTemplateID() (r string, exists bool) {
+	v := m.library_template_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLibraryTemplateID returns the old "library_template_id" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldLibraryTemplateID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLibraryTemplateID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLibraryTemplateID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLibraryTemplateID: %w", err)
+	}
+	return oldValue.LibraryTemplateID, nil
+}
+
+// ResetLibraryTemplateID resets all changes to the "library_template_id" field.
+func (m *WechatDispatchMutation) ResetLibraryTemplateID() {
+	m.library_template_id = nil
+}
+
+// SetWechatTemplateID sets the "wechat_template_id" field.
+func (m *WechatDispatchMutation) SetWechatTemplateID(s string) {
+	m.wechat_template_id = &s
+}
+
+// WechatTemplateID returns the value of the "wechat_template_id" field in the mutation.
+func (m *WechatDispatchMutation) WechatTemplateID() (r string, exists bool) {
+	v := m.wechat_template_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWechatTemplateID returns the old "wechat_template_id" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldWechatTemplateID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWechatTemplateID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWechatTemplateID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWechatTemplateID: %w", err)
+	}
+	return oldValue.WechatTemplateID, nil
+}
+
+// ResetWechatTemplateID resets all changes to the "wechat_template_id" field.
+func (m *WechatDispatchMutation) ResetWechatTemplateID() {
+	m.wechat_template_id = nil
+}
+
+// SetChannel sets the "channel" field.
+func (m *WechatDispatchMutation) SetChannel(s string) {
+	m.channel = &s
+}
+
+// Channel returns the value of the "channel" field in the mutation.
+func (m *WechatDispatchMutation) Channel() (r string, exists bool) {
+	v := m.channel
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChannel returns the old "channel" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldChannel(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChannel is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChannel requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChannel: %w", err)
+	}
+	return oldValue.Channel, nil
+}
+
+// ResetChannel resets all changes to the "channel" field.
+func (m *WechatDispatchMutation) ResetChannel() {
+	m.channel = nil
+}
+
+// SetContent sets the "content" field.
+func (m *WechatDispatchMutation) SetContent(s string) {
+	m.content = &s
+}
+
+// Content returns the value of the "content" field in the mutation.
+func (m *WechatDispatchMutation) Content() (r string, exists bool) {
+	v := m.content
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContent returns the old "content" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldContent(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContent is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContent requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContent: %w", err)
+	}
+	return oldValue.Content, nil
+}
+
+// ResetContent resets all changes to the "content" field.
+func (m *WechatDispatchMutation) ResetContent() {
+	m.content = nil
+}
+
+// SetWebURL sets the "web_url" field.
+func (m *WechatDispatchMutation) SetWebURL(s string) {
+	m.web_url = &s
+}
+
+// WebURL returns the value of the "web_url" field in the mutation.
+func (m *WechatDispatchMutation) WebURL() (r string, exists bool) {
+	v := m.web_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWebURL returns the old "web_url" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldWebURL(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWebURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWebURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWebURL: %w", err)
+	}
+	return oldValue.WebURL, nil
+}
+
+// ResetWebURL resets all changes to the "web_url" field.
+func (m *WechatDispatchMutation) ResetWebURL() {
+	m.web_url = nil
+}
+
+// SetMiniProgramPage sets the "mini_program_page" field.
+func (m *WechatDispatchMutation) SetMiniProgramPage(s string) {
+	m.mini_program_page = &s
+}
+
+// MiniProgramPage returns the value of the "mini_program_page" field in the mutation.
+func (m *WechatDispatchMutation) MiniProgramPage() (r string, exists bool) {
+	v := m.mini_program_page
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMiniProgramPage returns the old "mini_program_page" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldMiniProgramPage(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMiniProgramPage is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMiniProgramPage requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMiniProgramPage: %w", err)
+	}
+	return oldValue.MiniProgramPage, nil
+}
+
+// ResetMiniProgramPage resets all changes to the "mini_program_page" field.
+func (m *WechatDispatchMutation) ResetMiniProgramPage() {
+	m.mini_program_page = nil
+}
+
+// SetAccepted sets the "accepted" field.
+func (m *WechatDispatchMutation) SetAccepted(b bool) {
+	m.accepted = &b
+}
+
+// Accepted returns the value of the "accepted" field in the mutation.
+func (m *WechatDispatchMutation) Accepted() (r bool, exists bool) {
+	v := m.accepted
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAccepted returns the old "accepted" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldAccepted(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAccepted is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAccepted requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAccepted: %w", err)
+	}
+	return oldValue.Accepted, nil
+}
+
+// ResetAccepted resets all changes to the "accepted" field.
+func (m *WechatDispatchMutation) ResetAccepted() {
+	m.accepted = nil
+}
+
+// SetMsgid sets the "msgid" field.
+func (m *WechatDispatchMutation) SetMsgid(s string) {
+	m.msgid = &s
+}
+
+// Msgid returns the value of the "msgid" field in the mutation.
+func (m *WechatDispatchMutation) Msgid() (r string, exists bool) {
+	v := m.msgid
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMsgid returns the old "msgid" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldMsgid(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMsgid is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMsgid requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMsgid: %w", err)
+	}
+	return oldValue.Msgid, nil
+}
+
+// ResetMsgid resets all changes to the "msgid" field.
+func (m *WechatDispatchMutation) ResetMsgid() {
+	m.msgid = nil
+}
+
+// Where appends a list predicates to the WechatDispatchMutation builder.
+func (m *WechatDispatchMutation) Where(ps ...predicate.WechatDispatch) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the WechatDispatchMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *WechatDispatchMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.WechatDispatch, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *WechatDispatchMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *WechatDispatchMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (WechatDispatch).
+func (m *WechatDispatchMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *WechatDispatchMutation) Fields() []string {
+	fields := make([]string, 0, 16)
+	if m.create_by != nil {
+		fields = append(fields, wechatdispatch.FieldCreateBy)
+	}
+	if m.update_by != nil {
+		fields = append(fields, wechatdispatch.FieldUpdateBy)
+	}
+	if m.created_at != nil {
+		fields = append(fields, wechatdispatch.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, wechatdispatch.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, wechatdispatch.FieldDeletedAt)
+	}
+	if m.app_id != nil {
+		fields = append(fields, wechatdispatch.FieldAppID)
+	}
+	if m.openid != nil {
+		fields = append(fields, wechatdispatch.FieldOpenid)
+	}
+	if m.template_id != nil {
+		fields = append(fields, wechatdispatch.FieldTemplateID)
+	}
+	if m.library_template_id != nil {
+		fields = append(fields, wechatdispatch.FieldLibraryTemplateID)
+	}
+	if m.wechat_template_id != nil {
+		fields = append(fields, wechatdispatch.FieldWechatTemplateID)
+	}
+	if m.channel != nil {
+		fields = append(fields, wechatdispatch.FieldChannel)
+	}
+	if m.content != nil {
+		fields = append(fields, wechatdispatch.FieldContent)
+	}
+	if m.web_url != nil {
+		fields = append(fields, wechatdispatch.FieldWebURL)
+	}
+	if m.mini_program_page != nil {
+		fields = append(fields, wechatdispatch.FieldMiniProgramPage)
+	}
+	if m.accepted != nil {
+		fields = append(fields, wechatdispatch.FieldAccepted)
+	}
+	if m.msgid != nil {
+		fields = append(fields, wechatdispatch.FieldMsgid)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *WechatDispatchMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case wechatdispatch.FieldCreateBy:
+		return m.CreateBy()
+	case wechatdispatch.FieldUpdateBy:
+		return m.UpdateBy()
+	case wechatdispatch.FieldCreatedAt:
+		return m.CreatedAt()
+	case wechatdispatch.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case wechatdispatch.FieldDeletedAt:
+		return m.DeletedAt()
+	case wechatdispatch.FieldAppID:
+		return m.AppID()
+	case wechatdispatch.FieldOpenid:
+		return m.Openid()
+	case wechatdispatch.FieldTemplateID:
+		return m.TemplateID()
+	case wechatdispatch.FieldLibraryTemplateID:
+		return m.LibraryTemplateID()
+	case wechatdispatch.FieldWechatTemplateID:
+		return m.WechatTemplateID()
+	case wechatdispatch.FieldChannel:
+		return m.Channel()
+	case wechatdispatch.FieldContent:
+		return m.Content()
+	case wechatdispatch.FieldWebURL:
+		return m.WebURL()
+	case wechatdispatch.FieldMiniProgramPage:
+		return m.MiniProgramPage()
+	case wechatdispatch.FieldAccepted:
+		return m.Accepted()
+	case wechatdispatch.FieldMsgid:
+		return m.Msgid()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *WechatDispatchMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case wechatdispatch.FieldCreateBy:
+		return m.OldCreateBy(ctx)
+	case wechatdispatch.FieldUpdateBy:
+		return m.OldUpdateBy(ctx)
+	case wechatdispatch.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case wechatdispatch.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case wechatdispatch.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case wechatdispatch.FieldAppID:
+		return m.OldAppID(ctx)
+	case wechatdispatch.FieldOpenid:
+		return m.OldOpenid(ctx)
+	case wechatdispatch.FieldTemplateID:
+		return m.OldTemplateID(ctx)
+	case wechatdispatch.FieldLibraryTemplateID:
+		return m.OldLibraryTemplateID(ctx)
+	case wechatdispatch.FieldWechatTemplateID:
+		return m.OldWechatTemplateID(ctx)
+	case wechatdispatch.FieldChannel:
+		return m.OldChannel(ctx)
+	case wechatdispatch.FieldContent:
+		return m.OldContent(ctx)
+	case wechatdispatch.FieldWebURL:
+		return m.OldWebURL(ctx)
+	case wechatdispatch.FieldMiniProgramPage:
+		return m.OldMiniProgramPage(ctx)
+	case wechatdispatch.FieldAccepted:
+		return m.OldAccepted(ctx)
+	case wechatdispatch.FieldMsgid:
+		return m.OldMsgid(ctx)
+	}
+	return nil, fmt.Errorf("unknown WechatDispatch field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WechatDispatchMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case wechatdispatch.FieldCreateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreateBy(v)
+		return nil
+	case wechatdispatch.FieldUpdateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdateBy(v)
+		return nil
+	case wechatdispatch.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case wechatdispatch.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case wechatdispatch.FieldDeletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case wechatdispatch.FieldAppID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAppID(v)
+		return nil
+	case wechatdispatch.FieldOpenid:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOpenid(v)
+		return nil
+	case wechatdispatch.FieldTemplateID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTemplateID(v)
+		return nil
+	case wechatdispatch.FieldLibraryTemplateID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLibraryTemplateID(v)
+		return nil
+	case wechatdispatch.FieldWechatTemplateID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWechatTemplateID(v)
+		return nil
+	case wechatdispatch.FieldChannel:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChannel(v)
+		return nil
+	case wechatdispatch.FieldContent:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContent(v)
+		return nil
+	case wechatdispatch.FieldWebURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWebURL(v)
+		return nil
+	case wechatdispatch.FieldMiniProgramPage:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMiniProgramPage(v)
+		return nil
+	case wechatdispatch.FieldAccepted:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAccepted(v)
+		return nil
+	case wechatdispatch.FieldMsgid:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMsgid(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WechatDispatch field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *WechatDispatchMutation) AddedFields() []string {
+	var fields []string
+	if m.addcreate_by != nil {
+		fields = append(fields, wechatdispatch.FieldCreateBy)
+	}
+	if m.addupdate_by != nil {
+		fields = append(fields, wechatdispatch.FieldUpdateBy)
+	}
+	if m.addapp_id != nil {
+		fields = append(fields, wechatdispatch.FieldAppID)
+	}
+	if m.addtemplate_id != nil {
+		fields = append(fields, wechatdispatch.FieldTemplateID)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *WechatDispatchMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case wechatdispatch.FieldCreateBy:
+		return m.AddedCreateBy()
+	case wechatdispatch.FieldUpdateBy:
+		return m.AddedUpdateBy()
+	case wechatdispatch.FieldAppID:
+		return m.AddedAppID()
+	case wechatdispatch.FieldTemplateID:
+		return m.AddedTemplateID()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WechatDispatchMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case wechatdispatch.FieldCreateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCreateBy(v)
+		return nil
+	case wechatdispatch.FieldUpdateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddUpdateBy(v)
+		return nil
+	case wechatdispatch.FieldAppID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAppID(v)
+		return nil
+	case wechatdispatch.FieldTemplateID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTemplateID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WechatDispatch numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *WechatDispatchMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(wechatdispatch.FieldCreateBy) {
+		fields = append(fields, wechatdispatch.FieldCreateBy)
+	}
+	if m.FieldCleared(wechatdispatch.FieldUpdateBy) {
+		fields = append(fields, wechatdispatch.FieldUpdateBy)
+	}
+	if m.FieldCleared(wechatdispatch.FieldDeletedAt) {
+		fields = append(fields, wechatdispatch.FieldDeletedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *WechatDispatchMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *WechatDispatchMutation) ClearField(name string) error {
+	switch name {
+	case wechatdispatch.FieldCreateBy:
+		m.ClearCreateBy()
+		return nil
+	case wechatdispatch.FieldUpdateBy:
+		m.ClearUpdateBy()
+		return nil
+	case wechatdispatch.FieldDeletedAt:
+		m.ClearDeletedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown WechatDispatch nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *WechatDispatchMutation) ResetField(name string) error {
+	switch name {
+	case wechatdispatch.FieldCreateBy:
+		m.ResetCreateBy()
+		return nil
+	case wechatdispatch.FieldUpdateBy:
+		m.ResetUpdateBy()
+		return nil
+	case wechatdispatch.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case wechatdispatch.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case wechatdispatch.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case wechatdispatch.FieldAppID:
+		m.ResetAppID()
+		return nil
+	case wechatdispatch.FieldOpenid:
+		m.ResetOpenid()
+		return nil
+	case wechatdispatch.FieldTemplateID:
+		m.ResetTemplateID()
+		return nil
+	case wechatdispatch.FieldLibraryTemplateID:
+		m.ResetLibraryTemplateID()
+		return nil
+	case wechatdispatch.FieldWechatTemplateID:
+		m.ResetWechatTemplateID()
+		return nil
+	case wechatdispatch.FieldChannel:
+		m.ResetChannel()
+		return nil
+	case wechatdispatch.FieldContent:
+		m.ResetContent()
+		return nil
+	case wechatdispatch.FieldWebURL:
+		m.ResetWebURL()
+		return nil
+	case wechatdispatch.FieldMiniProgramPage:
+		m.ResetMiniProgramPage()
+		return nil
+	case wechatdispatch.FieldAccepted:
+		m.ResetAccepted()
+		return nil
+	case wechatdispatch.FieldMsgid:
+		m.ResetMsgid()
+		return nil
+	}
+	return fmt.Errorf("unknown WechatDispatch field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *WechatDispatchMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *WechatDispatchMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *WechatDispatchMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *WechatDispatchMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *WechatDispatchMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *WechatDispatchMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *WechatDispatchMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown WechatDispatch unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *WechatDispatchMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown WechatDispatch edge %s", name)
 }
 
 // WechatPlatformMutation represents an operation that mutates the WechatPlatform nodes in the graph.

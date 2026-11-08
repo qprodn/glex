@@ -9,6 +9,7 @@ import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { ProTable } from "@ant-design/pro-components";
 import { createTokenPagedRequest } from "@/utils/pager";
 import { buildFilter } from "@/utils/aipFilter";
+import AppDetailDrawer from "./AppDetailDrawer";
 import AppFormModal from "./AppFormModal";
 import AuthorizeModal from "./AuthorizeModal";
 import PushSecretModal from "./PushSecretModal";
@@ -55,6 +56,7 @@ const AppList: React.FC = () => {
   const [authorizeOpen, setAuthorizeOpen] = useState(false);
   const [editing, setEditing] = useState<WechatApp | undefined>();
   const [reveal, setReveal] = useState<WechatAppPushSecret | undefined>();
+  const [detail, setDetail] = useState<WechatApp | undefined>();
 
   const pager = React.useMemo(
     () =>
@@ -236,6 +238,12 @@ const AppList: React.FC = () => {
       valueType: "option",
       width: 360,
       render: (_, record) => [
+        <Access
+          key="detail"
+          accessible={access.perm("wechat:dispatch:list") || access.perm("wechat:dispatch:create")}
+        >
+          <a onClick={() => setDetail(record)}>选用与发送</a>
+        </Access>,
         <Access key="probe" accessible={access.perm("wechat:app:probe")}>
           <a onClick={() => probe(record)}>
             {intl.formatMessage({ id: "pages.wechat.app.probe", defaultMessage: "连通性测试" })}
@@ -333,6 +341,7 @@ const AppList: React.FC = () => {
       />
       <AuthorizeModal open={authorizeOpen} onClose={() => setAuthorizeOpen(false)} />
       <PushSecretModal reveal={reveal} onClose={() => setReveal(undefined)} />
+      <AppDetailDrawer app={detail} onClose={() => setDetail(undefined)} />
     </PageContainer>
   );
 };

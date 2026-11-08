@@ -61,4 +61,28 @@ var (
 	// connectivity testing is refused until a replacement AppSecret or a
 	// new grant on the same platform restores it.
 	ErrAppLapsed = errors.BadRequest("WECHAT_APP_LAPSED", "wechat app has lapsed")
+	// ErrAppSuspended: the operator has suspended this app, so adoption
+	// and sending are refused. Suspension is not lapse.
+	ErrAppSuspended = errors.BadRequest("WECHAT_APP_SUSPENDED", "wechat app is suspended")
+	// ErrWechatUnavailable: WeChat timed out or could not be reached.
+	// The app is not lapsed.
+	ErrWechatUnavailable = errors.ServiceUnavailable("WECHAT_UNAVAILABLE", "wechat is unavailable")
+	// ErrTemplateNotFound: the Adopted Template does not exist.
+	ErrTemplateNotFound = errors.NotFound("WECHAT_TEMPLATE_NOT_FOUND", "adopted template not found")
+	// ErrTemplateDuplicate: this live app already adopted this public-library template.
+	ErrTemplateDuplicate = errors.Conflict("WECHAT_TEMPLATE_DUPLICATE", "library template already adopted")
+	// ErrTemplateRejected: WeChat refused to adopt the library template
+	// for a business reason. The app is not lapsed and no template is stored.
+	ErrTemplateRejected = errors.BadRequest("WECHAT_TEMPLATE_REJECTED", "wechat refused the template")
+	// ErrDispatchInvalid: the send has no openid, or no adopted template.
+	// No WeChat Dispatch is recorded.
+	ErrDispatchInvalid = errors.BadRequest("WECHAT_DISPATCH_INVALID", "wechat dispatch parameters are invalid")
+	// ErrDispatchRejected: WeChat refused the send for a business reason.
+	// The rejected dispatch is recorded without an msgid and the app is
+	// not lapsed.
+	ErrDispatchRejected = errors.BadRequest("WECHAT_DISPATCH_REJECTED", "wechat rejected the dispatch")
+	// ErrCapabilityDenied: the app's kind, or the capabilities a Platform
+	// Authorization was granted, does not include this send. The refusal
+	// is local: WeChat is not called and the app is not lapsed.
+	ErrCapabilityDenied = errors.BadRequest("WECHAT_CAPABILITY_DENIED", "wechat app cannot send this")
 )
