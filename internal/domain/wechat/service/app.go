@@ -141,6 +141,12 @@ type App interface {
 	// PublishMenu sends the whole saved menu and records it as the last
 	// menu WeChat accepted. A later save does not change that record.
 	PublishMenu(ctx context.Context, req PublishMenuRequest) (*entity.App, error)
+	// MiniProgramLogin exchanges one mini program's one-time login code
+	// for that app's openid and, when WeChat supplied one, its unionid.
+	// Direct Hold and Platform Authorization share this entry. The call
+	// takes no back-office Principal. It does not create a WeChat User,
+	// a System User, or a Login Session, and session_key is not returned.
+	MiniProgramLogin(ctx context.Context, req MiniProgramLoginRequest) (*MiniProgramIdentity, error)
 }
 
 // PlatformBindings is the slice of the app service the platform service

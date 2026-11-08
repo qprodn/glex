@@ -133,15 +133,6 @@ func publishable(app *entity.App) error {
 	return nil
 }
 
-func hasCapability(caps []string, want string) bool {
-	for _, cap := range caps {
-		if cap == want {
-			return true
-		}
-	}
-	return false
-}
-
 // validateMenu accepts a leaf that opens a web page or a mini program, and
 // a parent that only holds sub-buttons. An empty document is not a menu.
 func validateMenu(menu entity.CustomMenu) error {

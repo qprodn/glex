@@ -141,12 +141,37 @@ type PublishMenuResult struct {
 	AuthorizerRefreshToken string
 }
 
+// MiniProgramLoginCall is one exchange of a mini program's one-time login
+// code. A Direct Hold carries AppID and AppSecret. A Platform
+// Authorization carries the platform registration and no authorizer
+// AppSecret. The port drops session_key: it is not a field here.
+type MiniProgramLoginCall struct {
+	Connection             string
+	AppID                  string
+	AppSecret              string
+	ComponentAppID         string
+	ComponentSecret        string
+	VerifyTicket           string
+	AuthorizerRefreshToken string
+	Code                   string
+}
+
+// MiniProgramLoginResult is the port's classification of that exchange.
+// OpenID is set when WeChat accepted the code. UnionID is empty when
+// WeChat omitted it. session_key is not returned.
+type MiniProgramLoginResult struct {
+	Class   CallClass
+	OpenID  string
+	UnionID string
+}
+
 // OpenAPI is the domain service's only path to WeChat. Tests script it to
 // succeed or fail. The process binds the HTTP adapter.
 type OpenAPI interface {
 	ProbePlatform(ctx context.Context, req ProbePlatformRequest) error
 	ProbeApp(ctx context.Context, req ProbeAppRequest) (ProbeAppResult, error)
 	PublishMenu(ctx context.Context, req PublishMenuCall) (PublishMenuResult, error)
+	MiniProgramLogin(ctx context.Context, req MiniProgramLoginCall) (MiniProgramLoginResult, error)
 	AnswerFullNetwork(ctx context.Context, req FullNetworkReply) error
 	StartAuthorization(ctx context.Context, req OpenAuthorizationStart) (*AuthorizationLink, error)
 	CompleteAuthorization(ctx context.Context, req OpenAuthorizationCode) (*AuthorizationGrant, error)

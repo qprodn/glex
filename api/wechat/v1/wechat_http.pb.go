@@ -26,6 +26,7 @@ const OperationWechatServiceGetWechatPlatform = "/wechat.v1.WechatService/GetWec
 const OperationWechatServiceListAuthorizationPlatforms = "/wechat.v1.WechatService/ListAuthorizationPlatforms"
 const OperationWechatServiceListWechatApps = "/wechat.v1.WechatService/ListWechatApps"
 const OperationWechatServiceListWechatPlatforms = "/wechat.v1.WechatService/ListWechatPlatforms"
+const OperationWechatServiceMiniProgramLogin = "/wechat.v1.WechatService/MiniProgramLogin"
 const OperationWechatServiceProbeWechatApp = "/wechat.v1.WechatService/ProbeWechatApp"
 const OperationWechatServiceProbeWechatPlatform = "/wechat.v1.WechatService/ProbeWechatPlatform"
 const OperationWechatServicePublishWechatAppMenu = "/wechat.v1.WechatService/PublishWechatAppMenu"
@@ -66,6 +67,14 @@ type WechatServiceHTTPServer interface {
 	// ListWechatPlatforms ListWechatPlatforms lists platforms that are not withdrawn. Responses
 	// carry masks only.
 	ListWechatPlatforms(context.Context, *ListWechatPlatformsRequest) (*WechatPlatformSet, error)
+	// MiniProgramLogin MiniProgramLogin exchanges one mini program's one-time login code for
+	// that WeChat App's openid and, when WeChat supplied one, its unionid.
+	// Direct Hold and Platform Authorization share this entry; the caller
+	// does not name the connection. No back-office Principal and no menu
+	// permission are required. The response carries no session_key and no
+	// system credential. The call creates no WeChat User, System User, or
+	// Login Session, and it writes no Login Log.
+	MiniProgramLogin(context.Context, *MiniProgramLoginRequest) (*MiniProgramIdentity, error)
 	// ProbeWechatApp ProbeWechatApp runs the WeChat Connectivity Test for one app. The
 	// test uses the app's current token and creates no WeChat Dispatch. A
 	// definitive refusal lapses the app. A timeout, a business rejection,
@@ -137,6 +146,7 @@ func RegisterWechatServiceHTTPServer(s *http.Server, srv WechatServiceHTTPServer
 	r.Handle("GET", "/wechat/app/{app_id}/menu", _WechatService_GetWechatAppMenu0_HTTP_Handler(srv))
 	r.Handle("PUT", "/wechat/app/{app_id}/menu", _WechatService_SaveWechatAppMenu0_HTTP_Handler(srv))
 	r.Handle("POST", "/wechat/app/{app_id}/menu/publish", _WechatService_PublishWechatAppMenu0_HTTP_Handler(srv))
+	r.Handle("POST", "/wechat/mini-program/login", _WechatService_MiniProgramLogin0_HTTP_Handler(srv))
 }
 
 func _WechatService_CreateWechatPlatform0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
@@ -539,6 +549,25 @@ func _WechatService_PublishWechatAppMenu0_HTTP_Handler(srv WechatServiceHTTPServ
 	}
 }
 
+func _WechatService_MiniProgramLogin0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in MiniProgramLoginRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceMiniProgramLogin)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.MiniProgramLogin(ctx, req.(*MiniProgramLoginRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*MiniProgramIdentity)
+		return ctx.Result(200, reply)
+	}
+}
+
 type WechatServiceHTTPClient interface {
 	// CreateWechatApp CreateWechatApp connects a mini program, or an official account with
 	// a Service Account or Subscription Account kind, by Direct Hold. The
@@ -567,6 +596,14 @@ type WechatServiceHTTPClient interface {
 	// ListWechatPlatforms ListWechatPlatforms lists platforms that are not withdrawn. Responses
 	// carry masks only.
 	ListWechatPlatforms(ctx context.Context, req *ListWechatPlatformsRequest, opts ...http.CallOption) (rsp *WechatPlatformSet, err error)
+	// MiniProgramLogin MiniProgramLogin exchanges one mini program's one-time login code for
+	// that WeChat App's openid and, when WeChat supplied one, its unionid.
+	// Direct Hold and Platform Authorization share this entry; the caller
+	// does not name the connection. No back-office Principal and no menu
+	// permission are required. The response carries no session_key and no
+	// system credential. The call creates no WeChat User, System User, or
+	// Login Session, and it writes no Login Log.
+	MiniProgramLogin(ctx context.Context, req *MiniProgramLoginRequest, opts ...http.CallOption) (rsp *MiniProgramIdentity, err error)
 	// ProbeWechatApp ProbeWechatApp runs the WeChat Connectivity Test for one app. The
 	// test uses the app's current token and creates no WeChat Dispatch. A
 	// definitive refusal lapses the app. A timeout, a business rejection,
@@ -768,6 +805,30 @@ func (c *WechatServiceHTTPClientImpl) ListWechatPlatforms(ctx context.Context, i
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// MiniProgramLogin MiniProgramLogin exchanges one mini program's one-time login code for
+// that WeChat App's openid and, when WeChat supplied one, its unionid.
+// Direct Hold and Platform Authorization share this entry; the caller
+// does not name the connection. No back-office Principal and no menu
+// permission are required. The response carries no session_key and no
+// system credential. The call creates no WeChat User, System User, or
+// Login Session, and it writes no Login Log.
+func (c *WechatServiceHTTPClientImpl) MiniProgramLogin(ctx context.Context, in *MiniProgramLoginRequest, opts ...http.CallOption) (*MiniProgramIdentity, error) {
+	var out MiniProgramIdentity
+	pattern := "/wechat/mini-program/login"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationWechatServiceMiniProgramLogin),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
 	if err != nil {
 		return nil, err
 	}

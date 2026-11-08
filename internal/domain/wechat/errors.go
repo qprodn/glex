@@ -72,7 +72,16 @@ var (
 	// Platform Authorization was granted, cannot perform the call. The
 	// refusal happens before WeChat is called and does not lapse the app.
 	ErrCapabilityUnavailable = errors.BadRequest("WECHAT_CAPABILITY_UNAVAILABLE", "wechat app cannot use that capability")
-	// ErrAppSuspended: the operator has suspended this app, so publishing
-	// is refused. Suspension is not lapse.
+	// ErrAppSuspended: the operator suspended this app. Publishing and
+	// Mini Program Login are refused. Suspension is not a lapse.
 	ErrAppSuspended = errors.BadRequest("WECHAT_APP_SUSPENDED", "wechat app is suspended")
+	// ErrAppCapability: a Platform Authorization does not hold the
+	// capability this call needs. The app does not lapse.
+	ErrAppCapability = errors.BadRequest("WECHAT_APP_CAPABILITY", "wechat app does not have this capability")
+	// ErrWechatRejected: WeChat classified the call as an ordinary
+	// business rejection. The app does not lapse.
+	ErrWechatRejected = errors.BadRequest("WECHAT_REJECTED", "wechat rejected the call")
+	// ErrWechatRefused: WeChat definitively refused the grant or the
+	// Direct Hold secret. The app is lapsed.
+	ErrWechatRefused = errors.BadRequest("WECHAT_REFUSED", "wechat refused the authorization or secret")
 )

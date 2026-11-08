@@ -44,6 +44,94 @@ func (c *openAPI) ProbePlatform(ctx context.Context, req wechatservice.ProbePlat
 	return err
 }
 
+// MiniProgramLogin exchanges a one-time login code. The JSON WeChat
+// returns includes session_key; this port never unmarshals that field,
+// so the key is dropped and cannot be stored or returned. Which WeChat
+// codes are a definitive refusal is left unset, so a WeChat error body
+// stays a business rejection and a transport failure stays unavailable.
+func (c *openAPI) MiniProgramLogin(ctx context.Context, req wechatservice.MiniProgramLoginCall) (wechatservice.MiniProgramLoginResult, error) {
+	switch req.Connection {
+	case entity.ConnectionDirectHold:
+		openid, unionid, err := c.directCode2Session(ctx, req.AppID, req.AppSecret, req.Code)
+		return classifyMiniProgramLogin(openid, unionid, err)
+	case entity.ConnectionPlatformAuthorization:
+		component, err := c.componentToken(ctx, req.ComponentAppID, req.ComponentSecret, req.VerifyTicket)
+		if err != nil {
+			return classifyMiniProgramLogin("", "", err)
+		}
+		openid, unionid, err := c.componentCode2Session(ctx, component, req.ComponentAppID, req.AppID, req.Code)
+		return classifyMiniProgramLogin(openid, unionid, err)
+	default:
+		return wechatservice.MiniProgramLoginResult{Class: wechatservice.CallBusinessRejection}, nil
+	}
+}
+
+func (c *openAPI) directCode2Session(ctx context.Context, appID, secret, code string) (string, string, error) {
+	query := url.Values{}
+	query.Set("appid", appID)
+	query.Set("secret", secret)
+	query.Set("js_code", code)
+	query.Set("grant_type", "authorization_code")
+	body, err := c.get(ctx, c.base+"/sns/jscode2session?"+query.Encode())
+	if err != nil {
+		return "", "", err
+	}
+	return readCode2Session(body)
+}
+
+func (c *openAPI) componentCode2Session(ctx context.Context, componentToken, componentAppID, appID, code string) (string, string, error) {
+	query := url.Values{}
+	query.Set("appid", appID)
+	query.Set("js_code", code)
+	query.Set("grant_type", "authorization_code")
+	query.Set("component_appid", componentAppID)
+	query.Set("component_access_token", componentToken)
+	body, err := c.get(ctx, c.base+"/sns/component/jscode2session?"+query.Encode())
+	if err != nil {
+		return "", "", err
+	}
+	return readCode2Session(body)
+}
+
+// readCode2Session reads openid and unionid. session_key is not a field
+// of the decoded value, so encoding/json discards it.
+func readCode2Session(body []byte) (string, string, error) {
+	var resp struct {
+		ErrCode int    `json:"errcode"`
+		ErrMsg  string `json:"errmsg"`
+		OpenID  string `json:"openid"`
+		UnionID string `json:"unionid"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return "", "", errors.New("wechat open api: unreadable response")
+	}
+	if resp.ErrCode != 0 || resp.OpenID == "" {
+		return "", "", openAPIFailure(resp.ErrMsg, "mini program login was not accepted")
+	}
+	return resp.OpenID, resp.UnionID, nil
+}
+
+// classifyMiniProgramLogin turns a code exchange into the port's classes.
+// A canceled caller is returned as-is. A WeChat error body is a business
+// rejection because the definitive-refusal codes are unset. session_key
+// never reaches the result.
+func classifyMiniProgramLogin(openid, unionid string, err error) (wechatservice.MiniProgramLoginResult, error) {
+	if errors.Is(err, context.Canceled) {
+		return wechatservice.MiniProgramLoginResult{}, err
+	}
+	if err == nil && openid != "" {
+		return wechatservice.MiniProgramLoginResult{
+			Class:   wechatservice.CallSuccess,
+			OpenID:  openid,
+			UnionID: unionid,
+		}, nil
+	}
+	if err == nil || errors.Is(err, context.DeadlineExceeded) || probeUnavailable(err) {
+		return wechatservice.MiniProgramLoginResult{Class: wechatservice.CallUnavailable}, nil
+	}
+	return wechatservice.MiniProgramLoginResult{Class: wechatservice.CallBusinessRejection}, nil
+}
+
 // ProbeApp proves an app's current token. A Direct Hold asks for its own
 // access token. A Platform Authorization refreshes the authorizer token
 // through the platform. Neither call sends a message. Which WeChat codes
