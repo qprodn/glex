@@ -8,11 +8,12 @@ import (
 )
 
 // Module contains the wechat persistence adapters: the platform repo, the
-// credential cipher, and the Open API port (ADR 0029).
+// app repo, the credential cipher, and the Open API port (ADR 0029).
 var Module = fx.Module("wechat-infra",
 	fx.Provide(
 		NewCipher,
 		NewPlatformRepo,
+		NewAppRepo,
 		fx.Annotate(NewOpenAPI, fx.As(new(wechatservice.OpenAPI))),
 	),
 )

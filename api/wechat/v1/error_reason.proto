@@ -33,4 +33,15 @@ enum ErrorReason {
   // is logged server-side and this sentinel crosses the boundary (ADR 0007,
   // HTTP 503).
   WECHAT_STORE_UNAVAILABLE = 7;
+  // The requested WeChat App does not exist or is withdrawn (HTTP 404).
+  WECHAT_APP_NOT_FOUND = 8;
+  // A WeChat App parameter is invalid: blank name, blank AppID, missing
+  // AppSecret, an official account without a kind, a kind on a mini
+  // program, or an over-length value.
+  WECHAT_APP_INVALID = 9;
+  // An app that is not withdrawn already holds this AppID (HTTP 409).
+  // Independent of component-AppID uniqueness on platforms.
+  WECHAT_APP_DUPLICATE = 10;
+  // The AppID is fixed for the life of the row.
+  WECHAT_APP_ID_IMMUTABLE = 11;
 }

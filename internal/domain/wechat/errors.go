@@ -1,8 +1,8 @@
 // Package wechat owns the wechat module per ADR 0005 and ADR 0029: the
-// WeChat Platforms this back office registers, and later the WeChat Apps
-// connected through them. The package root holds only the typed errors;
-// the objects live in entity, the row ports in repository, and the
-// module's own rules in service.
+// WeChat Platforms this back office registers and the WeChat Apps
+// connected to them. The package root holds only the typed errors; the
+// objects live in entity, the row ports in repository, and the module's
+// own rules in service.
 package wechat
 
 import "github.com/go-kratos/kratos/v3/errors"
@@ -36,4 +36,19 @@ var (
 	// ErrPushRejected: the push is plaintext, compatible-mode, or failed
 	// verification. Nothing the operator reads changes.
 	ErrPushRejected = errors.BadRequest("WECHAT_PUSH_REJECTED", "wechat push was rejected")
+	// ErrAppNotFound: the requested WeChat App does not exist or is
+	// withdrawn.
+	ErrAppNotFound = errors.NotFound("WECHAT_APP_NOT_FOUND", "wechat app not found")
+	// ErrAppInvalid: a WeChat App parameter is invalid — blank name,
+	// blank AppID, missing AppSecret on a Direct Hold, an official
+	// account without a Service Account or Subscription Account kind, a
+	// kind on a mini program, or an over-length value.
+	ErrAppInvalid = errors.BadRequest("WECHAT_APP_INVALID", "wechat app parameters are invalid")
+	// ErrAppDuplicate: an app that is not withdrawn already holds this
+	// AppID (ADR 0029). This is independent of component-AppID uniqueness
+	// on WeChat Platforms.
+	ErrAppDuplicate = errors.Conflict("WECHAT_APP_DUPLICATE", "app id already exists")
+	// ErrAppIDImmutable: the AppID is fixed for the life of the row
+	// (ADR 0029).
+	ErrAppIDImmutable = errors.BadRequest("WECHAT_APP_ID_IMMUTABLE", "app id cannot be changed")
 )

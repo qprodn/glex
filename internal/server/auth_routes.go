@@ -147,6 +147,17 @@ func authRoutes() map[string]authmw.Route {
 		// push is the authentication, the same way the pay notify route is
 		// absent (ADR 0020).
 
+		// wechat: Direct Hold of a WeChat App. Reads show masks. The
+		// generated Push Secret is returned in full only by create and
+		// regenerate.
+		wechatv1.OperationWechatServiceCreateWechatApp:               {Permission: "wechat:app:create"},
+		wechatv1.OperationWechatServiceListWechatApps:                {Permission: "wechat:app:list"},
+		wechatv1.OperationWechatServiceGetWechatApp:                  {Permission: "wechat:app:list"},
+		wechatv1.OperationWechatServiceUpdateWechatApp:               {Permission: "wechat:app:update"},
+		wechatv1.OperationWechatServiceSetWechatAppSuspended:         {Permission: "wechat:app:update"},
+		wechatv1.OperationWechatServiceRegenerateWechatAppPushSecret: {Permission: "wechat:app:update"},
+		wechatv1.OperationWechatServiceWithdrawWechatApp:             {Permission: "wechat:app:remove"},
+
 		// job: scheduled-task console and run history (ADR 0023). The
 		// executor listing rides the list permission — it exists to power
 		// the job form.

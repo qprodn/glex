@@ -18,19 +18,36 @@ var _ = new(context.Context)
 
 const _ = http.SupportPackageIsVersion3
 
+const OperationWechatServiceCreateWechatApp = "/wechat.v1.WechatService/CreateWechatApp"
 const OperationWechatServiceCreateWechatPlatform = "/wechat.v1.WechatService/CreateWechatPlatform"
+const OperationWechatServiceGetWechatApp = "/wechat.v1.WechatService/GetWechatApp"
 const OperationWechatServiceGetWechatPlatform = "/wechat.v1.WechatService/GetWechatPlatform"
+const OperationWechatServiceListWechatApps = "/wechat.v1.WechatService/ListWechatApps"
 const OperationWechatServiceListWechatPlatforms = "/wechat.v1.WechatService/ListWechatPlatforms"
 const OperationWechatServiceProbeWechatPlatform = "/wechat.v1.WechatService/ProbeWechatPlatform"
+const OperationWechatServiceRegenerateWechatAppPushSecret = "/wechat.v1.WechatService/RegenerateWechatAppPushSecret"
+const OperationWechatServiceSetWechatAppSuspended = "/wechat.v1.WechatService/SetWechatAppSuspended"
+const OperationWechatServiceUpdateWechatApp = "/wechat.v1.WechatService/UpdateWechatApp"
 const OperationWechatServiceUpdateWechatPlatform = "/wechat.v1.WechatService/UpdateWechatPlatform"
+const OperationWechatServiceWithdrawWechatApp = "/wechat.v1.WechatService/WithdrawWechatApp"
 const OperationWechatServiceWithdrawWechatPlatform = "/wechat.v1.WechatService/WithdrawWechatPlatform"
 
 type WechatServiceHTTPServer interface {
+	// CreateWechatApp CreateWechatApp connects a mini program, or an official account with
+	// a Service Account or Subscription Account kind, by Direct Hold. The
+	// response returns the generated Token and EncodingAESKey in full once.
+	CreateWechatApp(context.Context, *CreateWechatAppRequest) (*WechatAppPushSecret, error)
 	// CreateWechatPlatform CreateWechatPlatform registers a platform. The response carries masks,
 	// never the secrets the operator just typed.
 	CreateWechatPlatform(context.Context, *CreateWechatPlatformRequest) (*WechatPlatform, error)
+	// GetWechatApp GetWechatApp retrieves one app that is not withdrawn. The response
+	// carries masks only.
+	GetWechatApp(context.Context, *GetWechatAppRequest) (*WechatApp, error)
 	// GetWechatPlatform GetWechatPlatform retrieves one platform that is not withdrawn.
 	GetWechatPlatform(context.Context, *GetWechatPlatformRequest) (*WechatPlatform, error)
+	// ListWechatApps ListWechatApps lists apps that are not withdrawn. Responses carry
+	// masks only.
+	ListWechatApps(context.Context, *ListWechatAppsRequest) (*WechatAppSet, error)
 	// ListWechatPlatforms ListWechatPlatforms lists platforms that are not withdrawn. Responses
 	// carry masks only.
 	ListWechatPlatforms(context.Context, *ListWechatPlatformsRequest) (*WechatPlatformSet, error)
@@ -38,10 +55,26 @@ type WechatServiceHTTPServer interface {
 	// A platform that is missing a secret or a verify ticket fails the test.
 	// Success and failure change no WeChat App. Permission: wechat:platform:probe.
 	ProbeWechatPlatform(context.Context, *ProbeWechatPlatformRequest) (*ProbeWechatPlatformResult, error)
+	// RegenerateWechatAppPushSecret RegenerateWechatAppPushSecret replaces the Push Secret. The response
+	// returns the new pair in full once. The previous pair is invalidated
+	// immediately. The app is not withdrawn and its suspension is unchanged.
+	RegenerateWechatAppPushSecret(context.Context, *RegenerateWechatAppPushSecretRequest) (*WechatAppPushSecret, error)
+	// SetWechatAppSuspended SetWechatAppSuspended suspends or resumes the app. The app stays on
+	// the live list either way.
+	SetWechatAppSuspended(context.Context, *SetWechatAppSuspendedRequest) (*WechatApp, error)
+	// UpdateWechatApp UpdateWechatApp corrects the display name and, when app_secret is
+	// non-blank, replaces the AppSecret. The response carries masks only
+	// and never the submitted secret. A wx_app_id that differs from the
+	// stored value is refused.
+	UpdateWechatApp(context.Context, *UpdateWechatAppRequest) (*WechatApp, error)
 	// UpdateWechatPlatform UpdateWechatPlatform corrects the display name and, when a secret is
 	// non-blank, replaces that secret. A component AppID that differs from
 	// the stored value is refused. Blank secrets keep their stored values.
 	UpdateWechatPlatform(context.Context, *UpdateWechatPlatformRequest) (*WechatPlatform, error)
+	// WithdrawWechatApp WithdrawWechatApp soft-deletes the app. The row leaves the live list;
+	// it is not hard-deleted. The same AppID can be connected again as a
+	// new row.
+	WithdrawWechatApp(context.Context, *WithdrawWechatAppRequest) (*emptypb.Empty, error)
 	// WithdrawWechatPlatform WithdrawWechatPlatform soft-deletes the platform. The row leaves the
 	// live list; it is not hard-deleted.
 	WithdrawWechatPlatform(context.Context, *WithdrawWechatPlatformRequest) (*emptypb.Empty, error)
@@ -55,6 +88,13 @@ func RegisterWechatServiceHTTPServer(s *http.Server, srv WechatServiceHTTPServer
 	r.Handle("PATCH", "/wechat/platform/{platform_id}", _WechatService_UpdateWechatPlatform0_HTTP_Handler(srv))
 	r.Handle("DELETE", "/wechat/platform/{platform_id}", _WechatService_WithdrawWechatPlatform0_HTTP_Handler(srv))
 	r.Handle("POST", "/wechat/platform/{platform_id}/probe", _WechatService_ProbeWechatPlatform0_HTTP_Handler(srv))
+	r.Handle("POST", "/wechat/app", _WechatService_CreateWechatApp0_HTTP_Handler(srv))
+	r.Handle("GET", "/wechat/app", _WechatService_ListWechatApps0_HTTP_Handler(srv))
+	r.Handle("GET", "/wechat/app/{app_id}", _WechatService_GetWechatApp0_HTTP_Handler(srv))
+	r.Handle("PATCH", "/wechat/app/{app_id}", _WechatService_UpdateWechatApp0_HTTP_Handler(srv))
+	r.Handle("POST", "/wechat/app/{app_id}/suspended", _WechatService_SetWechatAppSuspended0_HTTP_Handler(srv))
+	r.Handle("POST", "/wechat/app/{app_id}/push-secret", _WechatService_RegenerateWechatAppPushSecret0_HTTP_Handler(srv))
+	r.Handle("DELETE", "/wechat/app/{app_id}", _WechatService_WithdrawWechatApp0_HTTP_Handler(srv))
 }
 
 func _WechatService_CreateWechatPlatform0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
@@ -183,12 +223,170 @@ func _WechatService_ProbeWechatPlatform0_HTTP_Handler(srv WechatServiceHTTPServe
 	}
 }
 
+func _WechatService_CreateWechatApp0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in CreateWechatAppRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceCreateWechatApp)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.CreateWechatApp(ctx, req.(*CreateWechatAppRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatAppPushSecret)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _WechatService_ListWechatApps0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListWechatAppsRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceListWechatApps)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListWechatApps(ctx, req.(*ListWechatAppsRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatAppSet)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _WechatService_GetWechatApp0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in GetWechatAppRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceGetWechatApp)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.GetWechatApp(ctx, req.(*GetWechatAppRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatApp)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _WechatService_UpdateWechatApp0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in UpdateWechatAppRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceUpdateWechatApp)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.UpdateWechatApp(ctx, req.(*UpdateWechatAppRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatApp)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _WechatService_SetWechatAppSuspended0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in SetWechatAppSuspendedRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceSetWechatAppSuspended)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.SetWechatAppSuspended(ctx, req.(*SetWechatAppSuspendedRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatApp)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _WechatService_RegenerateWechatAppPushSecret0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in RegenerateWechatAppPushSecretRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceRegenerateWechatAppPushSecret)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.RegenerateWechatAppPushSecret(ctx, req.(*RegenerateWechatAppPushSecretRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatAppPushSecret)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _WechatService_WithdrawWechatApp0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in WithdrawWechatAppRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceWithdrawWechatApp)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.WithdrawWechatApp(ctx, req.(*WithdrawWechatAppRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*emptypb.Empty)
+		return ctx.Result(200, reply)
+	}
+}
+
 type WechatServiceHTTPClient interface {
+	// CreateWechatApp CreateWechatApp connects a mini program, or an official account with
+	// a Service Account or Subscription Account kind, by Direct Hold. The
+	// response returns the generated Token and EncodingAESKey in full once.
+	CreateWechatApp(ctx context.Context, req *CreateWechatAppRequest, opts ...http.CallOption) (rsp *WechatAppPushSecret, err error)
 	// CreateWechatPlatform CreateWechatPlatform registers a platform. The response carries masks,
 	// never the secrets the operator just typed.
 	CreateWechatPlatform(ctx context.Context, req *CreateWechatPlatformRequest, opts ...http.CallOption) (rsp *WechatPlatform, err error)
+	// GetWechatApp GetWechatApp retrieves one app that is not withdrawn. The response
+	// carries masks only.
+	GetWechatApp(ctx context.Context, req *GetWechatAppRequest, opts ...http.CallOption) (rsp *WechatApp, err error)
 	// GetWechatPlatform GetWechatPlatform retrieves one platform that is not withdrawn.
 	GetWechatPlatform(ctx context.Context, req *GetWechatPlatformRequest, opts ...http.CallOption) (rsp *WechatPlatform, err error)
+	// ListWechatApps ListWechatApps lists apps that are not withdrawn. Responses carry
+	// masks only.
+	ListWechatApps(ctx context.Context, req *ListWechatAppsRequest, opts ...http.CallOption) (rsp *WechatAppSet, err error)
 	// ListWechatPlatforms ListWechatPlatforms lists platforms that are not withdrawn. Responses
 	// carry masks only.
 	ListWechatPlatforms(ctx context.Context, req *ListWechatPlatformsRequest, opts ...http.CallOption) (rsp *WechatPlatformSet, err error)
@@ -196,10 +394,26 @@ type WechatServiceHTTPClient interface {
 	// A platform that is missing a secret or a verify ticket fails the test.
 	// Success and failure change no WeChat App. Permission: wechat:platform:probe.
 	ProbeWechatPlatform(ctx context.Context, req *ProbeWechatPlatformRequest, opts ...http.CallOption) (rsp *ProbeWechatPlatformResult, err error)
+	// RegenerateWechatAppPushSecret RegenerateWechatAppPushSecret replaces the Push Secret. The response
+	// returns the new pair in full once. The previous pair is invalidated
+	// immediately. The app is not withdrawn and its suspension is unchanged.
+	RegenerateWechatAppPushSecret(ctx context.Context, req *RegenerateWechatAppPushSecretRequest, opts ...http.CallOption) (rsp *WechatAppPushSecret, err error)
+	// SetWechatAppSuspended SetWechatAppSuspended suspends or resumes the app. The app stays on
+	// the live list either way.
+	SetWechatAppSuspended(ctx context.Context, req *SetWechatAppSuspendedRequest, opts ...http.CallOption) (rsp *WechatApp, err error)
+	// UpdateWechatApp UpdateWechatApp corrects the display name and, when app_secret is
+	// non-blank, replaces the AppSecret. The response carries masks only
+	// and never the submitted secret. A wx_app_id that differs from the
+	// stored value is refused.
+	UpdateWechatApp(ctx context.Context, req *UpdateWechatAppRequest, opts ...http.CallOption) (rsp *WechatApp, err error)
 	// UpdateWechatPlatform UpdateWechatPlatform corrects the display name and, when a secret is
 	// non-blank, replaces that secret. A component AppID that differs from
 	// the stored value is refused. Blank secrets keep their stored values.
 	UpdateWechatPlatform(ctx context.Context, req *UpdateWechatPlatformRequest, opts ...http.CallOption) (rsp *WechatPlatform, err error)
+	// WithdrawWechatApp WithdrawWechatApp soft-deletes the app. The row leaves the live list;
+	// it is not hard-deleted. The same AppID can be connected again as a
+	// new row.
+	WithdrawWechatApp(ctx context.Context, req *WithdrawWechatAppRequest, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
 	// WithdrawWechatPlatform WithdrawWechatPlatform soft-deletes the platform. The row leaves the
 	// live list; it is not hard-deleted.
 	WithdrawWechatPlatform(ctx context.Context, req *WithdrawWechatPlatformRequest, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
@@ -211,6 +425,26 @@ type WechatServiceHTTPClientImpl struct {
 
 func NewWechatServiceHTTPClient(client *http.Client) WechatServiceHTTPClient {
 	return &WechatServiceHTTPClientImpl{client}
+}
+
+// CreateWechatApp CreateWechatApp connects a mini program, or an official account with
+// a Service Account or Subscription Account kind, by Direct Hold. The
+// response returns the generated Token and EncodingAESKey in full once.
+func (c *WechatServiceHTTPClientImpl) CreateWechatApp(ctx context.Context, in *CreateWechatAppRequest, opts ...http.CallOption) (*WechatAppPushSecret, error) {
+	var out WechatAppPushSecret
+	pattern := "/wechat/app"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationWechatServiceCreateWechatApp),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 // CreateWechatPlatform CreateWechatPlatform registers a platform. The response carries masks,
@@ -232,6 +466,24 @@ func (c *WechatServiceHTTPClientImpl) CreateWechatPlatform(ctx context.Context, 
 	return &out, nil
 }
 
+// GetWechatApp GetWechatApp retrieves one app that is not withdrawn. The response
+// carries masks only.
+func (c *WechatServiceHTTPClientImpl) GetWechatApp(ctx context.Context, in *GetWechatAppRequest, opts ...http.CallOption) (*WechatApp, error) {
+	var out WechatApp
+	pattern := "/wechat/app/{app_id}"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationWechatServiceGetWechatApp),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // GetWechatPlatform GetWechatPlatform retrieves one platform that is not withdrawn.
 func (c *WechatServiceHTTPClientImpl) GetWechatPlatform(ctx context.Context, in *GetWechatPlatformRequest, opts ...http.CallOption) (*WechatPlatform, error) {
 	var out WechatPlatform
@@ -240,6 +492,24 @@ func (c *WechatServiceHTTPClientImpl) GetWechatPlatform(ctx context.Context, in 
 	opts = append([]http.CallOption{
 		http.Accept("application/protojson"),
 		http.Operation(OperationWechatServiceGetWechatPlatform),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListWechatApps ListWechatApps lists apps that are not withdrawn. Responses carry
+// masks only.
+func (c *WechatServiceHTTPClientImpl) ListWechatApps(ctx context.Context, in *ListWechatAppsRequest, opts ...http.CallOption) (*WechatAppSet, error) {
+	var out WechatAppSet
+	pattern := "/wechat/app"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationWechatServiceListWechatApps),
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
@@ -287,6 +557,66 @@ func (c *WechatServiceHTTPClientImpl) ProbeWechatPlatform(ctx context.Context, i
 	return &out, nil
 }
 
+// RegenerateWechatAppPushSecret RegenerateWechatAppPushSecret replaces the Push Secret. The response
+// returns the new pair in full once. The previous pair is invalidated
+// immediately. The app is not withdrawn and its suspension is unchanged.
+func (c *WechatServiceHTTPClientImpl) RegenerateWechatAppPushSecret(ctx context.Context, in *RegenerateWechatAppPushSecretRequest, opts ...http.CallOption) (*WechatAppPushSecret, error) {
+	var out WechatAppPushSecret
+	pattern := "/wechat/app/{app_id}/push-secret"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationWechatServiceRegenerateWechatAppPushSecret),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// SetWechatAppSuspended SetWechatAppSuspended suspends or resumes the app. The app stays on
+// the live list either way.
+func (c *WechatServiceHTTPClientImpl) SetWechatAppSuspended(ctx context.Context, in *SetWechatAppSuspendedRequest, opts ...http.CallOption) (*WechatApp, error) {
+	var out WechatApp
+	pattern := "/wechat/app/{app_id}/suspended"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationWechatServiceSetWechatAppSuspended),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// UpdateWechatApp UpdateWechatApp corrects the display name and, when app_secret is
+// non-blank, replaces the AppSecret. The response carries masks only
+// and never the submitted secret. A wx_app_id that differs from the
+// stored value is refused.
+func (c *WechatServiceHTTPClientImpl) UpdateWechatApp(ctx context.Context, in *UpdateWechatAppRequest, opts ...http.CallOption) (*WechatApp, error) {
+	var out WechatApp
+	pattern := "/wechat/app/{app_id}"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationWechatServiceUpdateWechatApp),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "PATCH", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // UpdateWechatPlatform UpdateWechatPlatform corrects the display name and, when a secret is
 // non-blank, replaces that secret. A component AppID that differs from
 // the stored value is refused. Blank secrets keep their stored values.
@@ -301,6 +631,25 @@ func (c *WechatServiceHTTPClientImpl) UpdateWechatPlatform(ctx context.Context, 
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "PATCH", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// WithdrawWechatApp WithdrawWechatApp soft-deletes the app. The row leaves the live list;
+// it is not hard-deleted. The same AppID can be connected again as a
+// new row.
+func (c *WechatServiceHTTPClientImpl) WithdrawWechatApp(ctx context.Context, in *WithdrawWechatAppRequest, opts ...http.CallOption) (*emptypb.Empty, error) {
+	var out emptypb.Empty
+	pattern := "/wechat/app/{app_id}"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationWechatServiceWithdrawWechatApp),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "DELETE", path, nil, &out, opts...)
 	if err != nil {
 		return nil, err
 	}

@@ -152,14 +152,15 @@ func (s *WechatApplication) WithdrawWechatPlatform(ctx context.Context, req *wec
 	return &emptypb.Empty{}, nil
 }
 
-// SecretFields are the proto JSON names operlog scrubs from platform
-// writes (ADR 0012, ADR 0029). Nil-tolerant so a wechat-less server
-// assembly still boots.
+// SecretFields are the proto JSON names operlog scrubs from wechat
+// writes (ADR 0012, ADR 0029): the platform secret triple, the Direct
+// Hold AppSecret, and the Push Secret field names. Nil-tolerant so a
+// wechat-less server assembly still boots.
 func (s *WechatApplication) SecretFields() []string {
 	if s == nil {
 		return nil
 	}
-	return []string{"component_secret", "token", "encoding_aes_key"}
+	return []string{"component_secret", "token", "encoding_aes_key", "app_secret"}
 }
 
 func (s *WechatApplication) actor(ctx context.Context) int64 {

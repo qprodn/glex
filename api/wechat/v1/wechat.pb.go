@@ -24,6 +24,156 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// WechatAppType says whether a WeChat App is a mini program or an
+// official account.
+type WechatAppType int32
+
+const (
+	WechatAppType_WECHAT_APP_TYPE_UNSPECIFIED      WechatAppType = 0
+	WechatAppType_WECHAT_APP_TYPE_MINI_PROGRAM     WechatAppType = 1
+	WechatAppType_WECHAT_APP_TYPE_OFFICIAL_ACCOUNT WechatAppType = 2
+)
+
+// Enum value maps for WechatAppType.
+var (
+	WechatAppType_name = map[int32]string{
+		0: "WECHAT_APP_TYPE_UNSPECIFIED",
+		1: "WECHAT_APP_TYPE_MINI_PROGRAM",
+		2: "WECHAT_APP_TYPE_OFFICIAL_ACCOUNT",
+	}
+	WechatAppType_value = map[string]int32{
+		"WECHAT_APP_TYPE_UNSPECIFIED":      0,
+		"WECHAT_APP_TYPE_MINI_PROGRAM":     1,
+		"WECHAT_APP_TYPE_OFFICIAL_ACCOUNT": 2,
+	}
+)
+
+func (x WechatAppType) Enum() *WechatAppType {
+	p := new(WechatAppType)
+	*p = x
+	return p
+}
+
+func (x WechatAppType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (WechatAppType) Descriptor() protoreflect.EnumDescriptor {
+	return file_wechat_v1_wechat_proto_enumTypes[0].Descriptor()
+}
+
+func (WechatAppType) Type() protoreflect.EnumType {
+	return &file_wechat_v1_wechat_proto_enumTypes[0]
+}
+
+func (x WechatAppType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use WechatAppType.Descriptor instead.
+func (WechatAppType) EnumDescriptor() ([]byte, []int) {
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{0}
+}
+
+// WechatAccountKind is the official-account kind. A mini program has
+// none. An official account is a Service Account or a Subscription Account.
+type WechatAccountKind int32
+
+const (
+	WechatAccountKind_WECHAT_ACCOUNT_KIND_UNSPECIFIED  WechatAccountKind = 0
+	WechatAccountKind_WECHAT_ACCOUNT_KIND_SERVICE      WechatAccountKind = 1
+	WechatAccountKind_WECHAT_ACCOUNT_KIND_SUBSCRIPTION WechatAccountKind = 2
+)
+
+// Enum value maps for WechatAccountKind.
+var (
+	WechatAccountKind_name = map[int32]string{
+		0: "WECHAT_ACCOUNT_KIND_UNSPECIFIED",
+		1: "WECHAT_ACCOUNT_KIND_SERVICE",
+		2: "WECHAT_ACCOUNT_KIND_SUBSCRIPTION",
+	}
+	WechatAccountKind_value = map[string]int32{
+		"WECHAT_ACCOUNT_KIND_UNSPECIFIED":  0,
+		"WECHAT_ACCOUNT_KIND_SERVICE":      1,
+		"WECHAT_ACCOUNT_KIND_SUBSCRIPTION": 2,
+	}
+)
+
+func (x WechatAccountKind) Enum() *WechatAccountKind {
+	p := new(WechatAccountKind)
+	*p = x
+	return p
+}
+
+func (x WechatAccountKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (WechatAccountKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_wechat_v1_wechat_proto_enumTypes[1].Descriptor()
+}
+
+func (WechatAccountKind) Type() protoreflect.EnumType {
+	return &file_wechat_v1_wechat_proto_enumTypes[1]
+}
+
+func (x WechatAccountKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use WechatAccountKind.Descriptor instead.
+func (WechatAccountKind) EnumDescriptor() ([]byte, []int) {
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{1}
+}
+
+// WechatConnection is how a WeChat App is connected. Direct Hold is the
+// connection this service creates. The connection does not change in place.
+type WechatConnection int32
+
+const (
+	WechatConnection_WECHAT_CONNECTION_UNSPECIFIED WechatConnection = 0
+	WechatConnection_WECHAT_CONNECTION_DIRECT_HOLD WechatConnection = 1
+)
+
+// Enum value maps for WechatConnection.
+var (
+	WechatConnection_name = map[int32]string{
+		0: "WECHAT_CONNECTION_UNSPECIFIED",
+		1: "WECHAT_CONNECTION_DIRECT_HOLD",
+	}
+	WechatConnection_value = map[string]int32{
+		"WECHAT_CONNECTION_UNSPECIFIED": 0,
+		"WECHAT_CONNECTION_DIRECT_HOLD": 1,
+	}
+)
+
+func (x WechatConnection) Enum() *WechatConnection {
+	p := new(WechatConnection)
+	*p = x
+	return p
+}
+
+func (x WechatConnection) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (WechatConnection) Descriptor() protoreflect.EnumDescriptor {
+	return file_wechat_v1_wechat_proto_enumTypes[2].Descriptor()
+}
+
+func (WechatConnection) Type() protoreflect.EnumType {
+	return &file_wechat_v1_wechat_proto_enumTypes[2]
+}
+
+func (x WechatConnection) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use WechatConnection.Descriptor instead.
+func (WechatConnection) EnumDescriptor() ([]byte, []int) {
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{2}
+}
+
 // WechatPlatform is one WeChat Platform registration (微信平台). The
 // component secret, Token, and EncodingAESKey never cross the wire —
 // every response carries only their masks (ADR 0029).
@@ -234,6 +384,305 @@ func (x *WechatPlatformSet) GetNextPageToken() string {
 	return ""
 }
 
+// WechatApp is one WeChat App (微信应用) connected by Direct Hold. The
+// AppSecret and the Push Secret never cross the wire on this message —
+// every read carries only their masks (ADR 0029). The generated Token and
+// EncodingAESKey are returned in full only on WechatAppPushSecret.
+type WechatApp struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Snowflake ID.
+	AppId int64 `protobuf:"varint,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	// Display name.
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// WeChat AppID. Immutable for the life of the row. Unique among apps
+	// that are not withdrawn, independently of any platform component AppID.
+	WxAppId string        `protobuf:"bytes,3,opt,name=wx_app_id,json=wxAppId,proto3" json:"wx_app_id,omitempty"`
+	AppType WechatAppType `protobuf:"varint,4,opt,name=app_type,json=appType,proto3,enum=wechat.v1.WechatAppType" json:"app_type,omitempty"`
+	// Empty for a mini program.
+	AccountKind WechatAccountKind `protobuf:"varint,5,opt,name=account_kind,json=accountKind,proto3,enum=wechat.v1.WechatAccountKind" json:"account_kind,omitempty"`
+	Connection  WechatConnection  `protobuf:"varint,6,opt,name=connection,proto3,enum=wechat.v1.WechatConnection" json:"connection,omitempty"`
+	// Mask of the AppSecret, like "****ab12".
+	AppSecretMask string `protobuf:"bytes,7,opt,name=app_secret_mask,json=appSecretMask,proto3" json:"app_secret_mask,omitempty"`
+	// Mask of the Push Secret Token.
+	TokenMask string `protobuf:"bytes,8,opt,name=token_mask,json=tokenMask,proto3" json:"token_mask,omitempty"`
+	// Mask of the Push Secret EncodingAESKey.
+	EncodingAesKeyMask string `protobuf:"bytes,9,opt,name=encoding_aes_key_mask,json=encodingAesKeyMask,proto3" json:"encoding_aes_key_mask,omitempty"`
+	// This app's own callback address.
+	CallbackAddress string `protobuf:"bytes,10,opt,name=callback_address,json=callbackAddress,proto3" json:"callback_address,omitempty"`
+	// Suspension is an operator switch. It is not withdrawal.
+	Suspended bool `protobuf:"varint,11,opt,name=suspended,proto3" json:"suspended,omitempty"`
+	// Master-key version the ciphertext was written under (ADR 0018).
+	KeyVersion int32 `protobuf:"varint,12,opt,name=key_version,json=keyVersion,proto3" json:"key_version,omitempty"`
+	// Audit: who created/updated. Filled from the authenticated identity.
+	CreateBy      int64                  `protobuf:"varint,13,opt,name=create_by,json=createBy,proto3" json:"create_by,omitempty"`
+	UpdateBy      int64                  `protobuf:"varint,14,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WechatApp) Reset() {
+	*x = WechatApp{}
+	mi := &file_wechat_v1_wechat_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WechatApp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WechatApp) ProtoMessage() {}
+
+func (x *WechatApp) ProtoReflect() protoreflect.Message {
+	mi := &file_wechat_v1_wechat_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WechatApp.ProtoReflect.Descriptor instead.
+func (*WechatApp) Descriptor() ([]byte, []int) {
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *WechatApp) GetAppId() int64 {
+	if x != nil {
+		return x.AppId
+	}
+	return 0
+}
+
+func (x *WechatApp) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *WechatApp) GetWxAppId() string {
+	if x != nil {
+		return x.WxAppId
+	}
+	return ""
+}
+
+func (x *WechatApp) GetAppType() WechatAppType {
+	if x != nil {
+		return x.AppType
+	}
+	return WechatAppType_WECHAT_APP_TYPE_UNSPECIFIED
+}
+
+func (x *WechatApp) GetAccountKind() WechatAccountKind {
+	if x != nil {
+		return x.AccountKind
+	}
+	return WechatAccountKind_WECHAT_ACCOUNT_KIND_UNSPECIFIED
+}
+
+func (x *WechatApp) GetConnection() WechatConnection {
+	if x != nil {
+		return x.Connection
+	}
+	return WechatConnection_WECHAT_CONNECTION_UNSPECIFIED
+}
+
+func (x *WechatApp) GetAppSecretMask() string {
+	if x != nil {
+		return x.AppSecretMask
+	}
+	return ""
+}
+
+func (x *WechatApp) GetTokenMask() string {
+	if x != nil {
+		return x.TokenMask
+	}
+	return ""
+}
+
+func (x *WechatApp) GetEncodingAesKeyMask() string {
+	if x != nil {
+		return x.EncodingAesKeyMask
+	}
+	return ""
+}
+
+func (x *WechatApp) GetCallbackAddress() string {
+	if x != nil {
+		return x.CallbackAddress
+	}
+	return ""
+}
+
+func (x *WechatApp) GetSuspended() bool {
+	if x != nil {
+		return x.Suspended
+	}
+	return false
+}
+
+func (x *WechatApp) GetKeyVersion() int32 {
+	if x != nil {
+		return x.KeyVersion
+	}
+	return 0
+}
+
+func (x *WechatApp) GetCreateBy() int64 {
+	if x != nil {
+		return x.CreateBy
+	}
+	return 0
+}
+
+func (x *WechatApp) GetUpdateBy() int64 {
+	if x != nil {
+		return x.UpdateBy
+	}
+	return 0
+}
+
+func (x *WechatApp) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *WechatApp) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+// WechatAppSet is a page of WeChat Apps that are not withdrawn.
+type WechatAppSet struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Apps  []*WechatApp           `protobuf:"bytes,1,rep,name=apps,proto3" json:"apps,omitempty"`
+	// Opaque token for the next page; empty when on the last page.
+	NextPageToken string `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WechatAppSet) Reset() {
+	*x = WechatAppSet{}
+	mi := &file_wechat_v1_wechat_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WechatAppSet) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WechatAppSet) ProtoMessage() {}
+
+func (x *WechatAppSet) ProtoReflect() protoreflect.Message {
+	mi := &file_wechat_v1_wechat_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WechatAppSet.ProtoReflect.Descriptor instead.
+func (*WechatAppSet) Descriptor() ([]byte, []int) {
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *WechatAppSet) GetApps() []*WechatApp {
+	if x != nil {
+		return x.Apps
+	}
+	return nil
+}
+
+func (x *WechatAppSet) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+// WechatAppPushSecret is the one response that returns a generated Push
+// Secret in full: the app (masks only) plus the Token and EncodingAESKey
+// just generated. Later reads return WechatApp and never this pair.
+type WechatAppPushSecret struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	App   *WechatApp             `protobuf:"bytes,1,opt,name=app,proto3" json:"app,omitempty"`
+	// Messaging Token, in full, this once.
+	Token string `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	// EncodingAESKey, in full, this once.
+	EncodingAesKey string `protobuf:"bytes,3,opt,name=encoding_aes_key,json=encodingAesKey,proto3" json:"encoding_aes_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *WechatAppPushSecret) Reset() {
+	*x = WechatAppPushSecret{}
+	mi := &file_wechat_v1_wechat_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WechatAppPushSecret) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WechatAppPushSecret) ProtoMessage() {}
+
+func (x *WechatAppPushSecret) ProtoReflect() protoreflect.Message {
+	mi := &file_wechat_v1_wechat_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WechatAppPushSecret.ProtoReflect.Descriptor instead.
+func (*WechatAppPushSecret) Descriptor() ([]byte, []int) {
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *WechatAppPushSecret) GetApp() *WechatApp {
+	if x != nil {
+		return x.App
+	}
+	return nil
+}
+
+func (x *WechatAppPushSecret) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *WechatAppPushSecret) GetEncodingAesKey() string {
+	if x != nil {
+		return x.EncodingAesKey
+	}
+	return ""
+}
+
 type CreateWechatPlatformRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Required. Display name, at most 64 characters.
@@ -252,7 +701,7 @@ type CreateWechatPlatformRequest struct {
 
 func (x *CreateWechatPlatformRequest) Reset() {
 	*x = CreateWechatPlatformRequest{}
-	mi := &file_wechat_v1_wechat_proto_msgTypes[2]
+	mi := &file_wechat_v1_wechat_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -264,7 +713,7 @@ func (x *CreateWechatPlatformRequest) String() string {
 func (*CreateWechatPlatformRequest) ProtoMessage() {}
 
 func (x *CreateWechatPlatformRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_wechat_v1_wechat_proto_msgTypes[2]
+	mi := &file_wechat_v1_wechat_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -277,7 +726,7 @@ func (x *CreateWechatPlatformRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateWechatPlatformRequest.ProtoReflect.Descriptor instead.
 func (*CreateWechatPlatformRequest) Descriptor() ([]byte, []int) {
-	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{2}
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CreateWechatPlatformRequest) GetName() string {
@@ -333,7 +782,7 @@ type ListWechatPlatformsRequest struct {
 
 func (x *ListWechatPlatformsRequest) Reset() {
 	*x = ListWechatPlatformsRequest{}
-	mi := &file_wechat_v1_wechat_proto_msgTypes[3]
+	mi := &file_wechat_v1_wechat_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -345,7 +794,7 @@ func (x *ListWechatPlatformsRequest) String() string {
 func (*ListWechatPlatformsRequest) ProtoMessage() {}
 
 func (x *ListWechatPlatformsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_wechat_v1_wechat_proto_msgTypes[3]
+	mi := &file_wechat_v1_wechat_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -358,7 +807,7 @@ func (x *ListWechatPlatformsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWechatPlatformsRequest.ProtoReflect.Descriptor instead.
 func (*ListWechatPlatformsRequest) Descriptor() ([]byte, []int) {
-	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{3}
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListWechatPlatformsRequest) GetPageSize() int32 {
@@ -399,7 +848,7 @@ type GetWechatPlatformRequest struct {
 
 func (x *GetWechatPlatformRequest) Reset() {
 	*x = GetWechatPlatformRequest{}
-	mi := &file_wechat_v1_wechat_proto_msgTypes[4]
+	mi := &file_wechat_v1_wechat_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -411,7 +860,7 @@ func (x *GetWechatPlatformRequest) String() string {
 func (*GetWechatPlatformRequest) ProtoMessage() {}
 
 func (x *GetWechatPlatformRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_wechat_v1_wechat_proto_msgTypes[4]
+	mi := &file_wechat_v1_wechat_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -424,7 +873,7 @@ func (x *GetWechatPlatformRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWechatPlatformRequest.ProtoReflect.Descriptor instead.
 func (*GetWechatPlatformRequest) Descriptor() ([]byte, []int) {
-	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{4}
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetWechatPlatformRequest) GetPlatformId() int64 {
@@ -455,7 +904,7 @@ type UpdateWechatPlatformRequest struct {
 
 func (x *UpdateWechatPlatformRequest) Reset() {
 	*x = UpdateWechatPlatformRequest{}
-	mi := &file_wechat_v1_wechat_proto_msgTypes[5]
+	mi := &file_wechat_v1_wechat_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -467,7 +916,7 @@ func (x *UpdateWechatPlatformRequest) String() string {
 func (*UpdateWechatPlatformRequest) ProtoMessage() {}
 
 func (x *UpdateWechatPlatformRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_wechat_v1_wechat_proto_msgTypes[5]
+	mi := &file_wechat_v1_wechat_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -480,7 +929,7 @@ func (x *UpdateWechatPlatformRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateWechatPlatformRequest.ProtoReflect.Descriptor instead.
 func (*UpdateWechatPlatformRequest) Descriptor() ([]byte, []int) {
-	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{5}
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UpdateWechatPlatformRequest) GetPlatformId() int64 {
@@ -535,7 +984,7 @@ type WithdrawWechatPlatformRequest struct {
 
 func (x *WithdrawWechatPlatformRequest) Reset() {
 	*x = WithdrawWechatPlatformRequest{}
-	mi := &file_wechat_v1_wechat_proto_msgTypes[6]
+	mi := &file_wechat_v1_wechat_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -547,7 +996,7 @@ func (x *WithdrawWechatPlatformRequest) String() string {
 func (*WithdrawWechatPlatformRequest) ProtoMessage() {}
 
 func (x *WithdrawWechatPlatformRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_wechat_v1_wechat_proto_msgTypes[6]
+	mi := &file_wechat_v1_wechat_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -560,7 +1009,7 @@ func (x *WithdrawWechatPlatformRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WithdrawWechatPlatformRequest.ProtoReflect.Descriptor instead.
 func (*WithdrawWechatPlatformRequest) Descriptor() ([]byte, []int) {
-	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{6}
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *WithdrawWechatPlatformRequest) GetPlatformId() int64 {
@@ -580,7 +1029,7 @@ type ProbeWechatPlatformRequest struct {
 
 func (x *ProbeWechatPlatformRequest) Reset() {
 	*x = ProbeWechatPlatformRequest{}
-	mi := &file_wechat_v1_wechat_proto_msgTypes[7]
+	mi := &file_wechat_v1_wechat_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -592,7 +1041,7 @@ func (x *ProbeWechatPlatformRequest) String() string {
 func (*ProbeWechatPlatformRequest) ProtoMessage() {}
 
 func (x *ProbeWechatPlatformRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_wechat_v1_wechat_proto_msgTypes[7]
+	mi := &file_wechat_v1_wechat_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -605,7 +1054,7 @@ func (x *ProbeWechatPlatformRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProbeWechatPlatformRequest.ProtoReflect.Descriptor instead.
 func (*ProbeWechatPlatformRequest) Descriptor() ([]byte, []int) {
-	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{7}
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ProbeWechatPlatformRequest) GetPlatformId() int64 {
@@ -628,7 +1077,7 @@ type ProbeWechatPlatformResult struct {
 
 func (x *ProbeWechatPlatformResult) Reset() {
 	*x = ProbeWechatPlatformResult{}
-	mi := &file_wechat_v1_wechat_proto_msgTypes[8]
+	mi := &file_wechat_v1_wechat_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -640,7 +1089,7 @@ func (x *ProbeWechatPlatformResult) String() string {
 func (*ProbeWechatPlatformResult) ProtoMessage() {}
 
 func (x *ProbeWechatPlatformResult) ProtoReflect() protoreflect.Message {
-	mi := &file_wechat_v1_wechat_proto_msgTypes[8]
+	mi := &file_wechat_v1_wechat_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -653,7 +1102,7 @@ func (x *ProbeWechatPlatformResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProbeWechatPlatformResult.ProtoReflect.Descriptor instead.
 func (*ProbeWechatPlatformResult) Descriptor() ([]byte, []int) {
-	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{8}
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ProbeWechatPlatformResult) GetOk() bool {
@@ -668,6 +1117,428 @@ func (x *ProbeWechatPlatformResult) GetMessage() string {
 		return x.Message
 	}
 	return ""
+}
+
+type CreateWechatAppRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. Display name, at most 64 characters.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Required. WeChat AppID. Unique among apps that are not withdrawn.
+	WxAppId string `protobuf:"bytes,2,opt,name=wx_app_id,json=wxAppId,proto3" json:"wx_app_id,omitempty"`
+	// Required. Mini program or official account.
+	AppType WechatAppType `protobuf:"varint,3,opt,name=app_type,json=appType,proto3,enum=wechat.v1.WechatAppType" json:"app_type,omitempty"`
+	// Required for an official account: Service Account or Subscription
+	// Account. Must be unset for a mini program.
+	AccountKind WechatAccountKind `protobuf:"varint,4,opt,name=account_kind,json=accountKind,proto3,enum=wechat.v1.WechatAccountKind" json:"account_kind,omitempty"`
+	// Required. AppSecret. Stored as ciphertext; echoed as a mask. Never
+	// returned in full.
+	AppSecret     string `protobuf:"bytes,5,opt,name=app_secret,json=appSecret,proto3" json:"app_secret,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateWechatAppRequest) Reset() {
+	*x = CreateWechatAppRequest{}
+	mi := &file_wechat_v1_wechat_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateWechatAppRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateWechatAppRequest) ProtoMessage() {}
+
+func (x *CreateWechatAppRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wechat_v1_wechat_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateWechatAppRequest.ProtoReflect.Descriptor instead.
+func (*CreateWechatAppRequest) Descriptor() ([]byte, []int) {
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *CreateWechatAppRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateWechatAppRequest) GetWxAppId() string {
+	if x != nil {
+		return x.WxAppId
+	}
+	return ""
+}
+
+func (x *CreateWechatAppRequest) GetAppType() WechatAppType {
+	if x != nil {
+		return x.AppType
+	}
+	return WechatAppType_WECHAT_APP_TYPE_UNSPECIFIED
+}
+
+func (x *CreateWechatAppRequest) GetAccountKind() WechatAccountKind {
+	if x != nil {
+		return x.AccountKind
+	}
+	return WechatAccountKind_WECHAT_ACCOUNT_KIND_UNSPECIFIED
+}
+
+func (x *CreateWechatAppRequest) GetAppSecret() string {
+	if x != nil {
+		return x.AppSecret
+	}
+	return ""
+}
+
+type ListWechatAppsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional. Page size.
+	PageSize int32 `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	// Optional. Page token from a previous response.
+	PageToken string `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	// Optional. AIP-160 filter. Supported fields:
+	//   - `name` (e.g. `name="演示小程序"`, exact)
+	//   - `wx_app_id` (e.g. `wx_app_id="wx123"`)
+	//   - `app_type` (e.g. `app_type="mini_program"`)
+	//   - `account_kind` (e.g. `account_kind="service_account"`)
+	Filter string `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty"`
+	// Optional. AIP-132 order, e.g. `id desc` (the default).
+	OrderBy       string `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWechatAppsRequest) Reset() {
+	*x = ListWechatAppsRequest{}
+	mi := &file_wechat_v1_wechat_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWechatAppsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWechatAppsRequest) ProtoMessage() {}
+
+func (x *ListWechatAppsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wechat_v1_wechat_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWechatAppsRequest.ProtoReflect.Descriptor instead.
+func (*ListWechatAppsRequest) Descriptor() ([]byte, []int) {
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ListWechatAppsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListWechatAppsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+func (x *ListWechatAppsRequest) GetFilter() string {
+	if x != nil {
+		return x.Filter
+	}
+	return ""
+}
+
+func (x *ListWechatAppsRequest) GetOrderBy() string {
+	if x != nil {
+		return x.OrderBy
+	}
+	return ""
+}
+
+type GetWechatAppRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The id of the app to retrieve.
+	AppId         int64 `protobuf:"varint,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWechatAppRequest) Reset() {
+	*x = GetWechatAppRequest{}
+	mi := &file_wechat_v1_wechat_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWechatAppRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWechatAppRequest) ProtoMessage() {}
+
+func (x *GetWechatAppRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wechat_v1_wechat_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWechatAppRequest.ProtoReflect.Descriptor instead.
+func (*GetWechatAppRequest) Descriptor() ([]byte, []int) {
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GetWechatAppRequest) GetAppId() int64 {
+	if x != nil {
+		return x.AppId
+	}
+	return 0
+}
+
+type UpdateWechatAppRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The id of the app to update.
+	AppId int64 `protobuf:"varint,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	// Required. Display name.
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Optional. Must be empty or equal to the stored WeChat AppID.
+	// A different value is refused; the stored value never changes.
+	WxAppId string `protobuf:"bytes,3,opt,name=wx_app_id,json=wxAppId,proto3" json:"wx_app_id,omitempty"`
+	// Optional. Blank keeps the stored AppSecret. The response never
+	// echoes this value.
+	AppSecret     string `protobuf:"bytes,4,opt,name=app_secret,json=appSecret,proto3" json:"app_secret,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateWechatAppRequest) Reset() {
+	*x = UpdateWechatAppRequest{}
+	mi := &file_wechat_v1_wechat_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateWechatAppRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateWechatAppRequest) ProtoMessage() {}
+
+func (x *UpdateWechatAppRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wechat_v1_wechat_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateWechatAppRequest.ProtoReflect.Descriptor instead.
+func (*UpdateWechatAppRequest) Descriptor() ([]byte, []int) {
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *UpdateWechatAppRequest) GetAppId() int64 {
+	if x != nil {
+		return x.AppId
+	}
+	return 0
+}
+
+func (x *UpdateWechatAppRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateWechatAppRequest) GetWxAppId() string {
+	if x != nil {
+		return x.WxAppId
+	}
+	return ""
+}
+
+func (x *UpdateWechatAppRequest) GetAppSecret() string {
+	if x != nil {
+		return x.AppSecret
+	}
+	return ""
+}
+
+type SetWechatAppSuspendedRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The id of the app.
+	AppId int64 `protobuf:"varint,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	// True suspends the app; false resumes it. Omitted means resume.
+	Suspended     bool `protobuf:"varint,2,opt,name=suspended,proto3" json:"suspended,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetWechatAppSuspendedRequest) Reset() {
+	*x = SetWechatAppSuspendedRequest{}
+	mi := &file_wechat_v1_wechat_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetWechatAppSuspendedRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetWechatAppSuspendedRequest) ProtoMessage() {}
+
+func (x *SetWechatAppSuspendedRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wechat_v1_wechat_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetWechatAppSuspendedRequest.ProtoReflect.Descriptor instead.
+func (*SetWechatAppSuspendedRequest) Descriptor() ([]byte, []int) {
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *SetWechatAppSuspendedRequest) GetAppId() int64 {
+	if x != nil {
+		return x.AppId
+	}
+	return 0
+}
+
+func (x *SetWechatAppSuspendedRequest) GetSuspended() bool {
+	if x != nil {
+		return x.Suspended
+	}
+	return false
+}
+
+type RegenerateWechatAppPushSecretRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The id of the Direct Hold whose Push Secret is regenerated.
+	AppId         int64 `protobuf:"varint,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegenerateWechatAppPushSecretRequest) Reset() {
+	*x = RegenerateWechatAppPushSecretRequest{}
+	mi := &file_wechat_v1_wechat_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegenerateWechatAppPushSecretRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegenerateWechatAppPushSecretRequest) ProtoMessage() {}
+
+func (x *RegenerateWechatAppPushSecretRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wechat_v1_wechat_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegenerateWechatAppPushSecretRequest.ProtoReflect.Descriptor instead.
+func (*RegenerateWechatAppPushSecretRequest) Descriptor() ([]byte, []int) {
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *RegenerateWechatAppPushSecretRequest) GetAppId() int64 {
+	if x != nil {
+		return x.AppId
+	}
+	return 0
+}
+
+type WithdrawWechatAppRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The id of the app to withdraw.
+	AppId         int64 `protobuf:"varint,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WithdrawWechatAppRequest) Reset() {
+	*x = WithdrawWechatAppRequest{}
+	mi := &file_wechat_v1_wechat_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WithdrawWechatAppRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WithdrawWechatAppRequest) ProtoMessage() {}
+
+func (x *WithdrawWechatAppRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wechat_v1_wechat_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WithdrawWechatAppRequest.ProtoReflect.Descriptor instead.
+func (*WithdrawWechatAppRequest) Descriptor() ([]byte, []int) {
+	return file_wechat_v1_wechat_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *WithdrawWechatAppRequest) GetAppId() int64 {
+	if x != nil {
+		return x.AppId
+	}
+	return 0
 }
 
 var File_wechat_v1_wechat_proto protoreflect.FileDescriptor
@@ -697,7 +1568,38 @@ const file_wechat_v1_wechat_proto_rawDesc = "" +
 	"\fcallback_url\x18\r \x01(\tR\vcallbackUrl\"t\n" +
 	"\x11WechatPlatformSet\x127\n" +
 	"\tplatforms\x18\x01 \x03(\v2\x19.wechat.v1.WechatPlatformR\tplatforms\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xdf\x01\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\x99\x05\n" +
+	"\tWechatApp\x12\x15\n" +
+	"\x06app_id\x18\x01 \x01(\x03R\x05appId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
+	"\twx_app_id\x18\x03 \x01(\tR\awxAppId\x123\n" +
+	"\bapp_type\x18\x04 \x01(\x0e2\x18.wechat.v1.WechatAppTypeR\aappType\x12?\n" +
+	"\faccount_kind\x18\x05 \x01(\x0e2\x1c.wechat.v1.WechatAccountKindR\vaccountKind\x12;\n" +
+	"\n" +
+	"connection\x18\x06 \x01(\x0e2\x1b.wechat.v1.WechatConnectionR\n" +
+	"connection\x12&\n" +
+	"\x0fapp_secret_mask\x18\a \x01(\tR\rappSecretMask\x12\x1d\n" +
+	"\n" +
+	"token_mask\x18\b \x01(\tR\ttokenMask\x121\n" +
+	"\x15encoding_aes_key_mask\x18\t \x01(\tR\x12encodingAesKeyMask\x12)\n" +
+	"\x10callback_address\x18\n" +
+	" \x01(\tR\x0fcallbackAddress\x12\x1c\n" +
+	"\tsuspended\x18\v \x01(\bR\tsuspended\x12\x1f\n" +
+	"\vkey_version\x18\f \x01(\x05R\n" +
+	"keyVersion\x12\x1b\n" +
+	"\tcreate_by\x18\r \x01(\x03R\bcreateBy\x12\x1b\n" +
+	"\tupdate_by\x18\x0e \x01(\x03R\bupdateBy\x129\n" +
+	"\n" +
+	"created_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"`\n" +
+	"\fWechatAppSet\x12(\n" +
+	"\x04apps\x18\x01 \x03(\v2\x14.wechat.v1.WechatAppR\x04apps\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"}\n" +
+	"\x13WechatAppPushSecret\x12&\n" +
+	"\x03app\x18\x01 \x01(\v2\x14.wechat.v1.WechatAppR\x03app\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\x12(\n" +
+	"\x10encoding_aes_key\x18\x03 \x01(\tR\x0eencodingAesKey\"\xdf\x01\n" +
 	"\x1bCreateWechatPlatformRequest\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x02R\x04name\x12-\n" +
 	"\x10component_app_id\x18\x02 \x01(\tB\x03\xe0A\x02R\x0ecomponentAppId\x12.\n" +
@@ -729,14 +1631,60 @@ const file_wechat_v1_wechat_proto_rawDesc = "" +
 	"platformId\"E\n" +
 	"\x19ProbeWechatPlatformResult\x12\x0e\n" +
 	"\x02ok\x18\x01 \x01(\bR\x02ok\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage2\x9c\x06\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xf1\x01\n" +
+	"\x16CreateWechatAppRequest\x12\x17\n" +
+	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x02R\x04name\x12\x1f\n" +
+	"\twx_app_id\x18\x02 \x01(\tB\x03\xe0A\x02R\awxAppId\x128\n" +
+	"\bapp_type\x18\x03 \x01(\x0e2\x18.wechat.v1.WechatAppTypeB\x03\xe0A\x02R\aappType\x12?\n" +
+	"\faccount_kind\x18\x04 \x01(\x0e2\x1c.wechat.v1.WechatAccountKindR\vaccountKind\x12\"\n" +
+	"\n" +
+	"app_secret\x18\x05 \x01(\tB\x03\xe0A\x02R\tappSecret\"\x86\x01\n" +
+	"\x15ListWechatAppsRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\x12\x16\n" +
+	"\x06filter\x18\x03 \x01(\tR\x06filter\x12\x19\n" +
+	"\border_by\x18\x04 \x01(\tR\aorderBy\"1\n" +
+	"\x13GetWechatAppRequest\x12\x1a\n" +
+	"\x06app_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x05appId\"\x88\x01\n" +
+	"\x16UpdateWechatAppRequest\x12\x1a\n" +
+	"\x06app_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x05appId\x12\x17\n" +
+	"\x04name\x18\x02 \x01(\tB\x03\xe0A\x02R\x04name\x12\x1a\n" +
+	"\twx_app_id\x18\x03 \x01(\tR\awxAppId\x12\x1d\n" +
+	"\n" +
+	"app_secret\x18\x04 \x01(\tR\tappSecret\"X\n" +
+	"\x1cSetWechatAppSuspendedRequest\x12\x1a\n" +
+	"\x06app_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x05appId\x12\x1c\n" +
+	"\tsuspended\x18\x02 \x01(\bR\tsuspended\"B\n" +
+	"$RegenerateWechatAppPushSecretRequest\x12\x1a\n" +
+	"\x06app_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x05appId\"6\n" +
+	"\x18WithdrawWechatAppRequest\x12\x1a\n" +
+	"\x06app_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x05appId*x\n" +
+	"\rWechatAppType\x12\x1f\n" +
+	"\x1bWECHAT_APP_TYPE_UNSPECIFIED\x10\x00\x12 \n" +
+	"\x1cWECHAT_APP_TYPE_MINI_PROGRAM\x10\x01\x12$\n" +
+	" WECHAT_APP_TYPE_OFFICIAL_ACCOUNT\x10\x02*\x7f\n" +
+	"\x11WechatAccountKind\x12#\n" +
+	"\x1fWECHAT_ACCOUNT_KIND_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bWECHAT_ACCOUNT_KIND_SERVICE\x10\x01\x12$\n" +
+	" WECHAT_ACCOUNT_KIND_SUBSCRIPTION\x10\x02*X\n" +
+	"\x10WechatConnection\x12!\n" +
+	"\x1dWECHAT_CONNECTION_UNSPECIFIED\x10\x00\x12!\n" +
+	"\x1dWECHAT_CONNECTION_DIRECT_HOLD\x10\x012\xd1\f\n" +
 	"\rWechatService\x12v\n" +
 	"\x14CreateWechatPlatform\x12&.wechat.v1.CreateWechatPlatformRequest\x1a\x19.wechat.v1.WechatPlatform\"\x1b\x82\xd3\xe4\x93\x02\x15:\x01*\"\x10/wechat/platform\x12t\n" +
 	"\x13ListWechatPlatforms\x12%.wechat.v1.ListWechatPlatformsRequest\x1a\x1c.wechat.v1.WechatPlatformSet\"\x18\x82\xd3\xe4\x93\x02\x12\x12\x10/wechat/platform\x12{\n" +
 	"\x11GetWechatPlatform\x12#.wechat.v1.GetWechatPlatformRequest\x1a\x19.wechat.v1.WechatPlatform\"&\x82\xd3\xe4\x93\x02 \x12\x1e/wechat/platform/{platform_id}\x12\x84\x01\n" +
 	"\x14UpdateWechatPlatform\x12&.wechat.v1.UpdateWechatPlatformRequest\x1a\x19.wechat.v1.WechatPlatform\")\x82\xd3\xe4\x93\x02#:\x01*2\x1e/wechat/platform/{platform_id}\x12\x82\x01\n" +
 	"\x16WithdrawWechatPlatform\x12(.wechat.v1.WithdrawWechatPlatformRequest\x1a\x16.google.protobuf.Empty\"&\x82\xd3\xe4\x93\x02 *\x1e/wechat/platform/{platform_id}\x12\x93\x01\n" +
-	"\x13ProbeWechatPlatform\x12%.wechat.v1.ProbeWechatPlatformRequest\x1a$.wechat.v1.ProbeWechatPlatformResult\"/\x82\xd3\xe4\x93\x02):\x01*\"$/wechat/platform/{platform_id}/probeB(\n" +
+	"\x13ProbeWechatPlatform\x12%.wechat.v1.ProbeWechatPlatformRequest\x1a$.wechat.v1.ProbeWechatPlatformResult\"/\x82\xd3\xe4\x93\x02):\x01*\"$/wechat/platform/{platform_id}/probe\x12l\n" +
+	"\x0fCreateWechatApp\x12!.wechat.v1.CreateWechatAppRequest\x1a\x1e.wechat.v1.WechatAppPushSecret\"\x16\x82\xd3\xe4\x93\x02\x10:\x01*\"\v/wechat/app\x12`\n" +
+	"\x0eListWechatApps\x12 .wechat.v1.ListWechatAppsRequest\x1a\x17.wechat.v1.WechatAppSet\"\x13\x82\xd3\xe4\x93\x02\r\x12\v/wechat/app\x12b\n" +
+	"\fGetWechatApp\x12\x1e.wechat.v1.GetWechatAppRequest\x1a\x14.wechat.v1.WechatApp\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/wechat/app/{app_id}\x12k\n" +
+	"\x0fUpdateWechatApp\x12!.wechat.v1.UpdateWechatAppRequest\x1a\x14.wechat.v1.WechatApp\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*2\x14/wechat/app/{app_id}\x12\x81\x01\n" +
+	"\x15SetWechatAppSuspended\x12'.wechat.v1.SetWechatAppSuspendedRequest\x1a\x14.wechat.v1.WechatApp\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/wechat/app/{app_id}/suspended\x12\x9d\x01\n" +
+	"\x1dRegenerateWechatAppPushSecret\x12/.wechat.v1.RegenerateWechatAppPushSecretRequest\x1a\x1e.wechat.v1.WechatAppPushSecret\"+\x82\xd3\xe4\x93\x02%:\x01*\" /wechat/app/{app_id}/push-secret\x12n\n" +
+	"\x11WithdrawWechatApp\x12#.wechat.v1.WithdrawWechatAppRequest\x1a\x16.google.protobuf.Empty\"\x1c\x82\xd3\xe4\x93\x02\x16*\x14/wechat/app/{app_id}B(\n" +
 	"\rapi.wechat.v1P\x01Z\x15glex/api/wechat/v1;v1b\x06proto3"
 
 var (
@@ -751,41 +1699,78 @@ func file_wechat_v1_wechat_proto_rawDescGZIP() []byte {
 	return file_wechat_v1_wechat_proto_rawDescData
 }
 
-var file_wechat_v1_wechat_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_wechat_v1_wechat_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_wechat_v1_wechat_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_wechat_v1_wechat_proto_goTypes = []any{
-	(*WechatPlatform)(nil),                // 0: wechat.v1.WechatPlatform
-	(*WechatPlatformSet)(nil),             // 1: wechat.v1.WechatPlatformSet
-	(*CreateWechatPlatformRequest)(nil),   // 2: wechat.v1.CreateWechatPlatformRequest
-	(*ListWechatPlatformsRequest)(nil),    // 3: wechat.v1.ListWechatPlatformsRequest
-	(*GetWechatPlatformRequest)(nil),      // 4: wechat.v1.GetWechatPlatformRequest
-	(*UpdateWechatPlatformRequest)(nil),   // 5: wechat.v1.UpdateWechatPlatformRequest
-	(*WithdrawWechatPlatformRequest)(nil), // 6: wechat.v1.WithdrawWechatPlatformRequest
-	(*ProbeWechatPlatformRequest)(nil),    // 7: wechat.v1.ProbeWechatPlatformRequest
-	(*ProbeWechatPlatformResult)(nil),     // 8: wechat.v1.ProbeWechatPlatformResult
-	(*timestamppb.Timestamp)(nil),         // 9: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                 // 10: google.protobuf.Empty
+	(WechatAppType)(0),                           // 0: wechat.v1.WechatAppType
+	(WechatAccountKind)(0),                       // 1: wechat.v1.WechatAccountKind
+	(WechatConnection)(0),                        // 2: wechat.v1.WechatConnection
+	(*WechatPlatform)(nil),                       // 3: wechat.v1.WechatPlatform
+	(*WechatPlatformSet)(nil),                    // 4: wechat.v1.WechatPlatformSet
+	(*WechatApp)(nil),                            // 5: wechat.v1.WechatApp
+	(*WechatAppSet)(nil),                         // 6: wechat.v1.WechatAppSet
+	(*WechatAppPushSecret)(nil),                  // 7: wechat.v1.WechatAppPushSecret
+	(*CreateWechatPlatformRequest)(nil),          // 8: wechat.v1.CreateWechatPlatformRequest
+	(*ListWechatPlatformsRequest)(nil),           // 9: wechat.v1.ListWechatPlatformsRequest
+	(*GetWechatPlatformRequest)(nil),             // 10: wechat.v1.GetWechatPlatformRequest
+	(*UpdateWechatPlatformRequest)(nil),          // 11: wechat.v1.UpdateWechatPlatformRequest
+	(*WithdrawWechatPlatformRequest)(nil),        // 12: wechat.v1.WithdrawWechatPlatformRequest
+	(*ProbeWechatPlatformRequest)(nil),           // 13: wechat.v1.ProbeWechatPlatformRequest
+	(*ProbeWechatPlatformResult)(nil),            // 14: wechat.v1.ProbeWechatPlatformResult
+	(*CreateWechatAppRequest)(nil),               // 15: wechat.v1.CreateWechatAppRequest
+	(*ListWechatAppsRequest)(nil),                // 16: wechat.v1.ListWechatAppsRequest
+	(*GetWechatAppRequest)(nil),                  // 17: wechat.v1.GetWechatAppRequest
+	(*UpdateWechatAppRequest)(nil),               // 18: wechat.v1.UpdateWechatAppRequest
+	(*SetWechatAppSuspendedRequest)(nil),         // 19: wechat.v1.SetWechatAppSuspendedRequest
+	(*RegenerateWechatAppPushSecretRequest)(nil), // 20: wechat.v1.RegenerateWechatAppPushSecretRequest
+	(*WithdrawWechatAppRequest)(nil),             // 21: wechat.v1.WithdrawWechatAppRequest
+	(*timestamppb.Timestamp)(nil),                // 22: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                        // 23: google.protobuf.Empty
 }
 var file_wechat_v1_wechat_proto_depIdxs = []int32{
-	9,  // 0: wechat.v1.WechatPlatform.created_at:type_name -> google.protobuf.Timestamp
-	9,  // 1: wechat.v1.WechatPlatform.updated_at:type_name -> google.protobuf.Timestamp
-	0,  // 2: wechat.v1.WechatPlatformSet.platforms:type_name -> wechat.v1.WechatPlatform
-	2,  // 3: wechat.v1.WechatService.CreateWechatPlatform:input_type -> wechat.v1.CreateWechatPlatformRequest
-	3,  // 4: wechat.v1.WechatService.ListWechatPlatforms:input_type -> wechat.v1.ListWechatPlatformsRequest
-	4,  // 5: wechat.v1.WechatService.GetWechatPlatform:input_type -> wechat.v1.GetWechatPlatformRequest
-	5,  // 6: wechat.v1.WechatService.UpdateWechatPlatform:input_type -> wechat.v1.UpdateWechatPlatformRequest
-	6,  // 7: wechat.v1.WechatService.WithdrawWechatPlatform:input_type -> wechat.v1.WithdrawWechatPlatformRequest
-	7,  // 8: wechat.v1.WechatService.ProbeWechatPlatform:input_type -> wechat.v1.ProbeWechatPlatformRequest
-	0,  // 9: wechat.v1.WechatService.CreateWechatPlatform:output_type -> wechat.v1.WechatPlatform
-	1,  // 10: wechat.v1.WechatService.ListWechatPlatforms:output_type -> wechat.v1.WechatPlatformSet
-	0,  // 11: wechat.v1.WechatService.GetWechatPlatform:output_type -> wechat.v1.WechatPlatform
-	0,  // 12: wechat.v1.WechatService.UpdateWechatPlatform:output_type -> wechat.v1.WechatPlatform
-	10, // 13: wechat.v1.WechatService.WithdrawWechatPlatform:output_type -> google.protobuf.Empty
-	8,  // 14: wechat.v1.WechatService.ProbeWechatPlatform:output_type -> wechat.v1.ProbeWechatPlatformResult
-	9,  // [9:15] is the sub-list for method output_type
-	3,  // [3:9] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	22, // 0: wechat.v1.WechatPlatform.created_at:type_name -> google.protobuf.Timestamp
+	22, // 1: wechat.v1.WechatPlatform.updated_at:type_name -> google.protobuf.Timestamp
+	3,  // 2: wechat.v1.WechatPlatformSet.platforms:type_name -> wechat.v1.WechatPlatform
+	0,  // 3: wechat.v1.WechatApp.app_type:type_name -> wechat.v1.WechatAppType
+	1,  // 4: wechat.v1.WechatApp.account_kind:type_name -> wechat.v1.WechatAccountKind
+	2,  // 5: wechat.v1.WechatApp.connection:type_name -> wechat.v1.WechatConnection
+	22, // 6: wechat.v1.WechatApp.created_at:type_name -> google.protobuf.Timestamp
+	22, // 7: wechat.v1.WechatApp.updated_at:type_name -> google.protobuf.Timestamp
+	5,  // 8: wechat.v1.WechatAppSet.apps:type_name -> wechat.v1.WechatApp
+	5,  // 9: wechat.v1.WechatAppPushSecret.app:type_name -> wechat.v1.WechatApp
+	0,  // 10: wechat.v1.CreateWechatAppRequest.app_type:type_name -> wechat.v1.WechatAppType
+	1,  // 11: wechat.v1.CreateWechatAppRequest.account_kind:type_name -> wechat.v1.WechatAccountKind
+	8,  // 12: wechat.v1.WechatService.CreateWechatPlatform:input_type -> wechat.v1.CreateWechatPlatformRequest
+	9,  // 13: wechat.v1.WechatService.ListWechatPlatforms:input_type -> wechat.v1.ListWechatPlatformsRequest
+	10, // 14: wechat.v1.WechatService.GetWechatPlatform:input_type -> wechat.v1.GetWechatPlatformRequest
+	11, // 15: wechat.v1.WechatService.UpdateWechatPlatform:input_type -> wechat.v1.UpdateWechatPlatformRequest
+	12, // 16: wechat.v1.WechatService.WithdrawWechatPlatform:input_type -> wechat.v1.WithdrawWechatPlatformRequest
+	13, // 17: wechat.v1.WechatService.ProbeWechatPlatform:input_type -> wechat.v1.ProbeWechatPlatformRequest
+	15, // 18: wechat.v1.WechatService.CreateWechatApp:input_type -> wechat.v1.CreateWechatAppRequest
+	16, // 19: wechat.v1.WechatService.ListWechatApps:input_type -> wechat.v1.ListWechatAppsRequest
+	17, // 20: wechat.v1.WechatService.GetWechatApp:input_type -> wechat.v1.GetWechatAppRequest
+	18, // 21: wechat.v1.WechatService.UpdateWechatApp:input_type -> wechat.v1.UpdateWechatAppRequest
+	19, // 22: wechat.v1.WechatService.SetWechatAppSuspended:input_type -> wechat.v1.SetWechatAppSuspendedRequest
+	20, // 23: wechat.v1.WechatService.RegenerateWechatAppPushSecret:input_type -> wechat.v1.RegenerateWechatAppPushSecretRequest
+	21, // 24: wechat.v1.WechatService.WithdrawWechatApp:input_type -> wechat.v1.WithdrawWechatAppRequest
+	3,  // 25: wechat.v1.WechatService.CreateWechatPlatform:output_type -> wechat.v1.WechatPlatform
+	4,  // 26: wechat.v1.WechatService.ListWechatPlatforms:output_type -> wechat.v1.WechatPlatformSet
+	3,  // 27: wechat.v1.WechatService.GetWechatPlatform:output_type -> wechat.v1.WechatPlatform
+	3,  // 28: wechat.v1.WechatService.UpdateWechatPlatform:output_type -> wechat.v1.WechatPlatform
+	23, // 29: wechat.v1.WechatService.WithdrawWechatPlatform:output_type -> google.protobuf.Empty
+	14, // 30: wechat.v1.WechatService.ProbeWechatPlatform:output_type -> wechat.v1.ProbeWechatPlatformResult
+	7,  // 31: wechat.v1.WechatService.CreateWechatApp:output_type -> wechat.v1.WechatAppPushSecret
+	6,  // 32: wechat.v1.WechatService.ListWechatApps:output_type -> wechat.v1.WechatAppSet
+	5,  // 33: wechat.v1.WechatService.GetWechatApp:output_type -> wechat.v1.WechatApp
+	5,  // 34: wechat.v1.WechatService.UpdateWechatApp:output_type -> wechat.v1.WechatApp
+	5,  // 35: wechat.v1.WechatService.SetWechatAppSuspended:output_type -> wechat.v1.WechatApp
+	7,  // 36: wechat.v1.WechatService.RegenerateWechatAppPushSecret:output_type -> wechat.v1.WechatAppPushSecret
+	23, // 37: wechat.v1.WechatService.WithdrawWechatApp:output_type -> google.protobuf.Empty
+	25, // [25:38] is the sub-list for method output_type
+	12, // [12:25] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_wechat_v1_wechat_proto_init() }
@@ -798,13 +1783,14 @@ func file_wechat_v1_wechat_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_wechat_v1_wechat_proto_rawDesc), len(file_wechat_v1_wechat_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   9,
+			NumEnums:      3,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_wechat_v1_wechat_proto_goTypes,
 		DependencyIndexes: file_wechat_v1_wechat_proto_depIdxs,
+		EnumInfos:         file_wechat_v1_wechat_proto_enumTypes,
 		MessageInfos:      file_wechat_v1_wechat_proto_msgTypes,
 	}.Build()
 	File_wechat_v1_wechat_proto = out.File
