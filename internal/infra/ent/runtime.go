@@ -1077,4 +1077,8 @@ func init() {
 	wechatplatformDescKeyVersion := wechatplatformFields[7].Descriptor()
 	// wechatplatform.DefaultKeyVersion holds the default value on creation for the key_version field.
 	wechatplatform.DefaultKeyVersion = wechatplatformDescKeyVersion.Default.(int)
+	// wechatplatformDescVerifyTicketCipher is the schema descriptor for verify_ticket_cipher field.
+	wechatplatformDescVerifyTicketCipher := wechatplatformFields[8].Descriptor()
+	// wechatplatform.DefaultVerifyTicketCipher holds the default value on creation for the verify_ticket_cipher field.
+	wechatplatform.DefaultVerifyTicketCipher = wechatplatformDescVerifyTicketCipher.Default.(string)
 }

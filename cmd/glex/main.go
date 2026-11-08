@@ -97,8 +97,12 @@ func main() {
 	// server shutdown. Lifecycle hooks run OnStop in LIFO order, so the
 	// sa-token Manager closes before the shared Data connections.
 	var app *kratos.App
+	wechatCfg := bc.GetWechat()
+	if wechatCfg == nil {
+		wechatCfg = &conf.Wechat{}
+	}
 	fxApp := fx.New(
-		fx.Supply(bc.Server, bc.Data, bc.Auth, bc.File, bc.User, bc.Pay, bc.Job, logger),
+		fx.Supply(bc.Server, bc.Data, bc.Auth, bc.File, bc.User, bc.Pay, bc.Job, wechatCfg, logger),
 		appModule,
 		fx.Populate(&app),
 	)

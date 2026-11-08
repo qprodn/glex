@@ -24414,6 +24414,7 @@ type WechatPlatformMutation struct {
 	encoding_aes_key_mask *string
 	key_version           *int
 	addkey_version        *int
+	verify_ticket_cipher  *string
 	clearedFields         map[string]struct{}
 	done                  bool
 	oldValue              func(context.Context) (*WechatPlatform, error)
@@ -25057,6 +25058,42 @@ func (m *WechatPlatformMutation) ResetKeyVersion() {
 	m.addkey_version = nil
 }
 
+// SetVerifyTicketCipher sets the "verify_ticket_cipher" field.
+func (m *WechatPlatformMutation) SetVerifyTicketCipher(s string) {
+	m.verify_ticket_cipher = &s
+}
+
+// VerifyTicketCipher returns the value of the "verify_ticket_cipher" field in the mutation.
+func (m *WechatPlatformMutation) VerifyTicketCipher() (r string, exists bool) {
+	v := m.verify_ticket_cipher
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldVerifyTicketCipher returns the old "verify_ticket_cipher" field's value of the WechatPlatform entity.
+// If the WechatPlatform object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatPlatformMutation) OldVerifyTicketCipher(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldVerifyTicketCipher is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldVerifyTicketCipher requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldVerifyTicketCipher: %w", err)
+	}
+	return oldValue.VerifyTicketCipher, nil
+}
+
+// ResetVerifyTicketCipher resets all changes to the "verify_ticket_cipher" field.
+func (m *WechatPlatformMutation) ResetVerifyTicketCipher() {
+	m.verify_ticket_cipher = nil
+}
+
 // Where appends a list predicates to the WechatPlatformMutation builder.
 func (m *WechatPlatformMutation) Where(ps ...predicate.WechatPlatform) {
 	m.predicates = append(m.predicates, ps...)
@@ -25091,7 +25128,7 @@ func (m *WechatPlatformMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *WechatPlatformMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.create_by != nil {
 		fields = append(fields, wechatplatform.FieldCreateBy)
 	}
@@ -25128,6 +25165,9 @@ func (m *WechatPlatformMutation) Fields() []string {
 	if m.key_version != nil {
 		fields = append(fields, wechatplatform.FieldKeyVersion)
 	}
+	if m.verify_ticket_cipher != nil {
+		fields = append(fields, wechatplatform.FieldVerifyTicketCipher)
+	}
 	return fields
 }
 
@@ -25160,6 +25200,8 @@ func (m *WechatPlatformMutation) Field(name string) (ent.Value, bool) {
 		return m.EncodingAesKeyMask()
 	case wechatplatform.FieldKeyVersion:
 		return m.KeyVersion()
+	case wechatplatform.FieldVerifyTicketCipher:
+		return m.VerifyTicketCipher()
 	}
 	return nil, false
 }
@@ -25193,6 +25235,8 @@ func (m *WechatPlatformMutation) OldField(ctx context.Context, name string) (ent
 		return m.OldEncodingAesKeyMask(ctx)
 	case wechatplatform.FieldKeyVersion:
 		return m.OldKeyVersion(ctx)
+	case wechatplatform.FieldVerifyTicketCipher:
+		return m.OldVerifyTicketCipher(ctx)
 	}
 	return nil, fmt.Errorf("unknown WechatPlatform field %s", name)
 }
@@ -25285,6 +25329,13 @@ func (m *WechatPlatformMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetKeyVersion(v)
+		return nil
+	case wechatplatform.FieldVerifyTicketCipher:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetVerifyTicketCipher(v)
 		return nil
 	}
 	return fmt.Errorf("unknown WechatPlatform field %s", name)
@@ -25430,6 +25481,9 @@ func (m *WechatPlatformMutation) ResetField(name string) error {
 		return nil
 	case wechatplatform.FieldKeyVersion:
 		m.ResetKeyVersion()
+		return nil
+	case wechatplatform.FieldVerifyTicketCipher:
+		m.ResetVerifyTicketCipher()
 		return nil
 	}
 	return fmt.Errorf("unknown WechatPlatform field %s", name)

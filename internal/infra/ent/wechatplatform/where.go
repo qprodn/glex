@@ -114,6 +114,11 @@ func KeyVersion(v int) predicate.WechatPlatform {
 	return predicate.WechatPlatform(sql.FieldEQ(FieldKeyVersion, v))
 }
 
+// VerifyTicketCipher applies equality check predicate on the "verify_ticket_cipher" field. It's identical to VerifyTicketCipherEQ.
+func VerifyTicketCipher(v string) predicate.WechatPlatform {
+	return predicate.WechatPlatform(sql.FieldEQ(FieldVerifyTicketCipher, v))
+}
+
 // CreateByEQ applies the EQ predicate on the "create_by" field.
 func CreateByEQ(v int64) predicate.WechatPlatform {
 	return predicate.WechatPlatform(sql.FieldEQ(FieldCreateBy, v))
@@ -772,6 +777,71 @@ func KeyVersionLT(v int) predicate.WechatPlatform {
 // KeyVersionLTE applies the LTE predicate on the "key_version" field.
 func KeyVersionLTE(v int) predicate.WechatPlatform {
 	return predicate.WechatPlatform(sql.FieldLTE(FieldKeyVersion, v))
+}
+
+// VerifyTicketCipherEQ applies the EQ predicate on the "verify_ticket_cipher" field.
+func VerifyTicketCipherEQ(v string) predicate.WechatPlatform {
+	return predicate.WechatPlatform(sql.FieldEQ(FieldVerifyTicketCipher, v))
+}
+
+// VerifyTicketCipherNEQ applies the NEQ predicate on the "verify_ticket_cipher" field.
+func VerifyTicketCipherNEQ(v string) predicate.WechatPlatform {
+	return predicate.WechatPlatform(sql.FieldNEQ(FieldVerifyTicketCipher, v))
+}
+
+// VerifyTicketCipherIn applies the In predicate on the "verify_ticket_cipher" field.
+func VerifyTicketCipherIn(vs ...string) predicate.WechatPlatform {
+	return predicate.WechatPlatform(sql.FieldIn(FieldVerifyTicketCipher, vs...))
+}
+
+// VerifyTicketCipherNotIn applies the NotIn predicate on the "verify_ticket_cipher" field.
+func VerifyTicketCipherNotIn(vs ...string) predicate.WechatPlatform {
+	return predicate.WechatPlatform(sql.FieldNotIn(FieldVerifyTicketCipher, vs...))
+}
+
+// VerifyTicketCipherGT applies the GT predicate on the "verify_ticket_cipher" field.
+func VerifyTicketCipherGT(v string) predicate.WechatPlatform {
+	return predicate.WechatPlatform(sql.FieldGT(FieldVerifyTicketCipher, v))
+}
+
+// VerifyTicketCipherGTE applies the GTE predicate on the "verify_ticket_cipher" field.
+func VerifyTicketCipherGTE(v string) predicate.WechatPlatform {
+	return predicate.WechatPlatform(sql.FieldGTE(FieldVerifyTicketCipher, v))
+}
+
+// VerifyTicketCipherLT applies the LT predicate on the "verify_ticket_cipher" field.
+func VerifyTicketCipherLT(v string) predicate.WechatPlatform {
+	return predicate.WechatPlatform(sql.FieldLT(FieldVerifyTicketCipher, v))
+}
+
+// VerifyTicketCipherLTE applies the LTE predicate on the "verify_ticket_cipher" field.
+func VerifyTicketCipherLTE(v string) predicate.WechatPlatform {
+	return predicate.WechatPlatform(sql.FieldLTE(FieldVerifyTicketCipher, v))
+}
+
+// VerifyTicketCipherContains applies the Contains predicate on the "verify_ticket_cipher" field.
+func VerifyTicketCipherContains(v string) predicate.WechatPlatform {
+	return predicate.WechatPlatform(sql.FieldContains(FieldVerifyTicketCipher, v))
+}
+
+// VerifyTicketCipherHasPrefix applies the HasPrefix predicate on the "verify_ticket_cipher" field.
+func VerifyTicketCipherHasPrefix(v string) predicate.WechatPlatform {
+	return predicate.WechatPlatform(sql.FieldHasPrefix(FieldVerifyTicketCipher, v))
+}
+
+// VerifyTicketCipherHasSuffix applies the HasSuffix predicate on the "verify_ticket_cipher" field.
+func VerifyTicketCipherHasSuffix(v string) predicate.WechatPlatform {
+	return predicate.WechatPlatform(sql.FieldHasSuffix(FieldVerifyTicketCipher, v))
+}
+
+// VerifyTicketCipherEqualFold applies the EqualFold predicate on the "verify_ticket_cipher" field.
+func VerifyTicketCipherEqualFold(v string) predicate.WechatPlatform {
+	return predicate.WechatPlatform(sql.FieldEqualFold(FieldVerifyTicketCipher, v))
+}
+
+// VerifyTicketCipherContainsFold applies the ContainsFold predicate on the "verify_ticket_cipher" field.
+func VerifyTicketCipherContainsFold(v string) predicate.WechatPlatform {
+	return predicate.WechatPlatform(sql.FieldContainsFold(FieldVerifyTicketCipher, v))
 }
 
 // And groups predicates with the AND operator between them.

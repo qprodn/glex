@@ -40,8 +40,10 @@ type WechatPlatform struct {
 	// EncodingAesKeyMask holds the value of the "encoding_aes_key_mask" field.
 	EncodingAesKeyMask string `json:"encoding_aes_key_mask,omitempty"`
 	// KeyVersion holds the value of the "key_version" field.
-	KeyVersion   int `json:"key_version,omitempty"`
-	selectValues sql.SelectValues
+	KeyVersion int `json:"key_version,omitempty"`
+	// VerifyTicketCipher holds the value of the "verify_ticket_cipher" field.
+	VerifyTicketCipher string `json:"verify_ticket_cipher,omitempty"`
+	selectValues       sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -51,7 +53,7 @@ func (*WechatPlatform) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case wechatplatform.FieldID, wechatplatform.FieldCreateBy, wechatplatform.FieldUpdateBy, wechatplatform.FieldKeyVersion:
 			values[i] = new(sql.NullInt64)
-		case wechatplatform.FieldName, wechatplatform.FieldComponentAppID, wechatplatform.FieldSecretCipher, wechatplatform.FieldComponentSecretMask, wechatplatform.FieldTokenMask, wechatplatform.FieldEncodingAesKeyMask:
+		case wechatplatform.FieldName, wechatplatform.FieldComponentAppID, wechatplatform.FieldSecretCipher, wechatplatform.FieldComponentSecretMask, wechatplatform.FieldTokenMask, wechatplatform.FieldEncodingAesKeyMask, wechatplatform.FieldVerifyTicketCipher:
 			values[i] = new(sql.NullString)
 		case wechatplatform.FieldCreatedAt, wechatplatform.FieldUpdatedAt, wechatplatform.FieldDeletedAt:
 			values[i] = new(sql.NullTime)
@@ -149,6 +151,12 @@ func (_m *WechatPlatform) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.KeyVersion = int(value.Int64)
 			}
+		case wechatplatform.FieldVerifyTicketCipher:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field verify_ticket_cipher", values[i])
+			} else if value.Valid {
+				_m.VerifyTicketCipher = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -222,6 +230,9 @@ func (_m *WechatPlatform) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("key_version=")
 	builder.WriteString(fmt.Sprintf("%v", _m.KeyVersion))
+	builder.WriteString(", ")
+	builder.WriteString("verify_ticket_cipher=")
+	builder.WriteString(_m.VerifyTicketCipher)
 	builder.WriteByte(')')
 	return builder.String()
 }

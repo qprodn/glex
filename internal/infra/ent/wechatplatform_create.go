@@ -142,6 +142,20 @@ func (_c *WechatPlatformCreate) SetNillableKeyVersion(v *int) *WechatPlatformCre
 	return _c
 }
 
+// SetVerifyTicketCipher sets the "verify_ticket_cipher" field.
+func (_c *WechatPlatformCreate) SetVerifyTicketCipher(v string) *WechatPlatformCreate {
+	_c.mutation.SetVerifyTicketCipher(v)
+	return _c
+}
+
+// SetNillableVerifyTicketCipher sets the "verify_ticket_cipher" field if the given value is not nil.
+func (_c *WechatPlatformCreate) SetNillableVerifyTicketCipher(v *string) *WechatPlatformCreate {
+	if v != nil {
+		_c.SetVerifyTicketCipher(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *WechatPlatformCreate) SetID(v int64) *WechatPlatformCreate {
 	_c.mutation.SetID(v)
@@ -203,6 +217,10 @@ func (_c *WechatPlatformCreate) defaults() {
 		v := wechatplatform.DefaultKeyVersion
 		_c.mutation.SetKeyVersion(v)
 	}
+	if _, ok := _c.mutation.VerifyTicketCipher(); !ok {
+		v := wechatplatform.DefaultVerifyTicketCipher
+		_c.mutation.SetVerifyTicketCipher(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -258,6 +276,9 @@ func (_c *WechatPlatformCreate) check() error {
 	}
 	if _, ok := _c.mutation.KeyVersion(); !ok {
 		return &ValidationError{Name: "key_version", err: errors.New(`ent: missing required field "WechatPlatform.key_version"`)}
+	}
+	if _, ok := _c.mutation.VerifyTicketCipher(); !ok {
+		return &ValidationError{Name: "verify_ticket_cipher", err: errors.New(`ent: missing required field "WechatPlatform.verify_ticket_cipher"`)}
 	}
 	return nil
 }
@@ -339,6 +360,10 @@ func (_c *WechatPlatformCreate) createSpec() (*WechatPlatform, *sqlgraph.CreateS
 	if value, ok := _c.mutation.KeyVersion(); ok {
 		_spec.SetField(wechatplatform.FieldKeyVersion, field.TypeInt, value)
 		_node.KeyVersion = value
+	}
+	if value, ok := _c.mutation.VerifyTicketCipher(); ok {
+		_spec.SetField(wechatplatform.FieldVerifyTicketCipher, field.TypeString, value)
+		_node.VerifyTicketCipher = value
 	}
 	return _node, _spec
 }
@@ -545,6 +570,18 @@ func (u *WechatPlatformUpsert) UpdateKeyVersion() *WechatPlatformUpsert {
 // AddKeyVersion adds v to the "key_version" field.
 func (u *WechatPlatformUpsert) AddKeyVersion(v int) *WechatPlatformUpsert {
 	u.Add(wechatplatform.FieldKeyVersion, v)
+	return u
+}
+
+// SetVerifyTicketCipher sets the "verify_ticket_cipher" field.
+func (u *WechatPlatformUpsert) SetVerifyTicketCipher(v string) *WechatPlatformUpsert {
+	u.Set(wechatplatform.FieldVerifyTicketCipher, v)
+	return u
+}
+
+// UpdateVerifyTicketCipher sets the "verify_ticket_cipher" field to the value that was provided on create.
+func (u *WechatPlatformUpsert) UpdateVerifyTicketCipher() *WechatPlatformUpsert {
+	u.SetExcluded(wechatplatform.FieldVerifyTicketCipher)
 	return u
 }
 
@@ -781,6 +818,20 @@ func (u *WechatPlatformUpsertOne) AddKeyVersion(v int) *WechatPlatformUpsertOne 
 func (u *WechatPlatformUpsertOne) UpdateKeyVersion() *WechatPlatformUpsertOne {
 	return u.Update(func(s *WechatPlatformUpsert) {
 		s.UpdateKeyVersion()
+	})
+}
+
+// SetVerifyTicketCipher sets the "verify_ticket_cipher" field.
+func (u *WechatPlatformUpsertOne) SetVerifyTicketCipher(v string) *WechatPlatformUpsertOne {
+	return u.Update(func(s *WechatPlatformUpsert) {
+		s.SetVerifyTicketCipher(v)
+	})
+}
+
+// UpdateVerifyTicketCipher sets the "verify_ticket_cipher" field to the value that was provided on create.
+func (u *WechatPlatformUpsertOne) UpdateVerifyTicketCipher() *WechatPlatformUpsertOne {
+	return u.Update(func(s *WechatPlatformUpsert) {
+		s.UpdateVerifyTicketCipher()
 	})
 }
 
@@ -1183,6 +1234,20 @@ func (u *WechatPlatformUpsertBulk) AddKeyVersion(v int) *WechatPlatformUpsertBul
 func (u *WechatPlatformUpsertBulk) UpdateKeyVersion() *WechatPlatformUpsertBulk {
 	return u.Update(func(s *WechatPlatformUpsert) {
 		s.UpdateKeyVersion()
+	})
+}
+
+// SetVerifyTicketCipher sets the "verify_ticket_cipher" field.
+func (u *WechatPlatformUpsertBulk) SetVerifyTicketCipher(v string) *WechatPlatformUpsertBulk {
+	return u.Update(func(s *WechatPlatformUpsert) {
+		s.SetVerifyTicketCipher(v)
+	})
+}
+
+// UpdateVerifyTicketCipher sets the "verify_ticket_cipher" field to the value that was provided on create.
+func (u *WechatPlatformUpsertBulk) UpdateVerifyTicketCipher() *WechatPlatformUpsertBulk {
+	return u.Update(func(s *WechatPlatformUpsert) {
+		s.UpdateVerifyTicketCipher()
 	})
 }
 

@@ -28,6 +28,7 @@ func toBizPlatform(po *ent.WechatPlatform) *entity.Platform {
 		TokenMask:           po.TokenMask,
 		EncodingAESKeyMask:  po.EncodingAesKeyMask,
 		KeyVersion:          po.KeyVersion,
+		Ready:               po.SecretCipher != "" && po.VerifyTicketCipher != "",
 		CreateBy:            po.CreateBy,
 		UpdateBy:            po.UpdateBy,
 		CreatedAt:           po.CreatedAt,
@@ -133,12 +134,8 @@ func (r *platformRepo) LoadSecrets(ctx context.Context, id int64) (wechatrepo.Se
 	}, nil
 }
 
-func (r *platformRepo) seal(secrets wechatrepo.Secrets) (string, error) {
-	token, err := r.cipher.Encrypt(map[string]string{
-		"component_secret": secrets.ComponentSecret,
-		"token":            secrets.Token,
-		"encoding_aes_key": secrets.EncodingAESKey,
-	})
+func (r *platformRepo) sealValues(values map[string]string) (string, error) {
+	token, err := r.cipher.Encrypt(values)
 	if err != nil {
 		if isMasterKeyMissing(err) {
 			return "", wechat.ErrMasterKeyMissing
@@ -146,6 +143,14 @@ func (r *platformRepo) seal(secrets wechatrepo.Secrets) (string, error) {
 		return "", wechat.ErrSecretCrypto
 	}
 	return token, nil
+}
+
+func (r *platformRepo) seal(secrets wechatrepo.Secrets) (string, error) {
+	return r.sealValues(map[string]string{
+		"component_secret": secrets.ComponentSecret,
+		"token":            secrets.Token,
+		"encoding_aes_key": secrets.EncodingAESKey,
+	})
 }
 
 func (r *platformRepo) Create(ctx context.Context, req wechatrepo.SavePlatformRequest) (*entity.Platform, error) {
@@ -163,6 +168,7 @@ func (r *platformRepo) Create(ctx context.Context, req wechatrepo.SavePlatformRe
 		SetTokenMask(p.TokenMask).
 		SetEncodingAesKeyMask(p.EncodingAESKeyMask).
 		SetKeyVersion(p.KeyVersion).
+		SetVerifyTicketCipher("").
 		SetCreateBy(p.CreateBy).
 		SetUpdateBy(p.UpdateBy).
 		Save(ctx)
@@ -203,6 +209,63 @@ func (r *platformRepo) Update(ctx context.Context, req wechatrepo.SavePlatformRe
 		return nil, wechat.ErrPlatformNotFound
 	}
 	return r.FindByID(ctx, p.ID)
+}
+
+func (r *platformRepo) LoadVerifyTicket(ctx context.Context, id int64) (string, error) {
+	po, err := r.data.DB.WechatPlatform(ctx).Query().
+		Where(entplatform.IDEQ(id), entplatform.DeletedAtIsNil()).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return "", wechat.ErrPlatformNotFound
+		}
+		return "", r.storeError(ctx, "wechat.platform.load_verify_ticket", err)
+	}
+	if po.VerifyTicketCipher == "" {
+		return "", nil
+	}
+	values, err := r.cipher.Decrypt(po.VerifyTicketCipher)
+	if err != nil {
+		if isMasterKeyMissing(err) {
+			return "", wechat.ErrMasterKeyMissing
+		}
+		return "", wechat.ErrSecretCrypto
+	}
+	return values["verify_ticket"], nil
+}
+
+func (r *platformRepo) HoldVerifyTicket(ctx context.Context, req wechatrepo.HoldVerifyTicketRequest) (*entity.Platform, error) {
+	sealed, err := r.sealValues(map[string]string{"verify_ticket": req.Ticket})
+	if err != nil {
+		return nil, err
+	}
+	n, err := r.data.DB.WechatPlatform(ctx).Update().
+		Where(entplatform.IDEQ(req.ID), entplatform.DeletedAtIsNil()).
+		SetVerifyTicketCipher(sealed).
+		SetUpdateBy(req.ActorID).
+		Save(ctx)
+	if err != nil {
+		return nil, r.storeError(ctx, "wechat.platform.hold_verify_ticket", err)
+	}
+	if n == 0 {
+		return nil, wechat.ErrPlatformNotFound
+	}
+	return r.FindByID(ctx, req.ID)
+}
+
+func (r *platformRepo) ReleaseVerifyTicket(ctx context.Context, req wechatrepo.ReleaseVerifyTicketRequest) (*entity.Platform, error) {
+	n, err := r.data.DB.WechatPlatform(ctx).Update().
+		Where(entplatform.IDEQ(req.ID), entplatform.DeletedAtIsNil()).
+		SetVerifyTicketCipher("").
+		SetUpdateBy(req.ActorID).
+		Save(ctx)
+	if err != nil {
+		return nil, r.storeError(ctx, "wechat.platform.release_verify_ticket", err)
+	}
+	if n == 0 {
+		return nil, wechat.ErrPlatformNotFound
+	}
+	return r.FindByID(ctx, req.ID)
 }
 
 func (r *platformRepo) Delete(ctx context.Context, req wechatrepo.DeletePlatformRequest) error {

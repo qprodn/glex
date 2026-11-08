@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"strings"
 	"unicode/utf8"
 
 	wechat "glex/internal/domain/wechat"
@@ -12,6 +14,15 @@ import (
 	"glex/pkg/listq"
 	"glex/pkg/logx"
 )
+
+// CallbackBase is the absolute origin WeChat calls, without a path and
+// without a trailing slash requirement. Empty leaves each platform showing
+// its path only. The value is deployment configuration, not a secret.
+type CallbackBase string
+
+// systemActorID stamps updates WeChat causes, and the record that a
+// verify ticket is no longer held. 0 is the system itself (ADR 0002).
+const systemActorID int64 = 0
 
 // CreateRequest is what a platform-register use case states: the display
 // name, the component AppID, the three secrets the operator typed, and the
@@ -55,18 +66,39 @@ type Platform interface {
 	List(ctx context.Context, q listq.Query) ([]*entity.Platform, error)
 	Update(ctx context.Context, req UpdateRequest) (*entity.Platform, error)
 	Withdraw(ctx context.Context, req WithdrawRequest) error
+	// Receive accepts one encrypted push for this platform. A verify
+	// ticket makes that platform ready. Anything that is not an encrypted
+	// push is rejected and changes nothing.
+	Receive(ctx context.Context, req PushRequest) (*PushOutcome, error)
+	// Probe runs the WeChat Connectivity Test. A platform that is missing
+	// a secret or a verify ticket fails the test. Success and failure
+	// leave the platform as it was and create no WeChat App.
+	Probe(ctx context.Context, id int64) (*ProbeOutcome, error)
+	// ReleaseVerifyTicket records that this platform no longer holds a
+	// verify ticket, so it is unready. It is not an operator action and
+	// not a back-office button: no WeChat App is created or lapsed.
+	ReleaseVerifyTicket(ctx context.Context, id int64) (*entity.Platform, error)
 }
 
 type platformImpl struct {
-	platforms repository.PlatformRepo
-	logger    *slog.Logger
+	platforms    repository.PlatformRepo
+	openapi      OpenAPI
+	pushes       PushAuthenticator
+	callbackBase string
+	logger       *slog.Logger
 }
 
-// NewPlatformService creates the platform domain service.
-func NewPlatformService(platforms repository.PlatformRepo, logger *slog.Logger) Platform {
+// NewPlatformService creates the platform domain service. openapi is the
+// scripted boundary in tests and the HTTP adapter in the process. pushes
+// is the real encrypted-push authenticator — plaintext, compatible mode,
+// and a bad signature never reach platform state.
+func NewPlatformService(platforms repository.PlatformRepo, openapi OpenAPI, pushes PushAuthenticator, callbackBase CallbackBase, logger *slog.Logger) Platform {
 	return &platformImpl{
-		platforms: platforms,
-		logger:    logger.With(slog.String("component", "domain.wechat.platform.svc")),
+		platforms:    platforms,
+		openapi:      openapi,
+		pushes:       pushes,
+		callbackBase: strings.TrimRight(string(callbackBase), "/"),
+		logger:       logger.With(slog.String("component", "domain.wechat.platform.svc")),
 	}
 }
 
@@ -126,7 +158,7 @@ func (s *platformImpl) Create(ctx context.Context, req CreateRequest) (*entity.P
 		logx.Propagate(ctx, s.logger, "wechat.svc.platform.create", err)
 		return nil, err
 	}
-	return created, nil
+	return s.present(created), nil
 }
 
 func (s *platformImpl) Get(ctx context.Context, id int64) (*entity.Platform, error) {
@@ -135,7 +167,7 @@ func (s *platformImpl) Get(ctx context.Context, id int64) (*entity.Platform, err
 		logx.Propagate(ctx, s.logger, "wechat.svc.platform.get", err)
 		return nil, err
 	}
-	return p, nil
+	return s.present(p), nil
 }
 
 func (s *platformImpl) List(ctx context.Context, q listq.Query) ([]*entity.Platform, error) {
@@ -143,6 +175,9 @@ func (s *platformImpl) List(ctx context.Context, q listq.Query) ([]*entity.Platf
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "wechat.svc.platform.list", err)
 		return nil, err
+	}
+	for i, p := range platforms {
+		platforms[i] = s.present(p)
 	}
 	return platforms, nil
 }
@@ -204,7 +239,7 @@ func (s *platformImpl) Update(ctx context.Context, req UpdateRequest) (*entity.P
 		logx.Propagate(ctx, s.logger, "wechat.svc.platform.update", err)
 		return nil, err
 	}
-	return updated, nil
+	return s.present(updated), nil
 }
 
 func (s *platformImpl) Withdraw(ctx context.Context, req WithdrawRequest) error {
@@ -216,6 +251,24 @@ func (s *platformImpl) Withdraw(ctx context.Context, req WithdrawRequest) error 
 		return err
 	}
 	return nil
+}
+
+// present attaches the operator-visible callback address. Readiness is
+// already decided by the repository from stored secrets and the held ticket.
+func (s *platformImpl) present(p *entity.Platform) *entity.Platform {
+	if p == nil {
+		return nil
+	}
+	p.CallbackURL = platformCallbackURL(s.callbackBase, p.ID)
+	return p
+}
+
+func platformCallbackURL(base string, id int64) string {
+	path := fmt.Sprintf("/wechat/platform/%d/callback", id)
+	if base == "" {
+		return path
+	}
+	return base + path
 }
 
 func (s *platformImpl) ensureComponentAppIDAvailable(ctx context.Context, componentAppID string) error {

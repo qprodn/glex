@@ -82,6 +82,12 @@ auth:
 user:
   init_password: "123456"
 
+wechat:
+  # 平台回调基础地址。每条平台的回调是
+  # {base}/wechat/platform/{platform_id}/callback，消息与事件接收 URL 在其后
+  # 再加 /$APPID$。空则运营看到的是路径本身。不是凭据。
+  callback_base_url: ""
+
 pay:
   # 渠道回调基础地址（ADR 0020）：/pay/notify/{channel}/{merchant_id} 挂在其后。
   # 上线收款前必须配置为公网可达地址。

@@ -30,10 +30,17 @@ message WechatPlatform {
   // Master-key version the ciphertext was written under (ADR 0018).
   int32 key_version = 7;
   // Audit: who created/updated. Filled from the authenticated identity.
+  // A verify ticket pushed by WeChat is stamped as the system itself (0).
   int64 create_by = 8;
   int64 update_by = 9;
   google.protobuf.Timestamp created_at = 10;
   google.protobuf.Timestamp updated_at = 11;
+  // True when the registration secrets are stored and a verify ticket is
+  // held. The ticket itself is never returned.
+  bool ready = 12;
+  // This platform's callback address, for pasting into WeChat. The message
+  // and event URL is this address with /$APPID$ appended.
+  string callback_url = 13;
 }
 
 // WechatPlatformSet is a page of WeChat Platforms.
@@ -45,7 +52,8 @@ message WechatPlatformSet {
 
 // WechatService is the back-office surface for WeChat Platform
 // registration. Permissions are wechat:platform:list, create, update,
-// and remove.
+// remove, and probe. The platform callback is a separate unauthenticated
+// route; it is not an RPC.
 service WechatService {
   // CreateWechatPlatform registers a platform. The response carries masks,
   // never the secrets the operator just typed.
@@ -82,6 +90,15 @@ service WechatService {
   rpc WithdrawWechatPlatform(WithdrawWechatPlatformRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/wechat/platform/{platform_id}"
+    };
+  }
+  // ProbeWechatPlatform runs the WeChat Connectivity Test for one platform.
+  // A platform that is missing a secret or a verify ticket fails the test.
+  // Success and failure change no WeChat App. Permission: wechat:platform:probe.
+  rpc ProbeWechatPlatform(ProbeWechatPlatformRequest) returns (ProbeWechatPlatformResult) {
+    option (google.api.http) = {
+      post: "/wechat/platform/{platform_id}/probe"
+      body: "*"
     };
   }
 }
@@ -136,4 +153,17 @@ message UpdateWechatPlatformRequest {
 message WithdrawWechatPlatformRequest {
   // Required. The id of the platform to withdraw.
   int64 platform_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ProbeWechatPlatformRequest {
+  // Required. The id of the platform to test.
+  int64 platform_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// ProbeWechatPlatformResult is one WeChat Connectivity Test. ok is false
+// when the platform cannot yield a token. The test changes no WeChat App.
+message ProbeWechatPlatformResult {
+  bool ok = 1;
+  // Human-readable outcome; the failure reason when ok is false.
+  string message = 2;
 }

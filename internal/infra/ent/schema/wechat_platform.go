@@ -39,6 +39,10 @@ func (WechatPlatform) Fields() []ent.Field {
 		field.String("encoding_aes_key_mask").MaxLen(16),
 		// Master-key version (KEK rotation reserve, ADR 0018).
 		field.Int("key_version").Default(1),
+		// Current verify ticket, encrypted whole. Empty means the platform
+		// does not hold one, so it is not ready. Display paths never
+		// decrypt this column and never return the plaintext.
+		field.Text("verify_ticket_cipher").Default(""),
 	}
 }
 

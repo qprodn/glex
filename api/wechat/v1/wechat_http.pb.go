@@ -21,6 +21,7 @@ const _ = http.SupportPackageIsVersion3
 const OperationWechatServiceCreateWechatPlatform = "/wechat.v1.WechatService/CreateWechatPlatform"
 const OperationWechatServiceGetWechatPlatform = "/wechat.v1.WechatService/GetWechatPlatform"
 const OperationWechatServiceListWechatPlatforms = "/wechat.v1.WechatService/ListWechatPlatforms"
+const OperationWechatServiceProbeWechatPlatform = "/wechat.v1.WechatService/ProbeWechatPlatform"
 const OperationWechatServiceUpdateWechatPlatform = "/wechat.v1.WechatService/UpdateWechatPlatform"
 const OperationWechatServiceWithdrawWechatPlatform = "/wechat.v1.WechatService/WithdrawWechatPlatform"
 
@@ -33,6 +34,10 @@ type WechatServiceHTTPServer interface {
 	// ListWechatPlatforms ListWechatPlatforms lists platforms that are not withdrawn. Responses
 	// carry masks only.
 	ListWechatPlatforms(context.Context, *ListWechatPlatformsRequest) (*WechatPlatformSet, error)
+	// ProbeWechatPlatform ProbeWechatPlatform runs the WeChat Connectivity Test for one platform.
+	// A platform that is missing a secret or a verify ticket fails the test.
+	// Success and failure change no WeChat App. Permission: wechat:platform:probe.
+	ProbeWechatPlatform(context.Context, *ProbeWechatPlatformRequest) (*ProbeWechatPlatformResult, error)
 	// UpdateWechatPlatform UpdateWechatPlatform corrects the display name and, when a secret is
 	// non-blank, replaces that secret. A component AppID that differs from
 	// the stored value is refused. Blank secrets keep their stored values.
@@ -49,6 +54,7 @@ func RegisterWechatServiceHTTPServer(s *http.Server, srv WechatServiceHTTPServer
 	r.Handle("GET", "/wechat/platform/{platform_id}", _WechatService_GetWechatPlatform0_HTTP_Handler(srv))
 	r.Handle("PATCH", "/wechat/platform/{platform_id}", _WechatService_UpdateWechatPlatform0_HTTP_Handler(srv))
 	r.Handle("DELETE", "/wechat/platform/{platform_id}", _WechatService_WithdrawWechatPlatform0_HTTP_Handler(srv))
+	r.Handle("POST", "/wechat/platform/{platform_id}/probe", _WechatService_ProbeWechatPlatform0_HTTP_Handler(srv))
 }
 
 func _WechatService_CreateWechatPlatform0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
@@ -155,6 +161,28 @@ func _WechatService_WithdrawWechatPlatform0_HTTP_Handler(srv WechatServiceHTTPSe
 	}
 }
 
+func _WechatService_ProbeWechatPlatform0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ProbeWechatPlatformRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceProbeWechatPlatform)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ProbeWechatPlatform(ctx, req.(*ProbeWechatPlatformRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ProbeWechatPlatformResult)
+		return ctx.Result(200, reply)
+	}
+}
+
 type WechatServiceHTTPClient interface {
 	// CreateWechatPlatform CreateWechatPlatform registers a platform. The response carries masks,
 	// never the secrets the operator just typed.
@@ -164,6 +192,10 @@ type WechatServiceHTTPClient interface {
 	// ListWechatPlatforms ListWechatPlatforms lists platforms that are not withdrawn. Responses
 	// carry masks only.
 	ListWechatPlatforms(ctx context.Context, req *ListWechatPlatformsRequest, opts ...http.CallOption) (rsp *WechatPlatformSet, err error)
+	// ProbeWechatPlatform ProbeWechatPlatform runs the WeChat Connectivity Test for one platform.
+	// A platform that is missing a secret or a verify ticket fails the test.
+	// Success and failure change no WeChat App. Permission: wechat:platform:probe.
+	ProbeWechatPlatform(ctx context.Context, req *ProbeWechatPlatformRequest, opts ...http.CallOption) (rsp *ProbeWechatPlatformResult, err error)
 	// UpdateWechatPlatform UpdateWechatPlatform corrects the display name and, when a secret is
 	// non-blank, replaces that secret. A component AppID that differs from
 	// the stored value is refused. Blank secrets keep their stored values.
@@ -229,6 +261,26 @@ func (c *WechatServiceHTTPClientImpl) ListWechatPlatforms(ctx context.Context, i
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ProbeWechatPlatform ProbeWechatPlatform runs the WeChat Connectivity Test for one platform.
+// A platform that is missing a secret or a verify ticket fails the test.
+// Success and failure change no WeChat App. Permission: wechat:platform:probe.
+func (c *WechatServiceHTTPClientImpl) ProbeWechatPlatform(ctx context.Context, in *ProbeWechatPlatformRequest, opts ...http.CallOption) (*ProbeWechatPlatformResult, error) {
+	var out ProbeWechatPlatformResult
+	pattern := "/wechat/platform/{platform_id}/probe"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationWechatServiceProbeWechatPlatform),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
 	if err != nil {
 		return nil, err
 	}

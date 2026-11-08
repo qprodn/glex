@@ -27,6 +27,8 @@ func convertPlatform(p *entity.Platform) *wechatv1.WechatPlatform {
 		TokenMask:           p.TokenMask,
 		EncodingAesKeyMask:  p.EncodingAESKeyMask,
 		KeyVersion:          int32(p.KeyVersion),
+		Ready:               p.Ready,
+		CallbackUrl:         p.CallbackURL,
 		CreateBy:            p.CreateBy,
 		UpdateBy:            p.UpdateBy,
 		CreatedAt:           timestamppb.New(p.CreatedAt),
@@ -110,6 +112,32 @@ func (s *WechatApplication) UpdateWechatPlatform(ctx context.Context, req *wecha
 		return nil, err
 	}
 	return convertPlatform(updated), nil
+}
+
+// ProbeWechatPlatform runs the WeChat Connectivity Test. The outcome is
+// ok or not; a failure here is the test's result, not a new app.
+func (s *WechatApplication) ProbeWechatPlatform(ctx context.Context, req *wechatv1.ProbeWechatPlatformRequest) (*wechatv1.ProbeWechatPlatformResult, error) {
+	outcome, err := s.platforms.Probe(ctx, req.GetPlatformId())
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "wechat.probe_platform", err)
+		return nil, err
+	}
+	return &wechatv1.ProbeWechatPlatformResult{
+		Ok:      outcome.OK,
+		Message: outcome.Message,
+	}, nil
+}
+
+// ReceivePlatformPush is the unauthenticated callback for one platform.
+// WeChat's encrypted push is the authentication. A verify ticket is stamped
+// as the system itself inside the domain service.
+func (s *WechatApplication) ReceivePlatformPush(ctx context.Context, req *wechatservice.PushRequest) (*wechatservice.PushOutcome, error) {
+	out, err := s.platforms.Receive(ctx, *req)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "wechat.receive_platform_push", err)
+		return nil, err
+	}
+	return out, nil
 }
 
 // WithdrawWechatPlatform soft-deletes the platform.

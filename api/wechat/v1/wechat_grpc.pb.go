@@ -25,6 +25,7 @@ const (
 	WechatService_GetWechatPlatform_FullMethodName      = "/wechat.v1.WechatService/GetWechatPlatform"
 	WechatService_UpdateWechatPlatform_FullMethodName   = "/wechat.v1.WechatService/UpdateWechatPlatform"
 	WechatService_WithdrawWechatPlatform_FullMethodName = "/wechat.v1.WechatService/WithdrawWechatPlatform"
+	WechatService_ProbeWechatPlatform_FullMethodName    = "/wechat.v1.WechatService/ProbeWechatPlatform"
 )
 
 // WechatServiceClient is the client API for WechatService service.
@@ -33,7 +34,8 @@ const (
 //
 // WechatService is the back-office surface for WeChat Platform
 // registration. Permissions are wechat:platform:list, create, update,
-// and remove.
+// remove, and probe. The platform callback is a separate unauthenticated
+// route; it is not an RPC.
 type WechatServiceClient interface {
 	// CreateWechatPlatform registers a platform. The response carries masks,
 	// never the secrets the operator just typed.
@@ -50,6 +52,10 @@ type WechatServiceClient interface {
 	// WithdrawWechatPlatform soft-deletes the platform. The row leaves the
 	// live list; it is not hard-deleted.
 	WithdrawWechatPlatform(ctx context.Context, in *WithdrawWechatPlatformRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ProbeWechatPlatform runs the WeChat Connectivity Test for one platform.
+	// A platform that is missing a secret or a verify ticket fails the test.
+	// Success and failure change no WeChat App. Permission: wechat:platform:probe.
+	ProbeWechatPlatform(ctx context.Context, in *ProbeWechatPlatformRequest, opts ...grpc.CallOption) (*ProbeWechatPlatformResult, error)
 }
 
 type wechatServiceClient struct {
@@ -110,13 +116,24 @@ func (c *wechatServiceClient) WithdrawWechatPlatform(ctx context.Context, in *Wi
 	return out, nil
 }
 
+func (c *wechatServiceClient) ProbeWechatPlatform(ctx context.Context, in *ProbeWechatPlatformRequest, opts ...grpc.CallOption) (*ProbeWechatPlatformResult, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProbeWechatPlatformResult)
+	err := c.cc.Invoke(ctx, WechatService_ProbeWechatPlatform_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WechatServiceServer is the server API for WechatService service.
 // All implementations must embed UnimplementedWechatServiceServer
 // for forward compatibility.
 //
 // WechatService is the back-office surface for WeChat Platform
 // registration. Permissions are wechat:platform:list, create, update,
-// and remove.
+// remove, and probe. The platform callback is a separate unauthenticated
+// route; it is not an RPC.
 type WechatServiceServer interface {
 	// CreateWechatPlatform registers a platform. The response carries masks,
 	// never the secrets the operator just typed.
@@ -133,6 +150,10 @@ type WechatServiceServer interface {
 	// WithdrawWechatPlatform soft-deletes the platform. The row leaves the
 	// live list; it is not hard-deleted.
 	WithdrawWechatPlatform(context.Context, *WithdrawWechatPlatformRequest) (*emptypb.Empty, error)
+	// ProbeWechatPlatform runs the WeChat Connectivity Test for one platform.
+	// A platform that is missing a secret or a verify ticket fails the test.
+	// Success and failure change no WeChat App. Permission: wechat:platform:probe.
+	ProbeWechatPlatform(context.Context, *ProbeWechatPlatformRequest) (*ProbeWechatPlatformResult, error)
 	mustEmbedUnimplementedWechatServiceServer()
 }
 
@@ -157,6 +178,9 @@ func (UnimplementedWechatServiceServer) UpdateWechatPlatform(context.Context, *U
 }
 func (UnimplementedWechatServiceServer) WithdrawWechatPlatform(context.Context, *WithdrawWechatPlatformRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method WithdrawWechatPlatform not implemented")
+}
+func (UnimplementedWechatServiceServer) ProbeWechatPlatform(context.Context, *ProbeWechatPlatformRequest) (*ProbeWechatPlatformResult, error) {
+	return nil, status.Error(codes.Unimplemented, "method ProbeWechatPlatform not implemented")
 }
 func (UnimplementedWechatServiceServer) mustEmbedUnimplementedWechatServiceServer() {}
 func (UnimplementedWechatServiceServer) testEmbeddedByValue()                       {}
@@ -269,6 +293,24 @@ func _WechatService_WithdrawWechatPlatform_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WechatService_ProbeWechatPlatform_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProbeWechatPlatformRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).ProbeWechatPlatform(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_ProbeWechatPlatform_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).ProbeWechatPlatform(ctx, req.(*ProbeWechatPlatformRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WechatService_ServiceDesc is the grpc.ServiceDesc for WechatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -295,6 +337,10 @@ var WechatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "WithdrawWechatPlatform",
 			Handler:    _WechatService_WithdrawWechatPlatform_Handler,
+		},
+		{
+			MethodName: "ProbeWechatPlatform",
+			Handler:    _WechatService_ProbeWechatPlatform_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

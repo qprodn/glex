@@ -2610,6 +2610,35 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/wechat.v1.WechatPlatform'
+    /wechat/platform/{platformId}/probe:
+        post:
+            tags:
+                - WechatService
+            description: |-
+                ProbeWechatPlatform runs the WeChat Connectivity Test for one platform.
+                 A platform that is missing a secret or a verify ticket fails the test.
+                 Success and failure change no WeChat App. Permission: wechat:platform:probe.
+            operationId: WechatService_ProbeWechatPlatform
+            parameters:
+                - name: platformId
+                  in: path
+                  description: Required. The id of the platform to test.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.ProbeWechatPlatformRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.ProbeWechatPlatformResult'
 components:
     schemas:
         access.v1.Menu:
@@ -4239,6 +4268,25 @@ components:
                 encodingAesKey:
                     type: string
                     description: Required. EncodingAESKey.
+        wechat.v1.ProbeWechatPlatformRequest:
+            required:
+                - platformId
+            type: object
+            properties:
+                platformId:
+                    type: string
+                    description: Required. The id of the platform to test.
+        wechat.v1.ProbeWechatPlatformResult:
+            type: object
+            properties:
+                ok:
+                    type: boolean
+                message:
+                    type: string
+                    description: Human-readable outcome; the failure reason when ok is false.
+            description: |-
+                ProbeWechatPlatformResult is one WeChat Connectivity Test. ok is false
+                 when the platform cannot yield a token. The test changes no WeChat App.
         wechat.v1.UpdateWechatPlatformRequest:
             required:
                 - platformId
@@ -4292,7 +4340,9 @@ components:
                     format: int32
                 createBy:
                     type: string
-                    description: 'Audit: who created/updated. Filled from the authenticated identity.'
+                    description: |-
+                        Audit: who created/updated. Filled from the authenticated identity.
+                         A verify ticket pushed by WeChat is stamped as the system itself (0).
                 updateBy:
                     type: string
                 createdAt:
@@ -4301,6 +4351,16 @@ components:
                 updatedAt:
                     type: string
                     format: date-time
+                ready:
+                    type: boolean
+                    description: |-
+                        True when the registration secrets are stored and a verify ticket is
+                         held. The ticket itself is never returned.
+                callbackUrl:
+                    type: string
+                    description: |-
+                        This platform's callback address, for pasting into WeChat. The message
+                         and event URL is this address with /$APPID$ appended.
             description: |-
                 WechatPlatform is one WeChat Platform registration (微信平台). The
                  component secret, Token, and EncodingAESKey never cross the wire —
@@ -4388,4 +4448,5 @@ tags:
       description: |-
         WechatService is the back-office surface for WeChat Platform
          registration. Permissions are wechat:platform:list, create, update,
-         and remove.
+         remove, and probe. The platform callback is a separate unauthenticated
+         route; it is not an RPC.

@@ -142,6 +142,10 @@ func authRoutes() map[string]authmw.Route {
 		wechatv1.OperationWechatServiceGetWechatPlatform:      {Permission: "wechat:platform:list"},
 		wechatv1.OperationWechatServiceUpdateWechatPlatform:   {Permission: "wechat:platform:update"},
 		wechatv1.OperationWechatServiceWithdrawWechatPlatform: {Permission: "wechat:platform:remove"},
+		wechatv1.OperationWechatServiceProbeWechatPlatform:    {Permission: "wechat:platform:probe"},
+		// The platform callback is deliberately absent — WeChat's encrypted
+		// push is the authentication, the same way the pay notify route is
+		// absent (ADR 0020).
 
 		// job: scheduled-task console and run history (ADR 0023). The
 		// executor listing rides the list permission — it exists to power

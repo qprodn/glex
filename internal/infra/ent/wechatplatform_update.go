@@ -199,6 +199,20 @@ func (_u *WechatPlatformUpdate) AddKeyVersion(v int) *WechatPlatformUpdate {
 	return _u
 }
 
+// SetVerifyTicketCipher sets the "verify_ticket_cipher" field.
+func (_u *WechatPlatformUpdate) SetVerifyTicketCipher(v string) *WechatPlatformUpdate {
+	_u.mutation.SetVerifyTicketCipher(v)
+	return _u
+}
+
+// SetNillableVerifyTicketCipher sets the "verify_ticket_cipher" field if the given value is not nil.
+func (_u *WechatPlatformUpdate) SetNillableVerifyTicketCipher(v *string) *WechatPlatformUpdate {
+	if v != nil {
+		_u.SetVerifyTicketCipher(*v)
+	}
+	return _u
+}
+
 // Mutation returns the WechatPlatformMutation object of the builder.
 func (_u *WechatPlatformUpdate) Mutation() *WechatPlatformMutation {
 	return _u.mutation
@@ -324,6 +338,9 @@ func (_u *WechatPlatformUpdate) sqlSave(ctx context.Context) (_node int, err err
 	}
 	if value, ok := _u.mutation.AddedKeyVersion(); ok {
 		_spec.AddField(wechatplatform.FieldKeyVersion, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.VerifyTicketCipher(); ok {
+		_spec.SetField(wechatplatform.FieldVerifyTicketCipher, field.TypeString, value)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -516,6 +533,20 @@ func (_u *WechatPlatformUpdateOne) AddKeyVersion(v int) *WechatPlatformUpdateOne
 	return _u
 }
 
+// SetVerifyTicketCipher sets the "verify_ticket_cipher" field.
+func (_u *WechatPlatformUpdateOne) SetVerifyTicketCipher(v string) *WechatPlatformUpdateOne {
+	_u.mutation.SetVerifyTicketCipher(v)
+	return _u
+}
+
+// SetNillableVerifyTicketCipher sets the "verify_ticket_cipher" field if the given value is not nil.
+func (_u *WechatPlatformUpdateOne) SetNillableVerifyTicketCipher(v *string) *WechatPlatformUpdateOne {
+	if v != nil {
+		_u.SetVerifyTicketCipher(*v)
+	}
+	return _u
+}
+
 // Mutation returns the WechatPlatformMutation object of the builder.
 func (_u *WechatPlatformUpdateOne) Mutation() *WechatPlatformMutation {
 	return _u.mutation
@@ -671,6 +702,9 @@ func (_u *WechatPlatformUpdateOne) sqlSave(ctx context.Context) (_node *WechatPl
 	}
 	if value, ok := _u.mutation.AddedKeyVersion(); ok {
 		_spec.AddField(wechatplatform.FieldKeyVersion, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.VerifyTicketCipher(); ok {
+		_spec.SetField(wechatplatform.FieldVerifyTicketCipher, field.TypeString, value)
 	}
 	_node = &WechatPlatform{config: _u.config}
 	_spec.Assign = _node.assignValues

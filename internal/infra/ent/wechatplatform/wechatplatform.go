@@ -37,6 +37,8 @@ const (
 	FieldEncodingAesKeyMask = "encoding_aes_key_mask"
 	// FieldKeyVersion holds the string denoting the key_version field in the database.
 	FieldKeyVersion = "key_version"
+	// FieldVerifyTicketCipher holds the string denoting the verify_ticket_cipher field in the database.
+	FieldVerifyTicketCipher = "verify_ticket_cipher"
 	// Table holds the table name of the wechatplatform in the database.
 	Table = "wechat_platform"
 )
@@ -56,6 +58,7 @@ var Columns = []string{
 	FieldTokenMask,
 	FieldEncodingAesKeyMask,
 	FieldKeyVersion,
+	FieldVerifyTicketCipher,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -91,6 +94,8 @@ var (
 	EncodingAesKeyMaskValidator func(string) error
 	// DefaultKeyVersion holds the default value on creation for the "key_version" field.
 	DefaultKeyVersion int
+	// DefaultVerifyTicketCipher holds the default value on creation for the "verify_ticket_cipher" field.
+	DefaultVerifyTicketCipher string
 )
 
 // OrderOption defines the ordering options for the WechatPlatform queries.
@@ -159,4 +164,9 @@ func ByEncodingAesKeyMask(opts ...sql.OrderTermOption) OrderOption {
 // ByKeyVersion orders the results by the key_version field.
 func ByKeyVersion(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldKeyVersion, opts...).ToFunc()
+}
+
+// ByVerifyTicketCipher orders the results by the verify_ticket_cipher field.
+func ByVerifyTicketCipher(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVerifyTicketCipher, opts...).ToFunc()
 }

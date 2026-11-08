@@ -47,10 +47,17 @@ export type WechatPlatform = {
   // Master-key version the ciphertext was written under (ADR 0018).
   keyVersion: number | undefined;
   // Audit: who created/updated. Filled from the authenticated identity.
+  // A verify ticket pushed by WeChat is stamped as the system itself (0).
   createBy: number | undefined;
   updateBy: number | undefined;
   createdAt: wellKnownTimestamp | undefined;
   updatedAt: wellKnownTimestamp | undefined;
+  // True when the registration secrets are stored and a verify ticket is
+  // held. The ticket itself is never returned.
+  ready: boolean | undefined;
+  // This platform's callback address, for pasting into WeChat. The message
+  // and event URL is this address with /$APPID$ appended.
+  callbackUrl: string | undefined;
 };
 
 // Encoded using RFC 3339, where generated output will always be Z-normalized
@@ -135,9 +142,25 @@ export type WithdrawWechatPlatformRequest = {
   platformId: number | undefined;
 };
 
+export type ProbeWechatPlatformRequest = {
+  // Required. The id of the platform to test.
+  //
+  // Behaviors: REQUIRED
+  platformId: number | undefined;
+};
+
+// ProbeWechatPlatformResult is one WeChat Connectivity Test. ok is false
+// when the platform cannot yield a token. The test changes no WeChat App.
+export type ProbeWechatPlatformResult = {
+  ok: boolean | undefined;
+  // Human-readable outcome; the failure reason when ok is false.
+  message: string | undefined;
+};
+
 // WechatService is the back-office surface for WeChat Platform
 // registration. Permissions are wechat:platform:list, create, update,
-// and remove.
+// remove, and probe. The platform callback is a separate unauthenticated
+// route; it is not an RPC.
 export interface WechatService {
   // CreateWechatPlatform registers a platform. The response carries masks,
   // never the secrets the operator just typed.
@@ -154,6 +177,10 @@ export interface WechatService {
   // WithdrawWechatPlatform soft-deletes the platform. The row leaves the
   // live list; it is not hard-deleted.
   WithdrawWechatPlatform(request: WithdrawWechatPlatformRequest): Promise<wellKnownEmpty>;
+  // ProbeWechatPlatform runs the WeChat Connectivity Test for one platform.
+  // A platform that is missing a secret or a verify ticket fails the test.
+  // Success and failure change no WeChat App. Permission: wechat:platform:probe.
+  ProbeWechatPlatform(request: ProbeWechatPlatformRequest): Promise<ProbeWechatPlatformResult>;
 }
 
 type RequestType = {
@@ -273,6 +300,26 @@ export function createWechatServiceClient(
         service: "WechatService",
         method: "WithdrawWechatPlatform",
       }) as Promise<wellKnownEmpty>;
+    },
+    ProbeWechatPlatform(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.platformId) {
+        throw new Error("missing required field request.platform_id");
+      }
+      const path = `wechat/platform/${request.platformId}/probe`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "WechatService",
+        method: "ProbeWechatPlatform",
+      }) as Promise<ProbeWechatPlatformResult>;
     },
   };
 }

@@ -13,6 +13,7 @@ message Bootstrap {
   User user = 5;
   Pay pay = 6;
   Job job = 7;
+  Wechat wechat = 8;
 }
 
 // Job configures the job module (ADR 0023): the built-in scheduling loop,
@@ -33,6 +34,15 @@ message Job {
   // replicas must agree, so it is config, never the process's local zone.
   // Empty falls back to the built-in default (Asia/Shanghai).
   string timezone = 4;
+}
+
+// Wechat configures the wechat module: where WeChat pushes verify tickets
+// and full-network release traffic.
+message Wechat {
+  // Base URL WeChat calls back to, e.g. "https://wx.example.com".
+  // Each platform's callback is {base}/wechat/platform/{platform_id}/callback.
+  // Empty leaves the operator the path alone. Not a credential.
+  string callback_base_url = 1;
 }
 
 // Pay configures the pay module: where channels push their notifications

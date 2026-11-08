@@ -59,6 +59,7 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 					// (ADR 0020) and carries no Principal — never an
 					// oper-log event.
 					OperationPayServiceChannelNotification,
+					OperationWechatServicePlatformCallback,
 				),
 				operlog.WithSecretKeys(append(pay.ChannelSecretFields(), wechat.SecretFields()...)...),
 			),
@@ -92,6 +93,7 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 	jobv1.RegisterJobServiceHTTPServer(srv, job)
 	paramv1.RegisterConfigServiceHTTPServer(srv, config)
 	registerPayNotifyHTTP(srv, pay, payNotifyLimiter)
+	registerWechatCallbackHTTP(srv, wechat)
 	registerFileTransferHTTP(srv, file)
 	registerUserExcelHTTP(srv, user)
 	return srv

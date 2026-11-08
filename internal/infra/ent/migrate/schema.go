@@ -717,6 +717,7 @@ var (
 		{Name: "token_mask", Type: field.TypeString, Size: 16},
 		{Name: "encoding_aes_key_mask", Type: field.TypeString, Size: 16},
 		{Name: "key_version", Type: field.TypeInt, Default: 1},
+		{Name: "verify_ticket_cipher", Type: field.TypeString, Size: 2147483647, Default: ""},
 	}
 	// WechatPlatformTable holds the schema information for the "wechat_platform" table.
 	WechatPlatformTable = &schema.Table{

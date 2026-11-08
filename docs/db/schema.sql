@@ -797,6 +797,7 @@ create table if not exists wechat_platform (
     token_mask              varchar(16)  not null,
     encoding_aes_key_mask   varchar(16)  not null,
     key_version             int          not null default 1,   -- 主密钥版本（KEK 轮换预留，ADR 0018）
+    verify_ticket_cipher    text         not null default '',  -- 当前验证票据密文；空表示未持有。展示路径永不解密、永不回显
     create_by               bigint       not null default 0,
     update_by               bigint       not null default 0,
     created_at              timestamptz  not null default now(),
@@ -820,6 +821,7 @@ comment on column wechat_platform.component_secret_mask is 'component secret 掩
 comment on column wechat_platform.token_mask is 'Token 掩码回显；展示路径永不解密';
 comment on column wechat_platform.encoding_aes_key_mask is 'EncodingAESKey 掩码回显；展示路径永不解密';
 comment on column wechat_platform.key_version is '加密所用主密钥版本（WECHAT_MASTER_KEY，不是 PAY_MASTER_KEY）';
+comment on column wechat_platform.verify_ticket_cipher is '当前验证票据密文；空表示未持有。展示路径永不解密、永不回显明文';
 comment on column wechat_platform.create_by is '创建者用户ID';
 comment on column wechat_platform.update_by is '更新者用户ID';
 comment on column wechat_platform.created_at is '创建时间';

@@ -33,4 +33,7 @@ var (
 	// the handling site and this sentinel crosses the boundary instead
 	// (ADR 0007).
 	ErrWechatStoreUnavailable = errors.ServiceUnavailable("WECHAT_STORE_UNAVAILABLE", "wechat store unavailable")
+	// ErrPushRejected: the push is plaintext, compatible-mode, or failed
+	// verification. Nothing the operator reads changes.
+	ErrPushRejected = errors.BadRequest("WECHAT_PUSH_REJECTED", "wechat push was rejected")
 )
