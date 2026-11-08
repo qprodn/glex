@@ -131,6 +131,22 @@ message WechatApp {
   // Direct Hold secret. It is not suspension. A lapsed app stays on the
   // live list and cannot be connectivity-tested until it is restored.
   bool lapsed = 19;
+  // Where the browser lands after Web Authorization. Empty until an
+  // operator saves one. A request cannot substitute another address.
+  string return_url = 20;
+  // openid only, unless the operator asks for nickname and avatar too.
+  // A new Service Account is openid only.
+  WechatWebAuthScope web_auth_scope = 21;
+}
+
+// WechatWebAuthScope is how much profile a Service Account asks for
+// during Web Authorization.
+enum WechatWebAuthScope {
+  WECHAT_WEB_AUTH_SCOPE_UNSPECIFIED = 0;
+  // openid, and unionid when WeChat supplies one.
+  WECHAT_WEB_AUTH_SCOPE_OPENID = 1;
+  // openid and unionid, plus nickname and avatar.
+  WECHAT_WEB_AUTH_SCOPE_PROFILE = 2;
 }
 
 // WechatAppSet is a page of WeChat Apps that are not withdrawn.
@@ -290,6 +306,36 @@ service WechatService {
   rpc StartWechatAuthorization(StartWechatAuthorizationRequest) returns (WechatAuthorization) {
     option (google.api.http) = {
       post: "/wechat/app/authorization"
+      body: "*"
+    };
+  }
+
+  // ConfigureWechatWebAuthorization stores the return URL and the scope
+  // on a Service Account. Permission: wechat:app:update. The actor is
+  // the authenticated Principal.
+  rpc ConfigureWechatWebAuthorization(ConfigureWechatWebAuthorizationRequest) returns (WechatApp) {
+    option (google.api.http) = {
+      post: "/wechat/app/{app_id}/web-authorization"
+      body: "*"
+    };
+  }
+  // StartWechatWebAuthorization begins Web Authorization for one Service
+  // Account. No back-office Principal is required. return_url on this
+  // request is ignored; the browser later lands on the URL stored on
+  // the app.
+  rpc StartWechatWebAuthorization(StartWechatWebAuthorizationRequest) returns (WechatWebAuthorizationStart) {
+    option (google.api.http) = {
+      post: "/wechat/web-authorization"
+      body: "*"
+    };
+  }
+  // RedeemWechatHandoffCode spends one Handoff Code. No back-office
+  // Principal is required. A second redeem, or a code this system did
+  // not issue, fails. The call creates no WeChat User, System User, or
+  // Login Session, and it writes no Login Log.
+  rpc RedeemWechatHandoffCode(RedeemWechatHandoffCodeRequest) returns (WechatWebIdentity) {
+    option (google.api.http) = {
+      post: "/wechat/web-authorization/handoff"
       body: "*"
     };
   }
@@ -463,4 +509,40 @@ message StartWechatAuthorizationRequest {
 message WechatAuthorization {
   int64 platform_id = 1;
   string url = 2;
+}
+
+message ConfigureWechatWebAuthorizationRequest {
+  // Required. The Service Account to configure.
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Optional. Blank clears the stored return URL. A non-blank value is
+  // the absolute http(s) address the browser will land on.
+  string return_url = 2;
+  // Optional. Unset means openid only.
+  WechatWebAuthScope web_auth_scope = 3;
+}
+
+message StartWechatWebAuthorizationRequest {
+  // Required. The Service Account the browser is authorizing.
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Ignored. The browser does not land on an address supplied here.
+  string return_url = 2;
+}
+
+// WechatWebAuthorizationStart is the WeChat address the browser opens.
+message WechatWebAuthorizationStart {
+  string authorize_url = 1;
+}
+
+message RedeemWechatHandoffCodeRequest {
+  // Required. The single-use Handoff Code from the return URL.
+  string code = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// WechatWebIdentity is one redeemed Web Authorization. nickname and
+// avatar_url are empty unless that app asked for them.
+message WechatWebIdentity {
+  string openid = 1;
+  string unionid = 2;
+  string nickname = 3;
+  string avatar_url = 4;
 }

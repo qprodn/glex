@@ -61,4 +61,12 @@ var (
 	// connectivity testing is refused until a replacement AppSecret or a
 	// new grant on the same platform restores it.
 	ErrAppLapsed = errors.BadRequest("WECHAT_APP_LAPSED", "wechat app has lapsed")
+	// ErrWebAuthorizationRefused: Web Authorization cannot start, or the
+	// operator settings do not belong on this app. A subscription
+	// account, a mini program, a grant without the capability, a
+	// suspended app, or an app with no return URL is refused locally.
+	ErrWebAuthorizationRefused = errors.BadRequest("WECHAT_WEB_AUTHORIZATION_REFUSED", "web authorization cannot start")
+	// ErrHandoffCodeInvalid: the Handoff Code was never issued or was
+	// already redeemed. A second redeem cannot observe the identity.
+	ErrHandoffCodeInvalid = errors.BadRequest("WECHAT_HANDOFF_CODE_INVALID", "handoff code is invalid")
 )

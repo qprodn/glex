@@ -31,6 +31,12 @@ const (
 	CapabilityMiniProgramLogin = "mini_program_login"
 	// CapabilitySubscribeMessage is a Subscribe Message grant.
 	CapabilitySubscribeMessage = "subscribe_message"
+
+	// WebAuthScopeOpenID asks a Web Authorization for openid only. unionid
+	// is returned when WeChat supplies one. This is the default.
+	WebAuthScopeOpenID = "openid"
+	// WebAuthScopeProfile also asks for the nickname and avatar.
+	WebAuthScopeProfile = "profile"
 )
 
 // App is one WeChat App (微信应用). Ordinary reads carry masks for the
@@ -60,10 +66,17 @@ type App struct {
 	// rejected. A timeout, a business rejection, and an unready platform
 	// do not set it. A replacement AppSecret, or a new grant on the same
 	// platform, clears it. Suspension is a separate flag.
-	Lapsed     bool
-	KeyVersion int
-	CreateBy   int64
-	UpdateBy   int64
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	Lapsed bool
+	// ReturnURL is where the browser lands after WeChat accepts a Web
+	// Authorization. It is stored on the Service Account. A request
+	// cannot substitute another address.
+	ReturnURL string
+	// WebAuthScope is openid only, or openid plus nickname and avatar.
+	// A new Service Account starts at openid only.
+	WebAuthScope string
+	KeyVersion   int
+	CreateBy     int64
+	UpdateBy     int64
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }

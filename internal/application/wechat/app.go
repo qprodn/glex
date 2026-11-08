@@ -34,6 +34,8 @@ func convertApp(app *entity.App) *wechatv1.WechatApp {
 		CallbackAddress:     app.CallbackAddress,
 		Suspended:           app.Suspended,
 		Lapsed:              app.Lapsed,
+		ReturnUrl:           app.ReturnURL,
+		WebAuthScope:        webAuthScopeProto(app.WebAuthScope),
 		KeyVersion:          int32(app.KeyVersion),
 		CreateBy:            app.CreateBy,
 		UpdateBy:            app.UpdateBy,

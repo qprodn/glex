@@ -54,6 +54,10 @@ type WechatApp struct {
 	Suspended bool `json:"suspended,omitempty"`
 	// Lapsed holds the value of the "lapsed" field.
 	Lapsed bool `json:"lapsed,omitempty"`
+	// ReturnURL holds the value of the "return_url" field.
+	ReturnURL string `json:"return_url,omitempty"`
+	// WebAuthScope holds the value of the "web_auth_scope" field.
+	WebAuthScope string `json:"web_auth_scope,omitempty"`
 	// KeyVersion holds the value of the "key_version" field.
 	KeyVersion   int `json:"key_version,omitempty"`
 	selectValues sql.SelectValues
@@ -70,7 +74,7 @@ func (*WechatApp) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case wechatapp.FieldID, wechatapp.FieldCreateBy, wechatapp.FieldUpdateBy, wechatapp.FieldPlatformID, wechatapp.FieldKeyVersion:
 			values[i] = new(sql.NullInt64)
-		case wechatapp.FieldName, wechatapp.FieldWxAppID, wechatapp.FieldAppType, wechatapp.FieldAccountKind, wechatapp.FieldConnection, wechatapp.FieldSecretCipher, wechatapp.FieldAppSecretMask, wechatapp.FieldTokenMask, wechatapp.FieldEncodingAesKeyMask:
+		case wechatapp.FieldName, wechatapp.FieldWxAppID, wechatapp.FieldAppType, wechatapp.FieldAccountKind, wechatapp.FieldConnection, wechatapp.FieldSecretCipher, wechatapp.FieldAppSecretMask, wechatapp.FieldTokenMask, wechatapp.FieldEncodingAesKeyMask, wechatapp.FieldReturnURL, wechatapp.FieldWebAuthScope:
 			values[i] = new(sql.NullString)
 		case wechatapp.FieldCreatedAt, wechatapp.FieldUpdatedAt, wechatapp.FieldDeletedAt:
 			values[i] = new(sql.NullTime)
@@ -206,6 +210,18 @@ func (_m *WechatApp) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Lapsed = value.Bool
 			}
+		case wechatapp.FieldReturnURL:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field return_url", values[i])
+			} else if value.Valid {
+				_m.ReturnURL = value.String
+			}
+		case wechatapp.FieldWebAuthScope:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field web_auth_scope", values[i])
+			} else if value.Valid {
+				_m.WebAuthScope = value.String
+			}
 		case wechatapp.FieldKeyVersion:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field key_version", values[i])
@@ -303,6 +319,12 @@ func (_m *WechatApp) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("lapsed=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Lapsed))
+	builder.WriteString(", ")
+	builder.WriteString("return_url=")
+	builder.WriteString(_m.ReturnURL)
+	builder.WriteString(", ")
+	builder.WriteString("web_auth_scope=")
+	builder.WriteString(_m.WebAuthScope)
 	builder.WriteString(", ")
 	builder.WriteString("key_version=")
 	builder.WriteString(fmt.Sprintf("%v", _m.KeyVersion))

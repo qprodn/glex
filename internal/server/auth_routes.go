@@ -150,19 +150,23 @@ func authRoutes() map[string]authmw.Route {
 		// wechat: WeChat Apps. Reads show masks. A Direct Hold returns its
 		// generated Push Secret in full only on create and regenerate.
 		// Platform Authorization starts here; WeChat's push completes it.
-		wechatv1.OperationWechatServiceCreateWechatApp:               {Permission: "wechat:app:create"},
-		wechatv1.OperationWechatServiceListWechatApps:                {Permission: "wechat:app:list"},
-		wechatv1.OperationWechatServiceGetWechatApp:                  {Permission: "wechat:app:list"},
-		wechatv1.OperationWechatServiceUpdateWechatApp:               {Permission: "wechat:app:update"},
-		wechatv1.OperationWechatServiceSetWechatAppSuspended:         {Permission: "wechat:app:update"},
-		wechatv1.OperationWechatServiceRegenerateWechatAppPushSecret: {Permission: "wechat:app:update"},
-		wechatv1.OperationWechatServiceWithdrawWechatApp:             {Permission: "wechat:app:remove"},
-		wechatv1.OperationWechatServiceProbeWechatApp:                {Permission: "wechat:app:probe"},
+		wechatv1.OperationWechatServiceCreateWechatApp:                 {Permission: "wechat:app:create"},
+		wechatv1.OperationWechatServiceListWechatApps:                  {Permission: "wechat:app:list"},
+		wechatv1.OperationWechatServiceGetWechatApp:                    {Permission: "wechat:app:list"},
+		wechatv1.OperationWechatServiceUpdateWechatApp:                 {Permission: "wechat:app:update"},
+		wechatv1.OperationWechatServiceConfigureWechatWebAuthorization: {Permission: "wechat:app:update"},
+		wechatv1.OperationWechatServiceSetWechatAppSuspended:           {Permission: "wechat:app:update"},
+		wechatv1.OperationWechatServiceRegenerateWechatAppPushSecret:   {Permission: "wechat:app:update"},
+		wechatv1.OperationWechatServiceWithdrawWechatApp:               {Permission: "wechat:app:remove"},
+		wechatv1.OperationWechatServiceProbeWechatApp:                  {Permission: "wechat:app:probe"},
 		// Starting a Platform Authorization is an app create: the operator
 		// chooses a ready platform from the WeChat App area. The grant
 		// itself arrives on the platform callback and is not this route.
 		wechatv1.OperationWechatServiceListAuthorizationPlatforms: {Permission: "wechat:app:create"},
 		wechatv1.OperationWechatServiceStartWechatAuthorization:   {Permission: "wechat:app:create"},
+		// StartWechatWebAuthorization and RedeemWechatHandoffCode are
+		// absent: a browser and a caller complete them without a
+		// back-office Principal. The WeChat return route is absent too.
 
 		// job: scheduled-task console and run history (ADR 0023). The
 		// executor listing rides the list permission — it exists to power

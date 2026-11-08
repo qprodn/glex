@@ -20,6 +20,13 @@ import (
 // stays out of the domain object — display reads the mask columns and
 // never decrypts (ADR 0029). The callback address is derived by the
 // domain service, not stored.
+func webAuthScopeOrDefault(scope string) string {
+	if scope == "" {
+		return entity.WebAuthScopeOpenID
+	}
+	return scope
+}
+
 func toBizApp(po *ent.WechatApp) *entity.App {
 	return &entity.App{
 		ID:                 po.ID,
@@ -35,6 +42,8 @@ func toBizApp(po *ent.WechatApp) *entity.App {
 		EncodingAESKeyMask: po.EncodingAesKeyMask,
 		Suspended:          po.Suspended,
 		Lapsed:             po.Lapsed,
+		ReturnURL:          po.ReturnURL,
+		WebAuthScope:       webAuthScopeOrDefault(po.WebAuthScope),
 		KeyVersion:         po.KeyVersion,
 		CreateBy:           po.CreateBy,
 		UpdateBy:           po.UpdateBy,
@@ -192,6 +201,8 @@ func (r *appRepo) Create(ctx context.Context, req wechatrepo.SaveAppRequest) (*e
 		SetEncodingAesKeyMask(app.EncodingAESKeyMask).
 		SetSuspended(app.Suspended).
 		SetLapsed(app.Lapsed).
+		SetReturnURL(app.ReturnURL).
+		SetWebAuthScope(webAuthScopeOrDefault(app.WebAuthScope)).
 		SetKeyVersion(app.KeyVersion).
 		SetCreateBy(app.CreateBy).
 		SetUpdateBy(app.UpdateBy)
@@ -215,6 +226,8 @@ func (r *appRepo) Update(ctx context.Context, req wechatrepo.SaveAppRequest) (*e
 		SetName(app.Name).
 		SetSuspended(app.Suspended).
 		SetLapsed(app.Lapsed).
+		SetReturnURL(app.ReturnURL).
+		SetWebAuthScope(webAuthScopeOrDefault(app.WebAuthScope)).
 		SetUpdateBy(req.ActorID)
 	if app.Capabilities != nil {
 		upd.SetGrantedCapabilities(app.Capabilities)

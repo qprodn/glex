@@ -120,4 +120,34 @@ type OpenAPI interface {
 	AnswerFullNetwork(ctx context.Context, req FullNetworkReply) error
 	StartAuthorization(ctx context.Context, req OpenAuthorizationStart) (*AuthorizationLink, error)
 	CompleteAuthorization(ctx context.Context, req OpenAuthorizationCode) (*AuthorizationGrant, error)
+	// ExchangeWebAuthorization turns the code WeChat just issued into an
+	// identity. Profile asks for nickname and avatar. The access token
+	// stays inside the port. session_key is not part of this call.
+	ExchangeWebAuthorization(ctx context.Context, req ExchangeWebAuthorizationRequest) (WebAuthorizationExchange, error)
+}
+
+// ExchangeWebAuthorizationRequest is one completed Web Authorization code.
+// Profile is true when the app asked for nickname and avatar.
+type ExchangeWebAuthorizationRequest struct {
+	Connection             string
+	AppID                  string
+	AppSecret              string
+	ComponentAppID         string
+	ComponentSecret        string
+	VerifyTicket           string
+	AuthorizerRefreshToken string
+	Code                   string
+	Profile                bool
+}
+
+// WebAuthorizationExchange is the identity WeChat returned, already
+// classified. Nickname and AvatarURL are meaningful only when the call
+// asked for them. The domain still decides what a redeem returns.
+type WebAuthorizationExchange struct {
+	Class     CallClass
+	OpenID    string
+	UnionID   string
+	Nickname  string
+	AvatarURL string
+	Message   string
 }

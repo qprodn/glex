@@ -843,6 +843,8 @@ create table if not exists wechat_app (
     encoding_aes_key_mask   varchar(16)  not null,
     suspended               boolean      not null default false, -- 停用；不是撤回，也不是失效
     lapsed                  boolean      not null default false, -- 失效；只有微信明确拒绝授权或直连密钥时设置
+    return_url              varchar(2048) not null default '', -- 网页授权浏览器返回地址；空表示还不能开始
+    web_auth_scope          varchar(32)  not null default 'openid', -- 网页授权范围：openid，或 profile（同时要昵称和头像）
     key_version             int          not null default 1,   -- 主密钥版本（KEK 轮换预留，ADR 0018）
     create_by               bigint       not null default 0,
     update_by               bigint       not null default 0,
@@ -863,6 +865,8 @@ create index if not exists wechat_app_platform_id
 
 -- 表已按上一版脚本建过时，create table if not exists 不会补列。
 alter table wechat_app add column if not exists lapsed boolean not null default false;
+alter table wechat_app add column if not exists return_url varchar(2048) not null default '';
+alter table wechat_app add column if not exists web_auth_scope varchar(32) not null default 'openid';
 
 comment on table wechat_app is '微信应用表（直连或平台授权，凭据密文落库 ADR 0018/0029）';
 
@@ -880,6 +884,8 @@ comment on column wechat_app.token_mask is '消息推送 Token 掩码回显；�
 comment on column wechat_app.encoding_aes_key_mask is 'EncodingAESKey 掩码回显；展示路径永不解密';
 comment on column wechat_app.suspended is '停用标记；停用不是撤回，也不是失效';
 comment on column wechat_app.lapsed is '失效标记；微信明确拒绝授权或直连密钥时设置。超时、业务拒绝、平台未就绪都不设置。换 AppSecret 或在原平台重新授权后清除';
+comment on column wechat_app.return_url is '网页授权完成后浏览器回到的地址，保存在这条服务号上。请求不能另指一个地址。空则网页授权不能开始';
+comment on column wechat_app.web_auth_scope is '网页授权范围：openid 只取 openid；profile 同时要昵称和头像。新建服务号默认 openid';
 comment on column wechat_app.key_version is '加密所用主密钥版本（WECHAT_MASTER_KEY，不是 PAY_MASTER_KEY）';
 comment on column wechat_app.create_by is '创建者用户ID';
 comment on column wechat_app.update_by is '更新者用户ID';

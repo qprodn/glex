@@ -67,6 +67,14 @@ export type WechatCapability =
   | "WECHAT_CAPABILITY_WEB_AUTHORIZATION"
   | "WECHAT_CAPABILITY_MINI_PROGRAM_LOGIN"
   | "WECHAT_CAPABILITY_SUBSCRIBE_MESSAGE";
+// WechatWebAuthScope is how much profile a Service Account asks for
+// during Web Authorization.
+export type WechatWebAuthScope =
+  | "WECHAT_WEB_AUTH_SCOPE_UNSPECIFIED"
+  // openid, and unionid when WeChat supplies one.
+  | "WECHAT_WEB_AUTH_SCOPE_OPENID"
+  // openid and unionid, plus nickname and avatar.
+  | "WECHAT_WEB_AUTH_SCOPE_PROFILE";
 // WechatPlatform is one WeChat Platform registration (微信平台). The
 // component secret, Token, and EncodingAESKey never cross the wire —
 // every response carries only their masks (ADR 0029).
@@ -156,6 +164,12 @@ export type WechatApp = {
   // Direct Hold secret. It is not suspension. A lapsed app stays on the
   // live list and cannot be connectivity-tested until it is restored.
   lapsed: boolean | undefined;
+  // Where the browser lands after Web Authorization. Empty until an
+  // operator saves one. A request cannot substitute another address.
+  returnUrl: string | undefined;
+  // openid only, unless the operator asks for nickname and avatar too.
+  // A new Service Account is openid only.
+  webAuthScope: WechatWebAuthScope | undefined;
 };
 
 // WechatAppSet is a page of WeChat Apps that are not withdrawn.
@@ -391,6 +405,48 @@ export type WechatAuthorization = {
   url: string | undefined;
 };
 
+export type ConfigureWechatWebAuthorizationRequest = {
+  // Required. The Service Account to configure.
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+  // Optional. Blank clears the stored return URL. A non-blank value is
+  // the absolute http(s) address the browser will land on.
+  returnUrl: string | undefined;
+  // Optional. Unset means openid only.
+  webAuthScope: WechatWebAuthScope | undefined;
+};
+
+export type StartWechatWebAuthorizationRequest = {
+  // Required. The Service Account the browser is authorizing.
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+  // Ignored. The browser does not land on an address supplied here.
+  returnUrl: string | undefined;
+};
+
+// WechatWebAuthorizationStart is the WeChat address the browser opens.
+export type WechatWebAuthorizationStart = {
+  authorizeUrl: string | undefined;
+};
+
+export type RedeemWechatHandoffCodeRequest = {
+  // Required. The single-use Handoff Code from the return URL.
+  //
+  // Behaviors: REQUIRED
+  code: string | undefined;
+};
+
+// WechatWebIdentity is one redeemed Web Authorization. nickname and
+// avatar_url are empty unless that app asked for them.
+export type WechatWebIdentity = {
+  openid: string | undefined;
+  unionid: string | undefined;
+  nickname: string | undefined;
+  avatarUrl: string | undefined;
+};
+
 // WechatService is the back-office surface for WeChat Platform
 // registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
@@ -458,6 +514,20 @@ export interface WechatService {
   // opens. The chosen platform must be ready and not withdrawn. No WeChat
   // App is created by this call. Permission: wechat:app:create.
   StartWechatAuthorization(request: StartWechatAuthorizationRequest): Promise<WechatAuthorization>;
+  // ConfigureWechatWebAuthorization stores the return URL and the scope
+  // on a Service Account. Permission: wechat:app:update. The actor is
+  // the authenticated Principal.
+  ConfigureWechatWebAuthorization(request: ConfigureWechatWebAuthorizationRequest): Promise<WechatApp>;
+  // StartWechatWebAuthorization begins Web Authorization for one Service
+  // Account. No back-office Principal is required. return_url on this
+  // request is ignored; the browser later lands on the URL stored on
+  // the app.
+  StartWechatWebAuthorization(request: StartWechatWebAuthorizationRequest): Promise<WechatWebAuthorizationStart>;
+  // RedeemWechatHandoffCode spends one Handoff Code. No back-office
+  // Principal is required. A second redeem, or a code this system did
+  // not issue, fails. The call creates no WeChat User, System User, or
+  // Login Session, and it writes no Login Log.
+  RedeemWechatHandoffCode(request: RedeemWechatHandoffCodeRequest): Promise<WechatWebIdentity>;
 }
 
 type RequestType = {
@@ -797,6 +867,60 @@ export function createWechatServiceClient(
         service: "WechatService",
         method: "StartWechatAuthorization",
       }) as Promise<WechatAuthorization>;
+    },
+    ConfigureWechatWebAuthorization(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.appId) {
+        throw new Error("missing required field request.app_id");
+      }
+      const path = `wechat/app/${request.appId}/web-authorization`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "WechatService",
+        method: "ConfigureWechatWebAuthorization",
+      }) as Promise<WechatApp>;
+    },
+    StartWechatWebAuthorization(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `wechat/web-authorization`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "WechatService",
+        method: "StartWechatWebAuthorization",
+      }) as Promise<WechatWebAuthorizationStart>;
+    },
+    RedeemWechatHandoffCode(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `wechat/web-authorization/handoff`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "WechatService",
+        method: "RedeemWechatHandoffCode",
+      }) as Promise<WechatWebIdentity>;
     },
   };
 }

@@ -110,6 +110,22 @@ type App interface {
 	// CountLiveAuthorizations counts apps not withdrawn that are
 	// authorized through this platform.
 	CountLiveAuthorizations(ctx context.Context, platformID int64) (int, error)
+	// ConfigureWebAuthorization stores the return URL and the scope on a
+	// Service Account. The actor is the Principal. Scope is openid only,
+	// or openid plus nickname and avatar.
+	ConfigureWebAuthorization(ctx context.Context, req ConfigureWebAuthorizationRequest) (*entity.App, error)
+	// StartWebAuthorization begins a Web Authorization for one usable
+	// Service Account. The request's return URL is ignored: the browser
+	// is sent to WeChat, and later lands only on the URL stored on the app.
+	StartWebAuthorization(ctx context.Context, req StartWebAuthorizationRequest) (*WebAuthorizationStart, error)
+	// AcceptWebAuthorization runs after WeChat accepts the grant. The
+	// browser is sent to the return URL stored on the app, with one
+	// Handoff Code. The request's return URL is ignored.
+	AcceptWebAuthorization(ctx context.Context, req AcceptWebAuthorizationRequest) (*WebAuthorizationLanding, error)
+	// RedeemHandoffCode returns the identity once. A second redeem, or a
+	// code this system did not issue, fails. It creates no WeChat User,
+	// System User, or Login Session.
+	RedeemHandoffCode(ctx context.Context, req RedeemHandoffCodeRequest) (*WebIdentity, error)
 	// Probe runs the WeChat Connectivity Test for one live app. It
 	// creates no WeChat Dispatch. A suspended app can be tested. A
 	// lapsed app is refused until it is restored. A withdrawn app is
@@ -131,16 +147,19 @@ type PlatformBindings interface {
 type appImpl struct {
 	apps         repository.AppRepo
 	platforms    repository.PlatformRepo
+	handoffs     repository.HandoffCodeRepo
 	openapi      OpenAPI
 	callbackBase string
 	logger       *slog.Logger
 }
 
-// NewAppService creates the app domain service.
-func NewAppService(apps repository.AppRepo, platforms repository.PlatformRepo, openapi OpenAPI, callbackBase CallbackBase, logger *slog.Logger) App {
+// NewAppService creates the app domain service. handoffs stores Handoff
+// Codes. It is not a user repository.
+func NewAppService(apps repository.AppRepo, platforms repository.PlatformRepo, handoffs repository.HandoffCodeRepo, openapi OpenAPI, callbackBase CallbackBase, logger *slog.Logger) App {
 	return &appImpl{
 		apps:         apps,
 		platforms:    platforms,
+		handoffs:     handoffs,
 		openapi:      openapi,
 		callbackBase: strings.TrimRight(string(callbackBase), "/"),
 		logger:       logger.With(slog.String("component", "domain.wechat.app.svc")),
@@ -184,6 +203,7 @@ func (s *appImpl) Create(ctx context.Context, req CreateDirectHoldRequest) (*Pus
 		AppSecretMask:      maskSecret(req.AppSecret),
 		TokenMask:          maskSecret(token),
 		EncodingAESKeyMask: maskSecret(aesKey),
+		WebAuthScope:       entity.WebAuthScopeOpenID,
 		KeyVersion:         entity.KeyVersion,
 		CreateBy:           req.ActorID,
 		UpdateBy:           req.ActorID,

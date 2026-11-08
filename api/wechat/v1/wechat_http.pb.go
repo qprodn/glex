@@ -18,6 +18,7 @@ var _ = new(context.Context)
 
 const _ = http.SupportPackageIsVersion3
 
+const OperationWechatServiceConfigureWechatWebAuthorization = "/wechat.v1.WechatService/ConfigureWechatWebAuthorization"
 const OperationWechatServiceCreateWechatApp = "/wechat.v1.WechatService/CreateWechatApp"
 const OperationWechatServiceCreateWechatPlatform = "/wechat.v1.WechatService/CreateWechatPlatform"
 const OperationWechatServiceGetWechatApp = "/wechat.v1.WechatService/GetWechatApp"
@@ -27,15 +28,21 @@ const OperationWechatServiceListWechatApps = "/wechat.v1.WechatService/ListWecha
 const OperationWechatServiceListWechatPlatforms = "/wechat.v1.WechatService/ListWechatPlatforms"
 const OperationWechatServiceProbeWechatApp = "/wechat.v1.WechatService/ProbeWechatApp"
 const OperationWechatServiceProbeWechatPlatform = "/wechat.v1.WechatService/ProbeWechatPlatform"
+const OperationWechatServiceRedeemWechatHandoffCode = "/wechat.v1.WechatService/RedeemWechatHandoffCode"
 const OperationWechatServiceRegenerateWechatAppPushSecret = "/wechat.v1.WechatService/RegenerateWechatAppPushSecret"
 const OperationWechatServiceSetWechatAppSuspended = "/wechat.v1.WechatService/SetWechatAppSuspended"
 const OperationWechatServiceStartWechatAuthorization = "/wechat.v1.WechatService/StartWechatAuthorization"
+const OperationWechatServiceStartWechatWebAuthorization = "/wechat.v1.WechatService/StartWechatWebAuthorization"
 const OperationWechatServiceUpdateWechatApp = "/wechat.v1.WechatService/UpdateWechatApp"
 const OperationWechatServiceUpdateWechatPlatform = "/wechat.v1.WechatService/UpdateWechatPlatform"
 const OperationWechatServiceWithdrawWechatApp = "/wechat.v1.WechatService/WithdrawWechatApp"
 const OperationWechatServiceWithdrawWechatPlatform = "/wechat.v1.WechatService/WithdrawWechatPlatform"
 
 type WechatServiceHTTPServer interface {
+	// ConfigureWechatWebAuthorization ConfigureWechatWebAuthorization stores the return URL and the scope
+	// on a Service Account. Permission: wechat:app:update. The actor is
+	// the authenticated Principal.
+	ConfigureWechatWebAuthorization(context.Context, *ConfigureWechatWebAuthorizationRequest) (*WechatApp, error)
 	// CreateWechatApp CreateWechatApp connects a mini program, or an official account with
 	// a Service Account or Subscription Account kind, by Direct Hold. The
 	// response returns the generated Token and EncodingAESKey in full once.
@@ -70,6 +77,11 @@ type WechatServiceHTTPServer interface {
 	// A platform that is missing a secret or a verify ticket fails the test.
 	// Success and failure change no WeChat App. Permission: wechat:platform:probe.
 	ProbeWechatPlatform(context.Context, *ProbeWechatPlatformRequest) (*ProbeWechatPlatformResult, error)
+	// RedeemWechatHandoffCode RedeemWechatHandoffCode spends one Handoff Code. No back-office
+	// Principal is required. A second redeem, or a code this system did
+	// not issue, fails. The call creates no WeChat User, System User, or
+	// Login Session, and it writes no Login Log.
+	RedeemWechatHandoffCode(context.Context, *RedeemWechatHandoffCodeRequest) (*WechatWebIdentity, error)
 	// RegenerateWechatAppPushSecret RegenerateWechatAppPushSecret replaces the Push Secret. The response
 	// returns the new pair in full once. The previous pair is invalidated
 	// immediately. The app is not withdrawn and its suspension is unchanged.
@@ -81,6 +93,11 @@ type WechatServiceHTTPServer interface {
 	// opens. The chosen platform must be ready and not withdrawn. No WeChat
 	// App is created by this call. Permission: wechat:app:create.
 	StartWechatAuthorization(context.Context, *StartWechatAuthorizationRequest) (*WechatAuthorization, error)
+	// StartWechatWebAuthorization StartWechatWebAuthorization begins Web Authorization for one Service
+	// Account. No back-office Principal is required. return_url on this
+	// request is ignored; the browser later lands on the URL stored on
+	// the app.
+	StartWechatWebAuthorization(context.Context, *StartWechatWebAuthorizationRequest) (*WechatWebAuthorizationStart, error)
 	// UpdateWechatApp UpdateWechatApp corrects the display name and, when app_secret is
 	// non-blank, replaces the AppSecret. The response carries masks only
 	// and never the submitted secret. A wx_app_id that differs from the
@@ -117,6 +134,9 @@ func RegisterWechatServiceHTTPServer(s *http.Server, srv WechatServiceHTTPServer
 	r.Handle("POST", "/wechat/app/{app_id}/probe", _WechatService_ProbeWechatApp0_HTTP_Handler(srv))
 	r.Handle("GET", "/wechat/app/authorization/platforms", _WechatService_ListAuthorizationPlatforms0_HTTP_Handler(srv))
 	r.Handle("POST", "/wechat/app/authorization", _WechatService_StartWechatAuthorization0_HTTP_Handler(srv))
+	r.Handle("POST", "/wechat/app/{app_id}/web-authorization", _WechatService_ConfigureWechatWebAuthorization0_HTTP_Handler(srv))
+	r.Handle("POST", "/wechat/web-authorization", _WechatService_StartWechatWebAuthorization0_HTTP_Handler(srv))
+	r.Handle("POST", "/wechat/web-authorization/handoff", _WechatService_RedeemWechatHandoffCode0_HTTP_Handler(srv))
 }
 
 func _WechatService_CreateWechatPlatform0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
@@ -453,7 +473,71 @@ func _WechatService_StartWechatAuthorization0_HTTP_Handler(srv WechatServiceHTTP
 	}
 }
 
+func _WechatService_ConfigureWechatWebAuthorization0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ConfigureWechatWebAuthorizationRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceConfigureWechatWebAuthorization)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ConfigureWechatWebAuthorization(ctx, req.(*ConfigureWechatWebAuthorizationRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatApp)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _WechatService_StartWechatWebAuthorization0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in StartWechatWebAuthorizationRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceStartWechatWebAuthorization)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.StartWechatWebAuthorization(ctx, req.(*StartWechatWebAuthorizationRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatWebAuthorizationStart)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _WechatService_RedeemWechatHandoffCode0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in RedeemWechatHandoffCodeRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceRedeemWechatHandoffCode)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.RedeemWechatHandoffCode(ctx, req.(*RedeemWechatHandoffCodeRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatWebIdentity)
+		return ctx.Result(200, reply)
+	}
+}
+
 type WechatServiceHTTPClient interface {
+	// ConfigureWechatWebAuthorization ConfigureWechatWebAuthorization stores the return URL and the scope
+	// on a Service Account. Permission: wechat:app:update. The actor is
+	// the authenticated Principal.
+	ConfigureWechatWebAuthorization(ctx context.Context, req *ConfigureWechatWebAuthorizationRequest, opts ...http.CallOption) (rsp *WechatApp, err error)
 	// CreateWechatApp CreateWechatApp connects a mini program, or an official account with
 	// a Service Account or Subscription Account kind, by Direct Hold. The
 	// response returns the generated Token and EncodingAESKey in full once.
@@ -488,6 +572,11 @@ type WechatServiceHTTPClient interface {
 	// A platform that is missing a secret or a verify ticket fails the test.
 	// Success and failure change no WeChat App. Permission: wechat:platform:probe.
 	ProbeWechatPlatform(ctx context.Context, req *ProbeWechatPlatformRequest, opts ...http.CallOption) (rsp *ProbeWechatPlatformResult, err error)
+	// RedeemWechatHandoffCode RedeemWechatHandoffCode spends one Handoff Code. No back-office
+	// Principal is required. A second redeem, or a code this system did
+	// not issue, fails. The call creates no WeChat User, System User, or
+	// Login Session, and it writes no Login Log.
+	RedeemWechatHandoffCode(ctx context.Context, req *RedeemWechatHandoffCodeRequest, opts ...http.CallOption) (rsp *WechatWebIdentity, err error)
 	// RegenerateWechatAppPushSecret RegenerateWechatAppPushSecret replaces the Push Secret. The response
 	// returns the new pair in full once. The previous pair is invalidated
 	// immediately. The app is not withdrawn and its suspension is unchanged.
@@ -499,6 +588,11 @@ type WechatServiceHTTPClient interface {
 	// opens. The chosen platform must be ready and not withdrawn. No WeChat
 	// App is created by this call. Permission: wechat:app:create.
 	StartWechatAuthorization(ctx context.Context, req *StartWechatAuthorizationRequest, opts ...http.CallOption) (rsp *WechatAuthorization, err error)
+	// StartWechatWebAuthorization StartWechatWebAuthorization begins Web Authorization for one Service
+	// Account. No back-office Principal is required. return_url on this
+	// request is ignored; the browser later lands on the URL stored on
+	// the app.
+	StartWechatWebAuthorization(ctx context.Context, req *StartWechatWebAuthorizationRequest, opts ...http.CallOption) (rsp *WechatWebAuthorizationStart, err error)
 	// UpdateWechatApp UpdateWechatApp corrects the display name and, when app_secret is
 	// non-blank, replaces the AppSecret. The response carries masks only
 	// and never the submitted secret. A wx_app_id that differs from the
@@ -523,6 +617,26 @@ type WechatServiceHTTPClientImpl struct {
 
 func NewWechatServiceHTTPClient(client *http.Client) WechatServiceHTTPClient {
 	return &WechatServiceHTTPClientImpl{client}
+}
+
+// ConfigureWechatWebAuthorization ConfigureWechatWebAuthorization stores the return URL and the scope
+// on a Service Account. Permission: wechat:app:update. The actor is
+// the authenticated Principal.
+func (c *WechatServiceHTTPClientImpl) ConfigureWechatWebAuthorization(ctx context.Context, in *ConfigureWechatWebAuthorizationRequest, opts ...http.CallOption) (*WechatApp, error) {
+	var out WechatApp
+	pattern := "/wechat/app/{app_id}/web-authorization"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationWechatServiceConfigureWechatWebAuthorization),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 // CreateWechatApp CreateWechatApp connects a mini program, or an official account with
@@ -698,6 +812,27 @@ func (c *WechatServiceHTTPClientImpl) ProbeWechatPlatform(ctx context.Context, i
 	return &out, nil
 }
 
+// RedeemWechatHandoffCode RedeemWechatHandoffCode spends one Handoff Code. No back-office
+// Principal is required. A second redeem, or a code this system did
+// not issue, fails. The call creates no WeChat User, System User, or
+// Login Session, and it writes no Login Log.
+func (c *WechatServiceHTTPClientImpl) RedeemWechatHandoffCode(ctx context.Context, in *RedeemWechatHandoffCodeRequest, opts ...http.CallOption) (*WechatWebIdentity, error) {
+	var out WechatWebIdentity
+	pattern := "/wechat/web-authorization/handoff"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationWechatServiceRedeemWechatHandoffCode),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // RegenerateWechatAppPushSecret RegenerateWechatAppPushSecret replaces the Push Secret. The response
 // returns the new pair in full once. The previous pair is invalidated
 // immediately. The app is not withdrawn and its suspension is unchanged.
@@ -748,6 +883,27 @@ func (c *WechatServiceHTTPClientImpl) StartWechatAuthorization(ctx context.Conte
 		http.Accept("application/protojson"),
 		http.ContentType("application/protojson"),
 		http.Operation(OperationWechatServiceStartWechatAuthorization),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// StartWechatWebAuthorization StartWechatWebAuthorization begins Web Authorization for one Service
+// Account. No back-office Principal is required. return_url on this
+// request is ignored; the browser later lands on the URL stored on
+// the app.
+func (c *WechatServiceHTTPClientImpl) StartWechatWebAuthorization(ctx context.Context, in *StartWechatWebAuthorizationRequest, opts ...http.CallOption) (*WechatWebAuthorizationStart, error) {
+	var out WechatWebAuthorizationStart
+	pattern := "/wechat/web-authorization"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationWechatServiceStartWechatWebAuthorization),
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)

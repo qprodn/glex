@@ -1077,6 +1077,9 @@ type scriptedOpenAPI struct {
 	appProbe     ProbeAppResult
 	appProbeErr  error
 	appProbes    []ProbeAppRequest
+	webGrant     *WebAuthorizationExchange
+	webGrantErr  error
+	webExchanges []ExchangeWebAuthorizationRequest
 }
 
 func (s *scriptedOpenAPI) ProbeApp(_ context.Context, req ProbeAppRequest) (ProbeAppResult, error) {
@@ -1126,6 +1129,20 @@ func (s *scriptedOpenAPI) StartAuthorization(_ context.Context, req OpenAuthoriz
 		url = "https://mp.weixin.qq.com/cgi-bin/componentloginpage?pre_auth_code=scripted"
 	}
 	return &AuthorizationLink{URL: url}, nil
+}
+
+func (s *scriptedOpenAPI) ExchangeWebAuthorization(_ context.Context, req ExchangeWebAuthorizationRequest) (WebAuthorizationExchange, error) {
+	if s == nil {
+		return WebAuthorizationExchange{}, errors.New("no web grant scripted")
+	}
+	s.webExchanges = append(s.webExchanges, req)
+	if s.webGrantErr != nil {
+		return WebAuthorizationExchange{}, s.webGrantErr
+	}
+	if s.webGrant == nil {
+		return WebAuthorizationExchange{}, errors.New("no web grant scripted")
+	}
+	return *s.webGrant, nil
 }
 
 func (s *scriptedOpenAPI) CompleteAuthorization(_ context.Context, req OpenAuthorizationCode) (*AuthorizationGrant, error) {

@@ -24423,6 +24423,8 @@ type WechatAppMutation struct {
 	encoding_aes_key_mask      *string
 	suspended                  *bool
 	lapsed                     *bool
+	return_url                 *string
+	web_auth_scope             *string
 	key_version                *int
 	addkey_version             *int
 	clearedFields              map[string]struct{}
@@ -25313,6 +25315,78 @@ func (m *WechatAppMutation) ResetLapsed() {
 	m.lapsed = nil
 }
 
+// SetReturnURL sets the "return_url" field.
+func (m *WechatAppMutation) SetReturnURL(s string) {
+	m.return_url = &s
+}
+
+// ReturnURL returns the value of the "return_url" field in the mutation.
+func (m *WechatAppMutation) ReturnURL() (r string, exists bool) {
+	v := m.return_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReturnURL returns the old "return_url" field's value of the WechatApp entity.
+// If the WechatApp object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAppMutation) OldReturnURL(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReturnURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReturnURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReturnURL: %w", err)
+	}
+	return oldValue.ReturnURL, nil
+}
+
+// ResetReturnURL resets all changes to the "return_url" field.
+func (m *WechatAppMutation) ResetReturnURL() {
+	m.return_url = nil
+}
+
+// SetWebAuthScope sets the "web_auth_scope" field.
+func (m *WechatAppMutation) SetWebAuthScope(s string) {
+	m.web_auth_scope = &s
+}
+
+// WebAuthScope returns the value of the "web_auth_scope" field in the mutation.
+func (m *WechatAppMutation) WebAuthScope() (r string, exists bool) {
+	v := m.web_auth_scope
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWebAuthScope returns the old "web_auth_scope" field's value of the WechatApp entity.
+// If the WechatApp object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAppMutation) OldWebAuthScope(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWebAuthScope is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWebAuthScope requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWebAuthScope: %w", err)
+	}
+	return oldValue.WebAuthScope, nil
+}
+
+// ResetWebAuthScope resets all changes to the "web_auth_scope" field.
+func (m *WechatAppMutation) ResetWebAuthScope() {
+	m.web_auth_scope = nil
+}
+
 // SetKeyVersion sets the "key_version" field.
 func (m *WechatAppMutation) SetKeyVersion(i int) {
 	m.key_version = &i
@@ -25403,7 +25477,7 @@ func (m *WechatAppMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *WechatAppMutation) Fields() []string {
-	fields := make([]string, 0, 19)
+	fields := make([]string, 0, 21)
 	if m.create_by != nil {
 		fields = append(fields, wechatapp.FieldCreateBy)
 	}
@@ -25458,6 +25532,12 @@ func (m *WechatAppMutation) Fields() []string {
 	if m.lapsed != nil {
 		fields = append(fields, wechatapp.FieldLapsed)
 	}
+	if m.return_url != nil {
+		fields = append(fields, wechatapp.FieldReturnURL)
+	}
+	if m.web_auth_scope != nil {
+		fields = append(fields, wechatapp.FieldWebAuthScope)
+	}
 	if m.key_version != nil {
 		fields = append(fields, wechatapp.FieldKeyVersion)
 	}
@@ -25505,6 +25585,10 @@ func (m *WechatAppMutation) Field(name string) (ent.Value, bool) {
 		return m.Suspended()
 	case wechatapp.FieldLapsed:
 		return m.Lapsed()
+	case wechatapp.FieldReturnURL:
+		return m.ReturnURL()
+	case wechatapp.FieldWebAuthScope:
+		return m.WebAuthScope()
 	case wechatapp.FieldKeyVersion:
 		return m.KeyVersion()
 	}
@@ -25552,6 +25636,10 @@ func (m *WechatAppMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldSuspended(ctx)
 	case wechatapp.FieldLapsed:
 		return m.OldLapsed(ctx)
+	case wechatapp.FieldReturnURL:
+		return m.OldReturnURL(ctx)
+	case wechatapp.FieldWebAuthScope:
+		return m.OldWebAuthScope(ctx)
 	case wechatapp.FieldKeyVersion:
 		return m.OldKeyVersion(ctx)
 	}
@@ -25688,6 +25776,20 @@ func (m *WechatAppMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLapsed(v)
+		return nil
+	case wechatapp.FieldReturnURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReturnURL(v)
+		return nil
+	case wechatapp.FieldWebAuthScope:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWebAuthScope(v)
 		return nil
 	case wechatapp.FieldKeyVersion:
 		v, ok := value.(int)
@@ -25876,6 +25978,12 @@ func (m *WechatAppMutation) ResetField(name string) error {
 		return nil
 	case wechatapp.FieldLapsed:
 		m.ResetLapsed()
+		return nil
+	case wechatapp.FieldReturnURL:
+		m.ResetReturnURL()
+		return nil
+	case wechatapp.FieldWebAuthScope:
+		m.ResetWebAuthScope()
 		return nil
 	case wechatapp.FieldKeyVersion:
 		m.ResetKeyVersion()
