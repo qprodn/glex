@@ -27,7 +27,35 @@ export type ErrorReason =
   // A wechat-store operation failed unexpectedly — the raw database error
   // is logged server-side and this sentinel crosses the boundary (ADR 0007,
   // HTTP 503).
-  | "WECHAT_STORE_UNAVAILABLE";
+  | "WECHAT_STORE_UNAVAILABLE"
+  // The requested WeChat App does not exist or is withdrawn (HTTP 404).
+  | "WECHAT_APP_NOT_FOUND"
+  // A WeChat App parameter is invalid: blank name, blank AppID, missing
+  // AppSecret, an official account without a kind, a kind on a mini
+  // program, or an over-length value.
+  | "WECHAT_APP_INVALID"
+  // An app that is not withdrawn already holds this AppID (HTTP 409).
+  // Independent of component-AppID uniqueness on platforms.
+  | "WECHAT_APP_DUPLICATE"
+  // The AppID is fixed for the life of the row.
+  | "WECHAT_APP_ID_IMMUTABLE";
+// WechatAppType says whether a WeChat App is a mini program or an
+// official account.
+export type WechatAppType =
+  | "WECHAT_APP_TYPE_UNSPECIFIED"
+  | "WECHAT_APP_TYPE_MINI_PROGRAM"
+  | "WECHAT_APP_TYPE_OFFICIAL_ACCOUNT";
+// WechatAccountKind is the official-account kind. A mini program has
+// none. An official account is a Service Account or a Subscription Account.
+export type WechatAccountKind =
+  | "WECHAT_ACCOUNT_KIND_UNSPECIFIED"
+  | "WECHAT_ACCOUNT_KIND_SERVICE"
+  | "WECHAT_ACCOUNT_KIND_SUBSCRIPTION";
+// WechatConnection is how a WeChat App is connected. Direct Hold is the
+// connection this service creates. The connection does not change in place.
+export type WechatConnection =
+  | "WECHAT_CONNECTION_UNSPECIFIED"
+  | "WECHAT_CONNECTION_DIRECT_HOLD";
 // WechatPlatform is one WeChat Platform registration (微信平台). The
 // component secret, Token, and EncodingAESKey never cross the wire —
 // every response carries only their masks (ADR 0029).
@@ -63,6 +91,59 @@ export type WechatPlatformSet = {
   platforms: WechatPlatform[] | undefined;
   // Opaque token for the next page; empty when on the last page.
   nextPageToken: string | undefined;
+};
+
+// WechatApp is one WeChat App (微信应用) connected by Direct Hold. The
+// AppSecret and the Push Secret never cross the wire on this message —
+// every read carries only their masks (ADR 0029). The generated Token and
+// EncodingAESKey are returned in full only on WechatAppPushSecret.
+export type WechatApp = {
+  // Snowflake ID.
+  appId: number | undefined;
+  // Display name.
+  name: string | undefined;
+  // WeChat AppID. Immutable for the life of the row. Unique among apps
+  // that are not withdrawn, independently of any platform component AppID.
+  wxAppId: string | undefined;
+  appType: WechatAppType | undefined;
+  // Empty for a mini program.
+  accountKind: WechatAccountKind | undefined;
+  connection: WechatConnection | undefined;
+  // Mask of the AppSecret, like "****ab12".
+  appSecretMask: string | undefined;
+  // Mask of the Push Secret Token.
+  tokenMask: string | undefined;
+  // Mask of the Push Secret EncodingAESKey.
+  encodingAesKeyMask: string | undefined;
+  // This app's own callback address.
+  callbackAddress: string | undefined;
+  // Suspension is an operator switch. It is not withdrawal.
+  suspended: boolean | undefined;
+  // Master-key version the ciphertext was written under (ADR 0018).
+  keyVersion: number | undefined;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  createBy: number | undefined;
+  updateBy: number | undefined;
+  createdAt: wellKnownTimestamp | undefined;
+  updatedAt: wellKnownTimestamp | undefined;
+};
+
+// WechatAppSet is a page of WeChat Apps that are not withdrawn.
+export type WechatAppSet = {
+  apps: WechatApp[] | undefined;
+  // Opaque token for the next page; empty when on the last page.
+  nextPageToken: string | undefined;
+};
+
+// WechatAppPushSecret is the one response that returns a generated Push
+// Secret in full: the app (masks only) plus the Token and EncodingAESKey
+// just generated. Later reads return WechatApp and never this pair.
+export type WechatAppPushSecret = {
+  app: WechatApp | undefined;
+  // Messaging Token, in full, this once.
+  token: string | undefined;
+  // EncodingAESKey, in full, this once.
+  encodingAesKey: string | undefined;
 };
 
 export type CreateWechatPlatformRequest = {
@@ -135,9 +216,95 @@ export type WithdrawWechatPlatformRequest = {
   platformId: number | undefined;
 };
 
+export type CreateWechatAppRequest = {
+  // Required. Display name, at most 64 characters.
+  //
+  // Behaviors: REQUIRED
+  name: string | undefined;
+  // Required. WeChat AppID. Unique among apps that are not withdrawn.
+  //
+  // Behaviors: REQUIRED
+  wxAppId: string | undefined;
+  // Required. Mini program or official account.
+  //
+  // Behaviors: REQUIRED
+  appType: WechatAppType | undefined;
+  // Required for an official account: Service Account or Subscription
+  // Account. Must be unset for a mini program.
+  accountKind: WechatAccountKind | undefined;
+  // Required. AppSecret. Stored as ciphertext; echoed as a mask. Never
+  // returned in full.
+  //
+  // Behaviors: REQUIRED
+  appSecret: string | undefined;
+};
+
+export type ListWechatAppsRequest = {
+  // Optional. Page size.
+  pageSize: number | undefined;
+  // Optional. Page token from a previous response.
+  pageToken: string | undefined;
+  // Optional. AIP-160 filter. Supported fields:
+  // * `name` (e.g. `name="演示小程序"`, exact)
+  // * `wx_app_id` (e.g. `wx_app_id="wx123"`)
+  // * `app_type` (e.g. `app_type="mini_program"`)
+  // * `account_kind` (e.g. `account_kind="service_account"`)
+  filter: string | undefined;
+  // Optional. AIP-132 order, e.g. `id desc` (the default).
+  orderBy: string | undefined;
+};
+
+export type GetWechatAppRequest = {
+  // Required. The id of the app to retrieve.
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+};
+
+export type UpdateWechatAppRequest = {
+  // Required. The id of the app to update.
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+  // Required. Display name.
+  //
+  // Behaviors: REQUIRED
+  name: string | undefined;
+  // Optional. Must be empty or equal to the stored WeChat AppID.
+  // A different value is refused; the stored value never changes.
+  wxAppId: string | undefined;
+  // Optional. Blank keeps the stored AppSecret. The response never
+  // echoes this value.
+  appSecret: string | undefined;
+};
+
+export type SetWechatAppSuspendedRequest = {
+  // Required. The id of the app.
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+  // True suspends the app; false resumes it. Omitted means resume.
+  suspended: boolean | undefined;
+};
+
+export type RegenerateWechatAppPushSecretRequest = {
+  // Required. The id of the Direct Hold whose Push Secret is regenerated.
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+};
+
+export type WithdrawWechatAppRequest = {
+  // Required. The id of the app to withdraw.
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+};
+
 // WechatService is the back-office surface for WeChat Platform
-// registration. Permissions are wechat:platform:list, create, update,
-// and remove.
+// registration and Direct Hold of WeChat Apps. Platform permissions are
+// wechat:platform:list, create, update, and remove. App permissions are
+// wechat:app:list, create, update, and remove.
 export interface WechatService {
   // CreateWechatPlatform registers a platform. The response carries masks,
   // never the secrets the operator just typed.
@@ -154,6 +321,32 @@ export interface WechatService {
   // WithdrawWechatPlatform soft-deletes the platform. The row leaves the
   // live list; it is not hard-deleted.
   WithdrawWechatPlatform(request: WithdrawWechatPlatformRequest): Promise<wellKnownEmpty>;
+  // CreateWechatApp connects a mini program, or an official account with
+  // a Service Account or Subscription Account kind, by Direct Hold. The
+  // response returns the generated Token and EncodingAESKey in full once.
+  CreateWechatApp(request: CreateWechatAppRequest): Promise<WechatAppPushSecret>;
+  // ListWechatApps lists apps that are not withdrawn. Responses carry
+  // masks only.
+  ListWechatApps(request: ListWechatAppsRequest): Promise<WechatAppSet>;
+  // GetWechatApp retrieves one app that is not withdrawn. The response
+  // carries masks only.
+  GetWechatApp(request: GetWechatAppRequest): Promise<WechatApp>;
+  // UpdateWechatApp corrects the display name and, when app_secret is
+  // non-blank, replaces the AppSecret. The response carries masks only
+  // and never the submitted secret. A wx_app_id that differs from the
+  // stored value is refused.
+  UpdateWechatApp(request: UpdateWechatAppRequest): Promise<WechatApp>;
+  // SetWechatAppSuspended suspends or resumes the app. The app stays on
+  // the live list either way.
+  SetWechatAppSuspended(request: SetWechatAppSuspendedRequest): Promise<WechatApp>;
+  // RegenerateWechatAppPushSecret replaces the Push Secret. The response
+  // returns the new pair in full once. The previous pair is invalidated
+  // immediately. The app is not withdrawn and its suspension is unchanged.
+  RegenerateWechatAppPushSecret(request: RegenerateWechatAppPushSecretRequest): Promise<WechatAppPushSecret>;
+  // WithdrawWechatApp soft-deletes the app. The row leaves the live list;
+  // it is not hard-deleted. The same AppID can be connected again as a
+  // new row.
+  WithdrawWechatApp(request: WithdrawWechatAppRequest): Promise<wellKnownEmpty>;
 }
 
 type RequestType = {
@@ -272,6 +465,152 @@ export function createWechatServiceClient(
       }, {
         service: "WechatService",
         method: "WithdrawWechatPlatform",
+      }) as Promise<wellKnownEmpty>;
+    },
+    CreateWechatApp(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `wechat/app`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "WechatService",
+        method: "CreateWechatApp",
+      }) as Promise<WechatAppPushSecret>;
+    },
+    ListWechatApps(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `wechat/app`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      if (request.pageSize) {
+        queryParams.push(`pageSize=${encodeURIComponent(request.pageSize.toString())}`)
+      }
+      if (request.pageToken) {
+        queryParams.push(`pageToken=${encodeURIComponent(request.pageToken.toString())}`)
+      }
+      if (request.filter) {
+        queryParams.push(`filter=${encodeURIComponent(request.filter.toString())}`)
+      }
+      if (request.orderBy) {
+        queryParams.push(`orderBy=${encodeURIComponent(request.orderBy.toString())}`)
+      }
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "WechatService",
+        method: "ListWechatApps",
+      }) as Promise<WechatAppSet>;
+    },
+    GetWechatApp(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.appId) {
+        throw new Error("missing required field request.app_id");
+      }
+      const path = `wechat/app/${request.appId}`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "WechatService",
+        method: "GetWechatApp",
+      }) as Promise<WechatApp>;
+    },
+    UpdateWechatApp(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.appId) {
+        throw new Error("missing required field request.app_id");
+      }
+      const path = `wechat/app/${request.appId}`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "PATCH",
+        body,
+      }, {
+        service: "WechatService",
+        method: "UpdateWechatApp",
+      }) as Promise<WechatApp>;
+    },
+    SetWechatAppSuspended(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.appId) {
+        throw new Error("missing required field request.app_id");
+      }
+      const path = `wechat/app/${request.appId}/suspended`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "WechatService",
+        method: "SetWechatAppSuspended",
+      }) as Promise<WechatApp>;
+    },
+    RegenerateWechatAppPushSecret(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.appId) {
+        throw new Error("missing required field request.app_id");
+      }
+      const path = `wechat/app/${request.appId}/push-secret`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "WechatService",
+        method: "RegenerateWechatAppPushSecret",
+      }) as Promise<WechatAppPushSecret>;
+    },
+    WithdrawWechatApp(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.appId) {
+        throw new Error("missing required field request.app_id");
+      }
+      const path = `wechat/app/${request.appId}`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "DELETE",
+        body,
+      }, {
+        service: "WechatService",
+        method: "WithdrawWechatApp",
       }) as Promise<wellKnownEmpty>;
     },
   };

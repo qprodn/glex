@@ -17,4 +17,5 @@ export default {
   "menu.pay.refund": "Refunds",
   "menu.wechat": "WeChat",
   "menu.wechat.platform": "WeChat Platforms",
+  "menu.wechat.app": "WeChat Apps",
 };

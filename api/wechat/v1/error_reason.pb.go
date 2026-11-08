@@ -49,19 +49,34 @@ const (
 	// is logged server-side and this sentinel crosses the boundary (ADR 0007,
 	// HTTP 503).
 	ErrorReason_WECHAT_STORE_UNAVAILABLE ErrorReason = 7
+	// The requested WeChat App does not exist or is withdrawn (HTTP 404).
+	ErrorReason_WECHAT_APP_NOT_FOUND ErrorReason = 8
+	// A WeChat App parameter is invalid: blank name, blank AppID, missing
+	// AppSecret, an official account without a kind, a kind on a mini
+	// program, or an over-length value.
+	ErrorReason_WECHAT_APP_INVALID ErrorReason = 9
+	// An app that is not withdrawn already holds this AppID (HTTP 409).
+	// Independent of component-AppID uniqueness on platforms.
+	ErrorReason_WECHAT_APP_DUPLICATE ErrorReason = 10
+	// The AppID is fixed for the life of the row.
+	ErrorReason_WECHAT_APP_ID_IMMUTABLE ErrorReason = 11
 )
 
 // Enum value maps for ErrorReason.
 var (
 	ErrorReason_name = map[int32]string{
-		0: "ERROR_REASON_UNSPECIFIED",
-		1: "WECHAT_PLATFORM_NOT_FOUND",
-		2: "WECHAT_PLATFORM_INVALID",
-		3: "WECHAT_PLATFORM_DUPLICATE",
-		4: "WECHAT_PLATFORM_APP_ID_IMMUTABLE",
-		5: "WECHAT_MASTER_KEY_MISSING",
-		6: "WECHAT_SECRET_CRYPTO_ERROR",
-		7: "WECHAT_STORE_UNAVAILABLE",
+		0:  "ERROR_REASON_UNSPECIFIED",
+		1:  "WECHAT_PLATFORM_NOT_FOUND",
+		2:  "WECHAT_PLATFORM_INVALID",
+		3:  "WECHAT_PLATFORM_DUPLICATE",
+		4:  "WECHAT_PLATFORM_APP_ID_IMMUTABLE",
+		5:  "WECHAT_MASTER_KEY_MISSING",
+		6:  "WECHAT_SECRET_CRYPTO_ERROR",
+		7:  "WECHAT_STORE_UNAVAILABLE",
+		8:  "WECHAT_APP_NOT_FOUND",
+		9:  "WECHAT_APP_INVALID",
+		10: "WECHAT_APP_DUPLICATE",
+		11: "WECHAT_APP_ID_IMMUTABLE",
 	}
 	ErrorReason_value = map[string]int32{
 		"ERROR_REASON_UNSPECIFIED":         0,
@@ -72,6 +87,10 @@ var (
 		"WECHAT_MASTER_KEY_MISSING":        5,
 		"WECHAT_SECRET_CRYPTO_ERROR":       6,
 		"WECHAT_STORE_UNAVAILABLE":         7,
+		"WECHAT_APP_NOT_FOUND":             8,
+		"WECHAT_APP_INVALID":               9,
+		"WECHAT_APP_DUPLICATE":             10,
+		"WECHAT_APP_ID_IMMUTABLE":          11,
 	}
 )
 
@@ -106,7 +125,7 @@ var File_wechat_v1_error_reason_proto protoreflect.FileDescriptor
 
 const file_wechat_v1_error_reason_proto_rawDesc = "" +
 	"\n" +
-	"\x1cwechat/v1/error_reason.proto\x12\twechat.v1*\x89\x02\n" +
+	"\x1cwechat/v1/error_reason.proto\x12\twechat.v1*\xf2\x02\n" +
 	"\vErrorReason\x12\x1c\n" +
 	"\x18ERROR_REASON_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19WECHAT_PLATFORM_NOT_FOUND\x10\x01\x12\x1b\n" +
@@ -115,7 +134,12 @@ const file_wechat_v1_error_reason_proto_rawDesc = "" +
 	" WECHAT_PLATFORM_APP_ID_IMMUTABLE\x10\x04\x12\x1d\n" +
 	"\x19WECHAT_MASTER_KEY_MISSING\x10\x05\x12\x1e\n" +
 	"\x1aWECHAT_SECRET_CRYPTO_ERROR\x10\x06\x12\x1c\n" +
-	"\x18WECHAT_STORE_UNAVAILABLE\x10\aB(\n" +
+	"\x18WECHAT_STORE_UNAVAILABLE\x10\a\x12\x18\n" +
+	"\x14WECHAT_APP_NOT_FOUND\x10\b\x12\x16\n" +
+	"\x12WECHAT_APP_INVALID\x10\t\x12\x18\n" +
+	"\x14WECHAT_APP_DUPLICATE\x10\n" +
+	"\x12\x1b\n" +
+	"\x17WECHAT_APP_ID_IMMUTABLE\x10\vB(\n" +
 	"\rapi.wechat.v1P\x01Z\x15glex/api/wechat/v1;v1b\x06proto3"
 
 var (

@@ -43,9 +43,86 @@ message WechatPlatformSet {
   string next_page_token = 2;
 }
 
+// WechatAppType says whether a WeChat App is a mini program or an
+// official account.
+enum WechatAppType {
+  WECHAT_APP_TYPE_UNSPECIFIED = 0;
+  WECHAT_APP_TYPE_MINI_PROGRAM = 1;
+  WECHAT_APP_TYPE_OFFICIAL_ACCOUNT = 2;
+}
+
+// WechatAccountKind is the official-account kind. A mini program has
+// none. An official account is a Service Account or a Subscription Account.
+enum WechatAccountKind {
+  WECHAT_ACCOUNT_KIND_UNSPECIFIED = 0;
+  WECHAT_ACCOUNT_KIND_SERVICE = 1;
+  WECHAT_ACCOUNT_KIND_SUBSCRIPTION = 2;
+}
+
+// WechatConnection is how a WeChat App is connected. Direct Hold is the
+// connection this service creates. The connection does not change in place.
+enum WechatConnection {
+  WECHAT_CONNECTION_UNSPECIFIED = 0;
+  WECHAT_CONNECTION_DIRECT_HOLD = 1;
+}
+
+// WechatApp is one WeChat App (微信应用) connected by Direct Hold. The
+// AppSecret and the Push Secret never cross the wire on this message —
+// every read carries only their masks (ADR 0029). The generated Token and
+// EncodingAESKey are returned in full only on WechatAppPushSecret.
+message WechatApp {
+  // Snowflake ID.
+  int64 app_id = 1;
+  // Display name.
+  string name = 2;
+  // WeChat AppID. Immutable for the life of the row. Unique among apps
+  // that are not withdrawn, independently of any platform component AppID.
+  string wx_app_id = 3;
+  WechatAppType app_type = 4;
+  // Empty for a mini program.
+  WechatAccountKind account_kind = 5;
+  WechatConnection connection = 6;
+  // Mask of the AppSecret, like "****ab12".
+  string app_secret_mask = 7;
+  // Mask of the Push Secret Token.
+  string token_mask = 8;
+  // Mask of the Push Secret EncodingAESKey.
+  string encoding_aes_key_mask = 9;
+  // This app's own callback address.
+  string callback_address = 10;
+  // Suspension is an operator switch. It is not withdrawal.
+  bool suspended = 11;
+  // Master-key version the ciphertext was written under (ADR 0018).
+  int32 key_version = 12;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  int64 create_by = 13;
+  int64 update_by = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+}
+
+// WechatAppSet is a page of WeChat Apps that are not withdrawn.
+message WechatAppSet {
+  repeated WechatApp apps = 1;
+  // Opaque token for the next page; empty when on the last page.
+  string next_page_token = 2;
+}
+
+// WechatAppPushSecret is the one response that returns a generated Push
+// Secret in full: the app (masks only) plus the Token and EncodingAESKey
+// just generated. Later reads return WechatApp and never this pair.
+message WechatAppPushSecret {
+  WechatApp app = 1;
+  // Messaging Token, in full, this once.
+  string token = 2;
+  // EncodingAESKey, in full, this once.
+  string encoding_aes_key = 3;
+}
+
 // WechatService is the back-office surface for WeChat Platform
-// registration. Permissions are wechat:platform:list, create, update,
-// and remove.
+// registration and Direct Hold of WeChat Apps. Platform permissions are
+// wechat:platform:list, create, update, and remove. App permissions are
+// wechat:app:list, create, update, and remove.
 service WechatService {
   // CreateWechatPlatform registers a platform. The response carries masks,
   // never the secrets the operator just typed.
@@ -82,6 +159,65 @@ service WechatService {
   rpc WithdrawWechatPlatform(WithdrawWechatPlatformRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/wechat/platform/{platform_id}"
+    };
+  }
+
+  // CreateWechatApp connects a mini program, or an official account with
+  // a Service Account or Subscription Account kind, by Direct Hold. The
+  // response returns the generated Token and EncodingAESKey in full once.
+  rpc CreateWechatApp(CreateWechatAppRequest) returns (WechatAppPushSecret) {
+    option (google.api.http) = {
+      post: "/wechat/app"
+      body: "*"
+    };
+  }
+  // ListWechatApps lists apps that are not withdrawn. Responses carry
+  // masks only.
+  rpc ListWechatApps(ListWechatAppsRequest) returns (WechatAppSet) {
+    option (google.api.http) = {
+      get: "/wechat/app"
+    };
+  }
+  // GetWechatApp retrieves one app that is not withdrawn. The response
+  // carries masks only.
+  rpc GetWechatApp(GetWechatAppRequest) returns (WechatApp) {
+    option (google.api.http) = {
+      get: "/wechat/app/{app_id}"
+    };
+  }
+  // UpdateWechatApp corrects the display name and, when app_secret is
+  // non-blank, replaces the AppSecret. The response carries masks only
+  // and never the submitted secret. A wx_app_id that differs from the
+  // stored value is refused.
+  rpc UpdateWechatApp(UpdateWechatAppRequest) returns (WechatApp) {
+    option (google.api.http) = {
+      patch: "/wechat/app/{app_id}"
+      body: "*"
+    };
+  }
+  // SetWechatAppSuspended suspends or resumes the app. The app stays on
+  // the live list either way.
+  rpc SetWechatAppSuspended(SetWechatAppSuspendedRequest) returns (WechatApp) {
+    option (google.api.http) = {
+      post: "/wechat/app/{app_id}/suspended"
+      body: "*"
+    };
+  }
+  // RegenerateWechatAppPushSecret replaces the Push Secret. The response
+  // returns the new pair in full once. The previous pair is invalidated
+  // immediately. The app is not withdrawn and its suspension is unchanged.
+  rpc RegenerateWechatAppPushSecret(RegenerateWechatAppPushSecretRequest) returns (WechatAppPushSecret) {
+    option (google.api.http) = {
+      post: "/wechat/app/{app_id}/push-secret"
+      body: "*"
+    };
+  }
+  // WithdrawWechatApp soft-deletes the app. The row leaves the live list;
+  // it is not hard-deleted. The same AppID can be connected again as a
+  // new row.
+  rpc WithdrawWechatApp(WithdrawWechatAppRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/wechat/app/{app_id}"
     };
   }
 }
@@ -136,4 +272,69 @@ message UpdateWechatPlatformRequest {
 message WithdrawWechatPlatformRequest {
   // Required. The id of the platform to withdraw.
   int64 platform_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message CreateWechatAppRequest {
+  // Required. Display name, at most 64 characters.
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. WeChat AppID. Unique among apps that are not withdrawn.
+  string wx_app_id = 2 [(google.api.field_behavior) = REQUIRED];
+  // Required. Mini program or official account.
+  WechatAppType app_type = 3 [(google.api.field_behavior) = REQUIRED];
+  // Required for an official account: Service Account or Subscription
+  // Account. Must be unset for a mini program.
+  WechatAccountKind account_kind = 4;
+  // Required. AppSecret. Stored as ciphertext; echoed as a mask. Never
+  // returned in full.
+  string app_secret = 5 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListWechatAppsRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `name` (e.g. `name="演示小程序"`, exact)
+  //   * `wx_app_id` (e.g. `wx_app_id="wx123"`)
+  //   * `app_type` (e.g. `app_type="mini_program"`)
+  //   * `account_kind` (e.g. `account_kind="service_account"`)
+  string filter = 3;
+  // Optional. AIP-132 order, e.g. `id desc` (the default).
+  string order_by = 4;
+}
+
+message GetWechatAppRequest {
+  // Required. The id of the app to retrieve.
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateWechatAppRequest {
+  // Required. The id of the app to update.
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. Display name.
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+  // Optional. Must be empty or equal to the stored WeChat AppID.
+  // A different value is refused; the stored value never changes.
+  string wx_app_id = 3;
+  // Optional. Blank keeps the stored AppSecret. The response never
+  // echoes this value.
+  string app_secret = 4;
+}
+
+message SetWechatAppSuspendedRequest {
+  // Required. The id of the app.
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // True suspends the app; false resumes it. Omitted means resume.
+  bool suspended = 2;
+}
+
+message RegenerateWechatAppPushSecretRequest {
+  // Required. The id of the Direct Hold whose Push Secret is regenerated.
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message WithdrawWechatAppRequest {
+  // Required. The id of the app to withdraw.
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
 }

@@ -825,3 +825,50 @@ comment on column wechat_platform.update_by is '更新者用户ID';
 comment on column wechat_platform.created_at is '创建时间';
 comment on column wechat_platform.updated_at is '更新时间';
 comment on column wechat_platform.deleted_at is '软删除时间；NULL=未删除';
+
+create table if not exists wechat_app (
+    id                      bigint       not null,
+    name                    varchar(64)  not null,             -- 显示名称
+    wx_app_id               varchar(64)  not null,             -- 微信 AppID；本行存续期间不可改
+    app_type                varchar(32)  not null,             -- mini_program 或 official_account
+    account_kind            varchar(32)  not null default '',  -- service_account、subscription_account，小程序为空
+    connection              varchar(32)  not null,             -- direct_hold；本行存续期间不可改
+    secret_cipher           text         not null,             -- AppSecret 与消息推送密钥的 JSON 密文（ADR 0018/0029）
+    app_secret_mask         varchar(16)  not null,             -- 写入时生成的 AppSecret 掩码回显
+    token_mask              varchar(16)  not null,
+    encoding_aes_key_mask   varchar(16)  not null,
+    suspended               boolean      not null default false, -- 停用；不是撤回，也不是失效
+    key_version             int          not null default 1,   -- 主密钥版本（KEK 轮换预留，ADR 0018）
+    create_by               bigint       not null default 0,
+    update_by               bigint       not null default 0,
+    created_at              timestamptz  not null default now(),
+    updated_at              timestamptz  not null default now(),
+    deleted_at              timestamptz,                       -- 软删除；NULL=未删除
+    constraint wechat_app_pkey primary key (id)
+);
+
+-- 未撤回的微信应用里，一个 AppID 只对应一条；与平台 component AppID 的唯一约束互不相关。
+-- 撤回后同一个 AppID 可以再接入成新行（ADR 0029）。
+create unique index if not exists wechat_app_wx_app_id
+    on wechat_app (wx_app_id)
+    where deleted_at is null;
+
+comment on table wechat_app is '微信应用表（直连接入，凭据密文落库 ADR 0018/0029）';
+
+comment on column wechat_app.id is '主键ID（雪花）';
+comment on column wechat_app.name is '显示名称';
+comment on column wechat_app.wx_app_id is '微信 AppID；本行存续期间不可改；未撤回行内唯一，与平台 component AppID 无关';
+comment on column wechat_app.app_type is 'mini_program 或 official_account';
+comment on column wechat_app.account_kind is '公众号种类：service_account 或 subscription_account；小程序为空';
+comment on column wechat_app.connection is '接法，当前为 direct_hold；本行存续期间不可改';
+comment on column wechat_app.secret_cipher is 'AppSecret、Token、EncodingAESKey 的 JSON 密文；格式 key_version:nonce_b64:ciphertext_b64';
+comment on column wechat_app.app_secret_mask is 'AppSecret 掩码回显（如 ****ab12）；展示路径永不解密';
+comment on column wechat_app.token_mask is '消息推送 Token 掩码回显；展示路径永不解密';
+comment on column wechat_app.encoding_aes_key_mask is 'EncodingAESKey 掩码回显；展示路径永不解密';
+comment on column wechat_app.suspended is '停用标记；停用不是撤回，也不是失效';
+comment on column wechat_app.key_version is '加密所用主密钥版本（WECHAT_MASTER_KEY，不是 PAY_MASTER_KEY）';
+comment on column wechat_app.create_by is '创建者用户ID';
+comment on column wechat_app.update_by is '更新者用户ID';
+comment on column wechat_app.created_at is '创建时间';
+comment on column wechat_app.updated_at is '更新时间';
+comment on column wechat_app.deleted_at is '软删除时间；NULL=未删除';

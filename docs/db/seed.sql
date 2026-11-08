@@ -462,8 +462,8 @@ values (1000000000000001010, '账号自助-是否开启用户注册功能', 'sys
 on conflict do nothing;
 
 -- ---------------------------------------------------------------------------
--- wechat 模块：微信管理目录 + 微信平台（perms 与 auth_routes.go 对应）
--- 本票种子 ID 停在 554。目录从 550 起。
+-- wechat 模块：微信管理目录 + 微信平台 + 微信应用（perms 与 auth_routes.go 对应）
+-- 目录 550。平台页 551–554。555 留给别的票。微信应用从 560 起。
 -- ---------------------------------------------------------------------------
 
 insert into sys_menu (id, menu_name, parent_id, order_num, path, menu_type, icon, create_by, update_by)
@@ -487,6 +487,24 @@ values (1000000000000000550, 1000000000000000101, 1000000000000000550, 0, 0),
        (1000000000000000552, 1000000000000000101, 1000000000000000552, 0, 0),
        (1000000000000000553, 1000000000000000101, 1000000000000000553, 0, 0),
        (1000000000000000554, 1000000000000000101, 1000000000000000554, 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, path, component, menu_type, perms, icon, create_by, update_by)
+values (1000000000000000560, '微信应用', 1000000000000000550, 2, 'app', 'wechat/app/index', 2, 'wechat:app:list', 'mobile', 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, menu_type, perms, create_by, update_by)
+values (1000000000000000561, '应用新增', 1000000000000000560, 1, 3, 'wechat:app:create', 0, 0),
+       (1000000000000000562, '应用修改', 1000000000000000560, 2, 3, 'wechat:app:update', 0, 0),
+       (1000000000000000563, '应用撤除', 1000000000000000560, 3, 3, 'wechat:app:remove', 0, 0)
+on conflict do nothing;
+
+-- superadmin 追加微信应用全部菜单。
+insert into sys_role_menu (id, role_id, menu_id, create_by, update_by)
+values (1000000000000000560, 1000000000000000101, 1000000000000000560, 0, 0),
+       (1000000000000000561, 1000000000000000101, 1000000000000000561, 0, 0),
+       (1000000000000000562, 1000000000000000101, 1000000000000000562, 0, 0),
+       (1000000000000000563, 1000000000000000101, 1000000000000000563, 0, 0)
 on conflict do nothing;
 
 commit;

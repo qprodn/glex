@@ -66,5 +66,8 @@ type UserPost func(*sql.Selector)
 // UserRole is the predicate function for userrole builders.
 type UserRole func(*sql.Selector)
 
+// WechatApp is the predicate function for wechatapp builders.
+type WechatApp func(*sql.Selector)
+
 // WechatPlatform is the predicate function for wechatplatform builders.
 type WechatPlatform func(*sql.Selector)

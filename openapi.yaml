@@ -2484,6 +2484,196 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/pay.v1.Refund'
+    /wechat/app:
+        get:
+            tags:
+                - WechatService
+            description: |-
+                ListWechatApps lists apps that are not withdrawn. Responses carry
+                 masks only.
+            operationId: WechatService_ListWechatApps
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `name` (e.g. `name="演示小程序"`, exact)
+                       * `wx_app_id` (e.g. `wx_app_id="wx123"`)
+                       * `app_type` (e.g. `app_type="mini_program"`)
+                       * `account_kind` (e.g. `account_kind="service_account"`)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: Optional. AIP-132 order, e.g. `id desc` (the default).
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatAppSet'
+        post:
+            tags:
+                - WechatService
+            description: |-
+                CreateWechatApp connects a mini program, or an official account with
+                 a Service Account or Subscription Account kind, by Direct Hold. The
+                 response returns the generated Token and EncodingAESKey in full once.
+            operationId: WechatService_CreateWechatApp
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.CreateWechatAppRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatAppPushSecret'
+    /wechat/app/{appId}:
+        get:
+            tags:
+                - WechatService
+            description: |-
+                GetWechatApp retrieves one app that is not withdrawn. The response
+                 carries masks only.
+            operationId: WechatService_GetWechatApp
+            parameters:
+                - name: appId
+                  in: path
+                  description: Required. The id of the app to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatApp'
+        delete:
+            tags:
+                - WechatService
+            description: |-
+                WithdrawWechatApp soft-deletes the app. The row leaves the live list;
+                 it is not hard-deleted. The same AppID can be connected again as a
+                 new row.
+            operationId: WechatService_WithdrawWechatApp
+            parameters:
+                - name: appId
+                  in: path
+                  description: Required. The id of the app to withdraw.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+        patch:
+            tags:
+                - WechatService
+            description: |-
+                UpdateWechatApp corrects the display name and, when app_secret is
+                 non-blank, replaces the AppSecret. The response carries masks only
+                 and never the submitted secret. A wx_app_id that differs from the
+                 stored value is refused.
+            operationId: WechatService_UpdateWechatApp
+            parameters:
+                - name: appId
+                  in: path
+                  description: Required. The id of the app to update.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.UpdateWechatAppRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatApp'
+    /wechat/app/{appId}/push-secret:
+        post:
+            tags:
+                - WechatService
+            description: |-
+                RegenerateWechatAppPushSecret replaces the Push Secret. The response
+                 returns the new pair in full once. The previous pair is invalidated
+                 immediately. The app is not withdrawn and its suspension is unchanged.
+            operationId: WechatService_RegenerateWechatAppPushSecret
+            parameters:
+                - name: appId
+                  in: path
+                  description: Required. The id of the Direct Hold whose Push Secret is regenerated.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.RegenerateWechatAppPushSecretRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatAppPushSecret'
+    /wechat/app/{appId}/suspended:
+        post:
+            tags:
+                - WechatService
+            description: |-
+                SetWechatAppSuspended suspends or resumes the app. The app stays on
+                 the live list either way.
+            operationId: WechatService_SetWechatAppSuspended
+            parameters:
+                - name: appId
+                  in: path
+                  description: Required. The id of the app.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.SetWechatAppSuspendedRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatApp'
     /wechat/platform:
         get:
             tags:
@@ -4215,6 +4405,35 @@ components:
                     type: string
                     description: Opaque token for the next page; empty when on the last page.
             description: UserSet is a page of users.
+        wechat.v1.CreateWechatAppRequest:
+            required:
+                - name
+                - wxAppId
+                - appType
+                - appSecret
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: Required. Display name, at most 64 characters.
+                wxAppId:
+                    type: string
+                    description: Required. WeChat AppID. Unique among apps that are not withdrawn.
+                appType:
+                    type: integer
+                    description: Required. Mini program or official account.
+                    format: enum
+                accountKind:
+                    type: integer
+                    description: |-
+                        Required for an official account: Service Account or Subscription
+                         Account. Must be unset for a mini program.
+                    format: enum
+                appSecret:
+                    type: string
+                    description: |-
+                        Required. AppSecret. Stored as ciphertext; echoed as a mask. Never
+                         returned in full.
         wechat.v1.CreateWechatPlatformRequest:
             required:
                 - name
@@ -4239,6 +4458,47 @@ components:
                 encodingAesKey:
                     type: string
                     description: Required. EncodingAESKey.
+        wechat.v1.RegenerateWechatAppPushSecretRequest:
+            required:
+                - appId
+            type: object
+            properties:
+                appId:
+                    type: string
+                    description: Required. The id of the Direct Hold whose Push Secret is regenerated.
+        wechat.v1.SetWechatAppSuspendedRequest:
+            required:
+                - appId
+            type: object
+            properties:
+                appId:
+                    type: string
+                    description: Required. The id of the app.
+                suspended:
+                    type: boolean
+                    description: True suspends the app; false resumes it. Omitted means resume.
+        wechat.v1.UpdateWechatAppRequest:
+            required:
+                - appId
+                - name
+            type: object
+            properties:
+                appId:
+                    type: string
+                    description: Required. The id of the app to update.
+                name:
+                    type: string
+                    description: Required. Display name.
+                wxAppId:
+                    type: string
+                    description: |-
+                        Optional. Must be empty or equal to the stored WeChat AppID.
+                         A different value is refused; the stored value never changes.
+                appSecret:
+                    type: string
+                    description: |-
+                        Optional. Blank keeps the stored AppSecret. The response never
+                         echoes this value.
         wechat.v1.UpdateWechatPlatformRequest:
             required:
                 - platformId
@@ -4265,6 +4525,91 @@ components:
                 encodingAesKey:
                     type: string
                     description: Optional. Blank keeps the stored EncodingAESKey.
+        wechat.v1.WechatApp:
+            type: object
+            properties:
+                appId:
+                    type: string
+                    description: Snowflake ID.
+                name:
+                    type: string
+                    description: Display name.
+                wxAppId:
+                    type: string
+                    description: |-
+                        WeChat AppID. Immutable for the life of the row. Unique among apps
+                         that are not withdrawn, independently of any platform component AppID.
+                appType:
+                    type: integer
+                    format: enum
+                accountKind:
+                    type: integer
+                    description: Empty for a mini program.
+                    format: enum
+                connection:
+                    type: integer
+                    format: enum
+                appSecretMask:
+                    type: string
+                    description: Mask of the AppSecret, like "****ab12".
+                tokenMask:
+                    type: string
+                    description: Mask of the Push Secret Token.
+                encodingAesKeyMask:
+                    type: string
+                    description: Mask of the Push Secret EncodingAESKey.
+                callbackAddress:
+                    type: string
+                    description: This app's own callback address.
+                suspended:
+                    type: boolean
+                    description: Suspension is an operator switch. It is not withdrawal.
+                keyVersion:
+                    type: integer
+                    description: Master-key version the ciphertext was written under (ADR 0018).
+                    format: int32
+                createBy:
+                    type: string
+                    description: 'Audit: who created/updated. Filled from the authenticated identity.'
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                WechatApp is one WeChat App (微信应用) connected by Direct Hold. The
+                 AppSecret and the Push Secret never cross the wire on this message —
+                 every read carries only their masks (ADR 0029). The generated Token and
+                 EncodingAESKey are returned in full only on WechatAppPushSecret.
+        wechat.v1.WechatAppPushSecret:
+            type: object
+            properties:
+                app:
+                    $ref: '#/components/schemas/wechat.v1.WechatApp'
+                token:
+                    type: string
+                    description: Messaging Token, in full, this once.
+                encodingAesKey:
+                    type: string
+                    description: EncodingAESKey, in full, this once.
+            description: |-
+                WechatAppPushSecret is the one response that returns a generated Push
+                 Secret in full: the app (masks only) plus the Token and EncodingAESKey
+                 just generated. Later reads return WechatApp and never this pair.
+        wechat.v1.WechatAppSet:
+            type: object
+            properties:
+                apps:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/wechat.v1.WechatApp'
+                nextPageToken:
+                    type: string
+                    description: Opaque token for the next page; empty when on the last page.
+            description: WechatAppSet is a page of WeChat Apps that are not withdrawn.
         wechat.v1.WechatPlatform:
             type: object
             properties:
@@ -4387,5 +4732,6 @@ tags:
     - name: WechatService
       description: |-
         WechatService is the back-office surface for WeChat Platform
-         registration. Permissions are wechat:platform:list, create, update,
-         and remove.
+         registration and Direct Hold of WeChat Apps. Platform permissions are
+         wechat:platform:list, create, update, and remove. App permissions are
+         wechat:app:list, create, update, and remove.

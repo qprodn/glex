@@ -179,6 +179,11 @@ func (db *Database) UserRole(ctx context.Context) *UserRoleClient {
 	return db.loadClient(ctx).UserRole
 }
 
+// WechatApp is the client for interacting with the WechatApp builders.
+func (db *Database) WechatApp(ctx context.Context) *WechatAppClient {
+	return db.loadClient(ctx).WechatApp
+}
+
 // WechatPlatform is the client for interacting with the WechatPlatform builders.
 func (db *Database) WechatPlatform(ctx context.Context) *WechatPlatformClient {
 	return db.loadClient(ctx).WechatPlatform

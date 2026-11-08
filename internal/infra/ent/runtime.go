@@ -24,6 +24,7 @@ import (
 	"glex/internal/infra/ent/user"
 	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
+	"glex/internal/infra/ent/wechatapp"
 	"glex/internal/infra/ent/wechatplatform"
 	"time"
 )
@@ -1030,6 +1031,71 @@ func init() {
 	userrole.DefaultUpdatedAt = userroleDescUpdatedAt.Default.(func() time.Time)
 	// userrole.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	userrole.UpdateDefaultUpdatedAt = userroleDescUpdatedAt.UpdateDefault.(func() time.Time)
+	wechatappMixin := schema.WechatApp{}.Mixin()
+	wechatappMixinFields0 := wechatappMixin[0].Fields()
+	_ = wechatappMixinFields0
+	wechatappFields := schema.WechatApp{}.Fields()
+	_ = wechatappFields
+	// wechatappDescCreateBy is the schema descriptor for create_by field.
+	wechatappDescCreateBy := wechatappMixinFields0[0].Descriptor()
+	// wechatapp.DefaultCreateBy holds the default value on creation for the create_by field.
+	wechatapp.DefaultCreateBy = wechatappDescCreateBy.Default.(int64)
+	// wechatappDescUpdateBy is the schema descriptor for update_by field.
+	wechatappDescUpdateBy := wechatappMixinFields0[1].Descriptor()
+	// wechatapp.DefaultUpdateBy holds the default value on creation for the update_by field.
+	wechatapp.DefaultUpdateBy = wechatappDescUpdateBy.Default.(int64)
+	// wechatappDescCreatedAt is the schema descriptor for created_at field.
+	wechatappDescCreatedAt := wechatappMixinFields0[2].Descriptor()
+	// wechatapp.DefaultCreatedAt holds the default value on creation for the created_at field.
+	wechatapp.DefaultCreatedAt = wechatappDescCreatedAt.Default.(func() time.Time)
+	// wechatappDescUpdatedAt is the schema descriptor for updated_at field.
+	wechatappDescUpdatedAt := wechatappMixinFields0[3].Descriptor()
+	// wechatapp.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	wechatapp.DefaultUpdatedAt = wechatappDescUpdatedAt.Default.(func() time.Time)
+	// wechatapp.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	wechatapp.UpdateDefaultUpdatedAt = wechatappDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// wechatappDescName is the schema descriptor for name field.
+	wechatappDescName := wechatappFields[1].Descriptor()
+	// wechatapp.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	wechatapp.NameValidator = wechatappDescName.Validators[0].(func(string) error)
+	// wechatappDescWxAppID is the schema descriptor for wx_app_id field.
+	wechatappDescWxAppID := wechatappFields[2].Descriptor()
+	// wechatapp.WxAppIDValidator is a validator for the "wx_app_id" field. It is called by the builders before save.
+	wechatapp.WxAppIDValidator = wechatappDescWxAppID.Validators[0].(func(string) error)
+	// wechatappDescAppType is the schema descriptor for app_type field.
+	wechatappDescAppType := wechatappFields[3].Descriptor()
+	// wechatapp.AppTypeValidator is a validator for the "app_type" field. It is called by the builders before save.
+	wechatapp.AppTypeValidator = wechatappDescAppType.Validators[0].(func(string) error)
+	// wechatappDescAccountKind is the schema descriptor for account_kind field.
+	wechatappDescAccountKind := wechatappFields[4].Descriptor()
+	// wechatapp.DefaultAccountKind holds the default value on creation for the account_kind field.
+	wechatapp.DefaultAccountKind = wechatappDescAccountKind.Default.(string)
+	// wechatapp.AccountKindValidator is a validator for the "account_kind" field. It is called by the builders before save.
+	wechatapp.AccountKindValidator = wechatappDescAccountKind.Validators[0].(func(string) error)
+	// wechatappDescConnection is the schema descriptor for connection field.
+	wechatappDescConnection := wechatappFields[5].Descriptor()
+	// wechatapp.ConnectionValidator is a validator for the "connection" field. It is called by the builders before save.
+	wechatapp.ConnectionValidator = wechatappDescConnection.Validators[0].(func(string) error)
+	// wechatappDescAppSecretMask is the schema descriptor for app_secret_mask field.
+	wechatappDescAppSecretMask := wechatappFields[7].Descriptor()
+	// wechatapp.AppSecretMaskValidator is a validator for the "app_secret_mask" field. It is called by the builders before save.
+	wechatapp.AppSecretMaskValidator = wechatappDescAppSecretMask.Validators[0].(func(string) error)
+	// wechatappDescTokenMask is the schema descriptor for token_mask field.
+	wechatappDescTokenMask := wechatappFields[8].Descriptor()
+	// wechatapp.TokenMaskValidator is a validator for the "token_mask" field. It is called by the builders before save.
+	wechatapp.TokenMaskValidator = wechatappDescTokenMask.Validators[0].(func(string) error)
+	// wechatappDescEncodingAesKeyMask is the schema descriptor for encoding_aes_key_mask field.
+	wechatappDescEncodingAesKeyMask := wechatappFields[9].Descriptor()
+	// wechatapp.EncodingAesKeyMaskValidator is a validator for the "encoding_aes_key_mask" field. It is called by the builders before save.
+	wechatapp.EncodingAesKeyMaskValidator = wechatappDescEncodingAesKeyMask.Validators[0].(func(string) error)
+	// wechatappDescSuspended is the schema descriptor for suspended field.
+	wechatappDescSuspended := wechatappFields[10].Descriptor()
+	// wechatapp.DefaultSuspended holds the default value on creation for the suspended field.
+	wechatapp.DefaultSuspended = wechatappDescSuspended.Default.(bool)
+	// wechatappDescKeyVersion is the schema descriptor for key_version field.
+	wechatappDescKeyVersion := wechatappFields[11].Descriptor()
+	// wechatapp.DefaultKeyVersion holds the default value on creation for the key_version field.
+	wechatapp.DefaultKeyVersion = wechatappDescKeyVersion.Default.(int)
 	wechatplatformMixin := schema.WechatPlatform{}.Mixin()
 	wechatplatformMixinFields0 := wechatplatformMixin[0].Fields()
 	_ = wechatplatformMixinFields0

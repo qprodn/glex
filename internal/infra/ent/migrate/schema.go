@@ -702,6 +702,42 @@ var (
 			},
 		},
 	}
+	// WechatAppColumns holds the columns for the "wechat_app" table.
+	WechatAppColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "name", Type: field.TypeString, Size: 64},
+		{Name: "wx_app_id", Type: field.TypeString, Size: 64},
+		{Name: "app_type", Type: field.TypeString, Size: 32},
+		{Name: "account_kind", Type: field.TypeString, Size: 32, Default: ""},
+		{Name: "connection", Type: field.TypeString, Size: 32},
+		{Name: "secret_cipher", Type: field.TypeString, Size: 2147483647},
+		{Name: "app_secret_mask", Type: field.TypeString, Size: 16},
+		{Name: "token_mask", Type: field.TypeString, Size: 16},
+		{Name: "encoding_aes_key_mask", Type: field.TypeString, Size: 16},
+		{Name: "suspended", Type: field.TypeBool, Default: false},
+		{Name: "key_version", Type: field.TypeInt, Default: 1},
+	}
+	// WechatAppTable holds the schema information for the "wechat_app" table.
+	WechatAppTable = &schema.Table{
+		Name:       "wechat_app",
+		Columns:    WechatAppColumns,
+		PrimaryKey: []*schema.Column{WechatAppColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "wechatapp_wx_app_id",
+				Unique:  true,
+				Columns: []*schema.Column{WechatAppColumns[7]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+		},
+	}
 	// WechatPlatformColumns holds the columns for the "wechat_platform" table.
 	WechatPlatformColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -756,6 +792,7 @@ var (
 		SysUserTable,
 		SysUserPostTable,
 		SysUserRoleTable,
+		WechatAppTable,
 		WechatPlatformTable,
 	}
 )
@@ -826,6 +863,9 @@ func init() {
 	SysUserRoleTable.ForeignKeys[1].RefTable = SysUserTable
 	SysUserRoleTable.Annotation = &entsql.Annotation{
 		Table: "sys_user_role",
+	}
+	WechatAppTable.Annotation = &entsql.Annotation{
+		Table: "wechat_app",
 	}
 	WechatPlatformTable.Annotation = &entsql.Annotation{
 		Table: "wechat_platform",

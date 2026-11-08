@@ -14,13 +14,15 @@ type WechatApplication struct {
 	wechatv1.UnimplementedWechatServiceServer
 
 	platforms wechatservice.Platform
+	apps      wechatservice.App
 	logger    *slog.Logger
 }
 
 // NewWechatApplication creates the WechatApplication.
-func NewWechatApplication(platforms wechatservice.Platform, logger *slog.Logger) *WechatApplication {
+func NewWechatApplication(platforms wechatservice.Platform, apps wechatservice.App, logger *slog.Logger) *WechatApplication {
 	return &WechatApplication{
 		platforms: platforms,
+		apps:      apps,
 		logger:    logger.With(slog.String("component", "application.wechat")),
 	}
 }

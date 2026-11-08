@@ -20,11 +20,18 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	WechatService_CreateWechatPlatform_FullMethodName   = "/wechat.v1.WechatService/CreateWechatPlatform"
-	WechatService_ListWechatPlatforms_FullMethodName    = "/wechat.v1.WechatService/ListWechatPlatforms"
-	WechatService_GetWechatPlatform_FullMethodName      = "/wechat.v1.WechatService/GetWechatPlatform"
-	WechatService_UpdateWechatPlatform_FullMethodName   = "/wechat.v1.WechatService/UpdateWechatPlatform"
-	WechatService_WithdrawWechatPlatform_FullMethodName = "/wechat.v1.WechatService/WithdrawWechatPlatform"
+	WechatService_CreateWechatPlatform_FullMethodName          = "/wechat.v1.WechatService/CreateWechatPlatform"
+	WechatService_ListWechatPlatforms_FullMethodName           = "/wechat.v1.WechatService/ListWechatPlatforms"
+	WechatService_GetWechatPlatform_FullMethodName             = "/wechat.v1.WechatService/GetWechatPlatform"
+	WechatService_UpdateWechatPlatform_FullMethodName          = "/wechat.v1.WechatService/UpdateWechatPlatform"
+	WechatService_WithdrawWechatPlatform_FullMethodName        = "/wechat.v1.WechatService/WithdrawWechatPlatform"
+	WechatService_CreateWechatApp_FullMethodName               = "/wechat.v1.WechatService/CreateWechatApp"
+	WechatService_ListWechatApps_FullMethodName                = "/wechat.v1.WechatService/ListWechatApps"
+	WechatService_GetWechatApp_FullMethodName                  = "/wechat.v1.WechatService/GetWechatApp"
+	WechatService_UpdateWechatApp_FullMethodName               = "/wechat.v1.WechatService/UpdateWechatApp"
+	WechatService_SetWechatAppSuspended_FullMethodName         = "/wechat.v1.WechatService/SetWechatAppSuspended"
+	WechatService_RegenerateWechatAppPushSecret_FullMethodName = "/wechat.v1.WechatService/RegenerateWechatAppPushSecret"
+	WechatService_WithdrawWechatApp_FullMethodName             = "/wechat.v1.WechatService/WithdrawWechatApp"
 )
 
 // WechatServiceClient is the client API for WechatService service.
@@ -32,8 +39,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // WechatService is the back-office surface for WeChat Platform
-// registration. Permissions are wechat:platform:list, create, update,
-// and remove.
+// registration and Direct Hold of WeChat Apps. Platform permissions are
+// wechat:platform:list, create, update, and remove. App permissions are
+// wechat:app:list, create, update, and remove.
 type WechatServiceClient interface {
 	// CreateWechatPlatform registers a platform. The response carries masks,
 	// never the secrets the operator just typed.
@@ -50,6 +58,32 @@ type WechatServiceClient interface {
 	// WithdrawWechatPlatform soft-deletes the platform. The row leaves the
 	// live list; it is not hard-deleted.
 	WithdrawWechatPlatform(ctx context.Context, in *WithdrawWechatPlatformRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// CreateWechatApp connects a mini program, or an official account with
+	// a Service Account or Subscription Account kind, by Direct Hold. The
+	// response returns the generated Token and EncodingAESKey in full once.
+	CreateWechatApp(ctx context.Context, in *CreateWechatAppRequest, opts ...grpc.CallOption) (*WechatAppPushSecret, error)
+	// ListWechatApps lists apps that are not withdrawn. Responses carry
+	// masks only.
+	ListWechatApps(ctx context.Context, in *ListWechatAppsRequest, opts ...grpc.CallOption) (*WechatAppSet, error)
+	// GetWechatApp retrieves one app that is not withdrawn. The response
+	// carries masks only.
+	GetWechatApp(ctx context.Context, in *GetWechatAppRequest, opts ...grpc.CallOption) (*WechatApp, error)
+	// UpdateWechatApp corrects the display name and, when app_secret is
+	// non-blank, replaces the AppSecret. The response carries masks only
+	// and never the submitted secret. A wx_app_id that differs from the
+	// stored value is refused.
+	UpdateWechatApp(ctx context.Context, in *UpdateWechatAppRequest, opts ...grpc.CallOption) (*WechatApp, error)
+	// SetWechatAppSuspended suspends or resumes the app. The app stays on
+	// the live list either way.
+	SetWechatAppSuspended(ctx context.Context, in *SetWechatAppSuspendedRequest, opts ...grpc.CallOption) (*WechatApp, error)
+	// RegenerateWechatAppPushSecret replaces the Push Secret. The response
+	// returns the new pair in full once. The previous pair is invalidated
+	// immediately. The app is not withdrawn and its suspension is unchanged.
+	RegenerateWechatAppPushSecret(ctx context.Context, in *RegenerateWechatAppPushSecretRequest, opts ...grpc.CallOption) (*WechatAppPushSecret, error)
+	// WithdrawWechatApp soft-deletes the app. The row leaves the live list;
+	// it is not hard-deleted. The same AppID can be connected again as a
+	// new row.
+	WithdrawWechatApp(ctx context.Context, in *WithdrawWechatAppRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type wechatServiceClient struct {
@@ -110,13 +144,84 @@ func (c *wechatServiceClient) WithdrawWechatPlatform(ctx context.Context, in *Wi
 	return out, nil
 }
 
+func (c *wechatServiceClient) CreateWechatApp(ctx context.Context, in *CreateWechatAppRequest, opts ...grpc.CallOption) (*WechatAppPushSecret, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatAppPushSecret)
+	err := c.cc.Invoke(ctx, WechatService_CreateWechatApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) ListWechatApps(ctx context.Context, in *ListWechatAppsRequest, opts ...grpc.CallOption) (*WechatAppSet, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatAppSet)
+	err := c.cc.Invoke(ctx, WechatService_ListWechatApps_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) GetWechatApp(ctx context.Context, in *GetWechatAppRequest, opts ...grpc.CallOption) (*WechatApp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatApp)
+	err := c.cc.Invoke(ctx, WechatService_GetWechatApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) UpdateWechatApp(ctx context.Context, in *UpdateWechatAppRequest, opts ...grpc.CallOption) (*WechatApp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatApp)
+	err := c.cc.Invoke(ctx, WechatService_UpdateWechatApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) SetWechatAppSuspended(ctx context.Context, in *SetWechatAppSuspendedRequest, opts ...grpc.CallOption) (*WechatApp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatApp)
+	err := c.cc.Invoke(ctx, WechatService_SetWechatAppSuspended_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) RegenerateWechatAppPushSecret(ctx context.Context, in *RegenerateWechatAppPushSecretRequest, opts ...grpc.CallOption) (*WechatAppPushSecret, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatAppPushSecret)
+	err := c.cc.Invoke(ctx, WechatService_RegenerateWechatAppPushSecret_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) WithdrawWechatApp(ctx context.Context, in *WithdrawWechatAppRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, WechatService_WithdrawWechatApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WechatServiceServer is the server API for WechatService service.
 // All implementations must embed UnimplementedWechatServiceServer
 // for forward compatibility.
 //
 // WechatService is the back-office surface for WeChat Platform
-// registration. Permissions are wechat:platform:list, create, update,
-// and remove.
+// registration and Direct Hold of WeChat Apps. Platform permissions are
+// wechat:platform:list, create, update, and remove. App permissions are
+// wechat:app:list, create, update, and remove.
 type WechatServiceServer interface {
 	// CreateWechatPlatform registers a platform. The response carries masks,
 	// never the secrets the operator just typed.
@@ -133,6 +238,32 @@ type WechatServiceServer interface {
 	// WithdrawWechatPlatform soft-deletes the platform. The row leaves the
 	// live list; it is not hard-deleted.
 	WithdrawWechatPlatform(context.Context, *WithdrawWechatPlatformRequest) (*emptypb.Empty, error)
+	// CreateWechatApp connects a mini program, or an official account with
+	// a Service Account or Subscription Account kind, by Direct Hold. The
+	// response returns the generated Token and EncodingAESKey in full once.
+	CreateWechatApp(context.Context, *CreateWechatAppRequest) (*WechatAppPushSecret, error)
+	// ListWechatApps lists apps that are not withdrawn. Responses carry
+	// masks only.
+	ListWechatApps(context.Context, *ListWechatAppsRequest) (*WechatAppSet, error)
+	// GetWechatApp retrieves one app that is not withdrawn. The response
+	// carries masks only.
+	GetWechatApp(context.Context, *GetWechatAppRequest) (*WechatApp, error)
+	// UpdateWechatApp corrects the display name and, when app_secret is
+	// non-blank, replaces the AppSecret. The response carries masks only
+	// and never the submitted secret. A wx_app_id that differs from the
+	// stored value is refused.
+	UpdateWechatApp(context.Context, *UpdateWechatAppRequest) (*WechatApp, error)
+	// SetWechatAppSuspended suspends or resumes the app. The app stays on
+	// the live list either way.
+	SetWechatAppSuspended(context.Context, *SetWechatAppSuspendedRequest) (*WechatApp, error)
+	// RegenerateWechatAppPushSecret replaces the Push Secret. The response
+	// returns the new pair in full once. The previous pair is invalidated
+	// immediately. The app is not withdrawn and its suspension is unchanged.
+	RegenerateWechatAppPushSecret(context.Context, *RegenerateWechatAppPushSecretRequest) (*WechatAppPushSecret, error)
+	// WithdrawWechatApp soft-deletes the app. The row leaves the live list;
+	// it is not hard-deleted. The same AppID can be connected again as a
+	// new row.
+	WithdrawWechatApp(context.Context, *WithdrawWechatAppRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedWechatServiceServer()
 }
 
@@ -157,6 +288,27 @@ func (UnimplementedWechatServiceServer) UpdateWechatPlatform(context.Context, *U
 }
 func (UnimplementedWechatServiceServer) WithdrawWechatPlatform(context.Context, *WithdrawWechatPlatformRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method WithdrawWechatPlatform not implemented")
+}
+func (UnimplementedWechatServiceServer) CreateWechatApp(context.Context, *CreateWechatAppRequest) (*WechatAppPushSecret, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateWechatApp not implemented")
+}
+func (UnimplementedWechatServiceServer) ListWechatApps(context.Context, *ListWechatAppsRequest) (*WechatAppSet, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListWechatApps not implemented")
+}
+func (UnimplementedWechatServiceServer) GetWechatApp(context.Context, *GetWechatAppRequest) (*WechatApp, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetWechatApp not implemented")
+}
+func (UnimplementedWechatServiceServer) UpdateWechatApp(context.Context, *UpdateWechatAppRequest) (*WechatApp, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateWechatApp not implemented")
+}
+func (UnimplementedWechatServiceServer) SetWechatAppSuspended(context.Context, *SetWechatAppSuspendedRequest) (*WechatApp, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetWechatAppSuspended not implemented")
+}
+func (UnimplementedWechatServiceServer) RegenerateWechatAppPushSecret(context.Context, *RegenerateWechatAppPushSecretRequest) (*WechatAppPushSecret, error) {
+	return nil, status.Error(codes.Unimplemented, "method RegenerateWechatAppPushSecret not implemented")
+}
+func (UnimplementedWechatServiceServer) WithdrawWechatApp(context.Context, *WithdrawWechatAppRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method WithdrawWechatApp not implemented")
 }
 func (UnimplementedWechatServiceServer) mustEmbedUnimplementedWechatServiceServer() {}
 func (UnimplementedWechatServiceServer) testEmbeddedByValue()                       {}
@@ -269,6 +421,132 @@ func _WechatService_WithdrawWechatPlatform_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WechatService_CreateWechatApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateWechatAppRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).CreateWechatApp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_CreateWechatApp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).CreateWechatApp(ctx, req.(*CreateWechatAppRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_ListWechatApps_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWechatAppsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).ListWechatApps(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_ListWechatApps_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).ListWechatApps(ctx, req.(*ListWechatAppsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_GetWechatApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWechatAppRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).GetWechatApp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_GetWechatApp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).GetWechatApp(ctx, req.(*GetWechatAppRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_UpdateWechatApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateWechatAppRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).UpdateWechatApp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_UpdateWechatApp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).UpdateWechatApp(ctx, req.(*UpdateWechatAppRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_SetWechatAppSuspended_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetWechatAppSuspendedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).SetWechatAppSuspended(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_SetWechatAppSuspended_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).SetWechatAppSuspended(ctx, req.(*SetWechatAppSuspendedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_RegenerateWechatAppPushSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegenerateWechatAppPushSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).RegenerateWechatAppPushSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_RegenerateWechatAppPushSecret_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).RegenerateWechatAppPushSecret(ctx, req.(*RegenerateWechatAppPushSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_WithdrawWechatApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WithdrawWechatAppRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).WithdrawWechatApp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_WithdrawWechatApp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).WithdrawWechatApp(ctx, req.(*WithdrawWechatAppRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WechatService_ServiceDesc is the grpc.ServiceDesc for WechatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -295,6 +573,34 @@ var WechatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "WithdrawWechatPlatform",
 			Handler:    _WechatService_WithdrawWechatPlatform_Handler,
+		},
+		{
+			MethodName: "CreateWechatApp",
+			Handler:    _WechatService_CreateWechatApp_Handler,
+		},
+		{
+			MethodName: "ListWechatApps",
+			Handler:    _WechatService_ListWechatApps_Handler,
+		},
+		{
+			MethodName: "GetWechatApp",
+			Handler:    _WechatService_GetWechatApp_Handler,
+		},
+		{
+			MethodName: "UpdateWechatApp",
+			Handler:    _WechatService_UpdateWechatApp_Handler,
+		},
+		{
+			MethodName: "SetWechatAppSuspended",
+			Handler:    _WechatService_SetWechatAppSuspended_Handler,
+		},
+		{
+			MethodName: "RegenerateWechatAppPushSecret",
+			Handler:    _WechatService_RegenerateWechatAppPushSecret_Handler,
+		},
+		{
+			MethodName: "WithdrawWechatApp",
+			Handler:    _WechatService_WithdrawWechatApp_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
