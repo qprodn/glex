@@ -45,6 +45,20 @@ type inboundPush struct {
 	FromUserName          string `xml:"FromUserName"`
 	MsgType               string `xml:"MsgType"`
 	Content               string `xml:"Content"`
+	Event                 string `xml:"Event"`
+	MsgID                 string `xml:"MsgID"`
+	// Lists is the mini-program form of a subscribe-message delivery.
+	// The msgid is nested, not a top-level MsgID.
+	Lists []struct {
+		MsgID string `xml:"MsgID"`
+	} `xml:"List"`
+	// SubscribeMsgSentEvent is the official-account form of that same
+	// delivery. The msgid is nested one level further down.
+	SubscribeMsgSentEvent struct {
+		Lists []struct {
+			MsgID string `xml:"MsgID"`
+		} `xml:"List"`
+	} `xml:"SubscribeMsgSentEvent"`
 }
 
 func (s *platformImpl) Receive(ctx context.Context, req PushRequest) (*PushOutcome, error) {
@@ -91,7 +105,44 @@ func (s *platformImpl) applyPush(ctx context.Context, p *entity.Platform, secret
 	if outcome, handled, err := s.answerFullNetwork(ctx, p, secrets, req, msg); handled || err != nil {
 		return outcome, err
 	}
+	if msgid, ok := deliveryMsgID(msg); ok && s.bindings != nil {
+		if err := s.bindings.RecordDelivery(ctx, msgid); err != nil {
+			logx.Propagate(ctx, s.logger, "wechat.svc.platform.receive", err)
+			return nil, err
+		}
+	}
 	return successOutcome(), nil
+}
+
+// deliveryMsgID reports the msgid of a delivery report. Follow, text, and
+// other events are not delivery reports, even when they carry a message id.
+func deliveryMsgID(msg inboundPush) (string, bool) {
+	switch strings.TrimSpace(msg.Event) {
+	case "TEMPLATESENDJOBFINISH", "subscribe_msg_sent_event":
+	default:
+		return "", false
+	}
+	id := strings.TrimSpace(msg.MsgID)
+	if id == "" {
+		for _, item := range msg.Lists {
+			id = strings.TrimSpace(item.MsgID)
+			if id != "" {
+				break
+			}
+		}
+	}
+	if id == "" {
+		for _, item := range msg.SubscribeMsgSentEvent.Lists {
+			id = strings.TrimSpace(item.MsgID)
+			if id != "" {
+				break
+			}
+		}
+	}
+	if id == "" {
+		return "", false
+	}
+	return id, true
 }
 
 // completePushedAuthorization turns WeChat's authorized push into the
@@ -132,4 +183,65 @@ func (s *platformImpl) holdPushedTicket(ctx context.Context, p *entity.Platform,
 
 func successOutcome() *PushOutcome {
 	return &PushOutcome{Body: "success", ContentType: "text/plain; charset=utf-8"}
+}
+
+// AppPushRequest is one callback delivery for a Direct Hold. ID is the
+// app row. The Push Secret on that row authenticates the body.
+type AppPushRequest struct {
+	ID           int64
+	Timestamp    string
+	Nonce        string
+	Signature    string
+	MsgSignature string
+	EncryptType  string
+	Body         []byte
+}
+
+// Receive accepts one encrypted push on a Direct Hold callback. A
+// delivery report updates the matching dispatch. Anything else that
+// verifies is acknowledged and stored nowhere, with no automatic reply.
+func (s *appImpl) Receive(ctx context.Context, req AppPushRequest) (*PushOutcome, error) {
+	const op = "wechat.svc.app.receive"
+	app, err := s.apps.FindByIDIncludingWithdrawn(ctx, req.ID)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, op, err)
+		return nil, err
+	}
+	if app.Connection != entity.ConnectionDirectHold {
+		err = wechat.ErrPushRejected
+		logx.Propagate(ctx, s.logger, op, err)
+		return nil, err
+	}
+	secrets, err := s.apps.LoadSecretsIncludingWithdrawn(ctx, req.ID)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, op, err)
+		return nil, err
+	}
+	authed, err := s.pushes.Authenticate(ctx, AuthenticateRequest{
+		Token:          secrets.Token,
+		EncodingAESKey: secrets.EncodingAESKey,
+		ComponentAppID: app.AppID,
+		Timestamp:      req.Timestamp,
+		Nonce:          req.Nonce,
+		Signature:      req.Signature,
+		MsgSignature:   req.MsgSignature,
+		EncryptType:    req.EncryptType,
+		Body:           req.Body,
+	})
+	if err != nil {
+		logx.Propagate(ctx, s.logger, op, err)
+		return nil, err
+	}
+	var msg inboundPush
+	if err := xml.Unmarshal(authed.XML, &msg); err != nil {
+		logx.Propagate(ctx, s.logger, op, wechat.ErrPushRejected)
+		return nil, wechat.ErrPushRejected
+	}
+	if msgid, ok := deliveryMsgID(msg); ok {
+		if err := s.RecordDelivery(ctx, msgid); err != nil {
+			logx.Propagate(ctx, s.logger, op, err)
+			return nil, err
+		}
+	}
+	return successOutcome(), nil
 }

@@ -948,6 +948,7 @@ create table if not exists wechat_dispatch (
     mini_program_page     varchar(1024) not null default '',
     accepted              boolean       not null default false,
     msgid                 varchar(64)   not null default '',
+    delivered             boolean       not null default false,
     create_by             bigint        not null default 0,
     update_by             bigint        not null default 0,
     created_at            timestamptz   not null default now(),
@@ -975,6 +976,7 @@ comment on column wechat_dispatch.web_url is '选填的网页 URL；与小程序
 comment on column wechat_dispatch.mini_program_page is '选填的小程序页面';
 comment on column wechat_dispatch.accepted is '微信是否受理；业务拒绝为 false，且 msgid 为空';
 comment on column wechat_dispatch.msgid is '微信受理后返回的 msgid；拒绝时为空';
+comment on column wechat_dispatch.delivered is '事后送达回写；受理还不是送达。对不上的 msgid 不新开行';
 comment on column wechat_dispatch.create_by is '创建者用户ID';
 comment on column wechat_dispatch.update_by is '更新者用户ID';
 comment on column wechat_dispatch.created_at is '创建时间';

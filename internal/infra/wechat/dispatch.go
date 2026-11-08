@@ -3,6 +3,7 @@ package wechatinfra
 import (
 	"context"
 	"log/slog"
+	"strings"
 
 	"entgo.io/ent/dialect/sql"
 
@@ -26,6 +27,7 @@ func toBizDispatch(po *ent.WechatDispatch) *entity.Dispatch {
 		WebURL:            po.WebURL,
 		MiniProgramPage:   po.MiniProgramPage,
 		Accepted:          po.Accepted,
+		Delivered:         po.Delivered,
 		MsgID:             po.Msgid,
 		CreateBy:          po.CreateBy,
 		UpdateBy:          po.UpdateBy,
@@ -64,6 +66,7 @@ func (r *dispatchRepo) Create(ctx context.Context, row *entity.Dispatch) (*entit
 		SetWebURL(row.WebURL).
 		SetMiniProgramPage(row.MiniProgramPage).
 		SetAccepted(row.Accepted).
+		SetDelivered(row.Delivered).
 		SetMsgid(row.MsgID).
 		SetCreateBy(row.CreateBy).
 		SetUpdateBy(row.UpdateBy).
@@ -72,6 +75,25 @@ func (r *dispatchRepo) Create(ctx context.Context, row *entity.Dispatch) (*entit
 		return nil, wechatStoreError(ctx, r.logger, "wechat.dispatch.create", err)
 	}
 	return toBizDispatch(po), nil
+}
+
+func (r *dispatchRepo) MarkDelivered(ctx context.Context, req wechatrepo.MarkDeliveredRequest) error {
+	msgid := strings.TrimSpace(req.MsgID)
+	if msgid == "" {
+		return nil
+	}
+	_, err := r.data.DB.WechatDispatch(ctx).Update().
+		Where(
+			entdispatch.MsgidEQ(msgid),
+			entdispatch.DeletedAtIsNil(),
+		).
+		SetDelivered(true).
+		SetUpdateBy(req.ActorID).
+		Save(ctx)
+	if err != nil {
+		return wechatStoreError(ctx, r.logger, "wechat.dispatch.mark_delivered", err)
+	}
+	return nil
 }
 
 func (r *dispatchRepo) List(ctx context.Context, q wechatrepo.DispatchQuery) ([]*entity.Dispatch, error) {

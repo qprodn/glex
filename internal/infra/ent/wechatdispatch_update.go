@@ -276,6 +276,20 @@ func (_u *WechatDispatchUpdate) SetNillableMsgid(v *string) *WechatDispatchUpdat
 	return _u
 }
 
+// SetDelivered sets the "delivered" field.
+func (_u *WechatDispatchUpdate) SetDelivered(v bool) *WechatDispatchUpdate {
+	_u.mutation.SetDelivered(v)
+	return _u
+}
+
+// SetNillableDelivered sets the "delivered" field if the given value is not nil.
+func (_u *WechatDispatchUpdate) SetNillableDelivered(v *bool) *WechatDispatchUpdate {
+	if v != nil {
+		_u.SetDelivered(*v)
+	}
+	return _u
+}
+
 // Mutation returns the WechatDispatchMutation object of the builder.
 func (_u *WechatDispatchUpdate) Mutation() *WechatDispatchMutation {
 	return _u.mutation
@@ -434,6 +448,9 @@ func (_u *WechatDispatchUpdate) sqlSave(ctx context.Context) (_node int, err err
 	}
 	if value, ok := _u.mutation.Msgid(); ok {
 		_spec.SetField(wechatdispatch.FieldMsgid, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Delivered(); ok {
+		_spec.SetField(wechatdispatch.FieldDelivered, field.TypeBool, value)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -703,6 +720,20 @@ func (_u *WechatDispatchUpdateOne) SetNillableMsgid(v *string) *WechatDispatchUp
 	return _u
 }
 
+// SetDelivered sets the "delivered" field.
+func (_u *WechatDispatchUpdateOne) SetDelivered(v bool) *WechatDispatchUpdateOne {
+	_u.mutation.SetDelivered(v)
+	return _u
+}
+
+// SetNillableDelivered sets the "delivered" field if the given value is not nil.
+func (_u *WechatDispatchUpdateOne) SetNillableDelivered(v *bool) *WechatDispatchUpdateOne {
+	if v != nil {
+		_u.SetDelivered(*v)
+	}
+	return _u
+}
+
 // Mutation returns the WechatDispatchMutation object of the builder.
 func (_u *WechatDispatchUpdateOne) Mutation() *WechatDispatchMutation {
 	return _u.mutation
@@ -891,6 +922,9 @@ func (_u *WechatDispatchUpdateOne) sqlSave(ctx context.Context) (_node *WechatDi
 	}
 	if value, ok := _u.mutation.Msgid(); ok {
 		_spec.SetField(wechatdispatch.FieldMsgid, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Delivered(); ok {
+		_spec.SetField(wechatdispatch.FieldDelivered, field.TypeBool, value)
 	}
 	_node = &WechatDispatch{config: _u.config}
 	_spec.Assign = _node.assignValues

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	wechat "glex/internal/domain/wechat"
@@ -80,6 +81,20 @@ func (r *memDispatchRepo) Create(_ context.Context, row *entity.Dispatch) (*enti
 	stored := cloneDispatch(row)
 	r.rows[stored.ID] = stored
 	return cloneDispatch(stored), nil
+}
+
+func (r *memDispatchRepo) MarkDelivered(_ context.Context, req repository.MarkDeliveredRequest) error {
+	msgid := strings.TrimSpace(req.MsgID)
+	if msgid == "" {
+		return nil
+	}
+	for _, row := range r.rows {
+		if row.MsgID == msgid {
+			row.Delivered = true
+			row.UpdateBy = req.ActorID
+		}
+	}
+	return nil
 }
 
 func (r *memDispatchRepo) List(_ context.Context, q repository.DispatchQuery) ([]*entity.Dispatch, error) {

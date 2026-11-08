@@ -2327,7 +2327,8 @@ func (x *AdoptWechatTemplateRequest) GetChannel() WechatCapability {
 }
 
 // WechatDispatch is one send attempt to one openid. Accepted is WeChat's
-// acceptance, not delivery. A rejected attempt has no msgid.
+// acceptance, not delivery. A rejected attempt has no msgid. Delivered
+// becomes true when a later delivery report carries this msgid.
 type WechatDispatch struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	DispatchId        int64                  `protobuf:"varint,1,opt,name=dispatch_id,json=dispatchId,proto3" json:"dispatch_id,omitempty"`
@@ -2346,8 +2347,10 @@ type WechatDispatch struct {
 	UpdateBy        int64                  `protobuf:"varint,13,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
 	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt       *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// True after a delivery report for this msgid. Acceptance is not delivery.
+	Delivered     bool `protobuf:"varint,16,opt,name=delivered,proto3" json:"delivered,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *WechatDispatch) Reset() {
@@ -2483,6 +2486,13 @@ func (x *WechatDispatch) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *WechatDispatch) GetDelivered() bool {
+	if x != nil {
+		return x.Delivered
+	}
+	return false
 }
 
 type WechatDispatchSet struct {
@@ -3574,7 +3584,7 @@ const file_wechat_v1_wechat_proto_rawDesc = "" +
 	"\x1aAdoptWechatTemplateRequest\x12\x1a\n" +
 	"\x06app_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x05appId\x123\n" +
 	"\x13library_template_id\x18\x02 \x01(\tB\x03\xe0A\x02R\x11libraryTemplateId\x12:\n" +
-	"\achannel\x18\x03 \x01(\x0e2\x1b.wechat.v1.WechatCapabilityB\x03\xe0A\x02R\achannel\"\xa9\x04\n" +
+	"\achannel\x18\x03 \x01(\x0e2\x1b.wechat.v1.WechatCapabilityB\x03\xe0A\x02R\achannel\"\xc7\x04\n" +
 	"\x0eWechatDispatch\x12\x1f\n" +
 	"\vdispatch_id\x18\x01 \x01(\x03R\n" +
 	"dispatchId\x12\x15\n" +
@@ -3595,7 +3605,8 @@ const file_wechat_v1_wechat_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"v\n" +
+	"updated_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1c\n" +
+	"\tdelivered\x18\x10 \x01(\bR\tdelivered\"v\n" +
 	"\x11WechatDispatchSet\x129\n" +
 	"\n" +
 	"dispatches\x18\x01 \x03(\v2\x19.wechat.v1.WechatDispatchR\n" +

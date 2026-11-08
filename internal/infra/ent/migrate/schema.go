@@ -804,6 +804,7 @@ var (
 		{Name: "mini_program_page", Type: field.TypeString, Size: 1024, Default: ""},
 		{Name: "accepted", Type: field.TypeBool, Default: false},
 		{Name: "msgid", Type: field.TypeString, Size: 64, Default: ""},
+		{Name: "delivered", Type: field.TypeBool, Default: false},
 	}
 	// WechatDispatchTable holds the schema information for the "wechat_dispatch" table.
 	WechatDispatchTable = &schema.Table{

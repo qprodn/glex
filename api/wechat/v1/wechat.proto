@@ -623,7 +623,8 @@ message AdoptWechatTemplateRequest {
 }
 
 // WechatDispatch is one send attempt to one openid. Accepted is WeChat's
-// acceptance, not delivery. A rejected attempt has no msgid.
+// acceptance, not delivery. A rejected attempt has no msgid. Delivered
+// becomes true when a later delivery report carries this msgid.
 message WechatDispatch {
   int64 dispatch_id = 1;
   int64 app_id = 2;
@@ -641,6 +642,8 @@ message WechatDispatch {
   int64 update_by = 13;
   google.protobuf.Timestamp created_at = 14;
   google.protobuf.Timestamp updated_at = 15;
+  // True after a delivery report for this msgid. Acceptance is not delivery.
+  bool delivered = 16;
 }
 
 message WechatDispatchSet {

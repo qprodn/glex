@@ -134,6 +134,11 @@ func Msgid(v string) predicate.WechatDispatch {
 	return predicate.WechatDispatch(sql.FieldEQ(FieldMsgid, v))
 }
 
+// Delivered applies equality check predicate on the "delivered" field. It's identical to DeliveredEQ.
+func Delivered(v bool) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldEQ(FieldDelivered, v))
+}
+
 // CreateByEQ applies the EQ predicate on the "create_by" field.
 func CreateByEQ(v int64) predicate.WechatDispatch {
 	return predicate.WechatDispatch(sql.FieldEQ(FieldCreateBy, v))
@@ -972,6 +977,16 @@ func MsgidEqualFold(v string) predicate.WechatDispatch {
 // MsgidContainsFold applies the ContainsFold predicate on the "msgid" field.
 func MsgidContainsFold(v string) predicate.WechatDispatch {
 	return predicate.WechatDispatch(sql.FieldContainsFold(FieldMsgid, v))
+}
+
+// DeliveredEQ applies the EQ predicate on the "delivered" field.
+func DeliveredEQ(v bool) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldEQ(FieldDelivered, v))
+}
+
+// DeliveredNEQ applies the NEQ predicate on the "delivered" field.
+func DeliveredNEQ(v bool) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldNEQ(FieldDelivered, v))
 }
 
 // And groups predicates with the AND operator between them.

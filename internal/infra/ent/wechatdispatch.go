@@ -48,7 +48,9 @@ type WechatDispatch struct {
 	// Accepted holds the value of the "accepted" field.
 	Accepted bool `json:"accepted,omitempty"`
 	// Msgid holds the value of the "msgid" field.
-	Msgid        string `json:"msgid,omitempty"`
+	Msgid string `json:"msgid,omitempty"`
+	// Delivered holds the value of the "delivered" field.
+	Delivered    bool `json:"delivered,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -57,7 +59,7 @@ func (*WechatDispatch) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case wechatdispatch.FieldAccepted:
+		case wechatdispatch.FieldAccepted, wechatdispatch.FieldDelivered:
 			values[i] = new(sql.NullBool)
 		case wechatdispatch.FieldID, wechatdispatch.FieldCreateBy, wechatdispatch.FieldUpdateBy, wechatdispatch.FieldAppID, wechatdispatch.FieldTemplateID:
 			values[i] = new(sql.NullInt64)
@@ -183,6 +185,12 @@ func (_m *WechatDispatch) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Msgid = value.String
 			}
+		case wechatdispatch.FieldDelivered:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field delivered", values[i])
+			} else if value.Valid {
+				_m.Delivered = value.Bool
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -268,6 +276,9 @@ func (_m *WechatDispatch) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("msgid=")
 	builder.WriteString(_m.Msgid)
+	builder.WriteString(", ")
+	builder.WriteString("delivered=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Delivered))
 	builder.WriteByte(')')
 	return builder.String()
 }

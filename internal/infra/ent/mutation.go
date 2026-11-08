@@ -27199,6 +27199,7 @@ type WechatDispatchMutation struct {
 	mini_program_page   *string
 	accepted            *bool
 	msgid               *string
+	delivered           *bool
 	clearedFields       map[string]struct{}
 	done                bool
 	oldValue            func(context.Context) (*WechatDispatch, error)
@@ -28006,6 +28007,42 @@ func (m *WechatDispatchMutation) ResetMsgid() {
 	m.msgid = nil
 }
 
+// SetDelivered sets the "delivered" field.
+func (m *WechatDispatchMutation) SetDelivered(b bool) {
+	m.delivered = &b
+}
+
+// Delivered returns the value of the "delivered" field in the mutation.
+func (m *WechatDispatchMutation) Delivered() (r bool, exists bool) {
+	v := m.delivered
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDelivered returns the old "delivered" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldDelivered(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDelivered is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDelivered requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDelivered: %w", err)
+	}
+	return oldValue.Delivered, nil
+}
+
+// ResetDelivered resets all changes to the "delivered" field.
+func (m *WechatDispatchMutation) ResetDelivered() {
+	m.delivered = nil
+}
+
 // Where appends a list predicates to the WechatDispatchMutation builder.
 func (m *WechatDispatchMutation) Where(ps ...predicate.WechatDispatch) {
 	m.predicates = append(m.predicates, ps...)
@@ -28040,7 +28077,7 @@ func (m *WechatDispatchMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *WechatDispatchMutation) Fields() []string {
-	fields := make([]string, 0, 16)
+	fields := make([]string, 0, 17)
 	if m.create_by != nil {
 		fields = append(fields, wechatdispatch.FieldCreateBy)
 	}
@@ -28089,6 +28126,9 @@ func (m *WechatDispatchMutation) Fields() []string {
 	if m.msgid != nil {
 		fields = append(fields, wechatdispatch.FieldMsgid)
 	}
+	if m.delivered != nil {
+		fields = append(fields, wechatdispatch.FieldDelivered)
+	}
 	return fields
 }
 
@@ -28129,6 +28169,8 @@ func (m *WechatDispatchMutation) Field(name string) (ent.Value, bool) {
 		return m.Accepted()
 	case wechatdispatch.FieldMsgid:
 		return m.Msgid()
+	case wechatdispatch.FieldDelivered:
+		return m.Delivered()
 	}
 	return nil, false
 }
@@ -28170,6 +28212,8 @@ func (m *WechatDispatchMutation) OldField(ctx context.Context, name string) (ent
 		return m.OldAccepted(ctx)
 	case wechatdispatch.FieldMsgid:
 		return m.OldMsgid(ctx)
+	case wechatdispatch.FieldDelivered:
+		return m.OldDelivered(ctx)
 	}
 	return nil, fmt.Errorf("unknown WechatDispatch field %s", name)
 }
@@ -28290,6 +28334,13 @@ func (m *WechatDispatchMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetMsgid(v)
+		return nil
+	case wechatdispatch.FieldDelivered:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDelivered(v)
 		return nil
 	}
 	return fmt.Errorf("unknown WechatDispatch field %s", name)
@@ -28459,6 +28510,9 @@ func (m *WechatDispatchMutation) ResetField(name string) error {
 		return nil
 	case wechatdispatch.FieldMsgid:
 		m.ResetMsgid()
+		return nil
+	case wechatdispatch.FieldDelivered:
+		m.ResetDelivered()
 		return nil
 	}
 	return fmt.Errorf("unknown WechatDispatch field %s", name)

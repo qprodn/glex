@@ -80,14 +80,28 @@ func (r *appRepo) NextID() int64 {
 }
 
 func (r *appRepo) FindByID(ctx context.Context, id int64) (*entity.App, error) {
-	po, err := r.data.DB.WechatApp(ctx).Query().
-		Where(entapp.IDEQ(id), entapp.DeletedAtIsNil()).
-		Only(ctx)
+	return r.findByID(ctx, id, false)
+}
+
+func (r *appRepo) FindByIDIncludingWithdrawn(ctx context.Context, id int64) (*entity.App, error) {
+	return r.findByID(ctx, id, true)
+}
+
+func (r *appRepo) findByID(ctx context.Context, id int64, includeWithdrawn bool) (*entity.App, error) {
+	query := r.data.DB.WechatApp(ctx).Query().Where(entapp.IDEQ(id))
+	if !includeWithdrawn {
+		query = query.Where(entapp.DeletedAtIsNil())
+	}
+	po, err := query.Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return nil, wechat.ErrAppNotFound
 		}
-		return nil, r.storeError(ctx, "wechat.app.find_by_id", err)
+		op := "wechat.app.find_by_id"
+		if includeWithdrawn {
+			op = "wechat.app.find_by_id_including_withdrawn"
+		}
+		return nil, r.storeError(ctx, op, err)
 	}
 	return toBizApp(po), nil
 }
@@ -143,14 +157,28 @@ func (r *appRepo) CountLiveByPlatform(ctx context.Context, platformID int64) (in
 }
 
 func (r *appRepo) LoadSecrets(ctx context.Context, id int64) (wechatrepo.AppSecrets, error) {
-	po, err := r.data.DB.WechatApp(ctx).Query().
-		Where(entapp.IDEQ(id), entapp.DeletedAtIsNil()).
-		Only(ctx)
+	return r.loadSecrets(ctx, id, false)
+}
+
+func (r *appRepo) LoadSecretsIncludingWithdrawn(ctx context.Context, id int64) (wechatrepo.AppSecrets, error) {
+	return r.loadSecrets(ctx, id, true)
+}
+
+func (r *appRepo) loadSecrets(ctx context.Context, id int64, includeWithdrawn bool) (wechatrepo.AppSecrets, error) {
+	query := r.data.DB.WechatApp(ctx).Query().Where(entapp.IDEQ(id))
+	if !includeWithdrawn {
+		query = query.Where(entapp.DeletedAtIsNil())
+	}
+	po, err := query.Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return wechatrepo.AppSecrets{}, wechat.ErrAppNotFound
 		}
-		return wechatrepo.AppSecrets{}, r.storeError(ctx, "wechat.app.load_secrets", err)
+		op := "wechat.app.load_secrets"
+		if includeWithdrawn {
+			op = "wechat.app.load_secrets_including_withdrawn"
+		}
+		return wechatrepo.AppSecrets{}, r.storeError(ctx, op, err)
 	}
 	values, err := r.cipher.Decrypt(po.SecretCipher)
 	if err != nil {

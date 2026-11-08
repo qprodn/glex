@@ -49,6 +49,14 @@ func (r *memAppRepo) FindByID(_ context.Context, id int64) (*entity.App, error) 
 	return cloneStoredApp(row.app), nil
 }
 
+func (r *memAppRepo) FindByIDIncludingWithdrawn(_ context.Context, id int64) (*entity.App, error) {
+	row, ok := r.rows[id]
+	if !ok || row.app == nil {
+		return nil, wechat.ErrAppNotFound
+	}
+	return cloneStoredApp(row.app), nil
+}
+
 func (r *memAppRepo) List(context.Context, listq.Query) ([]*entity.App, error) {
 	out := make([]*entity.App, 0, len(r.rows))
 	for _, row := range r.rows {
@@ -88,6 +96,26 @@ func (r *memAppRepo) CountLiveByPlatform(_ context.Context, platformID int64) (i
 func (r *memAppRepo) LoadSecrets(_ context.Context, id int64) (repository.AppSecrets, error) {
 	row, ok := r.rows[id]
 	if !ok || row.withdrawn {
+		return repository.AppSecrets{}, wechat.ErrAppNotFound
+	}
+	values, err := r.cipher.Decrypt(row.token)
+	if err != nil {
+		if errors.Is(err, crypt.ErrMasterKeyMissing) {
+			return repository.AppSecrets{}, wechat.ErrMasterKeyMissing
+		}
+		return repository.AppSecrets{}, wechat.ErrSecretCrypto
+	}
+	return repository.AppSecrets{
+		AppSecret:              values["app_secret"],
+		Token:                  values["token"],
+		EncodingAESKey:         values["encoding_aes_key"],
+		AuthorizerRefreshToken: values["authorizer_refresh_token"],
+	}, nil
+}
+
+func (r *memAppRepo) LoadSecretsIncludingWithdrawn(_ context.Context, id int64) (repository.AppSecrets, error) {
+	row, ok := r.rows[id]
+	if !ok {
 		return repository.AppSecrets{}, wechat.ErrAppNotFound
 	}
 	values, err := r.cipher.Decrypt(row.token)

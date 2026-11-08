@@ -1232,6 +1232,10 @@ func init() {
 	wechatdispatch.DefaultMsgid = wechatdispatchDescMsgid.Default.(string)
 	// wechatdispatch.MsgidValidator is a validator for the "msgid" field. It is called by the builders before save.
 	wechatdispatch.MsgidValidator = wechatdispatchDescMsgid.Validators[0].(func(string) error)
+	// wechatdispatchDescDelivered is the schema descriptor for delivered field.
+	wechatdispatchDescDelivered := wechatdispatchFields[12].Descriptor()
+	// wechatdispatch.DefaultDelivered holds the default value on creation for the delivered field.
+	wechatdispatch.DefaultDelivered = wechatdispatchDescDelivered.Default.(bool)
 	wechatplatformMixin := schema.WechatPlatform{}.Mixin()
 	wechatplatformMixinFields0 := wechatplatformMixin[0].Fields()
 	_ = wechatplatformMixinFields0

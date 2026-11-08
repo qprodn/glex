@@ -140,6 +140,19 @@ func (s *WechatApplication) ReceivePlatformPush(ctx context.Context, req *wechat
 	return out, nil
 }
 
+// ReceiveAppPush is the unauthenticated callback for one Direct Hold.
+// WeChat's encrypted push is the authentication. A delivery report is
+// stamped as the system itself inside the domain service. The call
+// writes no Login Log.
+func (s *WechatApplication) ReceiveAppPush(ctx context.Context, req *wechatservice.AppPushRequest) (*wechatservice.PushOutcome, error) {
+	out, err := s.apps.Receive(ctx, *req)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "wechat.receive_app_push", err)
+		return nil, err
+	}
+	return out, nil
+}
+
 // WithdrawWechatPlatform soft-deletes the platform.
 func (s *WechatApplication) WithdrawWechatPlatform(ctx context.Context, req *wechatv1.WithdrawWechatPlatformRequest) (*emptypb.Empty, error) {
 	if err := s.platforms.Withdraw(ctx, wechatservice.WithdrawRequest{

@@ -45,6 +45,8 @@ const (
 	FieldAccepted = "accepted"
 	// FieldMsgid holds the string denoting the msgid field in the database.
 	FieldMsgid = "msgid"
+	// FieldDelivered holds the string denoting the delivered field in the database.
+	FieldDelivered = "delivered"
 	// Table holds the table name of the wechatdispatch in the database.
 	Table = "wechat_dispatch"
 )
@@ -68,6 +70,7 @@ var Columns = []string{
 	FieldMiniProgramPage,
 	FieldAccepted,
 	FieldMsgid,
+	FieldDelivered,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -121,6 +124,8 @@ var (
 	DefaultMsgid string
 	// MsgidValidator is a validator for the "msgid" field. It is called by the builders before save.
 	MsgidValidator func(string) error
+	// DefaultDelivered holds the default value on creation for the "delivered" field.
+	DefaultDelivered bool
 )
 
 // OrderOption defines the ordering options for the WechatDispatch queries.
@@ -209,4 +214,9 @@ func ByAccepted(opts ...sql.OrderTermOption) OrderOption {
 // ByMsgid orders the results by the msgid field.
 func ByMsgid(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMsgid, opts...).ToFunc()
+}
+
+// ByDelivered orders the results by the delivered field.
+func ByDelivered(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDelivered, opts...).ToFunc()
 }

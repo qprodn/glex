@@ -126,6 +126,10 @@ type App interface {
 	// CountLiveAuthorizations counts apps not withdrawn that are
 	// authorized through this platform.
 	CountLiveAuthorizations(ctx context.Context, platformID int64) (int, error)
+	// RecordDelivery writes a delivery report onto the dispatch that
+	// carries this msgid. The actor is the system. An unknown msgid
+	// changes nothing and creates no row.
+	RecordDelivery(ctx context.Context, msgid string) error
 	// ConfigureWebAuthorization stores the return URL and the scope on a
 	// Service Account. The actor is the Principal. Scope is openid only,
 	// or openid plus nickname and avatar.
@@ -166,6 +170,11 @@ type App interface {
 	// ListDispatches returns attempts for live and withdrawn apps.
 	// AppID 0 lists every attempt.
 	ListDispatches(ctx context.Context, req ListDispatchesRequest) (*DispatchPage, error)
+	// Receive accepts one encrypted push on a Direct Hold's callback.
+	// A delivery report updates the matching dispatch. Any other verified
+	// event is acknowledged and stored nowhere. Plaintext, compatible
+	// mode, and a bad signature are rejected and change nothing.
+	Receive(ctx context.Context, req AppPushRequest) (*PushOutcome, error)
 	// SaveMenu writes the Custom Menu document on one Service Account
 	// and does not call WeChat. The last menu WeChat accepted is left
 	// as it was.
@@ -182,11 +191,13 @@ type App interface {
 }
 
 // PlatformBindings is the slice of the app service the platform service
-// needs: refuse a platform withdrawal while a live grant remains, and
-// apply a grant WeChat pushed. The app service implements it.
+// needs: refuse a platform withdrawal while a live grant remains, apply
+// a grant WeChat pushed, and write a delivery report onto a dispatch.
+// The app service implements it.
 type PlatformBindings interface {
 	CountLiveAuthorizations(ctx context.Context, platformID int64) (int, error)
 	CompleteAuthorization(ctx context.Context, req CompleteAuthorizationRequest) (*entity.App, error)
+	RecordDelivery(ctx context.Context, msgid string) error
 }
 
 type appImpl struct {
@@ -196,6 +207,7 @@ type appImpl struct {
 	dispatches   repository.DispatchRepo
 	handoffs     repository.HandoffCodeRepo
 	openapi      OpenAPI
+	pushes       PushAuthenticator
 	callbackBase string
 	logger       *slog.Logger
 }
@@ -210,6 +222,7 @@ func NewAppService(apps repository.AppRepo, platforms repository.PlatformRepo, t
 		dispatches:   dispatches,
 		handoffs:     handoffs,
 		openapi:      openapi,
+		pushes:       NewPushAuthenticator(),
 		callbackBase: strings.TrimRight(string(callbackBase), "/"),
 		logger:       logger.With(slog.String("component", "domain.wechat.app.svc")),
 	}

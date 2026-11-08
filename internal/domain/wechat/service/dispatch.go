@@ -292,6 +292,25 @@ func (s *appImpl) recordDispatch(ctx context.Context, req SendDispatchRequest, a
 	})
 }
 
+// RecordDelivery writes a delivery report onto the attempt that carries
+// this msgid. WeChat caused the write, so the actor is the system. A
+// blank or unknown msgid leaves every dispatch as it was.
+func (s *appImpl) RecordDelivery(ctx context.Context, msgid string) error {
+	const op = "wechat.svc.dispatch.deliver"
+	msgid = strings.TrimSpace(msgid)
+	if msgid == "" || s.dispatches == nil {
+		return nil
+	}
+	if err := s.dispatches.MarkDelivered(ctx, repository.MarkDeliveredRequest{
+		MsgID:   msgid,
+		ActorID: systemActorID,
+	}); err != nil {
+		logx.Propagate(ctx, s.logger, op, err)
+		return err
+	}
+	return nil
+}
+
 // ListDispatches returns the attempts an operator can review. AppID 0
 // does not hide dispatches whose app was withdrawn.
 func (s *appImpl) ListDispatches(ctx context.Context, req ListDispatchesRequest) (*DispatchPage, error) {

@@ -19,6 +19,12 @@ import (
 // Principal rides a WeChat push, and the push is not a back-office mutation.
 const OperationWechatServicePlatformCallback = "/wechat.v1.WechatService/PlatformCallback"
 
+// OperationWechatServiceAppCallback names the hand-written Direct Hold
+// callback. It is the address the app already shows. It is absent from
+// the auth route table and present in the operlog skip set. It writes
+// no Login Log: a WeChat push is not someone signing into the back office.
+const OperationWechatServiceAppCallback = "/wechat.v1.WechatService/AppCallback"
+
 // maxWechatPushBytes bounds one WeChat push before it is read. The route
 // is public; the signature inside the body is the auth. Encrypted XML
 // pushes are a few KiB.
@@ -28,6 +34,8 @@ const maxWechatPushBytes = 64 << 10
 // POST /wechat/platform/{platform_id}/callback
 // and the message URL WeChat fills as
 // POST /wechat/platform/{platform_id}/callback/{appid}.
+// A Direct Hold uses the address the app already shows:
+// POST /wechat/apps/{app_id}/callback.
 func registerWechatCallbackHTTP(s *khttp.Server, app *wechatapp.WechatApplication) {
 	if app == nil {
 		return
@@ -35,6 +43,7 @@ func registerWechatCallbackHTTP(s *khttp.Server, app *wechatapp.WechatApplicatio
 	r := s.Route("/")
 	r.Handle("POST", "/wechat/platform/{platform_id}/callback", wechatCallbackHandler(app))
 	r.Handle("POST", "/wechat/platform/{platform_id}/callback/{appid}", wechatCallbackHandler(app))
+	r.Handle("POST", "/wechat/apps/{app_id}/callback", wechatAppCallbackHandler(app))
 	r.Handle("GET", "/wechat/platform/{platform_id}/authorization-return", authorizationReturnHandler())
 	r.Handle("GET", "/wechat/app/{app_id}/web-authorization/return", webAuthorizationReturnHandler(app))
 }
@@ -89,6 +98,45 @@ func wechatCallbackHandler(app *wechatapp.WechatApplication) khttp.HandlerFunc {
 				MsgSignature:    query.Get("msg_signature"),
 				EncryptType:     query.Get("encrypt_type"),
 				Body:            body,
+			})
+		})
+		out, err := h(ctx, &struct{}{})
+		if err != nil {
+			return err
+		}
+		outcome := out.(*wechatservice.PushOutcome)
+		contentType := outcome.ContentType
+		if contentType == "" {
+			contentType = "text/plain; charset=utf-8"
+		}
+		ctx.Response().Header().Set("Content-Type", contentType)
+		ctx.Response().WriteHeader(stdhttp.StatusOK)
+		_, _ = ctx.Response().Write([]byte(outcome.Body))
+		return nil
+	}
+}
+
+func wechatAppCallbackHandler(app *wechatapp.WechatApplication) khttp.HandlerFunc {
+	return func(ctx khttp.Context) error {
+		khttp.SetOperation(ctx, OperationWechatServiceAppCallback)
+		appID, parseErr := strconv.ParseInt(ctx.Vars().Get("app_id"), 10, 64)
+		if parseErr != nil || appID <= 0 {
+			return wechat.ErrPushRejected
+		}
+		body, err := io.ReadAll(io.LimitReader(ctx.Request().Body, maxWechatPushBytes+1))
+		if err != nil || len(body) > maxWechatPushBytes {
+			return wechat.ErrPushRejected
+		}
+		query := ctx.Request().URL.Query()
+		h := ctx.Middleware(func(requestCtx context.Context, _ any) (any, error) {
+			return app.ReceiveAppPush(requestCtx, &wechatservice.AppPushRequest{
+				ID:           appID,
+				Timestamp:    query.Get("timestamp"),
+				Nonce:        query.Get("nonce"),
+				Signature:    query.Get("signature"),
+				MsgSignature: query.Get("msg_signature"),
+				EncryptType:  query.Get("encrypt_type"),
+				Body:         body,
 			})
 		})
 		out, err := h(ctx, &struct{}{})

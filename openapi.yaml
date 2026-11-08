@@ -5318,9 +5318,13 @@ components:
                 updatedAt:
                     type: string
                     format: date-time
+                delivered:
+                    type: boolean
+                    description: True after a delivery report for this msgid. Acceptance is not delivery.
             description: |-
                 WechatDispatch is one send attempt to one openid. Accepted is WeChat's
-                 acceptance, not delivery. A rejected attempt has no msgid.
+                 acceptance, not delivery. A rejected attempt has no msgid. Delivered
+                 becomes true when a later delivery report carries this msgid.
         wechat.v1.WechatDispatchSet:
             type: object
             properties:

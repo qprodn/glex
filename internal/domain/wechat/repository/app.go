@@ -46,6 +46,10 @@ type DeleteAppRequest struct {
 // component AppID.
 type AppRepo interface {
 	FindByID(ctx context.Context, id int64) (*entity.App, error)
+	// FindByIDIncludingWithdrawn returns the row after withdrawal. Ordinary
+	// reads use FindByID. The Direct Hold callback still verifies a late
+	// delivery with the Push Secret on the withdrawn row.
+	FindByIDIncludingWithdrawn(ctx context.Context, id int64) (*entity.App, error)
 	List(ctx context.Context, q listq.Query) ([]*entity.App, error)
 	// FindLiveByAppID resolves the app that is not withdrawn and holds
 	// this AppID. A missing row is ErrAppNotFound.
@@ -55,6 +59,9 @@ type AppRepo interface {
 	// are not included. A platform with none returns zero.
 	CountLiveByPlatform(ctx context.Context, platformID int64) (int, error)
 	LoadSecrets(ctx context.Context, id int64) (AppSecrets, error)
+	// LoadSecretsIncludingWithdrawn opens the ciphertext of a row that
+	// may already be withdrawn. Display paths use LoadSecrets.
+	LoadSecretsIncludingWithdrawn(ctx context.Context, id int64) (AppSecrets, error)
 	Create(ctx context.Context, req SaveAppRequest) (*entity.App, error)
 	Update(ctx context.Context, req SaveAppRequest) (*entity.App, error)
 	Delete(ctx context.Context, req DeleteAppRequest) error

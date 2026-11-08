@@ -476,7 +476,8 @@ export type AdoptWechatTemplateRequest = {
 };
 
 // WechatDispatch is one send attempt to one openid. Accepted is WeChat's
-// acceptance, not delivery. A rejected attempt has no msgid.
+// acceptance, not delivery. A rejected attempt has no msgid. Delivered
+// becomes true when a later delivery report carries this msgid.
 export type WechatDispatch = {
   dispatchId: number | undefined;
   appId: number | undefined;
@@ -494,6 +495,8 @@ export type WechatDispatch = {
   updateBy: number | undefined;
   createdAt: wellKnownTimestamp | undefined;
   updatedAt: wellKnownTimestamp | undefined;
+  // True after a delivery report for this msgid. Acceptance is not delivery.
+  delivered: boolean | undefined;
 };
 
 export type WechatDispatchSet = {

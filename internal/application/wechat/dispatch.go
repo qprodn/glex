@@ -42,6 +42,7 @@ func convertDispatch(row *entity.Dispatch) *wechatv1.WechatDispatch {
 		MiniProgramPage:   row.MiniProgramPage,
 		Accepted:          row.Accepted,
 		Msgid:             row.MsgID,
+		Delivered:         row.Delivered,
 		CreateBy:          row.CreateBy,
 		UpdateBy:          row.UpdateBy,
 		CreatedAt:         timestamppb.New(row.CreatedAt),

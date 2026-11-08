@@ -63,6 +63,10 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 					// oper-log event.
 					OperationPayServiceChannelNotification,
 					OperationWechatServicePlatformCallback,
+					// The Direct Hold callback is the address the app
+					// shows. It carries no Principal, writes no oper log,
+					// and writes no Login Log.
+					OperationWechatServiceAppCallback,
 					// Web Authorization identity calls carry no Principal
 					// and are not back-office oper logs. They also write
 					// no Login Log.

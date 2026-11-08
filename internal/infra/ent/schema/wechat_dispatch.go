@@ -37,6 +37,9 @@ func (WechatDispatch) Fields() []ent.Field {
 		field.String("mini_program_page").MaxLen(1024).Default(""),
 		field.Bool("accepted").Default(false),
 		field.String("msgid").MaxLen(64).Default(""),
+		// Delivered is a later delivery report for this msgid. Acceptance
+		// is not delivery. An unknown msgid does not insert a row.
+		field.Bool("delivered").Default(false),
 	}
 }
 

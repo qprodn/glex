@@ -222,6 +222,20 @@ func (_c *WechatDispatchCreate) SetNillableMsgid(v *string) *WechatDispatchCreat
 	return _c
 }
 
+// SetDelivered sets the "delivered" field.
+func (_c *WechatDispatchCreate) SetDelivered(v bool) *WechatDispatchCreate {
+	_c.mutation.SetDelivered(v)
+	return _c
+}
+
+// SetNillableDelivered sets the "delivered" field if the given value is not nil.
+func (_c *WechatDispatchCreate) SetNillableDelivered(v *bool) *WechatDispatchCreate {
+	if v != nil {
+		_c.SetDelivered(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *WechatDispatchCreate) SetID(v int64) *WechatDispatchCreate {
 	_c.mutation.SetID(v)
@@ -311,6 +325,10 @@ func (_c *WechatDispatchCreate) defaults() {
 		v := wechatdispatch.DefaultMsgid
 		_c.mutation.SetMsgid(v)
 	}
+	if _, ok := _c.mutation.Delivered(); !ok {
+		v := wechatdispatch.DefaultDelivered
+		_c.mutation.SetDelivered(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -388,6 +406,9 @@ func (_c *WechatDispatchCreate) check() error {
 		if err := wechatdispatch.MsgidValidator(v); err != nil {
 			return &ValidationError{Name: "msgid", err: fmt.Errorf(`ent: validator failed for field "WechatDispatch.msgid": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.Delivered(); !ok {
+		return &ValidationError{Name: "delivered", err: errors.New(`ent: missing required field "WechatDispatch.delivered"`)}
 	}
 	return nil
 }
@@ -485,6 +506,10 @@ func (_c *WechatDispatchCreate) createSpec() (*WechatDispatch, *sqlgraph.CreateS
 	if value, ok := _c.mutation.Msgid(); ok {
 		_spec.SetField(wechatdispatch.FieldMsgid, field.TypeString, value)
 		_node.Msgid = value
+	}
+	if value, ok := _c.mutation.Delivered(); ok {
+		_spec.SetField(wechatdispatch.FieldDelivered, field.TypeBool, value)
+		_node.Delivered = value
 	}
 	return _node, _spec
 }
@@ -757,6 +782,18 @@ func (u *WechatDispatchUpsert) SetMsgid(v string) *WechatDispatchUpsert {
 // UpdateMsgid sets the "msgid" field to the value that was provided on create.
 func (u *WechatDispatchUpsert) UpdateMsgid() *WechatDispatchUpsert {
 	u.SetExcluded(wechatdispatch.FieldMsgid)
+	return u
+}
+
+// SetDelivered sets the "delivered" field.
+func (u *WechatDispatchUpsert) SetDelivered(v bool) *WechatDispatchUpsert {
+	u.Set(wechatdispatch.FieldDelivered, v)
+	return u
+}
+
+// UpdateDelivered sets the "delivered" field to the value that was provided on create.
+func (u *WechatDispatchUpsert) UpdateDelivered() *WechatDispatchUpsert {
+	u.SetExcluded(wechatdispatch.FieldDelivered)
 	return u
 }
 
@@ -1067,6 +1104,20 @@ func (u *WechatDispatchUpsertOne) SetMsgid(v string) *WechatDispatchUpsertOne {
 func (u *WechatDispatchUpsertOne) UpdateMsgid() *WechatDispatchUpsertOne {
 	return u.Update(func(s *WechatDispatchUpsert) {
 		s.UpdateMsgid()
+	})
+}
+
+// SetDelivered sets the "delivered" field.
+func (u *WechatDispatchUpsertOne) SetDelivered(v bool) *WechatDispatchUpsertOne {
+	return u.Update(func(s *WechatDispatchUpsert) {
+		s.SetDelivered(v)
+	})
+}
+
+// UpdateDelivered sets the "delivered" field to the value that was provided on create.
+func (u *WechatDispatchUpsertOne) UpdateDelivered() *WechatDispatchUpsertOne {
+	return u.Update(func(s *WechatDispatchUpsert) {
+		s.UpdateDelivered()
 	})
 }
 
@@ -1543,6 +1594,20 @@ func (u *WechatDispatchUpsertBulk) SetMsgid(v string) *WechatDispatchUpsertBulk 
 func (u *WechatDispatchUpsertBulk) UpdateMsgid() *WechatDispatchUpsertBulk {
 	return u.Update(func(s *WechatDispatchUpsert) {
 		s.UpdateMsgid()
+	})
+}
+
+// SetDelivered sets the "delivered" field.
+func (u *WechatDispatchUpsertBulk) SetDelivered(v bool) *WechatDispatchUpsertBulk {
+	return u.Update(func(s *WechatDispatchUpsert) {
+		s.SetDelivered(v)
+	})
+}
+
+// UpdateDelivered sets the "delivered" field to the value that was provided on create.
+func (u *WechatDispatchUpsertBulk) UpdateDelivered() *WechatDispatchUpsertBulk {
+	return u.Update(func(s *WechatDispatchUpsert) {
+		s.UpdateDelivered()
 	})
 }
 
