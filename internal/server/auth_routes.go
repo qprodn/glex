@@ -169,6 +169,9 @@ func authRoutes() map[string]authmw.Route {
 		wechatv1.OperationWechatServiceAdoptWechatTemplate:  {Permission: "wechat:dispatch:create"},
 		wechatv1.OperationWechatServiceListWechatDispatches: {Permission: "wechat:dispatch:list"},
 		wechatv1.OperationWechatServiceCreateWechatDispatch: {Permission: "wechat:dispatch:create"},
+		// Mini Program Login is deliberately absent. The exchange does
+		// not require a back-office Principal; an operation missing from
+		// this table is anonymous. It is not a menu permission.
 
 		// job: scheduled-task console and run history (ADR 0023). The
 		// executor listing rides the list permission — it exists to power

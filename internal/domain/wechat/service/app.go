@@ -134,6 +134,12 @@ type App interface {
 	// ListDispatches returns attempts for live and withdrawn apps.
 	// AppID 0 lists every attempt.
 	ListDispatches(ctx context.Context, req ListDispatchesRequest) (*DispatchPage, error)
+	// MiniProgramLogin exchanges one mini program's one-time login code
+	// for that app's openid and, when WeChat supplied one, its unionid.
+	// Direct Hold and Platform Authorization share this entry. The call
+	// takes no back-office Principal. It does not create a WeChat User,
+	// a System User, or a Login Session, and session_key is not returned.
+	MiniProgramLogin(ctx context.Context, req MiniProgramLoginRequest) (*MiniProgramIdentity, error)
 }
 
 // PlatformBindings is the slice of the app service the platform service

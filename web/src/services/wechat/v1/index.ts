@@ -503,11 +503,33 @@ export type CreateWechatDispatchRequest = {
   miniProgramPage: string | undefined;
 };
 
+export type MiniProgramLoginRequest = {
+  // Required. WeChat AppID of the mini program. The caller does not
+  // send the row id or the connection.
+  //
+  // Behaviors: REQUIRED
+  wxAppId: string | undefined;
+  // Required. One-time login code from that mini program.
+  //
+  // Behaviors: REQUIRED
+  code: string | undefined;
+};
+
+// MiniProgramIdentity is the person as known to that one WeChat App.
+// unionid is empty when WeChat omitted it. session_key is not a field,
+// and neither is a system credential or a Login Session.
+export type MiniProgramIdentity = {
+  openid: string | undefined;
+  unionid: string | undefined;
+};
+
 // WechatService is the back-office surface for WeChat Platform
 // registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
-// are wechat:app:list, create, update, remove, and probe. The platform callback
-// is a separate unauthenticated route; it is not an RPC.
+// are wechat:app:list, create, update, remove, and probe. Mini Program Login
+// is not a back-office mutation: it requires no Principal and no menu
+// permission. The platform callback is a separate unauthenticated route; it
+// is not an RPC.
 export interface WechatService {
   // CreateWechatPlatform registers a platform. The response carries masks,
   // never the secrets the operator just typed.
@@ -586,6 +608,14 @@ export interface WechatService {
   // waits until WeChat accepts or rejects. Acceptance and business
   // rejection each leave a new dispatch. Permission: wechat:dispatch:create.
   CreateWechatDispatch(request: CreateWechatDispatchRequest): Promise<WechatDispatch>;
+  // MiniProgramLogin exchanges one mini program's one-time login code for
+  // that WeChat App's openid and, when WeChat supplied one, its unionid.
+  // Direct Hold and Platform Authorization share this entry; the caller
+  // does not name the connection. No back-office Principal and no menu
+  // permission are required. The response carries no session_key and no
+  // system credential. The call creates no WeChat User, System User, or
+  // Login Session, and it writes no Login Log.
+  MiniProgramLogin(request: MiniProgramLoginRequest): Promise<MiniProgramIdentity>;
 }
 
 type RequestType = {
@@ -1014,6 +1044,23 @@ export function createWechatServiceClient(
         service: "WechatService",
         method: "CreateWechatDispatch",
       }) as Promise<WechatDispatch>;
+    },
+    MiniProgramLogin(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `wechat/mini-program/login`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "WechatService",
+        method: "MiniProgramLogin",
+      }) as Promise<MiniProgramIdentity>;
     },
   };
 }
