@@ -138,6 +138,102 @@ func classifyMiniProgramLogin(openid, unionid string, err error) (wechatservice.
 // are a definitive refusal is left unset, so a WeChat error body stays a
 // business rejection and a transport failure stays unavailable. The domain
 // lapses an app only when this port returns that class.
+// PublishMenu replaces the default menu with the whole saved document.
+// Which WeChat codes are a definitive refusal is left unset, so a WeChat
+// error body stays a business rejection and a transport failure stays
+// unavailable. The domain lapses an app only when this port returns that
+// class.
+func (c *openAPI) PublishMenu(ctx context.Context, req wechatservice.PublishMenuCall) (wechatservice.PublishMenuResult, error) {
+	token, refresh, err := c.menuAccessToken(ctx, req)
+	if errors.Is(err, context.Canceled) {
+		return wechatservice.PublishMenuResult{}, err
+	}
+	if err != nil || token == "" {
+		return classifyMenuPublish(false, refresh, err), nil
+	}
+	body, err := c.postJSON(ctx, c.base+"/cgi-bin/menu/create?access_token="+url.QueryEscape(token), menuCreateBody(req.Menu))
+	if errors.Is(err, context.Canceled) {
+		return wechatservice.PublishMenuResult{}, err
+	}
+	if err != nil {
+		return classifyMenuPublish(false, refresh, err), nil
+	}
+	var resp struct {
+		ErrCode int    `json:"errcode"`
+		ErrMsg  string `json:"errmsg"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return classifyMenuPublish(false, refresh, errors.New("wechat open api: unreadable response")), nil
+	}
+	if resp.ErrCode != 0 {
+		return classifyMenuPublish(false, refresh, openAPIFailure(resp.ErrMsg, "custom menu was not accepted")), nil
+	}
+	return classifyMenuPublish(true, refresh, nil), nil
+}
+
+func (c *openAPI) menuAccessToken(ctx context.Context, req wechatservice.PublishMenuCall) (string, string, error) {
+	switch req.Connection {
+	case entity.ConnectionDirectHold:
+		token, err := c.clientCredentialToken(ctx, req.AppID, req.AppSecret)
+		return token, "", err
+	case entity.ConnectionPlatformAuthorization:
+		component, err := c.componentToken(ctx, req.ComponentAppID, req.ComponentSecret, req.VerifyTicket)
+		if err != nil {
+			return "", "", err
+		}
+		return c.refreshAuthorizerToken(ctx, component, req.ComponentAppID, req.AppID, req.AuthorizerRefreshToken)
+	default:
+		return "", "", errors.New("wechat open api: unknown connection")
+	}
+}
+
+func classifyMenuPublish(accepted bool, refresh string, err error) wechatservice.PublishMenuResult {
+	if err == nil && accepted {
+		return wechatservice.PublishMenuResult{
+			Class:                  wechatservice.CallSuccess,
+			Message:                "已替换默认菜单",
+			AuthorizerRefreshToken: refresh,
+		}
+	}
+	if err == nil || errors.Is(err, context.DeadlineExceeded) || probeUnavailable(err) {
+		return wechatservice.PublishMenuResult{Class: wechatservice.CallUnavailable, Message: "微信不可用", AuthorizerRefreshToken: refresh}
+	}
+	return wechatservice.PublishMenuResult{Class: wechatservice.CallBusinessRejection, Message: "微信没有受理这次调用", AuthorizerRefreshToken: refresh}
+}
+
+func menuCreateBody(menu entity.CustomMenu) map[string]any {
+	return map[string]any{"button": menuCreateButtons(menu.Buttons)}
+}
+
+func menuCreateButtons(buttons []entity.MenuButton) []map[string]any {
+	out := make([]map[string]any, 0, len(buttons))
+	for _, button := range buttons {
+		if len(button.SubButtons) > 0 {
+			out = append(out, map[string]any{
+				"name":       button.Name,
+				"sub_button": menuCreateButtons(button.SubButtons),
+			})
+			continue
+		}
+		if button.MiniProgramAppID != "" {
+			out = append(out, map[string]any{
+				"type":     "miniprogram",
+				"name":     button.Name,
+				"appid":    button.MiniProgramAppID,
+				"pagepath": button.MiniProgramPage,
+				"url":      "https://mp.weixin.qq.com",
+			})
+			continue
+		}
+		out = append(out, map[string]any{
+			"type": "view",
+			"name": button.Name,
+			"url":  button.WebURL,
+		})
+	}
+	return out
+}
+
 func (c *openAPI) ProbeApp(ctx context.Context, req wechatservice.ProbeAppRequest) (wechatservice.ProbeAppResult, error) {
 	switch req.Connection {
 	case entity.ConnectionDirectHold:

@@ -163,6 +163,11 @@ func authRoutes() map[string]authmw.Route {
 		// itself arrives on the platform callback and is not this route.
 		wechatv1.OperationWechatServiceListAuthorizationPlatforms: {Permission: "wechat:app:create"},
 		wechatv1.OperationWechatServiceStartWechatAuthorization:   {Permission: "wechat:app:create"},
+		// Menu editing and publishing sit on the app and reuse update.
+		// Reading the saved menu reuses list, the same way GetWechatApp does.
+		wechatv1.OperationWechatServiceGetWechatAppMenu:     {Permission: "wechat:app:list"},
+		wechatv1.OperationWechatServiceSaveWechatAppMenu:    {Permission: "wechat:app:update"},
+		wechatv1.OperationWechatServicePublishWechatAppMenu: {Permission: "wechat:app:update"},
 		// Mini Program Login is deliberately absent. The exchange does
 		// not require a back-office Principal; an operation missing from
 		// this table is anonymous. It is not a menu permission.

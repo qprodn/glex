@@ -723,6 +723,8 @@ var (
 		{Name: "encoding_aes_key_mask", Type: field.TypeString, Size: 16},
 		{Name: "suspended", Type: field.TypeBool, Default: false},
 		{Name: "lapsed", Type: field.TypeBool, Default: false},
+		{Name: "saved_menu", Type: field.TypeJSON, Nullable: true},
+		{Name: "accepted_menu", Type: field.TypeJSON, Nullable: true},
 		{Name: "key_version", Type: field.TypeInt, Default: 1},
 	}
 	// WechatAppTable holds the schema information for the "wechat_app" table.
