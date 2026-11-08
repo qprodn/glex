@@ -38,7 +38,21 @@ export type ErrorReason =
   // Independent of component-AppID uniqueness on platforms.
   | "WECHAT_APP_DUPLICATE"
   // The AppID is fixed for the life of the row.
-  | "WECHAT_APP_ID_IMMUTABLE";
+  | "WECHAT_APP_ID_IMMUTABLE"
+  // A Custom Menu button is not a leaf that opens a web page or a mini
+  // program, and not a parent that only holds sub-buttons.
+  | "WECHAT_MENU_INVALID"
+  // WeChat did not accept the menu replacement. The app stays unlapsed.
+  | "WECHAT_MENU_REJECTED"
+  // This app's kind, or the capabilities a Platform Authorization was
+  // granted, cannot perform the call. WeChat is not called.
+  | "WECHAT_CAPABILITY_UNAVAILABLE"
+  // The operator has suspended this app, so publishing is refused.
+  | "WECHAT_APP_SUSPENDED"
+  // WeChat has definitively refused this app.
+  | "WECHAT_APP_LAPSED"
+  // The platform does not hold its secrets and a verify ticket.
+  | "WECHAT_PLATFORM_NOT_READY";
 // WechatAppType says whether a WeChat App is a mini program or an
 // official account.
 export type WechatAppType =
@@ -391,6 +405,52 @@ export type WechatAuthorization = {
   url: string | undefined;
 };
 
+// WechatMenuButton is one button of a Custom Menu. A parent holds
+// sub-buttons and does not itself open a page. A leaf sets either a web
+// URL or a mini program, not both.
+export type WechatMenuButton = {
+  name: string | undefined;
+  webUrl: string | undefined;
+  miniProgramAppId: string | undefined;
+  miniProgramPage: string | undefined;
+  subButtons: WechatMenuButton[] | undefined;
+};
+
+// WechatCustomMenu is one menu document, including nested sub-buttons.
+// There is no ceiling of three top-level buttons.
+export type WechatCustomMenu = {
+  buttons: WechatMenuButton[] | undefined;
+};
+
+// WechatAppMenu is the menu an operator can read on one WeChat App.
+// saved is the document kept in this system. accepted is the last menu
+// WeChat accepted; it is empty until a publish succeeds.
+export type WechatAppMenu = {
+  saved: WechatCustomMenu | undefined;
+  accepted: WechatCustomMenu | undefined;
+};
+
+export type GetWechatAppMenuRequest = {
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+};
+
+export type SaveWechatAppMenuRequest = {
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+  //
+  // Behaviors: REQUIRED
+  menu: WechatCustomMenu | undefined;
+};
+
+export type PublishWechatAppMenuRequest = {
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+};
+
 // WechatService is the back-office surface for WeChat Platform
 // registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
@@ -458,6 +518,20 @@ export interface WechatService {
   // opens. The chosen platform must be ready and not withdrawn. No WeChat
   // App is created by this call. Permission: wechat:app:create.
   StartWechatAuthorization(request: StartWechatAuthorizationRequest): Promise<WechatAuthorization>;
+  // GetWechatAppMenu returns the Custom Menu saved on one Service Account
+  // and the last menu WeChat accepted. Neither is a secret. Permission:
+  // wechat:app:list.
+  GetWechatAppMenu(request: GetWechatAppMenuRequest): Promise<WechatAppMenu>;
+  // SaveWechatAppMenu stores the Custom Menu in this system and does not
+  // call WeChat. The last menu WeChat accepted stays as it was.
+  // Permission: wechat:app:update.
+  SaveWechatAppMenu(request: SaveWechatAppMenuRequest): Promise<WechatAppMenu>;
+  // PublishWechatAppMenu sends the whole saved menu and replaces that
+  // Service Account's default menu at WeChat. A business refusal or a
+  // timeout leaves the previously accepted menu in place and does not
+  // lapse the app. A definitive refusal lapses the app and still leaves
+  // that menu. Permission: wechat:app:update.
+  PublishWechatAppMenu(request: PublishWechatAppMenuRequest): Promise<WechatAppMenu>;
 }
 
 type RequestType = {
@@ -797,6 +871,66 @@ export function createWechatServiceClient(
         service: "WechatService",
         method: "StartWechatAuthorization",
       }) as Promise<WechatAuthorization>;
+    },
+    GetWechatAppMenu(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.appId) {
+        throw new Error("missing required field request.app_id");
+      }
+      const path = `wechat/app/${request.appId}/menu`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "WechatService",
+        method: "GetWechatAppMenu",
+      }) as Promise<WechatAppMenu>;
+    },
+    SaveWechatAppMenu(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.appId) {
+        throw new Error("missing required field request.app_id");
+      }
+      const path = `wechat/app/${request.appId}/menu`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "PUT",
+        body,
+      }, {
+        service: "WechatService",
+        method: "SaveWechatAppMenu",
+      }) as Promise<WechatAppMenu>;
+    },
+    PublishWechatAppMenu(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.appId) {
+        throw new Error("missing required field request.app_id");
+      }
+      const path = `wechat/app/${request.appId}/menu/publish`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "WechatService",
+        method: "PublishWechatAppMenu",
+      }) as Promise<WechatAppMenu>;
     },
   };
 }

@@ -68,6 +68,22 @@ type WithdrawAppRequest struct {
 	ActorID int64
 }
 
+// SaveMenuRequest stores one Custom Menu on a Service Account. The
+// actor is stamped into the audit fields. The call does not publish.
+type SaveMenuRequest struct {
+	ID      int64
+	Menu    entity.CustomMenu
+	ActorID int64
+}
+
+// PublishMenuRequest replaces the Service Account's default menu at
+// WeChat with the menu already saved. The actor is stamped when WeChat
+// accepts that menu.
+type PublishMenuRequest struct {
+	ID      int64
+	ActorID int64
+}
+
 // PushSecretReveal is the one response that carries a generated Push
 // Secret in full. App carries masks only. Get, List, and an AppSecret
 // replacement never return this pair (ADR 0029).
@@ -118,6 +134,13 @@ type App interface {
 	// rejection, a timeout, or an unready platform fails the test and
 	// leaves the app unlapsed.
 	Probe(ctx context.Context, id int64) (*ProbeOutcome, error)
+	// SaveMenu writes the Custom Menu document on one Service Account
+	// and does not call WeChat. The last menu WeChat accepted is left
+	// as it was.
+	SaveMenu(ctx context.Context, req SaveMenuRequest) (*entity.App, error)
+	// PublishMenu sends the whole saved menu and records it as the last
+	// menu WeChat accepted. A later save does not change that record.
+	PublishMenu(ctx context.Context, req PublishMenuRequest) (*entity.App, error)
 }
 
 // PlatformBindings is the slice of the app service the platform service
@@ -342,6 +365,35 @@ func (s *appImpl) SetSuspended(ctx context.Context, req SetSuspendedRequest) (*e
 	})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "wechat.svc.app.set_suspended", err)
+		return nil, err
+	}
+	return present(updated), nil
+}
+
+func (s *appImpl) SaveMenu(ctx context.Context, req SaveMenuRequest) (*entity.App, error) {
+	const op = "wechat.svc.app.save_menu"
+	current, err := s.apps.FindByID(ctx, req.ID)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, op, err)
+		return nil, err
+	}
+	if err := menuAllowed(current); err != nil {
+		logx.Propagate(ctx, s.logger, op, err)
+		return nil, err
+	}
+	if err := validateMenu(req.Menu); err != nil {
+		logx.Propagate(ctx, s.logger, op, err)
+		return nil, err
+	}
+	menu := cloneMenu(req.Menu)
+	current.SavedMenu = &menu
+	current.UpdateBy = req.ActorID
+	updated, err := s.apps.Update(ctx, repository.SaveAppRequest{
+		App:     current,
+		ActorID: req.ActorID,
+	})
+	if err != nil {
+		logx.Propagate(ctx, s.logger, op, err)
 		return nil, err
 	}
 	return present(updated), nil

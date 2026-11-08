@@ -1101,7 +1101,7 @@ func init() {
 	// wechatapp.DefaultLapsed holds the default value on creation for the lapsed field.
 	wechatapp.DefaultLapsed = wechatappDescLapsed.Default.(bool)
 	// wechatappDescKeyVersion is the schema descriptor for key_version field.
-	wechatappDescKeyVersion := wechatappFields[14].Descriptor()
+	wechatappDescKeyVersion := wechatappFields[16].Descriptor()
 	// wechatapp.DefaultKeyVersion holds the default value on creation for the key_version field.
 	wechatapp.DefaultKeyVersion = wechatappDescKeyVersion.Default.(int)
 	wechatplatformMixin := schema.WechatPlatform{}.Mixin()

@@ -6,6 +6,8 @@ import (
 	entschema "entgo.io/ent/schema"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
+
+	"glex/internal/domain/wechat/entity"
 )
 
 // WechatApp holds one WeChat App (微信应用). A Direct Hold stores the
@@ -60,6 +62,12 @@ func (WechatApp) Fields() []ent.Field {
 		// Hold secret. Cleared by a replacement AppSecret or a new grant
 		// on the same platform.
 		field.Bool("lapsed").Default(false),
+		// The Custom Menu saved in this system. Writing it does not call
+		// WeChat. Null until an operator saves one.
+		field.JSON("saved_menu", &entity.CustomMenu{}).Optional(),
+		// The last menu WeChat accepted as this Service Account's default
+		// menu. A refused or timed-out publish leaves it unchanged.
+		field.JSON("accepted_menu", &entity.CustomMenu{}).Optional(),
 		// Master-key version (KEK rotation reserve, ADR 0018).
 		field.Int("key_version").Default(1),
 	}

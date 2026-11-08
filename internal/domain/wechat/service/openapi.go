@@ -1,6 +1,10 @@
 package service
 
-import "context"
+import (
+	"context"
+
+	"glex/internal/domain/wechat/entity"
+)
 
 // ProbePlatformRequest is one WeChat Connectivity Test against a platform
 // registration: the component AppID, the component secret, and the verify
@@ -112,11 +116,37 @@ type ProbeAppResult struct {
 	AuthorizerRefreshToken string
 }
 
+// PublishMenuCall replaces one Service Account's default menu with the
+// whole saved document. The port classifies WeChat's answer. A Direct
+// Hold carries AppID and AppSecret. A Platform Authorization carries the
+// platform registration and the authorizer refresh material.
+type PublishMenuCall struct {
+	Connection             string
+	AppID                  string
+	AppSecret              string
+	ComponentAppID         string
+	ComponentSecret        string
+	VerifyTicket           string
+	AuthorizerRefreshToken string
+	Menu                   entity.CustomMenu
+}
+
+// PublishMenuResult is the port's classification of that replacement.
+// Message is operator-readable and is not a WeChat error code.
+// AuthorizerRefreshToken is set when WeChat issued a replacement during
+// the call; empty means the stored material stays.
+type PublishMenuResult struct {
+	Class                  CallClass
+	Message                string
+	AuthorizerRefreshToken string
+}
+
 // OpenAPI is the domain service's only path to WeChat. Tests script it to
 // succeed or fail. The process binds the HTTP adapter.
 type OpenAPI interface {
 	ProbePlatform(ctx context.Context, req ProbePlatformRequest) error
 	ProbeApp(ctx context.Context, req ProbeAppRequest) (ProbeAppResult, error)
+	PublishMenu(ctx context.Context, req PublishMenuCall) (PublishMenuResult, error)
 	AnswerFullNetwork(ctx context.Context, req FullNetworkReply) error
 	StartAuthorization(ctx context.Context, req OpenAuthorizationStart) (*AuthorizationLink, error)
 	CompleteAuthorization(ctx context.Context, req OpenAuthorizationCode) (*AuthorizationGrant, error)

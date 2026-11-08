@@ -11,6 +11,7 @@ import { createTokenPagedRequest } from "@/utils/pager";
 import { buildFilter } from "@/utils/aipFilter";
 import AppFormModal from "./AppFormModal";
 import AuthorizeModal from "./AuthorizeModal";
+import MenuDrawer from "./MenuDrawer";
 import PushSecretModal from "./PushSecretModal";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -41,6 +42,12 @@ const CAPABILITY_LABEL: Record<WechatCapability, string> = {
 const platformAuthorization = (record: WechatApp) =>
   record.connection === "WECHAT_CONNECTION_PLATFORM_AUTHORIZATION";
 
+const menuEditable = (record: WechatApp) => {
+  if (record.accountKind !== "WECHAT_ACCOUNT_KIND_SERVICE") return false;
+  if (!platformAuthorization(record)) return true;
+  return (record.grantedCapabilities ?? []).includes("WECHAT_CAPABILITY_CUSTOM_MENU");
+};
+
 /**
  * 微信应用: Direct Hold and Platform Authorization. The list renders masks
  * only. A Platform Authorization has no AppSecret and no Push Secret, and
@@ -55,6 +62,7 @@ const AppList: React.FC = () => {
   const [authorizeOpen, setAuthorizeOpen] = useState(false);
   const [editing, setEditing] = useState<WechatApp | undefined>();
   const [reveal, setReveal] = useState<WechatAppPushSecret | undefined>();
+  const [menuApp, setMenuApp] = useState<WechatApp | undefined>();
 
   const pager = React.useMemo(
     () =>
@@ -234,8 +242,15 @@ const AppList: React.FC = () => {
     {
       title: intl.formatMessage({ id: "common.option", defaultMessage: "操作" }),
       valueType: "option",
-      width: 360,
+      width: 420,
       render: (_, record) => [
+        menuEditable(record) ? (
+          <Access key="menu" accessible={access.perm("wechat:app:update")}>
+            <a onClick={() => setMenuApp(record)}>
+              {intl.formatMessage({ id: "pages.wechat.menu.title", defaultMessage: "自定义菜单" })}
+            </a>
+          </Access>
+        ) : null,
         <Access key="probe" accessible={access.perm("wechat:app:probe")}>
           <a onClick={() => probe(record)}>
             {intl.formatMessage({ id: "pages.wechat.app.probe", defaultMessage: "连通性测试" })}
@@ -333,6 +348,7 @@ const AppList: React.FC = () => {
       />
       <AuthorizeModal open={authorizeOpen} onClose={() => setAuthorizeOpen(false)} />
       <PushSecretModal reveal={reveal} onClose={() => setReveal(undefined)} />
+      <MenuDrawer app={menuApp} onClose={() => setMenuApp(undefined)} />
     </PageContainer>
   );
 };

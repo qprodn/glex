@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"glex/internal/domain/wechat/entity"
 	"glex/internal/infra/ent/predicate"
 	"glex/internal/infra/ent/wechatapp"
 	"time"
@@ -239,6 +240,30 @@ func (_u *WechatAppUpdate) SetNillableLapsed(v *bool) *WechatAppUpdate {
 	return _u
 }
 
+// SetSavedMenu sets the "saved_menu" field.
+func (_u *WechatAppUpdate) SetSavedMenu(v *entity.CustomMenu) *WechatAppUpdate {
+	_u.mutation.SetSavedMenu(v)
+	return _u
+}
+
+// ClearSavedMenu clears the value of the "saved_menu" field.
+func (_u *WechatAppUpdate) ClearSavedMenu() *WechatAppUpdate {
+	_u.mutation.ClearSavedMenu()
+	return _u
+}
+
+// SetAcceptedMenu sets the "accepted_menu" field.
+func (_u *WechatAppUpdate) SetAcceptedMenu(v *entity.CustomMenu) *WechatAppUpdate {
+	_u.mutation.SetAcceptedMenu(v)
+	return _u
+}
+
+// ClearAcceptedMenu clears the value of the "accepted_menu" field.
+func (_u *WechatAppUpdate) ClearAcceptedMenu() *WechatAppUpdate {
+	_u.mutation.ClearAcceptedMenu()
+	return _u
+}
+
 // SetKeyVersion sets the "key_version" field.
 func (_u *WechatAppUpdate) SetKeyVersion(v int) *WechatAppUpdate {
 	_u.mutation.ResetKeyVersion()
@@ -404,6 +429,18 @@ func (_u *WechatAppUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Lapsed(); ok {
 		_spec.SetField(wechatapp.FieldLapsed, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.SavedMenu(); ok {
+		_spec.SetField(wechatapp.FieldSavedMenu, field.TypeJSON, value)
+	}
+	if _u.mutation.SavedMenuCleared() {
+		_spec.ClearField(wechatapp.FieldSavedMenu, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.AcceptedMenu(); ok {
+		_spec.SetField(wechatapp.FieldAcceptedMenu, field.TypeJSON, value)
+	}
+	if _u.mutation.AcceptedMenuCleared() {
+		_spec.ClearField(wechatapp.FieldAcceptedMenu, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.KeyVersion(); ok {
 		_spec.SetField(wechatapp.FieldKeyVersion, field.TypeInt, value)
@@ -641,6 +678,30 @@ func (_u *WechatAppUpdateOne) SetNillableLapsed(v *bool) *WechatAppUpdateOne {
 	return _u
 }
 
+// SetSavedMenu sets the "saved_menu" field.
+func (_u *WechatAppUpdateOne) SetSavedMenu(v *entity.CustomMenu) *WechatAppUpdateOne {
+	_u.mutation.SetSavedMenu(v)
+	return _u
+}
+
+// ClearSavedMenu clears the value of the "saved_menu" field.
+func (_u *WechatAppUpdateOne) ClearSavedMenu() *WechatAppUpdateOne {
+	_u.mutation.ClearSavedMenu()
+	return _u
+}
+
+// SetAcceptedMenu sets the "accepted_menu" field.
+func (_u *WechatAppUpdateOne) SetAcceptedMenu(v *entity.CustomMenu) *WechatAppUpdateOne {
+	_u.mutation.SetAcceptedMenu(v)
+	return _u
+}
+
+// ClearAcceptedMenu clears the value of the "accepted_menu" field.
+func (_u *WechatAppUpdateOne) ClearAcceptedMenu() *WechatAppUpdateOne {
+	_u.mutation.ClearAcceptedMenu()
+	return _u
+}
+
 // SetKeyVersion sets the "key_version" field.
 func (_u *WechatAppUpdateOne) SetKeyVersion(v int) *WechatAppUpdateOne {
 	_u.mutation.ResetKeyVersion()
@@ -836,6 +897,18 @@ func (_u *WechatAppUpdateOne) sqlSave(ctx context.Context) (_node *WechatApp, er
 	}
 	if value, ok := _u.mutation.Lapsed(); ok {
 		_spec.SetField(wechatapp.FieldLapsed, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.SavedMenu(); ok {
+		_spec.SetField(wechatapp.FieldSavedMenu, field.TypeJSON, value)
+	}
+	if _u.mutation.SavedMenuCleared() {
+		_spec.ClearField(wechatapp.FieldSavedMenu, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.AcceptedMenu(); ok {
+		_spec.SetField(wechatapp.FieldAcceptedMenu, field.TypeJSON, value)
+	}
+	if _u.mutation.AcceptedMenuCleared() {
+		_spec.ClearField(wechatapp.FieldAcceptedMenu, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.KeyVersion(); ok {
 		_spec.SetField(wechatapp.FieldKeyVersion, field.TypeInt, value)

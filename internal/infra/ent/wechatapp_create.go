@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"glex/internal/domain/wechat/entity"
 	"glex/internal/infra/ent/wechatapp"
 	"time"
 
@@ -199,6 +200,18 @@ func (_c *WechatAppCreate) SetNillableLapsed(v *bool) *WechatAppCreate {
 	if v != nil {
 		_c.SetLapsed(*v)
 	}
+	return _c
+}
+
+// SetSavedMenu sets the "saved_menu" field.
+func (_c *WechatAppCreate) SetSavedMenu(v *entity.CustomMenu) *WechatAppCreate {
+	_c.mutation.SetSavedMenu(v)
+	return _c
+}
+
+// SetAcceptedMenu sets the "accepted_menu" field.
+func (_c *WechatAppCreate) SetAcceptedMenu(v *entity.CustomMenu) *WechatAppCreate {
+	_c.mutation.SetAcceptedMenu(v)
 	return _c
 }
 
@@ -487,6 +500,14 @@ func (_c *WechatAppCreate) createSpec() (*WechatApp, *sqlgraph.CreateSpec) {
 		_spec.SetField(wechatapp.FieldLapsed, field.TypeBool, value)
 		_node.Lapsed = value
 	}
+	if value, ok := _c.mutation.SavedMenu(); ok {
+		_spec.SetField(wechatapp.FieldSavedMenu, field.TypeJSON, value)
+		_node.SavedMenu = value
+	}
+	if value, ok := _c.mutation.AcceptedMenu(); ok {
+		_spec.SetField(wechatapp.FieldAcceptedMenu, field.TypeJSON, value)
+		_node.AcceptedMenu = value
+	}
 	if value, ok := _c.mutation.KeyVersion(); ok {
 		_spec.SetField(wechatapp.FieldKeyVersion, field.TypeInt, value)
 		_node.KeyVersion = value
@@ -732,6 +753,42 @@ func (u *WechatAppUpsert) SetLapsed(v bool) *WechatAppUpsert {
 // UpdateLapsed sets the "lapsed" field to the value that was provided on create.
 func (u *WechatAppUpsert) UpdateLapsed() *WechatAppUpsert {
 	u.SetExcluded(wechatapp.FieldLapsed)
+	return u
+}
+
+// SetSavedMenu sets the "saved_menu" field.
+func (u *WechatAppUpsert) SetSavedMenu(v *entity.CustomMenu) *WechatAppUpsert {
+	u.Set(wechatapp.FieldSavedMenu, v)
+	return u
+}
+
+// UpdateSavedMenu sets the "saved_menu" field to the value that was provided on create.
+func (u *WechatAppUpsert) UpdateSavedMenu() *WechatAppUpsert {
+	u.SetExcluded(wechatapp.FieldSavedMenu)
+	return u
+}
+
+// ClearSavedMenu clears the value of the "saved_menu" field.
+func (u *WechatAppUpsert) ClearSavedMenu() *WechatAppUpsert {
+	u.SetNull(wechatapp.FieldSavedMenu)
+	return u
+}
+
+// SetAcceptedMenu sets the "accepted_menu" field.
+func (u *WechatAppUpsert) SetAcceptedMenu(v *entity.CustomMenu) *WechatAppUpsert {
+	u.Set(wechatapp.FieldAcceptedMenu, v)
+	return u
+}
+
+// UpdateAcceptedMenu sets the "accepted_menu" field to the value that was provided on create.
+func (u *WechatAppUpsert) UpdateAcceptedMenu() *WechatAppUpsert {
+	u.SetExcluded(wechatapp.FieldAcceptedMenu)
+	return u
+}
+
+// ClearAcceptedMenu clears the value of the "accepted_menu" field.
+func (u *WechatAppUpsert) ClearAcceptedMenu() *WechatAppUpsert {
+	u.SetNull(wechatapp.FieldAcceptedMenu)
 	return u
 }
 
@@ -1037,6 +1094,48 @@ func (u *WechatAppUpsertOne) SetLapsed(v bool) *WechatAppUpsertOne {
 func (u *WechatAppUpsertOne) UpdateLapsed() *WechatAppUpsertOne {
 	return u.Update(func(s *WechatAppUpsert) {
 		s.UpdateLapsed()
+	})
+}
+
+// SetSavedMenu sets the "saved_menu" field.
+func (u *WechatAppUpsertOne) SetSavedMenu(v *entity.CustomMenu) *WechatAppUpsertOne {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.SetSavedMenu(v)
+	})
+}
+
+// UpdateSavedMenu sets the "saved_menu" field to the value that was provided on create.
+func (u *WechatAppUpsertOne) UpdateSavedMenu() *WechatAppUpsertOne {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.UpdateSavedMenu()
+	})
+}
+
+// ClearSavedMenu clears the value of the "saved_menu" field.
+func (u *WechatAppUpsertOne) ClearSavedMenu() *WechatAppUpsertOne {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.ClearSavedMenu()
+	})
+}
+
+// SetAcceptedMenu sets the "accepted_menu" field.
+func (u *WechatAppUpsertOne) SetAcceptedMenu(v *entity.CustomMenu) *WechatAppUpsertOne {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.SetAcceptedMenu(v)
+	})
+}
+
+// UpdateAcceptedMenu sets the "accepted_menu" field to the value that was provided on create.
+func (u *WechatAppUpsertOne) UpdateAcceptedMenu() *WechatAppUpsertOne {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.UpdateAcceptedMenu()
+	})
+}
+
+// ClearAcceptedMenu clears the value of the "accepted_menu" field.
+func (u *WechatAppUpsertOne) ClearAcceptedMenu() *WechatAppUpsertOne {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.ClearAcceptedMenu()
 	})
 }
 
@@ -1511,6 +1610,48 @@ func (u *WechatAppUpsertBulk) SetLapsed(v bool) *WechatAppUpsertBulk {
 func (u *WechatAppUpsertBulk) UpdateLapsed() *WechatAppUpsertBulk {
 	return u.Update(func(s *WechatAppUpsert) {
 		s.UpdateLapsed()
+	})
+}
+
+// SetSavedMenu sets the "saved_menu" field.
+func (u *WechatAppUpsertBulk) SetSavedMenu(v *entity.CustomMenu) *WechatAppUpsertBulk {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.SetSavedMenu(v)
+	})
+}
+
+// UpdateSavedMenu sets the "saved_menu" field to the value that was provided on create.
+func (u *WechatAppUpsertBulk) UpdateSavedMenu() *WechatAppUpsertBulk {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.UpdateSavedMenu()
+	})
+}
+
+// ClearSavedMenu clears the value of the "saved_menu" field.
+func (u *WechatAppUpsertBulk) ClearSavedMenu() *WechatAppUpsertBulk {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.ClearSavedMenu()
+	})
+}
+
+// SetAcceptedMenu sets the "accepted_menu" field.
+func (u *WechatAppUpsertBulk) SetAcceptedMenu(v *entity.CustomMenu) *WechatAppUpsertBulk {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.SetAcceptedMenu(v)
+	})
+}
+
+// UpdateAcceptedMenu sets the "accepted_menu" field to the value that was provided on create.
+func (u *WechatAppUpsertBulk) UpdateAcceptedMenu() *WechatAppUpsertBulk {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.UpdateAcceptedMenu()
+	})
+}
+
+// ClearAcceptedMenu clears the value of the "accepted_menu" field.
+func (u *WechatAppUpsertBulk) ClearAcceptedMenu() *WechatAppUpsertBulk {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.ClearAcceptedMenu()
 	})
 }
 

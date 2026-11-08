@@ -36,6 +36,9 @@ const (
 	WechatService_ProbeWechatApp_FullMethodName                = "/wechat.v1.WechatService/ProbeWechatApp"
 	WechatService_ListAuthorizationPlatforms_FullMethodName    = "/wechat.v1.WechatService/ListAuthorizationPlatforms"
 	WechatService_StartWechatAuthorization_FullMethodName      = "/wechat.v1.WechatService/StartWechatAuthorization"
+	WechatService_GetWechatAppMenu_FullMethodName              = "/wechat.v1.WechatService/GetWechatAppMenu"
+	WechatService_SaveWechatAppMenu_FullMethodName             = "/wechat.v1.WechatService/SaveWechatAppMenu"
+	WechatService_PublishWechatAppMenu_FullMethodName          = "/wechat.v1.WechatService/PublishWechatAppMenu"
 )
 
 // WechatServiceClient is the client API for WechatService service.
@@ -109,6 +112,20 @@ type WechatServiceClient interface {
 	// opens. The chosen platform must be ready and not withdrawn. No WeChat
 	// App is created by this call. Permission: wechat:app:create.
 	StartWechatAuthorization(ctx context.Context, in *StartWechatAuthorizationRequest, opts ...grpc.CallOption) (*WechatAuthorization, error)
+	// GetWechatAppMenu returns the Custom Menu saved on one Service Account
+	// and the last menu WeChat accepted. Neither is a secret. Permission:
+	// wechat:app:list.
+	GetWechatAppMenu(ctx context.Context, in *GetWechatAppMenuRequest, opts ...grpc.CallOption) (*WechatAppMenu, error)
+	// SaveWechatAppMenu stores the Custom Menu in this system and does not
+	// call WeChat. The last menu WeChat accepted stays as it was.
+	// Permission: wechat:app:update.
+	SaveWechatAppMenu(ctx context.Context, in *SaveWechatAppMenuRequest, opts ...grpc.CallOption) (*WechatAppMenu, error)
+	// PublishWechatAppMenu sends the whole saved menu and replaces that
+	// Service Account's default menu at WeChat. A business refusal or a
+	// timeout leaves the previously accepted menu in place and does not
+	// lapse the app. A definitive refusal lapses the app and still leaves
+	// that menu. Permission: wechat:app:update.
+	PublishWechatAppMenu(ctx context.Context, in *PublishWechatAppMenuRequest, opts ...grpc.CallOption) (*WechatAppMenu, error)
 }
 
 type wechatServiceClient struct {
@@ -279,6 +296,36 @@ func (c *wechatServiceClient) StartWechatAuthorization(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *wechatServiceClient) GetWechatAppMenu(ctx context.Context, in *GetWechatAppMenuRequest, opts ...grpc.CallOption) (*WechatAppMenu, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatAppMenu)
+	err := c.cc.Invoke(ctx, WechatService_GetWechatAppMenu_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) SaveWechatAppMenu(ctx context.Context, in *SaveWechatAppMenuRequest, opts ...grpc.CallOption) (*WechatAppMenu, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatAppMenu)
+	err := c.cc.Invoke(ctx, WechatService_SaveWechatAppMenu_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) PublishWechatAppMenu(ctx context.Context, in *PublishWechatAppMenuRequest, opts ...grpc.CallOption) (*WechatAppMenu, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatAppMenu)
+	err := c.cc.Invoke(ctx, WechatService_PublishWechatAppMenu_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WechatServiceServer is the server API for WechatService service.
 // All implementations must embed UnimplementedWechatServiceServer
 // for forward compatibility.
@@ -350,6 +397,20 @@ type WechatServiceServer interface {
 	// opens. The chosen platform must be ready and not withdrawn. No WeChat
 	// App is created by this call. Permission: wechat:app:create.
 	StartWechatAuthorization(context.Context, *StartWechatAuthorizationRequest) (*WechatAuthorization, error)
+	// GetWechatAppMenu returns the Custom Menu saved on one Service Account
+	// and the last menu WeChat accepted. Neither is a secret. Permission:
+	// wechat:app:list.
+	GetWechatAppMenu(context.Context, *GetWechatAppMenuRequest) (*WechatAppMenu, error)
+	// SaveWechatAppMenu stores the Custom Menu in this system and does not
+	// call WeChat. The last menu WeChat accepted stays as it was.
+	// Permission: wechat:app:update.
+	SaveWechatAppMenu(context.Context, *SaveWechatAppMenuRequest) (*WechatAppMenu, error)
+	// PublishWechatAppMenu sends the whole saved menu and replaces that
+	// Service Account's default menu at WeChat. A business refusal or a
+	// timeout leaves the previously accepted menu in place and does not
+	// lapse the app. A definitive refusal lapses the app and still leaves
+	// that menu. Permission: wechat:app:update.
+	PublishWechatAppMenu(context.Context, *PublishWechatAppMenuRequest) (*WechatAppMenu, error)
 	mustEmbedUnimplementedWechatServiceServer()
 }
 
@@ -407,6 +468,15 @@ func (UnimplementedWechatServiceServer) ListAuthorizationPlatforms(context.Conte
 }
 func (UnimplementedWechatServiceServer) StartWechatAuthorization(context.Context, *StartWechatAuthorizationRequest) (*WechatAuthorization, error) {
 	return nil, status.Error(codes.Unimplemented, "method StartWechatAuthorization not implemented")
+}
+func (UnimplementedWechatServiceServer) GetWechatAppMenu(context.Context, *GetWechatAppMenuRequest) (*WechatAppMenu, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetWechatAppMenu not implemented")
+}
+func (UnimplementedWechatServiceServer) SaveWechatAppMenu(context.Context, *SaveWechatAppMenuRequest) (*WechatAppMenu, error) {
+	return nil, status.Error(codes.Unimplemented, "method SaveWechatAppMenu not implemented")
+}
+func (UnimplementedWechatServiceServer) PublishWechatAppMenu(context.Context, *PublishWechatAppMenuRequest) (*WechatAppMenu, error) {
+	return nil, status.Error(codes.Unimplemented, "method PublishWechatAppMenu not implemented")
 }
 func (UnimplementedWechatServiceServer) mustEmbedUnimplementedWechatServiceServer() {}
 func (UnimplementedWechatServiceServer) testEmbeddedByValue()                       {}
@@ -717,6 +787,60 @@ func _WechatService_StartWechatAuthorization_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WechatService_GetWechatAppMenu_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWechatAppMenuRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).GetWechatAppMenu(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_GetWechatAppMenu_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).GetWechatAppMenu(ctx, req.(*GetWechatAppMenuRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_SaveWechatAppMenu_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveWechatAppMenuRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).SaveWechatAppMenu(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_SaveWechatAppMenu_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).SaveWechatAppMenu(ctx, req.(*SaveWechatAppMenuRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_PublishWechatAppMenu_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PublishWechatAppMenuRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).PublishWechatAppMenu(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_PublishWechatAppMenu_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).PublishWechatAppMenu(ctx, req.(*PublishWechatAppMenuRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WechatService_ServiceDesc is the grpc.ServiceDesc for WechatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -787,6 +911,18 @@ var WechatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StartWechatAuthorization",
 			Handler:    _WechatService_StartWechatAuthorization_Handler,
+		},
+		{
+			MethodName: "GetWechatAppMenu",
+			Handler:    _WechatService_GetWechatAppMenu_Handler,
+		},
+		{
+			MethodName: "SaveWechatAppMenu",
+			Handler:    _WechatService_SaveWechatAppMenu_Handler,
+		},
+		{
+			MethodName: "PublishWechatAppMenu",
+			Handler:    _WechatService_PublishWechatAppMenu_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
