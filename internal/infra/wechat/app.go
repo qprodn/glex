@@ -28,6 +28,8 @@ func toBizApp(po *ent.WechatApp) *entity.App {
 		AppType:            po.AppType,
 		Kind:               po.AccountKind,
 		Connection:         po.Connection,
+		PlatformID:         po.PlatformID,
+		Capabilities:       po.GrantedCapabilities,
 		AppSecretMask:      po.AppSecretMask,
 		TokenMask:          po.TokenMask,
 		EncodingAESKeyMask: po.EncodingAesKeyMask,
@@ -114,6 +116,20 @@ func (r *appRepo) FindLiveByAppID(ctx context.Context, appID string) (*entity.Ap
 	return toBizApp(po), nil
 }
 
+func (r *appRepo) CountLiveByPlatform(ctx context.Context, platformID int64) (int, error) {
+	n, err := r.data.DB.WechatApp(ctx).Query().
+		Where(
+			entapp.PlatformIDEQ(platformID),
+			entapp.ConnectionEQ(entity.ConnectionPlatformAuthorization),
+			entapp.DeletedAtIsNil(),
+		).
+		Count(ctx)
+	if err != nil {
+		return 0, r.storeError(ctx, "wechat.app.count_live_by_platform", err)
+	}
+	return n, nil
+}
+
 func (r *appRepo) LoadSecrets(ctx context.Context, id int64) (wechatrepo.AppSecrets, error) {
 	po, err := r.data.DB.WechatApp(ctx).Query().
 		Where(entapp.IDEQ(id), entapp.DeletedAtIsNil()).
@@ -132,17 +148,19 @@ func (r *appRepo) LoadSecrets(ctx context.Context, id int64) (wechatrepo.AppSecr
 		return wechatrepo.AppSecrets{}, wechat.ErrSecretCrypto
 	}
 	return wechatrepo.AppSecrets{
-		AppSecret:      values["app_secret"],
-		Token:          values["token"],
-		EncodingAESKey: values["encoding_aes_key"],
+		AppSecret:              values["app_secret"],
+		Token:                  values["token"],
+		EncodingAESKey:         values["encoding_aes_key"],
+		AuthorizerRefreshToken: values["authorizer_refresh_token"],
 	}, nil
 }
 
 func (r *appRepo) seal(secrets wechatrepo.AppSecrets) (string, error) {
 	token, err := r.cipher.Encrypt(map[string]string{
-		"app_secret":       secrets.AppSecret,
-		"token":            secrets.Token,
-		"encoding_aes_key": secrets.EncodingAESKey,
+		"app_secret":               secrets.AppSecret,
+		"token":                    secrets.Token,
+		"encoding_aes_key":         secrets.EncodingAESKey,
+		"authorizer_refresh_token": secrets.AuthorizerRefreshToken,
 	})
 	if err != nil {
 		if isMasterKeyMissing(err) {
@@ -159,13 +177,14 @@ func (r *appRepo) Create(ctx context.Context, req wechatrepo.SaveAppRequest) (*e
 	if err != nil {
 		return nil, err
 	}
-	po, err := r.data.DB.WechatApp(ctx).Create().
+	create := r.data.DB.WechatApp(ctx).Create().
 		SetID(app.ID).
 		SetName(app.Name).
 		SetWxAppID(app.AppID).
 		SetAppType(app.AppType).
 		SetAccountKind(app.Kind).
 		SetConnection(app.Connection).
+		SetPlatformID(app.PlatformID).
 		SetSecretCipher(token).
 		SetAppSecretMask(app.AppSecretMask).
 		SetTokenMask(app.TokenMask).
@@ -173,8 +192,11 @@ func (r *appRepo) Create(ctx context.Context, req wechatrepo.SaveAppRequest) (*e
 		SetSuspended(app.Suspended).
 		SetKeyVersion(app.KeyVersion).
 		SetCreateBy(app.CreateBy).
-		SetUpdateBy(app.UpdateBy).
-		Save(ctx)
+		SetUpdateBy(app.UpdateBy)
+	if app.Capabilities != nil {
+		create.SetGrantedCapabilities(app.Capabilities)
+	}
+	po, err := create.Save(ctx)
 	if err != nil {
 		if ent.IsConstraintError(err) {
 			return nil, wechat.ErrAppDuplicate
@@ -191,6 +213,9 @@ func (r *appRepo) Update(ctx context.Context, req wechatrepo.SaveAppRequest) (*e
 		SetName(app.Name).
 		SetSuspended(app.Suspended).
 		SetUpdateBy(req.ActorID)
+	if app.Capabilities != nil {
+		upd.SetGrantedCapabilities(app.Capabilities)
+	}
 	if req.ReplaceSecrets {
 		token, err := r.seal(req.Secrets)
 		if err != nil {

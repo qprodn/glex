@@ -10,13 +10,15 @@ import (
 
 // WechatApp holds one WeChat App (微信应用). A Direct Hold stores the
 // AppSecret and the generated Push Secret as one encrypted JSON blob
-// (AES-256-GCM under WECHAT_MASTER_KEY, ADR 0018 / ADR 0029). The mask
-// columns are the write-time echo every display path serves — displaying
-// never decrypts. The WeChat AppID and the connection are immutable.
-// Among rows that are not withdrawn, one AppID identifies one app, which
-// is a different uniqueness rule from a platform's component AppID.
-// Suspension is a flag; withdrawal sets deleted_at (ADR 0002). This
-// ticket does not store a lapse flag.
+// (AES-256-GCM under WECHAT_MASTER_KEY, ADR 0018 / ADR 0029). A Platform
+// Authorization stores the authorizer refresh material in that same blob
+// and no authorizer AppSecret. The mask columns are the write-time echo
+// every display path serves — displaying never decrypts. The WeChat
+// AppID, the connection, and the platform binding are immutable. Among
+// rows that are not withdrawn, one AppID identifies one app, which is a
+// different uniqueness rule from a platform's component AppID. Suspension
+// is a flag; withdrawal sets deleted_at (ADR 0002). This ticket does not
+// store a lapse flag.
 type WechatApp struct {
 	ent.Schema
 }
@@ -38,8 +40,14 @@ func (WechatApp) Fields() []ent.Field {
 		field.String("app_type").MaxLen(32).Immutable(),
 		// service_account, subscription_account, or empty for a mini program.
 		field.String("account_kind").MaxLen(32).Default(""),
-		// direct_hold. Immutable for the life of the row (ADR 0029).
+		// direct_hold or platform_authorization. Immutable (ADR 0029).
 		field.String("connection").MaxLen(32).Immutable(),
+		// 0 for a Direct Hold. The WeChat Platform a Platform Authorization
+		// is bound to. Immutable for the life of the row (ADR 0029).
+		field.Int64("platform_id").Default(0).Immutable(),
+		// Names of the capabilities WeChat granted. Empty for a Direct
+		// Hold. Not WeChat permission-set numbers.
+		field.JSON("granted_capabilities", []string{}).Optional(),
 		// Secrets JSON, encrypted whole. Format:
 		// key_version:nonce_base64:ciphertext_base64.
 		field.Text("secret_cipher"),
@@ -68,5 +76,6 @@ func (WechatApp) Indexes() []ent.Index {
 		index.Fields("wx_app_id").
 			Unique().
 			Annotations(entsql.IndexWhere("deleted_at IS NULL")),
+		index.Fields("platform_id"),
 	}
 }

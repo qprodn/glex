@@ -51,11 +51,22 @@ export type WechatAccountKind =
   | "WECHAT_ACCOUNT_KIND_UNSPECIFIED"
   | "WECHAT_ACCOUNT_KIND_SERVICE"
   | "WECHAT_ACCOUNT_KIND_SUBSCRIPTION";
-// WechatConnection is how a WeChat App is connected. Direct Hold is the
-// connection this service creates. The connection does not change in place.
+// WechatConnection is how a WeChat App is connected. The connection does
+// not change in place (ADR 0029).
 export type WechatConnection =
   | "WECHAT_CONNECTION_UNSPECIFIED"
-  | "WECHAT_CONNECTION_DIRECT_HOLD";
+  | "WECHAT_CONNECTION_DIRECT_HOLD"
+  | "WECHAT_CONNECTION_PLATFORM_AUTHORIZATION";
+// WechatCapability is one capability this phase understands. The values
+// are names, not WeChat permission-set numbers.
+export type WechatCapability =
+  | "WECHAT_CAPABILITY_UNSPECIFIED"
+  | "WECHAT_CAPABILITY_CUSTOM_MENU"
+  | "WECHAT_CAPABILITY_TEMPLATE_MESSAGE"
+  | "WECHAT_CAPABILITY_SUBSCRIBE_NOTIFICATION"
+  | "WECHAT_CAPABILITY_WEB_AUTHORIZATION"
+  | "WECHAT_CAPABILITY_MINI_PROGRAM_LOGIN"
+  | "WECHAT_CAPABILITY_SUBSCRIBE_MESSAGE";
 // WechatPlatform is one WeChat Platform registration (微信平台). The
 // component secret, Token, and EncodingAESKey never cross the wire —
 // every response carries only their masks (ADR 0029).
@@ -100,10 +111,12 @@ export type WechatPlatformSet = {
   nextPageToken: string | undefined;
 };
 
-// WechatApp is one WeChat App (微信应用) connected by Direct Hold. The
-// AppSecret and the Push Secret never cross the wire on this message —
-// every read carries only their masks (ADR 0029). The generated Token and
-// EncodingAESKey are returned in full only on WechatAppPushSecret.
+// WechatApp is one WeChat App (微信应用). A Direct Hold carries masks for
+// the AppSecret and the Push Secret and never the plaintext (ADR 0029).
+// The generated Token and EncodingAESKey are returned in full only on
+// WechatAppPushSecret. A Platform Authorization carries no authorizer
+// AppSecret and no Push Secret; it is bound to one platform and lists
+// the capabilities WeChat granted.
 export type WechatApp = {
   // Snowflake ID.
   appId: number | undefined;
@@ -128,11 +141,17 @@ export type WechatApp = {
   suspended: boolean | undefined;
   // Master-key version the ciphertext was written under (ADR 0018).
   keyVersion: number | undefined;
-  // Audit: who created/updated. Filled from the authenticated identity.
+  // Audit: who created/updated. An operator action is the Principal.
+  // A Platform Authorization WeChat completed is the system itself (0).
   createBy: number | undefined;
   updateBy: number | undefined;
   createdAt: wellKnownTimestamp | undefined;
   updatedAt: wellKnownTimestamp | undefined;
+  // The platform a Platform Authorization is bound to. 0 for a Direct Hold.
+  // Immutable for the life of the row.
+  platformId: number | undefined;
+  // Capabilities WeChat granted. Empty for a Direct Hold.
+  grantedCapabilities: WechatCapability[] | undefined;
 };
 
 // WechatAppSet is a page of WeChat Apps that are not withdrawn.
@@ -323,8 +342,37 @@ export type WithdrawWechatAppRequest = {
   appId: number | undefined;
 };
 
+export type ListAuthorizationPlatformsRequest = {
+};
+
+// WechatAuthorizationPlatform is one ready platform the operator can
+// choose. It carries no secrets and no masks.
+export type WechatAuthorizationPlatform = {
+  platformId: number | undefined;
+  name: string | undefined;
+  componentAppId: string | undefined;
+};
+
+export type WechatAuthorizationPlatformSet = {
+  platforms: WechatAuthorizationPlatform[] | undefined;
+};
+
+export type StartWechatAuthorizationRequest = {
+  // Required. The ready platform the grant will bind to.
+  //
+  // Behaviors: REQUIRED
+  platformId: number | undefined;
+};
+
+// WechatAuthorization is the link the other administrator opens. The
+// WeChat App is created later, from what WeChat reports.
+export type WechatAuthorization = {
+  platformId: number | undefined;
+  url: string | undefined;
+};
+
 // WechatService is the back-office surface for WeChat Platform
-// registration and Direct Hold of WeChat Apps. Platform permissions are
+// registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
 // are wechat:app:list, create, update, and remove. The platform callback
 // is a separate unauthenticated route; it is not an RPC.
@@ -374,6 +422,15 @@ export interface WechatService {
   // it is not hard-deleted. The same AppID can be connected again as a
   // new row.
   WithdrawWechatApp(request: WithdrawWechatAppRequest): Promise<wellKnownEmpty>;
+  // ListAuthorizationPlatforms lists ready platforms an operator can
+  // choose when starting a Platform Authorization. Withdrawn and unready
+  // platforms are omitted. Masks and secrets are not returned. Permission:
+  // wechat:app:create.
+  ListAuthorizationPlatforms(request: ListAuthorizationPlatformsRequest): Promise<WechatAuthorizationPlatformSet>;
+  // StartWechatAuthorization returns the link the other administrator
+  // opens. The chosen platform must be ready and not withdrawn. No WeChat
+  // App is created by this call. Permission: wechat:app:create.
+  StartWechatAuthorization(request: StartWechatAuthorizationRequest): Promise<WechatAuthorization>;
 }
 
 type RequestType = {
@@ -659,6 +716,40 @@ export function createWechatServiceClient(
         service: "WechatService",
         method: "WithdrawWechatApp",
       }) as Promise<wellKnownEmpty>;
+    },
+    ListAuthorizationPlatforms(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `wechat/app/authorization/platforms`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "WechatService",
+        method: "ListAuthorizationPlatforms",
+      }) as Promise<WechatAuthorizationPlatformSet>;
+    },
+    StartWechatAuthorization(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `wechat/app/authorization`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "WechatService",
+        method: "StartWechatAuthorization",
+      }) as Promise<WechatAuthorization>;
     },
   };
 }

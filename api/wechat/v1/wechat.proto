@@ -66,17 +66,32 @@ enum WechatAccountKind {
   WECHAT_ACCOUNT_KIND_SUBSCRIPTION = 2;
 }
 
-// WechatConnection is how a WeChat App is connected. Direct Hold is the
-// connection this service creates. The connection does not change in place.
+// WechatConnection is how a WeChat App is connected. The connection does
+// not change in place (ADR 0029).
 enum WechatConnection {
   WECHAT_CONNECTION_UNSPECIFIED = 0;
   WECHAT_CONNECTION_DIRECT_HOLD = 1;
+  WECHAT_CONNECTION_PLATFORM_AUTHORIZATION = 2;
 }
 
-// WechatApp is one WeChat App (微信应用) connected by Direct Hold. The
-// AppSecret and the Push Secret never cross the wire on this message —
-// every read carries only their masks (ADR 0029). The generated Token and
-// EncodingAESKey are returned in full only on WechatAppPushSecret.
+// WechatCapability is one capability this phase understands. The values
+// are names, not WeChat permission-set numbers.
+enum WechatCapability {
+  WECHAT_CAPABILITY_UNSPECIFIED = 0;
+  WECHAT_CAPABILITY_CUSTOM_MENU = 1;
+  WECHAT_CAPABILITY_TEMPLATE_MESSAGE = 2;
+  WECHAT_CAPABILITY_SUBSCRIBE_NOTIFICATION = 3;
+  WECHAT_CAPABILITY_WEB_AUTHORIZATION = 4;
+  WECHAT_CAPABILITY_MINI_PROGRAM_LOGIN = 5;
+  WECHAT_CAPABILITY_SUBSCRIBE_MESSAGE = 6;
+}
+
+// WechatApp is one WeChat App (微信应用). A Direct Hold carries masks for
+// the AppSecret and the Push Secret and never the plaintext (ADR 0029).
+// The generated Token and EncodingAESKey are returned in full only on
+// WechatAppPushSecret. A Platform Authorization carries no authorizer
+// AppSecret and no Push Secret; it is bound to one platform and lists
+// the capabilities WeChat granted.
 message WechatApp {
   // Snowflake ID.
   int64 app_id = 1;
@@ -101,11 +116,17 @@ message WechatApp {
   bool suspended = 11;
   // Master-key version the ciphertext was written under (ADR 0018).
   int32 key_version = 12;
-  // Audit: who created/updated. Filled from the authenticated identity.
+  // Audit: who created/updated. An operator action is the Principal.
+  // A Platform Authorization WeChat completed is the system itself (0).
   int64 create_by = 13;
   int64 update_by = 14;
   google.protobuf.Timestamp created_at = 15;
   google.protobuf.Timestamp updated_at = 16;
+  // The platform a Platform Authorization is bound to. 0 for a Direct Hold.
+  // Immutable for the life of the row.
+  int64 platform_id = 17;
+  // Capabilities WeChat granted. Empty for a Direct Hold.
+  repeated WechatCapability granted_capabilities = 18;
 }
 
 // WechatAppSet is a page of WeChat Apps that are not withdrawn.
@@ -127,7 +148,7 @@ message WechatAppPushSecret {
 }
 
 // WechatService is the back-office surface for WeChat Platform
-// registration and Direct Hold of WeChat Apps. Platform permissions are
+// registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
 // are wechat:app:list, create, update, and remove. The platform callback
 // is a separate unauthenticated route; it is not an RPC.
@@ -235,6 +256,25 @@ service WechatService {
   rpc WithdrawWechatApp(WithdrawWechatAppRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/wechat/app/{app_id}"
+    };
+  }
+
+  // ListAuthorizationPlatforms lists ready platforms an operator can
+  // choose when starting a Platform Authorization. Withdrawn and unready
+  // platforms are omitted. Masks and secrets are not returned. Permission:
+  // wechat:app:create.
+  rpc ListAuthorizationPlatforms(ListAuthorizationPlatformsRequest) returns (WechatAuthorizationPlatformSet) {
+    option (google.api.http) = {
+      get: "/wechat/app/authorization/platforms"
+    };
+  }
+  // StartWechatAuthorization returns the link the other administrator
+  // opens. The chosen platform must be ready and not withdrawn. No WeChat
+  // App is created by this call. Permission: wechat:app:create.
+  rpc StartWechatAuthorization(StartWechatAuthorizationRequest) returns (WechatAuthorization) {
+    option (google.api.http) = {
+      post: "/wechat/app/authorization"
+      body: "*"
     };
   }
 }
@@ -367,4 +407,30 @@ message RegenerateWechatAppPushSecretRequest {
 message WithdrawWechatAppRequest {
   // Required. The id of the app to withdraw.
   int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListAuthorizationPlatformsRequest {}
+
+// WechatAuthorizationPlatform is one ready platform the operator can
+// choose. It carries no secrets and no masks.
+message WechatAuthorizationPlatform {
+  int64 platform_id = 1;
+  string name = 2;
+  string component_app_id = 3;
+}
+
+message WechatAuthorizationPlatformSet {
+  repeated WechatAuthorizationPlatform platforms = 1;
+}
+
+message StartWechatAuthorizationRequest {
+  // Required. The ready platform the grant will bind to.
+  int64 platform_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// WechatAuthorization is the link the other administrator opens. The
+// WeChat App is created later, from what WeChat reports.
+message WechatAuthorization {
+  int64 platform_id = 1;
+  string url = 2;
 }

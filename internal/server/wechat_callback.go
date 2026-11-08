@@ -35,6 +35,35 @@ func registerWechatCallbackHTTP(s *khttp.Server, app *wechatapp.WechatApplicatio
 	r := s.Route("/")
 	r.Handle("POST", "/wechat/platform/{platform_id}/callback", wechatCallbackHandler(app))
 	r.Handle("POST", "/wechat/platform/{platform_id}/callback/{appid}", wechatCallbackHandler(app))
+	r.Handle("GET", "/wechat/platform/{platform_id}/authorization-return", authorizationReturnHandler())
+}
+
+// OperationWechatServiceAuthorizationReturn names the browser page WeChat
+// redirects to after an administrator grants a platform. The page stores
+// nothing: the encrypted authorized push on the platform callback creates
+// the WeChat App. The route is absent from the auth table.
+const OperationWechatServiceAuthorizationReturn = "/wechat.v1.WechatService/AuthorizationReturn"
+
+const authorizationReturnHTML = `<!DOCTYPE html>
+<meta charset="utf-8">
+<title>授权已提交</title>
+<p>授权已提交。请回到后台的微信应用列表查看。应用由微信返回的结果建立，这个页面不填写 AppID，也不保存对方的 AppSecret。</p>
+`
+
+func authorizationReturnHandler() khttp.HandlerFunc {
+	return func(ctx khttp.Context) error {
+		khttp.SetOperation(ctx, OperationWechatServiceAuthorizationReturn)
+		h := ctx.Middleware(func(context.Context, any) (any, error) {
+			return nil, nil
+		})
+		if _, err := h(ctx, &struct{}{}); err != nil {
+			return err
+		}
+		ctx.Response().Header().Set("Content-Type", "text/html; charset=utf-8")
+		ctx.Response().WriteHeader(stdhttp.StatusOK)
+		_, _ = ctx.Response().Write([]byte(authorizationReturnHTML))
+		return nil
+	}
 }
 
 func wechatCallbackHandler(app *wechatapp.WechatApplication) khttp.HandlerFunc {

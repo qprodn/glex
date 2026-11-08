@@ -1,5 +1,5 @@
 import { services, asServiceError } from "@/services";
-import type { WechatApp, WechatAppPushSecret } from "@/services/wechat/v1";
+import type { WechatApp, WechatAppPushSecret, WechatCapability } from "@/services/wechat/v1";
 import { PageContainer } from "@ant-design/pro-components";
 import { Access, useIntl, useAccess } from "@umijs/max";
 import { App, Button, Popconfirm, Tag, Typography } from "antd";
@@ -10,6 +10,7 @@ import { ProTable } from "@ant-design/pro-components";
 import { createTokenPagedRequest } from "@/utils/pager";
 import { buildFilter } from "@/utils/aipFilter";
 import AppFormModal from "./AppFormModal";
+import AuthorizeModal from "./AuthorizeModal";
 import PushSecretModal from "./PushSecretModal";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -22,9 +23,28 @@ const KIND_LABEL: Record<string, string> = {
   WECHAT_ACCOUNT_KIND_SUBSCRIPTION: "订阅号",
 };
 
+const CONNECTION_LABEL: Record<string, string> = {
+  WECHAT_CONNECTION_DIRECT_HOLD: "直连",
+  WECHAT_CONNECTION_PLATFORM_AUTHORIZATION: "平台授权",
+};
+
+const CAPABILITY_LABEL: Record<WechatCapability, string> = {
+  WECHAT_CAPABILITY_UNSPECIFIED: "",
+  WECHAT_CAPABILITY_CUSTOM_MENU: "自定义菜单",
+  WECHAT_CAPABILITY_TEMPLATE_MESSAGE: "模板消息",
+  WECHAT_CAPABILITY_SUBSCRIBE_NOTIFICATION: "订阅通知",
+  WECHAT_CAPABILITY_WEB_AUTHORIZATION: "网页授权",
+  WECHAT_CAPABILITY_MINI_PROGRAM_LOGIN: "小程序登录",
+  WECHAT_CAPABILITY_SUBSCRIBE_MESSAGE: "订阅消息",
+};
+
+const platformAuthorization = (record: WechatApp) =>
+  record.connection === "WECHAT_CONNECTION_PLATFORM_AUTHORIZATION";
+
 /**
- * 微信应用: Direct Hold. The list renders masks only. The generated Push
- * Secret is shown in full once, on create and on regenerate (ADR 0029).
+ * 微信应用: Direct Hold and Platform Authorization. The list renders masks
+ * only. A Platform Authorization has no AppSecret and no Push Secret, and
+ * does not offer regeneration (ADR 0029).
  */
 const AppList: React.FC = () => {
   const intl = useIntl();
@@ -32,6 +52,7 @@ const AppList: React.FC = () => {
   const { message } = App.useApp();
   const actionRef = useRef<ActionType>(undefined);
   const [formOpen, setFormOpen] = useState(false);
+  const [authorizeOpen, setAuthorizeOpen] = useState(false);
   const [editing, setEditing] = useState<WechatApp | undefined>();
   const [reveal, setReveal] = useState<WechatAppPushSecret | undefined>();
 
@@ -125,6 +146,30 @@ const AppList: React.FC = () => {
       render: (_, r) => KIND_LABEL[r.accountKind ?? ""] ?? "",
     },
     {
+      title: intl.formatMessage({ id: "pages.wechat.app.connection", defaultMessage: "接入方式" }),
+      dataIndex: "connection",
+      search: false,
+      render: (_, r) => CONNECTION_LABEL[r.connection ?? ""] ?? "",
+    },
+    {
+      title: intl.formatMessage({ id: "pages.wechat.app.platform", defaultMessage: "微信平台" }),
+      dataIndex: "platformId",
+      search: false,
+      render: (_, r) =>
+        platformAuthorization(r) && r.platformId ? <Typography.Text copyable>{String(r.platformId)}</Typography.Text> : "",
+    },
+    {
+      title: intl.formatMessage({ id: "pages.wechat.app.capabilities", defaultMessage: "授予的能力" }),
+      dataIndex: "grantedCapabilities",
+      search: false,
+      render: (_, r) =>
+        (r.grantedCapabilities ?? [])
+          .filter((cap) => CAPABILITY_LABEL[cap])
+          .map((cap) => (
+            <Tag key={cap}>{CAPABILITY_LABEL[cap]}</Tag>
+          )),
+    },
+    {
       title: "AppSecret",
       dataIndex: "appSecretMask",
       search: false,
@@ -187,17 +232,19 @@ const AppList: React.FC = () => {
               : intl.formatMessage({ id: "pages.wechat.app.suspend", defaultMessage: "停用" })}
           </a>
         </Access>,
-        <Access key="regenerate" accessible={access.perm("wechat:app:update")}>
-          <Popconfirm
-            title={intl.formatMessage({
-              id: "pages.wechat.app.regenerate.confirm",
-              defaultMessage: "重新生成后旧的消息推送密钥立即作废，应用本身不会撤回或停用。确定重新生成？",
-            })}
-            onConfirm={() => regenerate(record)}
-          >
-            <a>{intl.formatMessage({ id: "pages.wechat.app.regenerate", defaultMessage: "重新生成密钥" })}</a>
-          </Popconfirm>
-        </Access>,
+        platformAuthorization(record) ? null : (
+          <Access key="regenerate" accessible={access.perm("wechat:app:update")}>
+            <Popconfirm
+              title={intl.formatMessage({
+                id: "pages.wechat.app.regenerate.confirm",
+                defaultMessage: "重新生成后旧的消息推送密钥立即作废，应用本身不会撤回或停用。确定重新生成？",
+              })}
+              onConfirm={() => regenerate(record)}
+            >
+              <a>{intl.formatMessage({ id: "pages.wechat.app.regenerate", defaultMessage: "重新生成密钥" })}</a>
+            </Popconfirm>
+          </Access>
+        ),
         <Access key="remove" accessible={access.perm("wechat:app:remove")}>
           <Popconfirm
             title={intl.formatMessage({
@@ -225,6 +272,15 @@ const AppList: React.FC = () => {
         columns={columns}
         request={pager}
         toolBarRender={() => [
+          <Access key="authorize" accessible={access.perm("wechat:app:create")}>
+            <Button
+              onClick={() => {
+                setAuthorizeOpen(true);
+              }}
+            >
+              {intl.formatMessage({ id: "pages.wechat.app.authorize", defaultMessage: "平台授权" })}
+            </Button>
+          </Access>,
           <Access key="add" accessible={access.perm("wechat:app:create")}>
             <Button
               type="primary"
@@ -249,6 +305,7 @@ const AppList: React.FC = () => {
           if (next) setReveal(next);
         }}
       />
+      <AuthorizeModal open={authorizeOpen} onClose={() => setAuthorizeOpen(false)} />
       <PushSecretModal reveal={reveal} onClose={() => setReveal(undefined)} />
     </PageContainer>
   );

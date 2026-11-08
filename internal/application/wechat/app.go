@@ -20,22 +20,24 @@ import (
 // (ADR 0029).
 func convertApp(app *entity.App) *wechatv1.WechatApp {
 	return &wechatv1.WechatApp{
-		AppId:              app.ID,
-		Name:               app.Name,
-		WxAppId:            app.AppID,
-		AppType:            appTypeProto(app.AppType),
-		AccountKind:        accountKindProto(app.Kind),
-		Connection:         connectionProto(app.Connection),
-		AppSecretMask:      app.AppSecretMask,
-		TokenMask:          app.TokenMask,
-		EncodingAesKeyMask: app.EncodingAESKeyMask,
-		CallbackAddress:    app.CallbackAddress,
-		Suspended:          app.Suspended,
-		KeyVersion:         int32(app.KeyVersion),
-		CreateBy:           app.CreateBy,
-		UpdateBy:           app.UpdateBy,
-		CreatedAt:          timestamppb.New(app.CreatedAt),
-		UpdatedAt:          timestamppb.New(app.UpdatedAt),
+		AppId:               app.ID,
+		Name:                app.Name,
+		WxAppId:             app.AppID,
+		AppType:             appTypeProto(app.AppType),
+		AccountKind:         accountKindProto(app.Kind),
+		Connection:          connectionProto(app.Connection),
+		PlatformId:          app.PlatformID,
+		GrantedCapabilities: capabilitiesProto(app.Capabilities),
+		AppSecretMask:       app.AppSecretMask,
+		TokenMask:           app.TokenMask,
+		EncodingAesKeyMask:  app.EncodingAESKeyMask,
+		CallbackAddress:     app.CallbackAddress,
+		Suspended:           app.Suspended,
+		KeyVersion:          int32(app.KeyVersion),
+		CreateBy:            app.CreateBy,
+		UpdateBy:            app.UpdateBy,
+		CreatedAt:           timestamppb.New(app.CreatedAt),
+		UpdatedAt:           timestamppb.New(app.UpdatedAt),
 	}
 }
 
@@ -95,6 +97,8 @@ func connectionProto(v string) wechatv1.WechatConnection {
 	switch v {
 	case entity.ConnectionDirectHold:
 		return wechatv1.WechatConnection_WECHAT_CONNECTION_DIRECT_HOLD
+	case entity.ConnectionPlatformAuthorization:
+		return wechatv1.WechatConnection_WECHAT_CONNECTION_PLATFORM_AUTHORIZATION
 	default:
 		return wechatv1.WechatConnection_WECHAT_CONNECTION_UNSPECIFIED
 	}

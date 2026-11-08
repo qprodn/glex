@@ -7,14 +7,16 @@ import (
 	"glex/pkg/listq"
 )
 
-// AppSecrets is the secret set of one Direct Hold: the operator-supplied
-// AppSecret and the generated Push Secret. It crosses the repository
-// boundary only on a write or an explicit load. Display paths never
-// receive it.
+// AppSecrets is the secret set of one WeChat App. A Direct Hold carries
+// the operator-supplied AppSecret and the generated Push Secret. A
+// Platform Authorization carries the authorizer refresh material and
+// never an authorizer AppSecret. The set crosses the repository boundary
+// only on a write or an explicit load. Display paths never receive it.
 type AppSecrets struct {
-	AppSecret      string
-	Token          string
-	EncodingAESKey string
+	AppSecret              string
+	Token                  string
+	EncodingAESKey         string
+	AuthorizerRefreshToken string
 }
 
 // SaveAppRequest is one insert or rewrite. Secrets is sealed by the
@@ -48,6 +50,10 @@ type AppRepo interface {
 	// FindLiveByAppID resolves the app that is not withdrawn and holds
 	// this AppID. A missing row is ErrAppNotFound.
 	FindLiveByAppID(ctx context.Context, appID string) (*entity.App, error)
+	// CountLiveByPlatform counts apps that are not withdrawn and are
+	// authorized through this platform. Direct Holds and withdrawn apps
+	// are not included. A platform with none returns zero.
+	CountLiveByPlatform(ctx context.Context, platformID int64) (int, error)
 	LoadSecrets(ctx context.Context, id int64) (AppSecrets, error)
 	Create(ctx context.Context, req SaveAppRequest) (*entity.App, error)
 	Update(ctx context.Context, req SaveAppRequest) (*entity.App, error)

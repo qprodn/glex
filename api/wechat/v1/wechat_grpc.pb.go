@@ -33,6 +33,8 @@ const (
 	WechatService_SetWechatAppSuspended_FullMethodName         = "/wechat.v1.WechatService/SetWechatAppSuspended"
 	WechatService_RegenerateWechatAppPushSecret_FullMethodName = "/wechat.v1.WechatService/RegenerateWechatAppPushSecret"
 	WechatService_WithdrawWechatApp_FullMethodName             = "/wechat.v1.WechatService/WithdrawWechatApp"
+	WechatService_ListAuthorizationPlatforms_FullMethodName    = "/wechat.v1.WechatService/ListAuthorizationPlatforms"
+	WechatService_StartWechatAuthorization_FullMethodName      = "/wechat.v1.WechatService/StartWechatAuthorization"
 )
 
 // WechatServiceClient is the client API for WechatService service.
@@ -40,7 +42,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // WechatService is the back-office surface for WeChat Platform
-// registration and Direct Hold of WeChat Apps. Platform permissions are
+// registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
 // are wechat:app:list, create, update, and remove. The platform callback
 // is a separate unauthenticated route; it is not an RPC.
@@ -90,6 +92,15 @@ type WechatServiceClient interface {
 	// it is not hard-deleted. The same AppID can be connected again as a
 	// new row.
 	WithdrawWechatApp(ctx context.Context, in *WithdrawWechatAppRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ListAuthorizationPlatforms lists ready platforms an operator can
+	// choose when starting a Platform Authorization. Withdrawn and unready
+	// platforms are omitted. Masks and secrets are not returned. Permission:
+	// wechat:app:create.
+	ListAuthorizationPlatforms(ctx context.Context, in *ListAuthorizationPlatformsRequest, opts ...grpc.CallOption) (*WechatAuthorizationPlatformSet, error)
+	// StartWechatAuthorization returns the link the other administrator
+	// opens. The chosen platform must be ready and not withdrawn. No WeChat
+	// App is created by this call. Permission: wechat:app:create.
+	StartWechatAuthorization(ctx context.Context, in *StartWechatAuthorizationRequest, opts ...grpc.CallOption) (*WechatAuthorization, error)
 }
 
 type wechatServiceClient struct {
@@ -230,12 +241,32 @@ func (c *wechatServiceClient) WithdrawWechatApp(ctx context.Context, in *Withdra
 	return out, nil
 }
 
+func (c *wechatServiceClient) ListAuthorizationPlatforms(ctx context.Context, in *ListAuthorizationPlatformsRequest, opts ...grpc.CallOption) (*WechatAuthorizationPlatformSet, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatAuthorizationPlatformSet)
+	err := c.cc.Invoke(ctx, WechatService_ListAuthorizationPlatforms_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) StartWechatAuthorization(ctx context.Context, in *StartWechatAuthorizationRequest, opts ...grpc.CallOption) (*WechatAuthorization, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatAuthorization)
+	err := c.cc.Invoke(ctx, WechatService_StartWechatAuthorization_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WechatServiceServer is the server API for WechatService service.
 // All implementations must embed UnimplementedWechatServiceServer
 // for forward compatibility.
 //
 // WechatService is the back-office surface for WeChat Platform
-// registration and Direct Hold of WeChat Apps. Platform permissions are
+// registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
 // are wechat:app:list, create, update, and remove. The platform callback
 // is a separate unauthenticated route; it is not an RPC.
@@ -285,6 +316,15 @@ type WechatServiceServer interface {
 	// it is not hard-deleted. The same AppID can be connected again as a
 	// new row.
 	WithdrawWechatApp(context.Context, *WithdrawWechatAppRequest) (*emptypb.Empty, error)
+	// ListAuthorizationPlatforms lists ready platforms an operator can
+	// choose when starting a Platform Authorization. Withdrawn and unready
+	// platforms are omitted. Masks and secrets are not returned. Permission:
+	// wechat:app:create.
+	ListAuthorizationPlatforms(context.Context, *ListAuthorizationPlatformsRequest) (*WechatAuthorizationPlatformSet, error)
+	// StartWechatAuthorization returns the link the other administrator
+	// opens. The chosen platform must be ready and not withdrawn. No WeChat
+	// App is created by this call. Permission: wechat:app:create.
+	StartWechatAuthorization(context.Context, *StartWechatAuthorizationRequest) (*WechatAuthorization, error)
 	mustEmbedUnimplementedWechatServiceServer()
 }
 
@@ -333,6 +373,12 @@ func (UnimplementedWechatServiceServer) RegenerateWechatAppPushSecret(context.Co
 }
 func (UnimplementedWechatServiceServer) WithdrawWechatApp(context.Context, *WithdrawWechatAppRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method WithdrawWechatApp not implemented")
+}
+func (UnimplementedWechatServiceServer) ListAuthorizationPlatforms(context.Context, *ListAuthorizationPlatformsRequest) (*WechatAuthorizationPlatformSet, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAuthorizationPlatforms not implemented")
+}
+func (UnimplementedWechatServiceServer) StartWechatAuthorization(context.Context, *StartWechatAuthorizationRequest) (*WechatAuthorization, error) {
+	return nil, status.Error(codes.Unimplemented, "method StartWechatAuthorization not implemented")
 }
 func (UnimplementedWechatServiceServer) mustEmbedUnimplementedWechatServiceServer() {}
 func (UnimplementedWechatServiceServer) testEmbeddedByValue()                       {}
@@ -589,6 +635,42 @@ func _WechatService_WithdrawWechatApp_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WechatService_ListAuthorizationPlatforms_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAuthorizationPlatformsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).ListAuthorizationPlatforms(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_ListAuthorizationPlatforms_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).ListAuthorizationPlatforms(ctx, req.(*ListAuthorizationPlatformsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_StartWechatAuthorization_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartWechatAuthorizationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).StartWechatAuthorization(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_StartWechatAuthorization_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).StartWechatAuthorization(ctx, req.(*StartWechatAuthorizationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WechatService_ServiceDesc is the grpc.ServiceDesc for WechatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -647,6 +729,14 @@ var WechatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "WithdrawWechatApp",
 			Handler:    _WechatService_WithdrawWechatApp_Handler,
+		},
+		{
+			MethodName: "ListAuthorizationPlatforms",
+			Handler:    _WechatService_ListAuthorizationPlatforms_Handler,
+		},
+		{
+			MethodName: "StartWechatAuthorization",
+			Handler:    _WechatService_StartWechatAuthorization_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

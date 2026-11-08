@@ -14,13 +14,33 @@ const (
 	// ConnectionDirectHold is a WeChat App this system holds directly
 	// (直连). The connection is fixed for the life of the row (ADR 0029).
 	ConnectionDirectHold = "direct_hold"
+	// ConnectionPlatformAuthorization is a WeChat App granted through one
+	// WeChat Platform (平台授权). The connection and the platform binding
+	// are fixed for the life of the row (ADR 0029).
+	ConnectionPlatformAuthorization = "platform_authorization"
+
+	// CapabilityCustomMenu is a Custom Menu grant.
+	CapabilityCustomMenu = "custom_menu"
+	// CapabilityTemplateMessage is a Template Message grant.
+	CapabilityTemplateMessage = "template_message"
+	// CapabilitySubscribeNotification is a Subscribe Notification grant.
+	CapabilitySubscribeNotification = "subscribe_notification"
+	// CapabilityWebAuthorization is a Web Authorization grant.
+	CapabilityWebAuthorization = "web_authorization"
+	// CapabilityMiniProgramLogin is a Mini Program Login grant.
+	CapabilityMiniProgramLogin = "mini_program_login"
+	// CapabilitySubscribeMessage is a Subscribe Message grant.
+	CapabilitySubscribeMessage = "subscribe_message"
 )
 
 // App is one WeChat App (微信应用). Ordinary reads carry masks for the
 // AppSecret and the Push Secret and never the plaintext (ADR 0029). The
 // generated Token and EncodingAESKey travel beside this object only in
 // the response that generated them. CallbackAddress is derived from the
-// row id so each Direct Hold shows its own.
+// row id so each Direct Hold shows its own. A Platform Authorization has
+// no authorizer AppSecret and no Push Secret; it is bound to PlatformID
+// and records the capabilities WeChat granted. Those names are this
+// phase's capabilities, not WeChat permission-set numbers.
 type App struct {
 	ID                 int64
 	Name               string
@@ -28,6 +48,8 @@ type App struct {
 	AppType            string
 	Kind               string
 	Connection         string
+	PlatformID         int64
+	Capabilities       []string
 	AppSecretMask      string
 	TokenMask          string
 	EncodingAESKeyMask string

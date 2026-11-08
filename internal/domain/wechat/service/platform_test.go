@@ -910,7 +910,7 @@ func TestReregisterAfterWithdrawIsANewRow(t *testing.T) {
 
 func TestMissingMasterKeyRefusesSecretWrites(t *testing.T) {
 	t.Setenv(crypt.EnvMasterKey, "")
-	svc := NewPlatformService(newMemPlatformRepo(crypt.New()), nil, nil, testCallbackBase, slog.New(slog.DiscardHandler))
+	svc := NewPlatformService(newMemPlatformRepo(crypt.New()), nil, nil, testCallbackBase, nil, slog.New(slog.DiscardHandler))
 	created, err := svc.Create(context.Background(), registerInput(7))
 	if !errors.Is(err, wechat.ErrMasterKeyMissing) || created != nil {
 		t.Fatalf("register = (%v, %v), want master-key refusal and no row", created, err)
@@ -925,7 +925,7 @@ func TestMissingMasterKeyRefusesSecretWrites(t *testing.T) {
 
 	t.Setenv(crypt.EnvMasterKey, "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=")
 	repo := newMemPlatformRepo(crypt.New())
-	svc = NewPlatformService(repo, nil, nil, testCallbackBase, slog.New(slog.DiscardHandler))
+	svc = NewPlatformService(repo, nil, nil, testCallbackBase, nil, slog.New(slog.DiscardHandler))
 	stored, err := svc.Create(context.Background(), registerInput(7))
 	if err != nil {
 		t.Fatalf("create with key: %v", err)
@@ -1068,6 +1068,12 @@ type scriptedOpenAPI struct {
 	probes       []ProbePlatformRequest
 	replies      []FullNetworkReply
 	replyErr     error
+	authLink     string
+	authErr      error
+	starts       []OpenAuthorizationStart
+	grant        *AuthorizationGrant
+	grantErr     error
+	completes    []OpenAuthorizationCode
 }
 
 func (s *scriptedOpenAPI) ProbePlatform(_ context.Context, req ProbePlatformRequest) error {
@@ -1087,6 +1093,39 @@ func (s *scriptedOpenAPI) AnswerFullNetwork(_ context.Context, req FullNetworkRe
 	}
 	s.replies = append(s.replies, req)
 	return s.replyErr
+}
+
+func (s *scriptedOpenAPI) StartAuthorization(_ context.Context, req OpenAuthorizationStart) (*AuthorizationLink, error) {
+	if s == nil {
+		return &AuthorizationLink{URL: "https://mp.weixin.qq.com/cgi-bin/componentloginpage?pre_auth_code=scripted"}, nil
+	}
+	s.starts = append(s.starts, req)
+	if s.authErr != nil {
+		return nil, s.authErr
+	}
+	url := s.authLink
+	if url == "" {
+		url = "https://mp.weixin.qq.com/cgi-bin/componentloginpage?pre_auth_code=scripted"
+	}
+	return &AuthorizationLink{URL: url}, nil
+}
+
+func (s *scriptedOpenAPI) CompleteAuthorization(_ context.Context, req OpenAuthorizationCode) (*AuthorizationGrant, error) {
+	if s == nil {
+		return nil, errors.New("no grant scripted")
+	}
+	s.completes = append(s.completes, req)
+	if s.grantErr != nil {
+		return nil, s.grantErr
+	}
+	if s.grant == nil {
+		return nil, errors.New("no grant scripted")
+	}
+	cp := *s.grant
+	if s.grant.Capabilities != nil {
+		cp.Capabilities = append([]string(nil), s.grant.Capabilities...)
+	}
+	return &cp, nil
 }
 
 func registerInput(actorID int64) CreateRequest {
@@ -1115,7 +1154,7 @@ func newScriptedPlatformRepo(t *testing.T, api *scriptedOpenAPI) (Platform, *mem
 	t.Helper()
 	t.Setenv(crypt.EnvMasterKey, "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=")
 	repo := newMemPlatformRepo(crypt.New())
-	return NewPlatformService(repo, api, NewPushAuthenticator(), testCallbackBase, slog.New(slog.DiscardHandler)), repo
+	return NewPlatformService(repo, api, NewPushAuthenticator(), testCallbackBase, nil, slog.New(slog.DiscardHandler)), repo
 }
 
 func mustGet(t *testing.T, svc Platform, id int64) *entity.Platform {

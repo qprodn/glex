@@ -39,6 +39,8 @@ type inboundPush struct {
 	AppID                 string `xml:"AppId"`
 	InfoType              string `xml:"InfoType"`
 	ComponentVerifyTicket string `xml:"ComponentVerifyTicket"`
+	AuthorizerAppid       string `xml:"AuthorizerAppid"`
+	AuthorizationCode     string `xml:"AuthorizationCode"`
 	ToUserName            string `xml:"ToUserName"`
 	FromUserName          string `xml:"FromUserName"`
 	MsgType               string `xml:"MsgType"`
@@ -83,8 +85,31 @@ func (s *platformImpl) applyPush(ctx context.Context, p *entity.Platform, secret
 	if msg.InfoType == "component_verify_ticket" {
 		return s.holdPushedTicket(ctx, p, msg)
 	}
+	if msg.InfoType == "authorized" || msg.InfoType == "updateauthorized" {
+		return s.completePushedAuthorization(ctx, p, msg)
+	}
 	if outcome, handled, err := s.answerFullNetwork(ctx, p, secrets, req, msg); handled || err != nil {
 		return outcome, err
+	}
+	return successOutcome(), nil
+}
+
+// completePushedAuthorization turns WeChat's authorized push into the
+// grant the app service records. The authorization code is exchanged by
+// the Open API port; this method does not read a permission-set number.
+// A missing code is acknowledged and stores nothing. An unauthorized
+// push is not handled here — lapse belongs to a later ticket.
+func (s *platformImpl) completePushedAuthorization(ctx context.Context, p *entity.Platform, msg inboundPush) (*PushOutcome, error) {
+	code := strings.TrimSpace(msg.AuthorizationCode)
+	if code == "" || s.bindings == nil {
+		return successOutcome(), nil
+	}
+	if _, err := s.bindings.CompleteAuthorization(ctx, CompleteAuthorizationRequest{
+		PlatformID: p.ID,
+		AuthCode:   code,
+	}); err != nil {
+		logx.Propagate(ctx, s.logger, "wechat.svc.platform.receive", err)
+		return nil, err
 	}
 	return successOutcome(), nil
 }

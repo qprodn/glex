@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 
@@ -76,8 +77,22 @@ type PushSecretReveal struct {
 	EncodingAESKey string
 }
 
+// StartAuthorizationRequest chooses the one ready platform a Platform
+// Authorization will bind to. Starting does not create a WeChat App.
+type StartAuthorizationRequest struct {
+	PlatformID int64
+}
+
+// CompleteAuthorizationRequest is one grant WeChat has already issued:
+// the platform it belongs to and the authorization code from that grant.
+// The write is stamped as the system itself.
+type CompleteAuthorizationRequest struct {
+	PlatformID int64
+	AuthCode   string
+}
+
 // App is the wechat app domain service: the only path to WeChat App rows
-// (ADR 0005). This ticket connects apps by Direct Hold.
+// (ADR 0005). Apps connect by Direct Hold or by Platform Authorization.
 type App interface {
 	Create(ctx context.Context, req CreateDirectHoldRequest) (*PushSecretReveal, error)
 	Get(ctx context.Context, id int64) (*entity.App, error)
@@ -86,18 +101,41 @@ type App interface {
 	RegeneratePushSecret(ctx context.Context, req RegeneratePushSecretRequest) (*PushSecretReveal, error)
 	SetSuspended(ctx context.Context, req SetSuspendedRequest) (*entity.App, error)
 	Withdraw(ctx context.Context, req WithdrawAppRequest) error
+	// StartAuthorization returns the link for one ready platform. An
+	// unready or withdrawn platform is refused. No WeChat App is created.
+	StartAuthorization(ctx context.Context, req StartAuthorizationRequest) (*AuthorizationLink, error)
+	// CompleteAuthorization creates or restores the WeChat App WeChat
+	// reported, bound to that platform. The actor is the system itself.
+	CompleteAuthorization(ctx context.Context, req CompleteAuthorizationRequest) (*entity.App, error)
+	// CountLiveAuthorizations counts apps not withdrawn that are
+	// authorized through this platform.
+	CountLiveAuthorizations(ctx context.Context, platformID int64) (int, error)
+}
+
+// PlatformBindings is the slice of the app service the platform service
+// needs: refuse a platform withdrawal while a live grant remains, and
+// apply a grant WeChat pushed. The app service implements it.
+type PlatformBindings interface {
+	CountLiveAuthorizations(ctx context.Context, platformID int64) (int, error)
+	CompleteAuthorization(ctx context.Context, req CompleteAuthorizationRequest) (*entity.App, error)
 }
 
 type appImpl struct {
-	apps   repository.AppRepo
-	logger *slog.Logger
+	apps         repository.AppRepo
+	platforms    repository.PlatformRepo
+	openapi      OpenAPI
+	callbackBase string
+	logger       *slog.Logger
 }
 
 // NewAppService creates the app domain service.
-func NewAppService(apps repository.AppRepo, logger *slog.Logger) App {
+func NewAppService(apps repository.AppRepo, platforms repository.PlatformRepo, openapi OpenAPI, callbackBase CallbackBase, logger *slog.Logger) App {
 	return &appImpl{
-		apps:   apps,
-		logger: logger.With(slog.String("component", "domain.wechat.app.svc")),
+		apps:         apps,
+		platforms:    platforms,
+		openapi:      openapi,
+		callbackBase: strings.TrimRight(string(callbackBase), "/"),
+		logger:       logger.With(slog.String("component", "domain.wechat.app.svc")),
 	}
 }
 
@@ -194,6 +232,21 @@ func (s *appImpl) Update(ctx context.Context, req UpdateDirectHoldRequest) (*ent
 		err = wechat.ErrAppIDImmutable
 		logx.Propagate(ctx, s.logger, "wechat.svc.app.update", err)
 		return nil, err
+	}
+	if current.Connection != entity.ConnectionDirectHold {
+		if req.AppSecret != "" {
+			err = wechat.ErrAppInvalid
+			logx.Propagate(ctx, s.logger, "wechat.svc.app.update", err)
+			return nil, err
+		}
+		current.Name = req.Name
+		current.UpdateBy = req.ActorID
+		updated, err := s.apps.Update(ctx, repository.SaveAppRequest{App: current, ActorID: req.ActorID})
+		if err != nil {
+			logx.Propagate(ctx, s.logger, "wechat.svc.app.update", err)
+			return nil, err
+		}
+		return present(updated), nil
 	}
 	save := repository.SaveAppRequest{App: current, ActorID: req.ActorID}
 	if req.AppSecret != "" {
@@ -366,7 +419,10 @@ func present(app *entity.App) *entity.App {
 	if app == nil {
 		return nil
 	}
-	app.CallbackAddress = callbackAddress(app.ID)
+	app.CallbackAddress = ""
+	if app.Connection == entity.ConnectionDirectHold {
+		app.CallbackAddress = callbackAddress(app.ID)
+	}
 	return app
 }
 

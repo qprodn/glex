@@ -22,11 +22,13 @@ const OperationWechatServiceCreateWechatApp = "/wechat.v1.WechatService/CreateWe
 const OperationWechatServiceCreateWechatPlatform = "/wechat.v1.WechatService/CreateWechatPlatform"
 const OperationWechatServiceGetWechatApp = "/wechat.v1.WechatService/GetWechatApp"
 const OperationWechatServiceGetWechatPlatform = "/wechat.v1.WechatService/GetWechatPlatform"
+const OperationWechatServiceListAuthorizationPlatforms = "/wechat.v1.WechatService/ListAuthorizationPlatforms"
 const OperationWechatServiceListWechatApps = "/wechat.v1.WechatService/ListWechatApps"
 const OperationWechatServiceListWechatPlatforms = "/wechat.v1.WechatService/ListWechatPlatforms"
 const OperationWechatServiceProbeWechatPlatform = "/wechat.v1.WechatService/ProbeWechatPlatform"
 const OperationWechatServiceRegenerateWechatAppPushSecret = "/wechat.v1.WechatService/RegenerateWechatAppPushSecret"
 const OperationWechatServiceSetWechatAppSuspended = "/wechat.v1.WechatService/SetWechatAppSuspended"
+const OperationWechatServiceStartWechatAuthorization = "/wechat.v1.WechatService/StartWechatAuthorization"
 const OperationWechatServiceUpdateWechatApp = "/wechat.v1.WechatService/UpdateWechatApp"
 const OperationWechatServiceUpdateWechatPlatform = "/wechat.v1.WechatService/UpdateWechatPlatform"
 const OperationWechatServiceWithdrawWechatApp = "/wechat.v1.WechatService/WithdrawWechatApp"
@@ -45,6 +47,11 @@ type WechatServiceHTTPServer interface {
 	GetWechatApp(context.Context, *GetWechatAppRequest) (*WechatApp, error)
 	// GetWechatPlatform GetWechatPlatform retrieves one platform that is not withdrawn.
 	GetWechatPlatform(context.Context, *GetWechatPlatformRequest) (*WechatPlatform, error)
+	// ListAuthorizationPlatforms ListAuthorizationPlatforms lists ready platforms an operator can
+	// choose when starting a Platform Authorization. Withdrawn and unready
+	// platforms are omitted. Masks and secrets are not returned. Permission:
+	// wechat:app:create.
+	ListAuthorizationPlatforms(context.Context, *ListAuthorizationPlatformsRequest) (*WechatAuthorizationPlatformSet, error)
 	// ListWechatApps ListWechatApps lists apps that are not withdrawn. Responses carry
 	// masks only.
 	ListWechatApps(context.Context, *ListWechatAppsRequest) (*WechatAppSet, error)
@@ -62,6 +69,10 @@ type WechatServiceHTTPServer interface {
 	// SetWechatAppSuspended SetWechatAppSuspended suspends or resumes the app. The app stays on
 	// the live list either way.
 	SetWechatAppSuspended(context.Context, *SetWechatAppSuspendedRequest) (*WechatApp, error)
+	// StartWechatAuthorization StartWechatAuthorization returns the link the other administrator
+	// opens. The chosen platform must be ready and not withdrawn. No WeChat
+	// App is created by this call. Permission: wechat:app:create.
+	StartWechatAuthorization(context.Context, *StartWechatAuthorizationRequest) (*WechatAuthorization, error)
 	// UpdateWechatApp UpdateWechatApp corrects the display name and, when app_secret is
 	// non-blank, replaces the AppSecret. The response carries masks only
 	// and never the submitted secret. A wx_app_id that differs from the
@@ -95,6 +106,8 @@ func RegisterWechatServiceHTTPServer(s *http.Server, srv WechatServiceHTTPServer
 	r.Handle("POST", "/wechat/app/{app_id}/suspended", _WechatService_SetWechatAppSuspended0_HTTP_Handler(srv))
 	r.Handle("POST", "/wechat/app/{app_id}/push-secret", _WechatService_RegenerateWechatAppPushSecret0_HTTP_Handler(srv))
 	r.Handle("DELETE", "/wechat/app/{app_id}", _WechatService_WithdrawWechatApp0_HTTP_Handler(srv))
+	r.Handle("GET", "/wechat/app/authorization/platforms", _WechatService_ListAuthorizationPlatforms0_HTTP_Handler(srv))
+	r.Handle("POST", "/wechat/app/authorization", _WechatService_StartWechatAuthorization0_HTTP_Handler(srv))
 }
 
 func _WechatService_CreateWechatPlatform0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
@@ -371,6 +384,44 @@ func _WechatService_WithdrawWechatApp0_HTTP_Handler(srv WechatServiceHTTPServer)
 	}
 }
 
+func _WechatService_ListAuthorizationPlatforms0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListAuthorizationPlatformsRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceListAuthorizationPlatforms)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListAuthorizationPlatforms(ctx, req.(*ListAuthorizationPlatformsRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatAuthorizationPlatformSet)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _WechatService_StartWechatAuthorization0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in StartWechatAuthorizationRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceStartWechatAuthorization)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.StartWechatAuthorization(ctx, req.(*StartWechatAuthorizationRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatAuthorization)
+		return ctx.Result(200, reply)
+	}
+}
+
 type WechatServiceHTTPClient interface {
 	// CreateWechatApp CreateWechatApp connects a mini program, or an official account with
 	// a Service Account or Subscription Account kind, by Direct Hold. The
@@ -384,6 +435,11 @@ type WechatServiceHTTPClient interface {
 	GetWechatApp(ctx context.Context, req *GetWechatAppRequest, opts ...http.CallOption) (rsp *WechatApp, err error)
 	// GetWechatPlatform GetWechatPlatform retrieves one platform that is not withdrawn.
 	GetWechatPlatform(ctx context.Context, req *GetWechatPlatformRequest, opts ...http.CallOption) (rsp *WechatPlatform, err error)
+	// ListAuthorizationPlatforms ListAuthorizationPlatforms lists ready platforms an operator can
+	// choose when starting a Platform Authorization. Withdrawn and unready
+	// platforms are omitted. Masks and secrets are not returned. Permission:
+	// wechat:app:create.
+	ListAuthorizationPlatforms(ctx context.Context, req *ListAuthorizationPlatformsRequest, opts ...http.CallOption) (rsp *WechatAuthorizationPlatformSet, err error)
 	// ListWechatApps ListWechatApps lists apps that are not withdrawn. Responses carry
 	// masks only.
 	ListWechatApps(ctx context.Context, req *ListWechatAppsRequest, opts ...http.CallOption) (rsp *WechatAppSet, err error)
@@ -401,6 +457,10 @@ type WechatServiceHTTPClient interface {
 	// SetWechatAppSuspended SetWechatAppSuspended suspends or resumes the app. The app stays on
 	// the live list either way.
 	SetWechatAppSuspended(ctx context.Context, req *SetWechatAppSuspendedRequest, opts ...http.CallOption) (rsp *WechatApp, err error)
+	// StartWechatAuthorization StartWechatAuthorization returns the link the other administrator
+	// opens. The chosen platform must be ready and not withdrawn. No WeChat
+	// App is created by this call. Permission: wechat:app:create.
+	StartWechatAuthorization(ctx context.Context, req *StartWechatAuthorizationRequest, opts ...http.CallOption) (rsp *WechatAuthorization, err error)
 	// UpdateWechatApp UpdateWechatApp corrects the display name and, when app_secret is
 	// non-blank, replaces the AppSecret. The response carries masks only
 	// and never the submitted secret. A wx_app_id that differs from the
@@ -501,6 +561,26 @@ func (c *WechatServiceHTTPClientImpl) GetWechatPlatform(ctx context.Context, in 
 	return &out, nil
 }
 
+// ListAuthorizationPlatforms ListAuthorizationPlatforms lists ready platforms an operator can
+// choose when starting a Platform Authorization. Withdrawn and unready
+// platforms are omitted. Masks and secrets are not returned. Permission:
+// wechat:app:create.
+func (c *WechatServiceHTTPClientImpl) ListAuthorizationPlatforms(ctx context.Context, in *ListAuthorizationPlatformsRequest, opts ...http.CallOption) (*WechatAuthorizationPlatformSet, error) {
+	var out WechatAuthorizationPlatformSet
+	pattern := "/wechat/app/authorization/platforms"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationWechatServiceListAuthorizationPlatforms),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ListWechatApps ListWechatApps lists apps that are not withdrawn. Responses carry
 // masks only.
 func (c *WechatServiceHTTPClientImpl) ListWechatApps(ctx context.Context, in *ListWechatAppsRequest, opts ...http.CallOption) (*WechatAppSet, error) {
@@ -587,6 +667,26 @@ func (c *WechatServiceHTTPClientImpl) SetWechatAppSuspended(ctx context.Context,
 		http.Accept("application/protojson"),
 		http.ContentType("application/protojson"),
 		http.Operation(OperationWechatServiceSetWechatAppSuspended),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// StartWechatAuthorization StartWechatAuthorization returns the link the other administrator
+// opens. The chosen platform must be ready and not withdrawn. No WeChat
+// App is created by this call. Permission: wechat:app:create.
+func (c *WechatServiceHTTPClientImpl) StartWechatAuthorization(ctx context.Context, in *StartWechatAuthorizationRequest, opts ...http.CallOption) (*WechatAuthorization, error) {
+	var out WechatAuthorization
+	pattern := "/wechat/app/authorization"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationWechatServiceStartWechatAuthorization),
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)

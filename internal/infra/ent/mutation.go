@@ -24398,32 +24398,36 @@ func (m *UserRoleMutation) ResetEdge(name string) error {
 // WechatAppMutation represents an operation that mutates the WechatApp nodes in the graph.
 type WechatAppMutation struct {
 	config
-	op                    Op
-	typ                   string
-	id                    *int64
-	create_by             *int64
-	addcreate_by          *int64
-	update_by             *int64
-	addupdate_by          *int64
-	created_at            *time.Time
-	updated_at            *time.Time
-	deleted_at            *time.Time
-	name                  *string
-	wx_app_id             *string
-	app_type              *string
-	account_kind          *string
-	connection            *string
-	secret_cipher         *string
-	app_secret_mask       *string
-	token_mask            *string
-	encoding_aes_key_mask *string
-	suspended             *bool
-	key_version           *int
-	addkey_version        *int
-	clearedFields         map[string]struct{}
-	done                  bool
-	oldValue              func(context.Context) (*WechatApp, error)
-	predicates            []predicate.WechatApp
+	op                         Op
+	typ                        string
+	id                         *int64
+	create_by                  *int64
+	addcreate_by               *int64
+	update_by                  *int64
+	addupdate_by               *int64
+	created_at                 *time.Time
+	updated_at                 *time.Time
+	deleted_at                 *time.Time
+	name                       *string
+	wx_app_id                  *string
+	app_type                   *string
+	account_kind               *string
+	connection                 *string
+	platform_id                *int64
+	addplatform_id             *int64
+	granted_capabilities       *[]string
+	appendgranted_capabilities []string
+	secret_cipher              *string
+	app_secret_mask            *string
+	token_mask                 *string
+	encoding_aes_key_mask      *string
+	suspended                  *bool
+	key_version                *int
+	addkey_version             *int
+	clearedFields              map[string]struct{}
+	done                       bool
+	oldValue                   func(context.Context) (*WechatApp, error)
+	predicates                 []predicate.WechatApp
 }
 
 var _ ent.Mutation = (*WechatAppMutation)(nil)
@@ -24971,6 +24975,127 @@ func (m *WechatAppMutation) ResetConnection() {
 	m.connection = nil
 }
 
+// SetPlatformID sets the "platform_id" field.
+func (m *WechatAppMutation) SetPlatformID(i int64) {
+	m.platform_id = &i
+	m.addplatform_id = nil
+}
+
+// PlatformID returns the value of the "platform_id" field in the mutation.
+func (m *WechatAppMutation) PlatformID() (r int64, exists bool) {
+	v := m.platform_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPlatformID returns the old "platform_id" field's value of the WechatApp entity.
+// If the WechatApp object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAppMutation) OldPlatformID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPlatformID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPlatformID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPlatformID: %w", err)
+	}
+	return oldValue.PlatformID, nil
+}
+
+// AddPlatformID adds i to the "platform_id" field.
+func (m *WechatAppMutation) AddPlatformID(i int64) {
+	if m.addplatform_id != nil {
+		*m.addplatform_id += i
+	} else {
+		m.addplatform_id = &i
+	}
+}
+
+// AddedPlatformID returns the value that was added to the "platform_id" field in this mutation.
+func (m *WechatAppMutation) AddedPlatformID() (r int64, exists bool) {
+	v := m.addplatform_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPlatformID resets all changes to the "platform_id" field.
+func (m *WechatAppMutation) ResetPlatformID() {
+	m.platform_id = nil
+	m.addplatform_id = nil
+}
+
+// SetGrantedCapabilities sets the "granted_capabilities" field.
+func (m *WechatAppMutation) SetGrantedCapabilities(s []string) {
+	m.granted_capabilities = &s
+	m.appendgranted_capabilities = nil
+}
+
+// GrantedCapabilities returns the value of the "granted_capabilities" field in the mutation.
+func (m *WechatAppMutation) GrantedCapabilities() (r []string, exists bool) {
+	v := m.granted_capabilities
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldGrantedCapabilities returns the old "granted_capabilities" field's value of the WechatApp entity.
+// If the WechatApp object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAppMutation) OldGrantedCapabilities(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldGrantedCapabilities is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldGrantedCapabilities requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldGrantedCapabilities: %w", err)
+	}
+	return oldValue.GrantedCapabilities, nil
+}
+
+// AppendGrantedCapabilities adds s to the "granted_capabilities" field.
+func (m *WechatAppMutation) AppendGrantedCapabilities(s []string) {
+	m.appendgranted_capabilities = append(m.appendgranted_capabilities, s...)
+}
+
+// AppendedGrantedCapabilities returns the list of values that were appended to the "granted_capabilities" field in this mutation.
+func (m *WechatAppMutation) AppendedGrantedCapabilities() ([]string, bool) {
+	if len(m.appendgranted_capabilities) == 0 {
+		return nil, false
+	}
+	return m.appendgranted_capabilities, true
+}
+
+// ClearGrantedCapabilities clears the value of the "granted_capabilities" field.
+func (m *WechatAppMutation) ClearGrantedCapabilities() {
+	m.granted_capabilities = nil
+	m.appendgranted_capabilities = nil
+	m.clearedFields[wechatapp.FieldGrantedCapabilities] = struct{}{}
+}
+
+// GrantedCapabilitiesCleared returns if the "granted_capabilities" field was cleared in this mutation.
+func (m *WechatAppMutation) GrantedCapabilitiesCleared() bool {
+	_, ok := m.clearedFields[wechatapp.FieldGrantedCapabilities]
+	return ok
+}
+
+// ResetGrantedCapabilities resets all changes to the "granted_capabilities" field.
+func (m *WechatAppMutation) ResetGrantedCapabilities() {
+	m.granted_capabilities = nil
+	m.appendgranted_capabilities = nil
+	delete(m.clearedFields, wechatapp.FieldGrantedCapabilities)
+}
+
 // SetSecretCipher sets the "secret_cipher" field.
 func (m *WechatAppMutation) SetSecretCipher(s string) {
 	m.secret_cipher = &s
@@ -25241,7 +25366,7 @@ func (m *WechatAppMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *WechatAppMutation) Fields() []string {
-	fields := make([]string, 0, 16)
+	fields := make([]string, 0, 18)
 	if m.create_by != nil {
 		fields = append(fields, wechatapp.FieldCreateBy)
 	}
@@ -25271,6 +25396,12 @@ func (m *WechatAppMutation) Fields() []string {
 	}
 	if m.connection != nil {
 		fields = append(fields, wechatapp.FieldConnection)
+	}
+	if m.platform_id != nil {
+		fields = append(fields, wechatapp.FieldPlatformID)
+	}
+	if m.granted_capabilities != nil {
+		fields = append(fields, wechatapp.FieldGrantedCapabilities)
 	}
 	if m.secret_cipher != nil {
 		fields = append(fields, wechatapp.FieldSecretCipher)
@@ -25318,6 +25449,10 @@ func (m *WechatAppMutation) Field(name string) (ent.Value, bool) {
 		return m.AccountKind()
 	case wechatapp.FieldConnection:
 		return m.Connection()
+	case wechatapp.FieldPlatformID:
+		return m.PlatformID()
+	case wechatapp.FieldGrantedCapabilities:
+		return m.GrantedCapabilities()
 	case wechatapp.FieldSecretCipher:
 		return m.SecretCipher()
 	case wechatapp.FieldAppSecretMask:
@@ -25359,6 +25494,10 @@ func (m *WechatAppMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldAccountKind(ctx)
 	case wechatapp.FieldConnection:
 		return m.OldConnection(ctx)
+	case wechatapp.FieldPlatformID:
+		return m.OldPlatformID(ctx)
+	case wechatapp.FieldGrantedCapabilities:
+		return m.OldGrantedCapabilities(ctx)
 	case wechatapp.FieldSecretCipher:
 		return m.OldSecretCipher(ctx)
 	case wechatapp.FieldAppSecretMask:
@@ -25450,6 +25589,20 @@ func (m *WechatAppMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetConnection(v)
 		return nil
+	case wechatapp.FieldPlatformID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPlatformID(v)
+		return nil
+	case wechatapp.FieldGrantedCapabilities:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGrantedCapabilities(v)
+		return nil
 	case wechatapp.FieldSecretCipher:
 		v, ok := value.(string)
 		if !ok {
@@ -25506,6 +25659,9 @@ func (m *WechatAppMutation) AddedFields() []string {
 	if m.addupdate_by != nil {
 		fields = append(fields, wechatapp.FieldUpdateBy)
 	}
+	if m.addplatform_id != nil {
+		fields = append(fields, wechatapp.FieldPlatformID)
+	}
 	if m.addkey_version != nil {
 		fields = append(fields, wechatapp.FieldKeyVersion)
 	}
@@ -25521,6 +25677,8 @@ func (m *WechatAppMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedCreateBy()
 	case wechatapp.FieldUpdateBy:
 		return m.AddedUpdateBy()
+	case wechatapp.FieldPlatformID:
+		return m.AddedPlatformID()
 	case wechatapp.FieldKeyVersion:
 		return m.AddedKeyVersion()
 	}
@@ -25546,6 +25704,13 @@ func (m *WechatAppMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddUpdateBy(v)
 		return nil
+	case wechatapp.FieldPlatformID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPlatformID(v)
+		return nil
 	case wechatapp.FieldKeyVersion:
 		v, ok := value.(int)
 		if !ok {
@@ -25570,6 +25735,9 @@ func (m *WechatAppMutation) ClearedFields() []string {
 	if m.FieldCleared(wechatapp.FieldDeletedAt) {
 		fields = append(fields, wechatapp.FieldDeletedAt)
 	}
+	if m.FieldCleared(wechatapp.FieldGrantedCapabilities) {
+		fields = append(fields, wechatapp.FieldGrantedCapabilities)
+	}
 	return fields
 }
 
@@ -25592,6 +25760,9 @@ func (m *WechatAppMutation) ClearField(name string) error {
 		return nil
 	case wechatapp.FieldDeletedAt:
 		m.ClearDeletedAt()
+		return nil
+	case wechatapp.FieldGrantedCapabilities:
+		m.ClearGrantedCapabilities()
 		return nil
 	}
 	return fmt.Errorf("unknown WechatApp nullable field %s", name)
@@ -25630,6 +25801,12 @@ func (m *WechatAppMutation) ResetField(name string) error {
 		return nil
 	case wechatapp.FieldConnection:
 		m.ResetConnection()
+		return nil
+	case wechatapp.FieldPlatformID:
+		m.ResetPlatformID()
+		return nil
+	case wechatapp.FieldGrantedCapabilities:
+		m.ResetGrantedCapabilities()
 		return nil
 	case wechatapp.FieldSecretCipher:
 		m.ResetSecretCipher()

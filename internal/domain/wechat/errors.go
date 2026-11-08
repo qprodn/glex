@@ -21,6 +21,12 @@ var (
 	// ErrPlatformAppIDImmutable: the component AppID is fixed for the life
 	// of the row (ADR 0029).
 	ErrPlatformAppIDImmutable = errors.BadRequest("WECHAT_PLATFORM_APP_ID_IMMUTABLE", "component app id cannot be changed")
+	// ErrPlatformNotReady: the platform does not hold its secrets and a
+	// verify ticket, so it cannot start or finish a Platform Authorization.
+	ErrPlatformNotReady = errors.BadRequest("WECHAT_PLATFORM_NOT_READY", "wechat platform is not ready")
+	// ErrPlatformInUse: a non-withdrawn WeChat App is still authorized
+	// through this platform, so the platform cannot be withdrawn (ADR 0029).
+	ErrPlatformInUse = errors.Conflict("WECHAT_PLATFORM_IN_USE", "wechat platform still authorizes an app")
 	// ErrMasterKeyMissing: WECHAT_MASTER_KEY is absent or malformed
 	// (ADR 0018, ADR 0029) — registration and secret replacement refuse
 	// to operate rather than degrade to plaintext.

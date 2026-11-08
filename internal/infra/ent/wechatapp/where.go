@@ -104,6 +104,11 @@ func Connection(v string) predicate.WechatApp {
 	return predicate.WechatApp(sql.FieldEQ(FieldConnection, v))
 }
 
+// PlatformID applies equality check predicate on the "platform_id" field. It's identical to PlatformIDEQ.
+func PlatformID(v int64) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldEQ(FieldPlatformID, v))
+}
+
 // SecretCipher applies equality check predicate on the "secret_cipher" field. It's identical to SecretCipherEQ.
 func SecretCipher(v string) predicate.WechatApp {
 	return predicate.WechatApp(sql.FieldEQ(FieldSecretCipher, v))
@@ -687,6 +692,56 @@ func ConnectionEqualFold(v string) predicate.WechatApp {
 // ConnectionContainsFold applies the ContainsFold predicate on the "connection" field.
 func ConnectionContainsFold(v string) predicate.WechatApp {
 	return predicate.WechatApp(sql.FieldContainsFold(FieldConnection, v))
+}
+
+// PlatformIDEQ applies the EQ predicate on the "platform_id" field.
+func PlatformIDEQ(v int64) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldEQ(FieldPlatformID, v))
+}
+
+// PlatformIDNEQ applies the NEQ predicate on the "platform_id" field.
+func PlatformIDNEQ(v int64) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldNEQ(FieldPlatformID, v))
+}
+
+// PlatformIDIn applies the In predicate on the "platform_id" field.
+func PlatformIDIn(vs ...int64) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldIn(FieldPlatformID, vs...))
+}
+
+// PlatformIDNotIn applies the NotIn predicate on the "platform_id" field.
+func PlatformIDNotIn(vs ...int64) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldNotIn(FieldPlatformID, vs...))
+}
+
+// PlatformIDGT applies the GT predicate on the "platform_id" field.
+func PlatformIDGT(v int64) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldGT(FieldPlatformID, v))
+}
+
+// PlatformIDGTE applies the GTE predicate on the "platform_id" field.
+func PlatformIDGTE(v int64) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldGTE(FieldPlatformID, v))
+}
+
+// PlatformIDLT applies the LT predicate on the "platform_id" field.
+func PlatformIDLT(v int64) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldLT(FieldPlatformID, v))
+}
+
+// PlatformIDLTE applies the LTE predicate on the "platform_id" field.
+func PlatformIDLTE(v int64) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldLTE(FieldPlatformID, v))
+}
+
+// GrantedCapabilitiesIsNil applies the IsNil predicate on the "granted_capabilities" field.
+func GrantedCapabilitiesIsNil() predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldIsNull(FieldGrantedCapabilities))
+}
+
+// GrantedCapabilitiesNotNil applies the NotNil predicate on the "granted_capabilities" field.
+func GrantedCapabilitiesNotNil() predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldNotNull(FieldGrantedCapabilities))
 }
 
 // SecretCipherEQ applies the EQ predicate on the "secret_cipher" field.

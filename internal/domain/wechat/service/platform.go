@@ -84,6 +84,7 @@ type platformImpl struct {
 	platforms    repository.PlatformRepo
 	openapi      OpenAPI
 	pushes       PushAuthenticator
+	bindings     PlatformBindings
 	callbackBase string
 	logger       *slog.Logger
 }
@@ -91,12 +92,14 @@ type platformImpl struct {
 // NewPlatformService creates the platform domain service. openapi is the
 // scripted boundary in tests and the HTTP adapter in the process. pushes
 // is the real encrypted-push authenticator — plaintext, compatible mode,
-// and a bad signature never reach platform state.
-func NewPlatformService(platforms repository.PlatformRepo, openapi OpenAPI, pushes PushAuthenticator, callbackBase CallbackBase, logger *slog.Logger) Platform {
+// and a bad signature never reach platform state. bindings applies a
+// grant WeChat pushed and refuses withdrawal while a live app remains.
+func NewPlatformService(platforms repository.PlatformRepo, openapi OpenAPI, pushes PushAuthenticator, callbackBase CallbackBase, bindings PlatformBindings, logger *slog.Logger) Platform {
 	return &platformImpl{
 		platforms:    platforms,
 		openapi:      openapi,
 		pushes:       pushes,
+		bindings:     bindings,
 		callbackBase: strings.TrimRight(string(callbackBase), "/"),
 		logger:       logger.With(slog.String("component", "domain.wechat.platform.svc")),
 	}
@@ -243,6 +246,18 @@ func (s *platformImpl) Update(ctx context.Context, req UpdateRequest) (*entity.P
 }
 
 func (s *platformImpl) Withdraw(ctx context.Context, req WithdrawRequest) error {
+	if s.bindings != nil {
+		n, err := s.bindings.CountLiveAuthorizations(ctx, req.ID)
+		if err != nil {
+			logx.Propagate(ctx, s.logger, "wechat.svc.platform.withdraw", err)
+			return err
+		}
+		if n > 0 {
+			err = wechat.ErrPlatformInUse
+			logx.Propagate(ctx, s.logger, "wechat.svc.platform.withdraw", err)
+			return err
+		}
+	}
 	if err := s.platforms.Delete(ctx, repository.DeletePlatformRequest{
 		ID:      req.ID,
 		ActorID: req.ActorID,

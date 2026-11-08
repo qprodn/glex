@@ -33,6 +33,10 @@ const (
 	FieldAccountKind = "account_kind"
 	// FieldConnection holds the string denoting the connection field in the database.
 	FieldConnection = "connection"
+	// FieldPlatformID holds the string denoting the platform_id field in the database.
+	FieldPlatformID = "platform_id"
+	// FieldGrantedCapabilities holds the string denoting the granted_capabilities field in the database.
+	FieldGrantedCapabilities = "granted_capabilities"
 	// FieldSecretCipher holds the string denoting the secret_cipher field in the database.
 	FieldSecretCipher = "secret_cipher"
 	// FieldAppSecretMask holds the string denoting the app_secret_mask field in the database.
@@ -62,6 +66,8 @@ var Columns = []string{
 	FieldAppType,
 	FieldAccountKind,
 	FieldConnection,
+	FieldPlatformID,
+	FieldGrantedCapabilities,
 	FieldSecretCipher,
 	FieldAppSecretMask,
 	FieldTokenMask,
@@ -103,6 +109,8 @@ var (
 	AccountKindValidator func(string) error
 	// ConnectionValidator is a validator for the "connection" field. It is called by the builders before save.
 	ConnectionValidator func(string) error
+	// DefaultPlatformID holds the default value on creation for the "platform_id" field.
+	DefaultPlatformID int64
 	// AppSecretMaskValidator is a validator for the "app_secret_mask" field. It is called by the builders before save.
 	AppSecretMaskValidator func(string) error
 	// TokenMaskValidator is a validator for the "token_mask" field. It is called by the builders before save.
@@ -171,6 +179,11 @@ func ByAccountKind(opts ...sql.OrderTermOption) OrderOption {
 // ByConnection orders the results by the connection field.
 func ByConnection(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldConnection, opts...).ToFunc()
+}
+
+// ByPlatformID orders the results by the platform_id field.
+func ByPlatformID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPlatformID, opts...).ToFunc()
 }
 
 // BySecretCipher orders the results by the secret_cipher field.

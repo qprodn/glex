@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"glex/internal/infra/ent/wechatapp"
 	"strings"
@@ -37,6 +38,10 @@ type WechatApp struct {
 	AccountKind string `json:"account_kind,omitempty"`
 	// Connection holds the value of the "connection" field.
 	Connection string `json:"connection,omitempty"`
+	// PlatformID holds the value of the "platform_id" field.
+	PlatformID int64 `json:"platform_id,omitempty"`
+	// GrantedCapabilities holds the value of the "granted_capabilities" field.
+	GrantedCapabilities []string `json:"granted_capabilities,omitempty"`
 	// SecretCipher holds the value of the "secret_cipher" field.
 	SecretCipher string `json:"secret_cipher,omitempty"`
 	// AppSecretMask holds the value of the "app_secret_mask" field.
@@ -57,9 +62,11 @@ func (*WechatApp) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case wechatapp.FieldGrantedCapabilities:
+			values[i] = new([]byte)
 		case wechatapp.FieldSuspended:
 			values[i] = new(sql.NullBool)
-		case wechatapp.FieldID, wechatapp.FieldCreateBy, wechatapp.FieldUpdateBy, wechatapp.FieldKeyVersion:
+		case wechatapp.FieldID, wechatapp.FieldCreateBy, wechatapp.FieldUpdateBy, wechatapp.FieldPlatformID, wechatapp.FieldKeyVersion:
 			values[i] = new(sql.NullInt64)
 		case wechatapp.FieldName, wechatapp.FieldWxAppID, wechatapp.FieldAppType, wechatapp.FieldAccountKind, wechatapp.FieldConnection, wechatapp.FieldSecretCipher, wechatapp.FieldAppSecretMask, wechatapp.FieldTokenMask, wechatapp.FieldEncodingAesKeyMask:
 			values[i] = new(sql.NullString)
@@ -146,6 +153,20 @@ func (_m *WechatApp) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field connection", values[i])
 			} else if value.Valid {
 				_m.Connection = value.String
+			}
+		case wechatapp.FieldPlatformID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field platform_id", values[i])
+			} else if value.Valid {
+				_m.PlatformID = value.Int64
+			}
+		case wechatapp.FieldGrantedCapabilities:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field granted_capabilities", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.GrantedCapabilities); err != nil {
+					return fmt.Errorf("unmarshal field granted_capabilities: %w", err)
+				}
 			}
 		case wechatapp.FieldSecretCipher:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -250,6 +271,12 @@ func (_m *WechatApp) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("connection=")
 	builder.WriteString(_m.Connection)
+	builder.WriteString(", ")
+	builder.WriteString("platform_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.PlatformID))
+	builder.WriteString(", ")
+	builder.WriteString("granted_capabilities=")
+	builder.WriteString(fmt.Sprintf("%v", _m.GrantedCapabilities))
 	builder.WriteString(", ")
 	builder.WriteString("secret_cipher=")
 	builder.WriteString(_m.SecretCipher)

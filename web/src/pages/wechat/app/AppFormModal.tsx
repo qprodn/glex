@@ -26,6 +26,7 @@ const AppFormModal: React.FC<AppFormModalProps> = ({ open, record, onClose }) =>
   const intl = useIntl();
   const { message } = App.useApp();
   const isEdit = Boolean(record);
+  const platformAuth = record?.connection === "WECHAT_CONNECTION_PLATFORM_AUTHORIZATION";
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -76,7 +77,7 @@ const AppFormModal: React.FC<AppFormModalProps> = ({ open, record, onClose }) =>
             appId: record?.appId,
             name: values.name,
             wxAppId: record?.wxAppId,
-            appSecret: values.appSecret ?? "",
+            appSecret: platformAuth ? "" : (values.appSecret ?? ""),
           });
           message.success(intl.formatMessage({ id: "common.saved", defaultMessage: "保存成功" }));
           onClose(true);
@@ -128,20 +129,22 @@ const AppFormModal: React.FC<AppFormModalProps> = ({ open, record, onClose }) =>
           defaultMessage: "保存后不可修改。未撤回的应用之间，同一个 AppID 只有一条。",
         })}
       />
-      <ProFormText.Password
-        name="appSecret"
-        label="AppSecret"
-        rules={isEdit ? [] : [{ required: true }]}
-        placeholder={isEdit ? record?.appSecretMask : undefined}
-        extra={
-          isEdit
-            ? keep
-            : intl.formatMessage({
-                id: "pages.wechat.app.secret.hint",
-                defaultMessage: "只保存密文。页面和后续查询不回显明文。",
-              })
-        }
-      />
+      {platformAuth ? null : (
+        <ProFormText.Password
+          name="appSecret"
+          label="AppSecret"
+          rules={isEdit ? [] : [{ required: true }]}
+          placeholder={isEdit ? record?.appSecretMask : undefined}
+          extra={
+            isEdit
+              ? keep
+              : intl.formatMessage({
+                  id: "pages.wechat.app.secret.hint",
+                  defaultMessage: "只保存密文。页面和后续查询不回显明文。",
+                })
+          }
+        />
+      )}
     </ModalForm>
   );
 };

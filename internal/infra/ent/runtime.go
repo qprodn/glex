@@ -1076,24 +1076,28 @@ func init() {
 	wechatappDescConnection := wechatappFields[5].Descriptor()
 	// wechatapp.ConnectionValidator is a validator for the "connection" field. It is called by the builders before save.
 	wechatapp.ConnectionValidator = wechatappDescConnection.Validators[0].(func(string) error)
+	// wechatappDescPlatformID is the schema descriptor for platform_id field.
+	wechatappDescPlatformID := wechatappFields[6].Descriptor()
+	// wechatapp.DefaultPlatformID holds the default value on creation for the platform_id field.
+	wechatapp.DefaultPlatformID = wechatappDescPlatformID.Default.(int64)
 	// wechatappDescAppSecretMask is the schema descriptor for app_secret_mask field.
-	wechatappDescAppSecretMask := wechatappFields[7].Descriptor()
+	wechatappDescAppSecretMask := wechatappFields[9].Descriptor()
 	// wechatapp.AppSecretMaskValidator is a validator for the "app_secret_mask" field. It is called by the builders before save.
 	wechatapp.AppSecretMaskValidator = wechatappDescAppSecretMask.Validators[0].(func(string) error)
 	// wechatappDescTokenMask is the schema descriptor for token_mask field.
-	wechatappDescTokenMask := wechatappFields[8].Descriptor()
+	wechatappDescTokenMask := wechatappFields[10].Descriptor()
 	// wechatapp.TokenMaskValidator is a validator for the "token_mask" field. It is called by the builders before save.
 	wechatapp.TokenMaskValidator = wechatappDescTokenMask.Validators[0].(func(string) error)
 	// wechatappDescEncodingAesKeyMask is the schema descriptor for encoding_aes_key_mask field.
-	wechatappDescEncodingAesKeyMask := wechatappFields[9].Descriptor()
+	wechatappDescEncodingAesKeyMask := wechatappFields[11].Descriptor()
 	// wechatapp.EncodingAesKeyMaskValidator is a validator for the "encoding_aes_key_mask" field. It is called by the builders before save.
 	wechatapp.EncodingAesKeyMaskValidator = wechatappDescEncodingAesKeyMask.Validators[0].(func(string) error)
 	// wechatappDescSuspended is the schema descriptor for suspended field.
-	wechatappDescSuspended := wechatappFields[10].Descriptor()
+	wechatappDescSuspended := wechatappFields[12].Descriptor()
 	// wechatapp.DefaultSuspended holds the default value on creation for the suspended field.
 	wechatapp.DefaultSuspended = wechatappDescSuspended.Default.(bool)
 	// wechatappDescKeyVersion is the schema descriptor for key_version field.
-	wechatappDescKeyVersion := wechatappFields[11].Descriptor()
+	wechatappDescKeyVersion := wechatappFields[13].Descriptor()
 	// wechatapp.DefaultKeyVersion holds the default value on creation for the key_version field.
 	wechatapp.DefaultKeyVersion = wechatappDescKeyVersion.Default.(int)
 	wechatplatformMixin := schema.WechatPlatform{}.Mixin()

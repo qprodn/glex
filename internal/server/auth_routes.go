@@ -147,9 +147,9 @@ func authRoutes() map[string]authmw.Route {
 		// push is the authentication, the same way the pay notify route is
 		// absent (ADR 0020).
 
-		// wechat: Direct Hold of a WeChat App. Reads show masks. The
-		// generated Push Secret is returned in full only by create and
-		// regenerate.
+		// wechat: WeChat Apps. Reads show masks. A Direct Hold returns its
+		// generated Push Secret in full only on create and regenerate.
+		// Platform Authorization starts here; WeChat's push completes it.
 		wechatv1.OperationWechatServiceCreateWechatApp:               {Permission: "wechat:app:create"},
 		wechatv1.OperationWechatServiceListWechatApps:                {Permission: "wechat:app:list"},
 		wechatv1.OperationWechatServiceGetWechatApp:                  {Permission: "wechat:app:list"},
@@ -157,6 +157,11 @@ func authRoutes() map[string]authmw.Route {
 		wechatv1.OperationWechatServiceSetWechatAppSuspended:         {Permission: "wechat:app:update"},
 		wechatv1.OperationWechatServiceRegenerateWechatAppPushSecret: {Permission: "wechat:app:update"},
 		wechatv1.OperationWechatServiceWithdrawWechatApp:             {Permission: "wechat:app:remove"},
+		// Starting a Platform Authorization is an app create: the operator
+		// chooses a ready platform from the WeChat App area. The grant
+		// itself arrives on the platform callback and is not this route.
+		wechatv1.OperationWechatServiceListAuthorizationPlatforms: {Permission: "wechat:app:create"},
+		wechatv1.OperationWechatServiceStartWechatAuthorization:   {Permission: "wechat:app:create"},
 
 		// job: scheduled-task console and run history (ADR 0023). The
 		// executor listing rides the list permission — it exists to power

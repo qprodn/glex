@@ -130,6 +130,26 @@ func (_c *WechatAppCreate) SetConnection(v string) *WechatAppCreate {
 	return _c
 }
 
+// SetPlatformID sets the "platform_id" field.
+func (_c *WechatAppCreate) SetPlatformID(v int64) *WechatAppCreate {
+	_c.mutation.SetPlatformID(v)
+	return _c
+}
+
+// SetNillablePlatformID sets the "platform_id" field if the given value is not nil.
+func (_c *WechatAppCreate) SetNillablePlatformID(v *int64) *WechatAppCreate {
+	if v != nil {
+		_c.SetPlatformID(*v)
+	}
+	return _c
+}
+
+// SetGrantedCapabilities sets the "granted_capabilities" field.
+func (_c *WechatAppCreate) SetGrantedCapabilities(v []string) *WechatAppCreate {
+	_c.mutation.SetGrantedCapabilities(v)
+	return _c
+}
+
 // SetSecretCipher sets the "secret_cipher" field.
 func (_c *WechatAppCreate) SetSecretCipher(v string) *WechatAppCreate {
 	_c.mutation.SetSecretCipher(v)
@@ -243,6 +263,10 @@ func (_c *WechatAppCreate) defaults() {
 		v := wechatapp.DefaultAccountKind
 		_c.mutation.SetAccountKind(v)
 	}
+	if _, ok := _c.mutation.PlatformID(); !ok {
+		v := wechatapp.DefaultPlatformID
+		_c.mutation.SetPlatformID(v)
+	}
 	if _, ok := _c.mutation.Suspended(); !ok {
 		v := wechatapp.DefaultSuspended
 		_c.mutation.SetSuspended(v)
@@ -300,6 +324,9 @@ func (_c *WechatAppCreate) check() error {
 		if err := wechatapp.ConnectionValidator(v); err != nil {
 			return &ValidationError{Name: "connection", err: fmt.Errorf(`ent: validator failed for field "WechatApp.connection": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.PlatformID(); !ok {
+		return &ValidationError{Name: "platform_id", err: errors.New(`ent: missing required field "WechatApp.platform_id"`)}
 	}
 	if _, ok := _c.mutation.SecretCipher(); !ok {
 		return &ValidationError{Name: "secret_cipher", err: errors.New(`ent: missing required field "WechatApp.secret_cipher"`)}
@@ -406,6 +433,14 @@ func (_c *WechatAppCreate) createSpec() (*WechatApp, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Connection(); ok {
 		_spec.SetField(wechatapp.FieldConnection, field.TypeString, value)
 		_node.Connection = value
+	}
+	if value, ok := _c.mutation.PlatformID(); ok {
+		_spec.SetField(wechatapp.FieldPlatformID, field.TypeInt64, value)
+		_node.PlatformID = value
+	}
+	if value, ok := _c.mutation.GrantedCapabilities(); ok {
+		_spec.SetField(wechatapp.FieldGrantedCapabilities, field.TypeJSON, value)
+		_node.GrantedCapabilities = value
 	}
 	if value, ok := _c.mutation.SecretCipher(); ok {
 		_spec.SetField(wechatapp.FieldSecretCipher, field.TypeString, value)
@@ -585,6 +620,24 @@ func (u *WechatAppUpsert) UpdateAccountKind() *WechatAppUpsert {
 	return u
 }
 
+// SetGrantedCapabilities sets the "granted_capabilities" field.
+func (u *WechatAppUpsert) SetGrantedCapabilities(v []string) *WechatAppUpsert {
+	u.Set(wechatapp.FieldGrantedCapabilities, v)
+	return u
+}
+
+// UpdateGrantedCapabilities sets the "granted_capabilities" field to the value that was provided on create.
+func (u *WechatAppUpsert) UpdateGrantedCapabilities() *WechatAppUpsert {
+	u.SetExcluded(wechatapp.FieldGrantedCapabilities)
+	return u
+}
+
+// ClearGrantedCapabilities clears the value of the "granted_capabilities" field.
+func (u *WechatAppUpsert) ClearGrantedCapabilities() *WechatAppUpsert {
+	u.SetNull(wechatapp.FieldGrantedCapabilities)
+	return u
+}
+
 // SetSecretCipher sets the "secret_cipher" field.
 func (u *WechatAppUpsert) SetSecretCipher(v string) *WechatAppUpsert {
 	u.Set(wechatapp.FieldSecretCipher, v)
@@ -691,6 +744,9 @@ func (u *WechatAppUpsertOne) UpdateNewValues() *WechatAppUpsertOne {
 		}
 		if _, exists := u.create.mutation.Connection(); exists {
 			s.SetIgnore(wechatapp.FieldConnection)
+		}
+		if _, exists := u.create.mutation.PlatformID(); exists {
+			s.SetIgnore(wechatapp.FieldPlatformID)
 		}
 	}))
 	return u
@@ -839,6 +895,27 @@ func (u *WechatAppUpsertOne) SetAccountKind(v string) *WechatAppUpsertOne {
 func (u *WechatAppUpsertOne) UpdateAccountKind() *WechatAppUpsertOne {
 	return u.Update(func(s *WechatAppUpsert) {
 		s.UpdateAccountKind()
+	})
+}
+
+// SetGrantedCapabilities sets the "granted_capabilities" field.
+func (u *WechatAppUpsertOne) SetGrantedCapabilities(v []string) *WechatAppUpsertOne {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.SetGrantedCapabilities(v)
+	})
+}
+
+// UpdateGrantedCapabilities sets the "granted_capabilities" field to the value that was provided on create.
+func (u *WechatAppUpsertOne) UpdateGrantedCapabilities() *WechatAppUpsertOne {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.UpdateGrantedCapabilities()
+	})
+}
+
+// ClearGrantedCapabilities clears the value of the "granted_capabilities" field.
+func (u *WechatAppUpsertOne) ClearGrantedCapabilities() *WechatAppUpsertOne {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.ClearGrantedCapabilities()
 	})
 }
 
@@ -1127,6 +1204,9 @@ func (u *WechatAppUpsertBulk) UpdateNewValues() *WechatAppUpsertBulk {
 			if _, exists := b.mutation.Connection(); exists {
 				s.SetIgnore(wechatapp.FieldConnection)
 			}
+			if _, exists := b.mutation.PlatformID(); exists {
+				s.SetIgnore(wechatapp.FieldPlatformID)
+			}
 		}
 	}))
 	return u
@@ -1275,6 +1355,27 @@ func (u *WechatAppUpsertBulk) SetAccountKind(v string) *WechatAppUpsertBulk {
 func (u *WechatAppUpsertBulk) UpdateAccountKind() *WechatAppUpsertBulk {
 	return u.Update(func(s *WechatAppUpsert) {
 		s.UpdateAccountKind()
+	})
+}
+
+// SetGrantedCapabilities sets the "granted_capabilities" field.
+func (u *WechatAppUpsertBulk) SetGrantedCapabilities(v []string) *WechatAppUpsertBulk {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.SetGrantedCapabilities(v)
+	})
+}
+
+// UpdateGrantedCapabilities sets the "granted_capabilities" field to the value that was provided on create.
+func (u *WechatAppUpsertBulk) UpdateGrantedCapabilities() *WechatAppUpsertBulk {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.UpdateGrantedCapabilities()
+	})
+}
+
+// ClearGrantedCapabilities clears the value of the "granted_capabilities" field.
+func (u *WechatAppUpsertBulk) ClearGrantedCapabilities() *WechatAppUpsertBulk {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.ClearGrantedCapabilities()
 	})
 }
 

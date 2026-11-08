@@ -715,6 +715,8 @@ var (
 		{Name: "app_type", Type: field.TypeString, Size: 32},
 		{Name: "account_kind", Type: field.TypeString, Size: 32, Default: ""},
 		{Name: "connection", Type: field.TypeString, Size: 32},
+		{Name: "platform_id", Type: field.TypeInt64, Default: 0},
+		{Name: "granted_capabilities", Type: field.TypeJSON, Nullable: true},
 		{Name: "secret_cipher", Type: field.TypeString, Size: 2147483647},
 		{Name: "app_secret_mask", Type: field.TypeString, Size: 16},
 		{Name: "token_mask", Type: field.TypeString, Size: 16},
@@ -735,6 +737,11 @@ var (
 				Annotation: &entsql.IndexAnnotation{
 					Where: "deleted_at IS NULL",
 				},
+			},
+			{
+				Name:    "wechatapp_platform_id",
+				Unique:  false,
+				Columns: []*schema.Column{WechatAppColumns[11]},
 			},
 		},
 	}

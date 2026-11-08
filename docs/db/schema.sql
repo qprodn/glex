@@ -834,8 +834,10 @@ create table if not exists wechat_app (
     wx_app_id               varchar(64)  not null,             -- 微信 AppID；本行存续期间不可改
     app_type                varchar(32)  not null,             -- mini_program 或 official_account
     account_kind            varchar(32)  not null default '',  -- service_account、subscription_account，小程序为空
-    connection              varchar(32)  not null,             -- direct_hold；本行存续期间不可改
-    secret_cipher           text         not null,             -- AppSecret 与消息推送密钥的 JSON 密文（ADR 0018/0029）
+    connection              varchar(32)  not null,             -- direct_hold 或 platform_authorization；本行存续期间不可改
+    platform_id             bigint       not null default 0,   -- 平台授权所挂的微信平台；直连为 0；本行存续期间不可改
+    granted_capabilities    jsonb,                             -- 微信授予的能力名称；直连为空。不是权限集数字编号
+    secret_cipher           text         not null,             -- 直连为 AppSecret 与消息推送密钥；平台授权为授权方刷新材料。均为 JSON 密文（ADR 0018/0029）
     app_secret_mask         varchar(16)  not null,             -- 写入时生成的 AppSecret 掩码回显
     token_mask              varchar(16)  not null,
     encoding_aes_key_mask   varchar(16)  not null,
@@ -855,15 +857,20 @@ create unique index if not exists wechat_app_wx_app_id
     on wechat_app (wx_app_id)
     where deleted_at is null;
 
-comment on table wechat_app is '微信应用表（直连接入，凭据密文落库 ADR 0018/0029）';
+create index if not exists wechat_app_platform_id
+    on wechat_app (platform_id);
+
+comment on table wechat_app is '微信应用表（直连或平台授权，凭据密文落库 ADR 0018/0029）';
 
 comment on column wechat_app.id is '主键ID（雪花）';
 comment on column wechat_app.name is '显示名称';
 comment on column wechat_app.wx_app_id is '微信 AppID；本行存续期间不可改；未撤回行内唯一，与平台 component AppID 无关';
 comment on column wechat_app.app_type is 'mini_program 或 official_account';
 comment on column wechat_app.account_kind is '公众号种类：service_account 或 subscription_account；小程序为空';
-comment on column wechat_app.connection is '接法，当前为 direct_hold；本行存续期间不可改';
-comment on column wechat_app.secret_cipher is 'AppSecret、Token、EncodingAESKey 的 JSON 密文；格式 key_version:nonce_b64:ciphertext_b64';
+comment on column wechat_app.connection is '接法：direct_hold 或 platform_authorization；本行存续期间不可改，也不能在两种接法之间改';
+comment on column wechat_app.platform_id is '平台授权所挂的微信平台 ID；直连为 0。本行存续期间不可改，也不能换平台';
+comment on column wechat_app.granted_capabilities is '微信这次授予的能力名称 JSON 数组；直连为空。不存放权限集数字编号';
+comment on column wechat_app.secret_cipher is '直连为 AppSecret、Token、EncodingAESKey；平台授权为授权方刷新材料、不含对方 AppSecret。JSON 密文，格式 key_version:nonce_b64:ciphertext_b64';
 comment on column wechat_app.app_secret_mask is 'AppSecret 掩码回显（如 ****ab12）；展示路径永不解密';
 comment on column wechat_app.token_mask is '消息推送 Token 掩码回显；展示路径永不解密';
 comment on column wechat_app.encoding_aes_key_mask is 'EncodingAESKey 掩码回显；展示路径永不解密';

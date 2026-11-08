@@ -12,6 +12,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 )
 
@@ -133,6 +134,24 @@ func (_u *WechatAppUpdate) SetNillableAccountKind(v *string) *WechatAppUpdate {
 	if v != nil {
 		_u.SetAccountKind(*v)
 	}
+	return _u
+}
+
+// SetGrantedCapabilities sets the "granted_capabilities" field.
+func (_u *WechatAppUpdate) SetGrantedCapabilities(v []string) *WechatAppUpdate {
+	_u.mutation.SetGrantedCapabilities(v)
+	return _u
+}
+
+// AppendGrantedCapabilities appends value to the "granted_capabilities" field.
+func (_u *WechatAppUpdate) AppendGrantedCapabilities(v []string) *WechatAppUpdate {
+	_u.mutation.AppendGrantedCapabilities(v)
+	return _u
+}
+
+// ClearGrantedCapabilities clears the value of the "granted_capabilities" field.
+func (_u *WechatAppUpdate) ClearGrantedCapabilities() *WechatAppUpdate {
+	_u.mutation.ClearGrantedCapabilities()
 	return _u
 }
 
@@ -343,6 +362,17 @@ func (_u *WechatAppUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AccountKind(); ok {
 		_spec.SetField(wechatapp.FieldAccountKind, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.GrantedCapabilities(); ok {
+		_spec.SetField(wechatapp.FieldGrantedCapabilities, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedGrantedCapabilities(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, wechatapp.FieldGrantedCapabilities, value)
+		})
+	}
+	if _u.mutation.GrantedCapabilitiesCleared() {
+		_spec.ClearField(wechatapp.FieldGrantedCapabilities, field.TypeJSON)
+	}
 	if value, ok := _u.mutation.SecretCipher(); ok {
 		_spec.SetField(wechatapp.FieldSecretCipher, field.TypeString, value)
 	}
@@ -489,6 +519,24 @@ func (_u *WechatAppUpdateOne) SetNillableAccountKind(v *string) *WechatAppUpdate
 	if v != nil {
 		_u.SetAccountKind(*v)
 	}
+	return _u
+}
+
+// SetGrantedCapabilities sets the "granted_capabilities" field.
+func (_u *WechatAppUpdateOne) SetGrantedCapabilities(v []string) *WechatAppUpdateOne {
+	_u.mutation.SetGrantedCapabilities(v)
+	return _u
+}
+
+// AppendGrantedCapabilities appends value to the "granted_capabilities" field.
+func (_u *WechatAppUpdateOne) AppendGrantedCapabilities(v []string) *WechatAppUpdateOne {
+	_u.mutation.AppendGrantedCapabilities(v)
+	return _u
+}
+
+// ClearGrantedCapabilities clears the value of the "granted_capabilities" field.
+func (_u *WechatAppUpdateOne) ClearGrantedCapabilities() *WechatAppUpdateOne {
+	_u.mutation.ClearGrantedCapabilities()
 	return _u
 }
 
@@ -728,6 +776,17 @@ func (_u *WechatAppUpdateOne) sqlSave(ctx context.Context) (_node *WechatApp, er
 	}
 	if value, ok := _u.mutation.AccountKind(); ok {
 		_spec.SetField(wechatapp.FieldAccountKind, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.GrantedCapabilities(); ok {
+		_spec.SetField(wechatapp.FieldGrantedCapabilities, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedGrantedCapabilities(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, wechatapp.FieldGrantedCapabilities, value)
+		})
+	}
+	if _u.mutation.GrantedCapabilitiesCleared() {
+		_spec.ClearField(wechatapp.FieldGrantedCapabilities, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.SecretCipher(); ok {
 		_spec.SetField(wechatapp.FieldSecretCipher, field.TypeString, value)
