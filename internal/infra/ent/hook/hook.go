@@ -248,6 +248,18 @@ func (f UserRoleFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, er
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserRoleMutation", m)
 }
 
+// The WechatAdoptedTemplateFunc type is an adapter to allow the use of ordinary
+// function as WechatAdoptedTemplate mutator.
+type WechatAdoptedTemplateFunc func(context.Context, *ent.WechatAdoptedTemplateMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f WechatAdoptedTemplateFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.WechatAdoptedTemplateMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.WechatAdoptedTemplateMutation", m)
+}
+
 // The WechatAppFunc type is an adapter to allow the use of ordinary
 // function as WechatApp mutator.
 type WechatAppFunc func(context.Context, *ent.WechatAppMutation) (ent.Value, error)
@@ -258,6 +270,18 @@ func (f WechatAppFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, e
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.WechatAppMutation", m)
+}
+
+// The WechatDispatchFunc type is an adapter to allow the use of ordinary
+// function as WechatDispatch mutator.
+type WechatDispatchFunc func(context.Context, *ent.WechatDispatchMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f WechatDispatchFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.WechatDispatchMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.WechatDispatchMutation", m)
 }
 
 // The WechatPlatformFunc type is an adapter to allow the use of ordinary

@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"glex/internal/domain/wechat/entity"
@@ -370,6 +371,186 @@ func (c *openAPI) CompleteAuthorization(ctx context.Context, req wechatservice.O
 		Capabilities: classifyGranted(queried.funcIDs, profile.appType),
 		RefreshToken: queried.refreshToken,
 	}, nil
+}
+
+func (c *openAPI) SendMessage(ctx context.Context, req wechatservice.SendMessageRequest) (wechatservice.SendMessageResult, error) {
+	token, refresh, err := c.accessToken(ctx, req.ProbeAppRequest)
+	if err != nil {
+		return classifySend("", refresh, err)
+	}
+	endpoint, payload := sendEndpoint(c.base, token, req)
+	body, err := c.postJSON(ctx, endpoint, payload)
+	if err != nil {
+		return classifySend("", refresh, err)
+	}
+	var resp struct {
+		ErrCode int    `json:"errcode"`
+		ErrMsg  string `json:"errmsg"`
+		MsgID   any    `json:"msgid"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return classifySend("", refresh, errors.New("wechat open api: unreadable response"))
+	}
+	msgid := formatMsgID(resp.MsgID)
+	if resp.ErrCode != 0 || msgid == "" {
+		return classifySend("", refresh, openAPIFailure(resp.ErrMsg, "message was not accepted"))
+	}
+	return classifySend(msgid, refresh, nil)
+}
+
+func formatMsgID(v any) string {
+	switch id := v.(type) {
+	case string:
+		return strings.TrimSpace(id)
+	case float64:
+		if id == 0 {
+			return ""
+		}
+		return strconv.FormatInt(int64(id), 10)
+	default:
+		return ""
+	}
+}
+
+func sendEndpoint(base, token string, req wechatservice.SendMessageRequest) (string, map[string]any) {
+	data := messageData(req.Content)
+	payload := map[string]any{
+		"touser":      req.OpenID,
+		"template_id": req.WechatTemplateID,
+		"data":        data,
+	}
+	switch req.Channel {
+	case entity.CapabilitySubscribeMessage:
+		if req.MiniProgramPage != "" {
+			payload["page"] = req.MiniProgramPage
+		}
+		if req.WebURL != "" {
+			payload["url"] = req.WebURL
+		}
+		return base + "/cgi-bin/message/subscribe/send?access_token=" + url.QueryEscape(token), payload
+	case entity.CapabilitySubscribeNotification:
+		if req.WebURL != "" {
+			payload["page"] = req.WebURL
+		}
+		if req.MiniProgramPage != "" {
+			payload["miniprogram"] = map[string]string{"pagepath": req.MiniProgramPage}
+		}
+		return base + "/cgi-bin/message/subscribe/bizsend?access_token=" + url.QueryEscape(token), payload
+	default:
+		if req.WebURL != "" {
+			payload["url"] = req.WebURL
+		}
+		if req.MiniProgramPage != "" {
+			payload["miniprogram"] = map[string]string{"pagepath": req.MiniProgramPage}
+		}
+		return base + "/cgi-bin/message/template/send?access_token=" + url.QueryEscape(token), payload
+	}
+}
+
+func messageData(content string) any {
+	trimmed := strings.TrimSpace(content)
+	if strings.HasPrefix(trimmed, "{") {
+		var object map[string]any
+		if err := json.Unmarshal([]byte(trimmed), &object); err == nil {
+			return object
+		}
+	}
+	return map[string]any{"content": map[string]string{"value": content}}
+}
+
+func classifySend(msgid, refresh string, err error) (wechatservice.SendMessageResult, error) {
+	if errors.Is(err, context.Canceled) {
+		return wechatservice.SendMessageResult{}, err
+	}
+	if err == nil && msgid != "" {
+		return wechatservice.SendMessageResult{
+			Class:                  wechatservice.CallSuccess,
+			MsgID:                  msgid,
+			AuthorizerRefreshToken: refresh,
+		}, nil
+	}
+	if err == nil || errors.Is(err, context.DeadlineExceeded) || probeUnavailable(err) {
+		return wechatservice.SendMessageResult{Class: wechatservice.CallUnavailable, Message: "微信不可用"}, nil
+	}
+	return wechatservice.SendMessageResult{Class: wechatservice.CallBusinessRejection, Message: "微信没有受理这次调用"}, nil
+}
+
+func (c *openAPI) AdoptLibraryTemplate(ctx context.Context, req wechatservice.AdoptLibraryTemplateRequest) (wechatservice.AdoptLibraryTemplateResult, error) {
+	token, refresh, err := c.accessToken(ctx, req.ProbeAppRequest)
+	if err != nil {
+		return classifyLibraryAdopt("", "", refresh, err)
+	}
+	endpoint, payload := adoptEndpoint(c.base, token, req)
+	body, err := c.postJSON(ctx, endpoint, payload)
+	if err != nil {
+		return classifyLibraryAdopt("", "", refresh, err)
+	}
+	var resp struct {
+		ErrCode    int    `json:"errcode"`
+		ErrMsg     string `json:"errmsg"`
+		TemplateID string `json:"template_id"`
+		Title      string `json:"title"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return classifyLibraryAdopt("", "", refresh, errors.New("wechat open api: unreadable response"))
+	}
+	if resp.ErrCode != 0 || resp.TemplateID == "" {
+		return classifyLibraryAdopt("", "", refresh, openAPIFailure(resp.ErrMsg, "template was not adopted"))
+	}
+	title := resp.Title
+	if title == "" {
+		title = resp.TemplateID
+	}
+	return classifyLibraryAdopt(resp.TemplateID, title, refresh, nil)
+}
+
+func adoptEndpoint(base, token string, req wechatservice.AdoptLibraryTemplateRequest) (string, any) {
+	switch req.Channel {
+	case entity.CapabilitySubscribeMessage, entity.CapabilitySubscribeNotification:
+		return base + "/wxaapi/newtmpl/addtemplate?access_token=" + url.QueryEscape(token), map[string]any{
+			"tid":       req.LibraryTemplateID,
+			"kidList":   []int{},
+			"sceneDesc": req.LibraryTemplateID,
+		}
+	default:
+		return base + "/cgi-bin/template/api_add_template?access_token=" + url.QueryEscape(token), map[string]string{
+			"template_id_short": req.LibraryTemplateID,
+		}
+	}
+}
+
+func classifyLibraryAdopt(templateID, title, refresh string, err error) (wechatservice.AdoptLibraryTemplateResult, error) {
+	if errors.Is(err, context.Canceled) {
+		return wechatservice.AdoptLibraryTemplateResult{}, err
+	}
+	if err == nil && templateID != "" {
+		return wechatservice.AdoptLibraryTemplateResult{
+			Class:                  wechatservice.CallSuccess,
+			WechatTemplateID:       templateID,
+			Title:                  title,
+			AuthorizerRefreshToken: refresh,
+		}, nil
+	}
+	if err == nil || errors.Is(err, context.DeadlineExceeded) || probeUnavailable(err) {
+		return wechatservice.AdoptLibraryTemplateResult{Class: wechatservice.CallUnavailable, Message: "微信不可用"}, nil
+	}
+	return wechatservice.AdoptLibraryTemplateResult{Class: wechatservice.CallBusinessRejection, Message: "微信没有受理这次调用"}, nil
+}
+
+func (c *openAPI) accessToken(ctx context.Context, req wechatservice.ProbeAppRequest) (string, string, error) {
+	switch req.Connection {
+	case entity.ConnectionDirectHold:
+		token, err := c.clientCredentialToken(ctx, req.AppID, req.AppSecret)
+		return token, "", err
+	case entity.ConnectionPlatformAuthorization:
+		component, err := c.componentToken(ctx, req.ComponentAppID, req.ComponentSecret, req.VerifyTicket)
+		if err != nil {
+			return "", "", err
+		}
+		return c.refreshAuthorizerToken(ctx, component, req.ComponentAppID, req.AppID, req.AuthorizerRefreshToken)
+	default:
+		return "", "", errors.New("wechat open api: unknown connection")
+	}
 }
 
 func (c *openAPI) AnswerFullNetwork(ctx context.Context, req wechatservice.FullNetworkReply) error {

@@ -2824,6 +2824,115 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/wechat.v1.WechatApp'
+    /wechat/app/{appId}/template:
+        get:
+            tags:
+                - WechatService
+            description: |-
+                ListAdoptedTemplates lists templates adopted onto this app from
+                 WeChat's public library, including after the app is withdrawn.
+                 Permission: wechat:dispatch:list.
+            operationId: WechatService_ListAdoptedTemplates
+            parameters:
+                - name: appId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.AdoptedTemplateSet'
+        post:
+            tags:
+                - WechatService
+            description: |-
+                AdoptWechatTemplate takes one public-library template onto this app
+                 through the app's current token. The same library template is not
+                 adopted twice onto the same live app. This call does not invent a
+                 template. Permission: wechat:dispatch:create.
+            operationId: WechatService_AdoptWechatTemplate
+            parameters:
+                - name: appId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.AdoptWechatTemplateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.AdoptedTemplate'
+    /wechat/dispatch:
+        get:
+            tags:
+                - WechatService
+            description: |-
+                ListWechatDispatches lists send attempts for live and withdrawn apps.
+                 app_id filters to one app. Permission: wechat:dispatch:list.
+            operationId: WechatService_ListWechatDispatches
+            parameters:
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  schema:
+                    type: string
+                - name: appId
+                  in: query
+                  description: Optional. Zero lists every attempt, including withdrawn apps.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatDispatchSet'
+        post:
+            tags:
+                - WechatService
+            description: |-
+                CreateWechatDispatch sends one adopted template to one openid and
+                 waits until WeChat accepts or rejects. Acceptance and business
+                 rejection each leave a new dispatch. Permission: wechat:dispatch:create.
+            operationId: WechatService_CreateWechatDispatch
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.CreateWechatDispatchRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatDispatch'
     /wechat/mini-program/login:
         post:
             tags:
@@ -4610,6 +4719,62 @@ components:
                     type: string
                     description: Opaque token for the next page; empty when on the last page.
             description: UserSet is a page of users.
+        wechat.v1.AdoptWechatTemplateRequest:
+            required:
+                - appId
+                - libraryTemplateId
+                - channel
+            type: object
+            properties:
+                appId:
+                    type: string
+                libraryTemplateId:
+                    type: string
+                    description: |-
+                        Required. The public-library template id. This system does not
+                         invent one.
+                channel:
+                    type: integer
+                    format: enum
+        wechat.v1.AdoptedTemplate:
+            type: object
+            properties:
+                templateId:
+                    type: string
+                appId:
+                    type: string
+                libraryTemplateId:
+                    type: string
+                    description: The public-library id the operator chose.
+                wechatTemplateId:
+                    type: string
+                    description: The id WeChat assigned on this app. Sends use this id.
+                title:
+                    type: string
+                channel:
+                    type: integer
+                    description: Which send this template fills.
+                    format: enum
+                createBy:
+                    type: string
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                AdoptedTemplate is one public-library template taken onto one WeChat
+                 App. This system does not invent templates.
+        wechat.v1.AdoptedTemplateSet:
+            type: object
+            properties:
+                templates:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/wechat.v1.AdoptedTemplate'
         wechat.v1.CreateWechatAppRequest:
             required:
                 - name
@@ -4639,6 +4804,25 @@ components:
                     description: |-
                         Required. AppSecret. Stored as ciphertext; echoed as a mask. Never
                          returned in full.
+        wechat.v1.CreateWechatDispatchRequest:
+            required:
+                - appId
+                - templateId
+                - openid
+            type: object
+            properties:
+                appId:
+                    type: string
+                templateId:
+                    type: string
+                openid:
+                    type: string
+                content:
+                    type: string
+                webUrl:
+                    type: string
+                miniProgramPage:
+                    type: string
         wechat.v1.CreateWechatPlatformRequest:
             required:
                 - name
@@ -4975,6 +5159,55 @@ components:
             description: |-
                 WechatCustomMenu is one menu document, including nested sub-buttons.
                  There is no ceiling of three top-level buttons.
+        wechat.v1.WechatDispatch:
+            type: object
+            properties:
+                dispatchId:
+                    type: string
+                appId:
+                    type: string
+                openid:
+                    type: string
+                templateId:
+                    type: string
+                libraryTemplateId:
+                    type: string
+                channel:
+                    type: integer
+                    format: enum
+                content:
+                    type: string
+                    description: The filled content. It is not a secret.
+                webUrl:
+                    type: string
+                miniProgramPage:
+                    type: string
+                accepted:
+                    type: boolean
+                msgid:
+                    type: string
+                createBy:
+                    type: string
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                WechatDispatch is one send attempt to one openid. Accepted is WeChat's
+                 acceptance, not delivery. A rejected attempt has no msgid.
+        wechat.v1.WechatDispatchSet:
+            type: object
+            properties:
+                dispatches:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/wechat.v1.WechatDispatch'
+                nextPageToken:
+                    type: string
         wechat.v1.WechatMenuButton:
             type: object
             properties:

@@ -163,6 +163,12 @@ func authRoutes() map[string]authmw.Route {
 		// itself arrives on the platform callback and is not this route.
 		wechatv1.OperationWechatServiceListAuthorizationPlatforms: {Permission: "wechat:app:create"},
 		wechatv1.OperationWechatServiceStartWechatAuthorization:   {Permission: "wechat:app:create"},
+		// Adopting a library template and sending both live on the app.
+		// The dispatch list includes attempts whose app was withdrawn.
+		wechatv1.OperationWechatServiceListAdoptedTemplates: {Permission: "wechat:dispatch:list"},
+		wechatv1.OperationWechatServiceAdoptWechatTemplate:  {Permission: "wechat:dispatch:create"},
+		wechatv1.OperationWechatServiceListWechatDispatches: {Permission: "wechat:dispatch:list"},
+		wechatv1.OperationWechatServiceCreateWechatDispatch: {Permission: "wechat:dispatch:create"},
 		// Menu editing and publishing sit on the app and reuse update.
 		// Reading the saved menu reuses list, the same way GetWechatApp does.
 		wechatv1.OperationWechatServiceGetWechatAppMenu:     {Permission: "wechat:app:list"},

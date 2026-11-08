@@ -14,6 +14,8 @@ var Module = fx.Module("wechat-infra",
 		NewCipher,
 		NewPlatformRepo,
 		NewAppRepo,
+		NewTemplateRepo,
+		NewDispatchRepo,
 		fx.Annotate(NewOpenAPI, fx.As(new(wechatservice.OpenAPI))),
 	),
 )

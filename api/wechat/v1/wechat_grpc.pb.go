@@ -36,6 +36,10 @@ const (
 	WechatService_ProbeWechatApp_FullMethodName                = "/wechat.v1.WechatService/ProbeWechatApp"
 	WechatService_ListAuthorizationPlatforms_FullMethodName    = "/wechat.v1.WechatService/ListAuthorizationPlatforms"
 	WechatService_StartWechatAuthorization_FullMethodName      = "/wechat.v1.WechatService/StartWechatAuthorization"
+	WechatService_ListAdoptedTemplates_FullMethodName          = "/wechat.v1.WechatService/ListAdoptedTemplates"
+	WechatService_AdoptWechatTemplate_FullMethodName           = "/wechat.v1.WechatService/AdoptWechatTemplate"
+	WechatService_ListWechatDispatches_FullMethodName          = "/wechat.v1.WechatService/ListWechatDispatches"
+	WechatService_CreateWechatDispatch_FullMethodName          = "/wechat.v1.WechatService/CreateWechatDispatch"
 	WechatService_GetWechatAppMenu_FullMethodName              = "/wechat.v1.WechatService/GetWechatAppMenu"
 	WechatService_SaveWechatAppMenu_FullMethodName             = "/wechat.v1.WechatService/SaveWechatAppMenu"
 	WechatService_PublishWechatAppMenu_FullMethodName          = "/wechat.v1.WechatService/PublishWechatAppMenu"
@@ -115,6 +119,22 @@ type WechatServiceClient interface {
 	// opens. The chosen platform must be ready and not withdrawn. No WeChat
 	// App is created by this call. Permission: wechat:app:create.
 	StartWechatAuthorization(ctx context.Context, in *StartWechatAuthorizationRequest, opts ...grpc.CallOption) (*WechatAuthorization, error)
+	// ListAdoptedTemplates lists templates adopted onto this app from
+	// WeChat's public library, including after the app is withdrawn.
+	// Permission: wechat:dispatch:list.
+	ListAdoptedTemplates(ctx context.Context, in *ListAdoptedTemplatesRequest, opts ...grpc.CallOption) (*AdoptedTemplateSet, error)
+	// AdoptWechatTemplate takes one public-library template onto this app
+	// through the app's current token. The same library template is not
+	// adopted twice onto the same live app. This call does not invent a
+	// template. Permission: wechat:dispatch:create.
+	AdoptWechatTemplate(ctx context.Context, in *AdoptWechatTemplateRequest, opts ...grpc.CallOption) (*AdoptedTemplate, error)
+	// ListWechatDispatches lists send attempts for live and withdrawn apps.
+	// app_id filters to one app. Permission: wechat:dispatch:list.
+	ListWechatDispatches(ctx context.Context, in *ListWechatDispatchesRequest, opts ...grpc.CallOption) (*WechatDispatchSet, error)
+	// CreateWechatDispatch sends one adopted template to one openid and
+	// waits until WeChat accepts or rejects. Acceptance and business
+	// rejection each leave a new dispatch. Permission: wechat:dispatch:create.
+	CreateWechatDispatch(ctx context.Context, in *CreateWechatDispatchRequest, opts ...grpc.CallOption) (*WechatDispatch, error)
 	// GetWechatAppMenu returns the Custom Menu saved on one Service Account
 	// and the last menu WeChat accepted. Neither is a secret. Permission:
 	// wechat:app:list.
@@ -307,6 +327,46 @@ func (c *wechatServiceClient) StartWechatAuthorization(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *wechatServiceClient) ListAdoptedTemplates(ctx context.Context, in *ListAdoptedTemplatesRequest, opts ...grpc.CallOption) (*AdoptedTemplateSet, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AdoptedTemplateSet)
+	err := c.cc.Invoke(ctx, WechatService_ListAdoptedTemplates_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) AdoptWechatTemplate(ctx context.Context, in *AdoptWechatTemplateRequest, opts ...grpc.CallOption) (*AdoptedTemplate, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AdoptedTemplate)
+	err := c.cc.Invoke(ctx, WechatService_AdoptWechatTemplate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) ListWechatDispatches(ctx context.Context, in *ListWechatDispatchesRequest, opts ...grpc.CallOption) (*WechatDispatchSet, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatDispatchSet)
+	err := c.cc.Invoke(ctx, WechatService_ListWechatDispatches_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) CreateWechatDispatch(ctx context.Context, in *CreateWechatDispatchRequest, opts ...grpc.CallOption) (*WechatDispatch, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatDispatch)
+	err := c.cc.Invoke(ctx, WechatService_CreateWechatDispatch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *wechatServiceClient) GetWechatAppMenu(ctx context.Context, in *GetWechatAppMenuRequest, opts ...grpc.CallOption) (*WechatAppMenu, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(WechatAppMenu)
@@ -420,6 +480,22 @@ type WechatServiceServer interface {
 	// opens. The chosen platform must be ready and not withdrawn. No WeChat
 	// App is created by this call. Permission: wechat:app:create.
 	StartWechatAuthorization(context.Context, *StartWechatAuthorizationRequest) (*WechatAuthorization, error)
+	// ListAdoptedTemplates lists templates adopted onto this app from
+	// WeChat's public library, including after the app is withdrawn.
+	// Permission: wechat:dispatch:list.
+	ListAdoptedTemplates(context.Context, *ListAdoptedTemplatesRequest) (*AdoptedTemplateSet, error)
+	// AdoptWechatTemplate takes one public-library template onto this app
+	// through the app's current token. The same library template is not
+	// adopted twice onto the same live app. This call does not invent a
+	// template. Permission: wechat:dispatch:create.
+	AdoptWechatTemplate(context.Context, *AdoptWechatTemplateRequest) (*AdoptedTemplate, error)
+	// ListWechatDispatches lists send attempts for live and withdrawn apps.
+	// app_id filters to one app. Permission: wechat:dispatch:list.
+	ListWechatDispatches(context.Context, *ListWechatDispatchesRequest) (*WechatDispatchSet, error)
+	// CreateWechatDispatch sends one adopted template to one openid and
+	// waits until WeChat accepts or rejects. Acceptance and business
+	// rejection each leave a new dispatch. Permission: wechat:dispatch:create.
+	CreateWechatDispatch(context.Context, *CreateWechatDispatchRequest) (*WechatDispatch, error)
 	// GetWechatAppMenu returns the Custom Menu saved on one Service Account
 	// and the last menu WeChat accepted. Neither is a secret. Permission:
 	// wechat:app:list.
@@ -499,6 +575,18 @@ func (UnimplementedWechatServiceServer) ListAuthorizationPlatforms(context.Conte
 }
 func (UnimplementedWechatServiceServer) StartWechatAuthorization(context.Context, *StartWechatAuthorizationRequest) (*WechatAuthorization, error) {
 	return nil, status.Error(codes.Unimplemented, "method StartWechatAuthorization not implemented")
+}
+func (UnimplementedWechatServiceServer) ListAdoptedTemplates(context.Context, *ListAdoptedTemplatesRequest) (*AdoptedTemplateSet, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAdoptedTemplates not implemented")
+}
+func (UnimplementedWechatServiceServer) AdoptWechatTemplate(context.Context, *AdoptWechatTemplateRequest) (*AdoptedTemplate, error) {
+	return nil, status.Error(codes.Unimplemented, "method AdoptWechatTemplate not implemented")
+}
+func (UnimplementedWechatServiceServer) ListWechatDispatches(context.Context, *ListWechatDispatchesRequest) (*WechatDispatchSet, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListWechatDispatches not implemented")
+}
+func (UnimplementedWechatServiceServer) CreateWechatDispatch(context.Context, *CreateWechatDispatchRequest) (*WechatDispatch, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateWechatDispatch not implemented")
 }
 func (UnimplementedWechatServiceServer) GetWechatAppMenu(context.Context, *GetWechatAppMenuRequest) (*WechatAppMenu, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetWechatAppMenu not implemented")
@@ -821,6 +909,78 @@ func _WechatService_StartWechatAuthorization_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WechatService_ListAdoptedTemplates_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAdoptedTemplatesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).ListAdoptedTemplates(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_ListAdoptedTemplates_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).ListAdoptedTemplates(ctx, req.(*ListAdoptedTemplatesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_AdoptWechatTemplate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AdoptWechatTemplateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).AdoptWechatTemplate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_AdoptWechatTemplate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).AdoptWechatTemplate(ctx, req.(*AdoptWechatTemplateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_ListWechatDispatches_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWechatDispatchesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).ListWechatDispatches(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_ListWechatDispatches_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).ListWechatDispatches(ctx, req.(*ListWechatDispatchesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_CreateWechatDispatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateWechatDispatchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).CreateWechatDispatch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_CreateWechatDispatch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).CreateWechatDispatch(ctx, req.(*CreateWechatDispatchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WechatService_GetWechatAppMenu_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetWechatAppMenuRequest)
 	if err := dec(in); err != nil {
@@ -963,6 +1123,22 @@ var WechatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StartWechatAuthorization",
 			Handler:    _WechatService_StartWechatAuthorization_Handler,
+		},
+		{
+			MethodName: "ListAdoptedTemplates",
+			Handler:    _WechatService_ListAdoptedTemplates_Handler,
+		},
+		{
+			MethodName: "AdoptWechatTemplate",
+			Handler:    _WechatService_AdoptWechatTemplate_Handler,
+		},
+		{
+			MethodName: "ListWechatDispatches",
+			Handler:    _WechatService_ListWechatDispatches_Handler,
+		},
+		{
+			MethodName: "CreateWechatDispatch",
+			Handler:    _WechatService_CreateWechatDispatch_Handler,
 		},
 		{
 			MethodName: "GetWechatAppMenu",

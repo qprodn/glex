@@ -464,7 +464,7 @@ on conflict do nothing;
 -- ---------------------------------------------------------------------------
 -- wechat 模块：微信管理目录 + 微信平台 + 微信应用（perms 与 auth_routes.go 对应）
 -- 目录 550。平台页 551–554，平台连通性测试 555。微信应用从 560 起，
--- 应用连通性测试 564。
+-- 应用连通性测试 564。微信下发 565，下发新增 566。
 -- ---------------------------------------------------------------------------
 
 insert into sys_menu (id, menu_name, parent_id, order_num, path, menu_type, icon, create_by, update_by)
@@ -510,6 +510,20 @@ values (1000000000000000560, 1000000000000000101, 1000000000000000560, 0, 0),
        (1000000000000000562, 1000000000000000101, 1000000000000000562, 0, 0),
        (1000000000000000563, 1000000000000000101, 1000000000000000563, 0, 0),
        (1000000000000000564, 1000000000000000101, 1000000000000000564, 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, path, component, menu_type, perms, icon, create_by, update_by)
+values (1000000000000000565, '微信下发', 1000000000000000550, 3, 'dispatch', 'wechat/dispatch/index', 2, 'wechat:dispatch:list', 'notification', 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, menu_type, perms, create_by, update_by)
+values (1000000000000000566, '下发新增', 1000000000000000565, 1, 3, 'wechat:dispatch:create', 0, 0)
+on conflict do nothing;
+
+-- superadmin 追加微信下发菜单，与支付、微信菜单同一授予方式。
+insert into sys_role_menu (id, role_id, menu_id, create_by, update_by)
+values (1000000000000000565, 1000000000000000101, 1000000000000000565, 0, 0),
+       (1000000000000000566, 1000000000000000101, 1000000000000000566, 0, 0)
 on conflict do nothing;
 
 commit;

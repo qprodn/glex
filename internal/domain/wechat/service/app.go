@@ -134,6 +134,22 @@ type App interface {
 	// rejection, a timeout, or an unready platform fails the test and
 	// leaves the app unlapsed.
 	Probe(ctx context.Context, id int64) (*ProbeOutcome, error)
+	// AdoptTemplate takes one public-library template onto a live app
+	// through that app's current token. The same library template is
+	// not adopted twice onto the same live app.
+	AdoptTemplate(ctx context.Context, req AdoptTemplateRequest) (*entity.AdoptedTemplate, error)
+	// ListTemplates returns the templates adopted onto this app,
+	// including after the app is withdrawn.
+	ListTemplates(ctx context.Context, appID int64) ([]*entity.AdoptedTemplate, error)
+	// Send delivers one adopted template to one openid and waits until
+	// WeChat accepts or rejects. Acceptance and business rejection each
+	// record a new WeChat Dispatch. A timeout records no accepted
+	// dispatch. A definitive refusal lapses the app and records no
+	// accepted dispatch.
+	Send(ctx context.Context, req SendDispatchRequest) (*entity.Dispatch, error)
+	// ListDispatches returns attempts for live and withdrawn apps.
+	// AppID 0 lists every attempt.
+	ListDispatches(ctx context.Context, req ListDispatchesRequest) (*DispatchPage, error)
 	// SaveMenu writes the Custom Menu document on one Service Account
 	// and does not call WeChat. The last menu WeChat accepted is left
 	// as it was.
@@ -160,16 +176,20 @@ type PlatformBindings interface {
 type appImpl struct {
 	apps         repository.AppRepo
 	platforms    repository.PlatformRepo
+	templates    repository.TemplateRepo
+	dispatches   repository.DispatchRepo
 	openapi      OpenAPI
 	callbackBase string
 	logger       *slog.Logger
 }
 
 // NewAppService creates the app domain service.
-func NewAppService(apps repository.AppRepo, platforms repository.PlatformRepo, openapi OpenAPI, callbackBase CallbackBase, logger *slog.Logger) App {
+func NewAppService(apps repository.AppRepo, platforms repository.PlatformRepo, templates repository.TemplateRepo, dispatches repository.DispatchRepo, openapi OpenAPI, callbackBase CallbackBase, logger *slog.Logger) App {
 	return &appImpl{
 		apps:         apps,
 		platforms:    platforms,
+		templates:    templates,
+		dispatches:   dispatches,
 		openapi:      openapi,
 		callbackBase: strings.TrimRight(string(callbackBase), "/"),
 		logger:       logger.With(slog.String("component", "domain.wechat.app.svc")),

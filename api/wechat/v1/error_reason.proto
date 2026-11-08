@@ -44,18 +44,32 @@ enum ErrorReason {
   WECHAT_APP_DUPLICATE = 10;
   // The AppID is fixed for the life of the row.
   WECHAT_APP_ID_IMMUTABLE = 11;
+  // The app is suspended, so adoption, sending, and menu publishing are refused.
+  WECHAT_APP_SUSPENDED = 12;
+  // WeChat has definitively refused this app.
+  WECHAT_APP_LAPSED = 13;
+  // The platform is not ready, so a token-using call is refused.
+  WECHAT_PLATFORM_NOT_READY = 14;
+  // WeChat timed out or could not be reached. The app is not lapsed.
+  WECHAT_UNAVAILABLE = 15;
+  // The adopted template does not exist on this app.
+  WECHAT_TEMPLATE_NOT_FOUND = 16;
+  // This live app already adopted this public-library template.
+  WECHAT_TEMPLATE_DUPLICATE = 17;
+  // WeChat refused to adopt the library template. No template is stored.
+  WECHAT_TEMPLATE_REJECTED = 18;
+  // The send has no openid or no adopted template. No dispatch is stored.
+  WECHAT_DISPATCH_INVALID = 19;
+  // WeChat refused the send. A rejected dispatch is stored without an msgid.
+  WECHAT_DISPATCH_REJECTED = 20;
+  // The app's kind or granted capabilities do not include this send.
+  WECHAT_CAPABILITY_DENIED = 21;
   // A Custom Menu button is not a leaf that opens a web page or a mini
   // program, and not a parent that only holds sub-buttons.
-  WECHAT_MENU_INVALID = 12;
+  WECHAT_MENU_INVALID = 22;
   // WeChat did not accept the menu replacement. The app stays unlapsed.
-  WECHAT_MENU_REJECTED = 13;
+  WECHAT_MENU_REJECTED = 23;
   // This app's kind, or the capabilities a Platform Authorization was
   // granted, cannot perform the call. WeChat is not called.
-  WECHAT_CAPABILITY_UNAVAILABLE = 14;
-  // The operator has suspended this app, so publishing is refused.
-  WECHAT_APP_SUSPENDED = 15;
-  // WeChat has definitively refused this app.
-  WECHAT_APP_LAPSED = 16;
-  // The platform does not hold its secrets and a verify ticket.
-  WECHAT_PLATFORM_NOT_READY = 17;
+  WECHAT_CAPABILITY_UNAVAILABLE = 24;
 }

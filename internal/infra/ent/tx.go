@@ -54,8 +54,12 @@ type Tx struct {
 	UserPost *UserPostClient
 	// UserRole is the client for interacting with the UserRole builders.
 	UserRole *UserRoleClient
+	// WechatAdoptedTemplate is the client for interacting with the WechatAdoptedTemplate builders.
+	WechatAdoptedTemplate *WechatAdoptedTemplateClient
 	// WechatApp is the client for interacting with the WechatApp builders.
 	WechatApp *WechatAppClient
+	// WechatDispatch is the client for interacting with the WechatDispatch builders.
+	WechatDispatch *WechatDispatchClient
 	// WechatPlatform is the client for interacting with the WechatPlatform builders.
 	WechatPlatform *WechatPlatformClient
 
@@ -209,7 +213,9 @@ func (tx *Tx) init() {
 	tx.User = NewUserClient(tx.config)
 	tx.UserPost = NewUserPostClient(tx.config)
 	tx.UserRole = NewUserRoleClient(tx.config)
+	tx.WechatAdoptedTemplate = NewWechatAdoptedTemplateClient(tx.config)
 	tx.WechatApp = NewWechatAppClient(tx.config)
+	tx.WechatDispatch = NewWechatDispatchClient(tx.config)
 	tx.WechatPlatform = NewWechatPlatformClient(tx.config)
 }
 

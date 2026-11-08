@@ -116,6 +116,49 @@ type ProbeAppResult struct {
 	AuthorizerRefreshToken string
 }
 
+// AdoptLibraryTemplateRequest asks WeChat to take one public-library
+// template onto the app whose current token the request carries. The
+// port classifies the answer. This module does not invent a template.
+type AdoptLibraryTemplateRequest struct {
+	ProbeAppRequest
+	LibraryTemplateID string
+	Channel           string
+}
+
+// AdoptLibraryTemplateResult is the port's classification of that
+// adoption. WechatTemplateID is the id WeChat assigned on this app.
+// Title is the operator-visible name WeChat returned. Both are empty
+// when the call was not accepted.
+type AdoptLibraryTemplateResult struct {
+	Class                  CallClass
+	Message                string
+	WechatTemplateID       string
+	Title                  string
+	AuthorizerRefreshToken string
+}
+
+// SendMessageRequest is one synchronous send of an adopted template to
+// one openid. The port classifies WeChat's answer. MsgID is set only
+// when WeChat accepts. WebURL and MiniProgramPage are both handed over
+// when the operator set both.
+type SendMessageRequest struct {
+	ProbeAppRequest
+	Channel          string
+	OpenID           string
+	WechatTemplateID string
+	Content          string
+	WebURL           string
+	MiniProgramPage  string
+}
+
+// SendMessageResult is the port's classification of that send.
+type SendMessageResult struct {
+	Class                  CallClass
+	Message                string
+	MsgID                  string
+	AuthorizerRefreshToken string
+}
+
 // PublishMenuCall replaces one Service Account's default menu with the
 // whole saved document. The port classifies WeChat's answer. A Direct
 // Hold carries AppID and AppSecret. A Platform Authorization carries the
@@ -175,4 +218,6 @@ type OpenAPI interface {
 	AnswerFullNetwork(ctx context.Context, req FullNetworkReply) error
 	StartAuthorization(ctx context.Context, req OpenAuthorizationStart) (*AuthorizationLink, error)
 	CompleteAuthorization(ctx context.Context, req OpenAuthorizationCode) (*AuthorizationGrant, error)
+	AdoptLibraryTemplate(ctx context.Context, req AdoptLibraryTemplateRequest) (AdoptLibraryTemplateResult, error)
+	SendMessage(ctx context.Context, req SendMessageRequest) (SendMessageResult, error)
 }

@@ -296,6 +296,40 @@ service WechatService {
     };
   }
 
+  // ListAdoptedTemplates lists templates adopted onto this app from
+  // WeChat's public library, including after the app is withdrawn.
+  // Permission: wechat:dispatch:list.
+  rpc ListAdoptedTemplates(ListAdoptedTemplatesRequest) returns (AdoptedTemplateSet) {
+    option (google.api.http) = {
+      get: "/wechat/app/{app_id}/template"
+    };
+  }
+  // AdoptWechatTemplate takes one public-library template onto this app
+  // through the app's current token. The same library template is not
+  // adopted twice onto the same live app. This call does not invent a
+  // template. Permission: wechat:dispatch:create.
+  rpc AdoptWechatTemplate(AdoptWechatTemplateRequest) returns (AdoptedTemplate) {
+    option (google.api.http) = {
+      post: "/wechat/app/{app_id}/template"
+      body: "*"
+    };
+  }
+  // ListWechatDispatches lists send attempts for live and withdrawn apps.
+  // app_id filters to one app. Permission: wechat:dispatch:list.
+  rpc ListWechatDispatches(ListWechatDispatchesRequest) returns (WechatDispatchSet) {
+    option (google.api.http) = {
+      get: "/wechat/dispatch"
+    };
+  }
+  // CreateWechatDispatch sends one adopted template to one openid and
+  // waits until WeChat accepts or rejects. Acceptance and business
+  // rejection each leave a new dispatch. Permission: wechat:dispatch:create.
+  rpc CreateWechatDispatch(CreateWechatDispatchRequest) returns (WechatDispatch) {
+    option (google.api.http) = {
+      post: "/wechat/dispatch"
+      body: "*"
+    };
+  }
   // GetWechatAppMenu returns the Custom Menu saved on one Service Account
   // and the last menu WeChat accepted. Neither is a secret. Permission:
   // wechat:app:list.
@@ -507,6 +541,84 @@ message StartWechatAuthorizationRequest {
 message WechatAuthorization {
   int64 platform_id = 1;
   string url = 2;
+}
+
+// AdoptedTemplate is one public-library template taken onto one WeChat
+// App. This system does not invent templates.
+message AdoptedTemplate {
+  int64 template_id = 1;
+  int64 app_id = 2;
+  // The public-library id the operator chose.
+  string library_template_id = 3;
+  // The id WeChat assigned on this app. Sends use this id.
+  string wechat_template_id = 4;
+  string title = 5;
+  // Which send this template fills.
+  WechatCapability channel = 6;
+  int64 create_by = 7;
+  int64 update_by = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message AdoptedTemplateSet {
+  repeated AdoptedTemplate templates = 1;
+}
+
+message ListAdoptedTemplatesRequest {
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message AdoptWechatTemplateRequest {
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. The public-library template id. This system does not
+  // invent one.
+  string library_template_id = 2 [(google.api.field_behavior) = REQUIRED];
+  WechatCapability channel = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+// WechatDispatch is one send attempt to one openid. Accepted is WeChat's
+// acceptance, not delivery. A rejected attempt has no msgid.
+message WechatDispatch {
+  int64 dispatch_id = 1;
+  int64 app_id = 2;
+  string openid = 3;
+  int64 template_id = 4;
+  string library_template_id = 5;
+  WechatCapability channel = 6;
+  // The filled content. It is not a secret.
+  string content = 7;
+  string web_url = 8;
+  string mini_program_page = 9;
+  bool accepted = 10;
+  string msgid = 11;
+  int64 create_by = 12;
+  int64 update_by = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+message WechatDispatchSet {
+  repeated WechatDispatch dispatches = 1;
+  string next_page_token = 2;
+}
+
+message ListWechatDispatchesRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  string filter = 3;
+  string order_by = 4;
+  // Optional. Zero lists every attempt, including withdrawn apps.
+  int64 app_id = 5;
+}
+
+message CreateWechatDispatchRequest {
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+  int64 template_id = 2 [(google.api.field_behavior) = REQUIRED];
+  string openid = 3 [(google.api.field_behavior) = REQUIRED];
+  string content = 4;
+  string web_url = 5;
+  string mini_program_page = 6;
 }
 
 // WechatMenuButton is one button of a Custom Menu. A parent holds

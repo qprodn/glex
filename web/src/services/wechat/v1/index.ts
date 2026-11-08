@@ -39,6 +39,26 @@ export type ErrorReason =
   | "WECHAT_APP_DUPLICATE"
   // The AppID is fixed for the life of the row.
   | "WECHAT_APP_ID_IMMUTABLE"
+  // The app is suspended, so adoption, sending, and menu publishing are refused.
+  | "WECHAT_APP_SUSPENDED"
+  // WeChat has definitively refused this app.
+  | "WECHAT_APP_LAPSED"
+  // The platform is not ready, so a token-using call is refused.
+  | "WECHAT_PLATFORM_NOT_READY"
+  // WeChat timed out or could not be reached. The app is not lapsed.
+  | "WECHAT_UNAVAILABLE"
+  // The adopted template does not exist on this app.
+  | "WECHAT_TEMPLATE_NOT_FOUND"
+  // This live app already adopted this public-library template.
+  | "WECHAT_TEMPLATE_DUPLICATE"
+  // WeChat refused to adopt the library template. No template is stored.
+  | "WECHAT_TEMPLATE_REJECTED"
+  // The send has no openid or no adopted template. No dispatch is stored.
+  | "WECHAT_DISPATCH_INVALID"
+  // WeChat refused the send. A rejected dispatch is stored without an msgid.
+  | "WECHAT_DISPATCH_REJECTED"
+  // The app's kind or granted capabilities do not include this send.
+  | "WECHAT_CAPABILITY_DENIED"
   // A Custom Menu button is not a leaf that opens a web page or a mini
   // program, and not a parent that only holds sub-buttons.
   | "WECHAT_MENU_INVALID"
@@ -46,13 +66,7 @@ export type ErrorReason =
   | "WECHAT_MENU_REJECTED"
   // This app's kind, or the capabilities a Platform Authorization was
   // granted, cannot perform the call. WeChat is not called.
-  | "WECHAT_CAPABILITY_UNAVAILABLE"
-  // The operator has suspended this app, so publishing is refused.
-  | "WECHAT_APP_SUSPENDED"
-  // WeChat has definitively refused this app.
-  | "WECHAT_APP_LAPSED"
-  // The platform does not hold its secrets and a verify ticket.
-  | "WECHAT_PLATFORM_NOT_READY";
+  | "WECHAT_CAPABILITY_UNAVAILABLE";
 // WechatAppType says whether a WeChat App is a mini program or an
 // official account.
 export type WechatAppType =
@@ -405,6 +419,98 @@ export type WechatAuthorization = {
   url: string | undefined;
 };
 
+// AdoptedTemplate is one public-library template taken onto one WeChat
+// App. This system does not invent templates.
+export type AdoptedTemplate = {
+  templateId: number | undefined;
+  appId: number | undefined;
+  // The public-library id the operator chose.
+  libraryTemplateId: string | undefined;
+  // The id WeChat assigned on this app. Sends use this id.
+  wechatTemplateId: string | undefined;
+  title: string | undefined;
+  // Which send this template fills.
+  channel: WechatCapability | undefined;
+  createBy: number | undefined;
+  updateBy: number | undefined;
+  createdAt: wellKnownTimestamp | undefined;
+  updatedAt: wellKnownTimestamp | undefined;
+};
+
+export type AdoptedTemplateSet = {
+  templates: AdoptedTemplate[] | undefined;
+};
+
+export type ListAdoptedTemplatesRequest = {
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+};
+
+export type AdoptWechatTemplateRequest = {
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+  // Required. The public-library template id. This system does not
+  // invent one.
+  //
+  // Behaviors: REQUIRED
+  libraryTemplateId: string | undefined;
+  //
+  // Behaviors: REQUIRED
+  channel: WechatCapability | undefined;
+};
+
+// WechatDispatch is one send attempt to one openid. Accepted is WeChat's
+// acceptance, not delivery. A rejected attempt has no msgid.
+export type WechatDispatch = {
+  dispatchId: number | undefined;
+  appId: number | undefined;
+  openid: string | undefined;
+  templateId: number | undefined;
+  libraryTemplateId: string | undefined;
+  channel: WechatCapability | undefined;
+  // The filled content. It is not a secret.
+  content: string | undefined;
+  webUrl: string | undefined;
+  miniProgramPage: string | undefined;
+  accepted: boolean | undefined;
+  msgid: string | undefined;
+  createBy: number | undefined;
+  updateBy: number | undefined;
+  createdAt: wellKnownTimestamp | undefined;
+  updatedAt: wellKnownTimestamp | undefined;
+};
+
+export type WechatDispatchSet = {
+  dispatches: WechatDispatch[] | undefined;
+  nextPageToken: string | undefined;
+};
+
+export type ListWechatDispatchesRequest = {
+  pageSize: number | undefined;
+  pageToken: string | undefined;
+  filter: string | undefined;
+  orderBy: string | undefined;
+  // Optional. Zero lists every attempt, including withdrawn apps.
+  appId: number | undefined;
+};
+
+export type CreateWechatDispatchRequest = {
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+  //
+  // Behaviors: REQUIRED
+  templateId: number | undefined;
+  //
+  // Behaviors: REQUIRED
+  openid: string | undefined;
+  content: string | undefined;
+  webUrl: string | undefined;
+  miniProgramPage: string | undefined;
+};
+
 // WechatMenuButton is one button of a Custom Menu. A parent holds
 // sub-buttons and does not itself open a page. A leaf sets either a web
 // URL or a mini program, not both.
@@ -540,6 +646,22 @@ export interface WechatService {
   // opens. The chosen platform must be ready and not withdrawn. No WeChat
   // App is created by this call. Permission: wechat:app:create.
   StartWechatAuthorization(request: StartWechatAuthorizationRequest): Promise<WechatAuthorization>;
+  // ListAdoptedTemplates lists templates adopted onto this app from
+  // WeChat's public library, including after the app is withdrawn.
+  // Permission: wechat:dispatch:list.
+  ListAdoptedTemplates(request: ListAdoptedTemplatesRequest): Promise<AdoptedTemplateSet>;
+  // AdoptWechatTemplate takes one public-library template onto this app
+  // through the app's current token. The same library template is not
+  // adopted twice onto the same live app. This call does not invent a
+  // template. Permission: wechat:dispatch:create.
+  AdoptWechatTemplate(request: AdoptWechatTemplateRequest): Promise<AdoptedTemplate>;
+  // ListWechatDispatches lists send attempts for live and withdrawn apps.
+  // app_id filters to one app. Permission: wechat:dispatch:list.
+  ListWechatDispatches(request: ListWechatDispatchesRequest): Promise<WechatDispatchSet>;
+  // CreateWechatDispatch sends one adopted template to one openid and
+  // waits until WeChat accepts or rejects. Acceptance and business
+  // rejection each leave a new dispatch. Permission: wechat:dispatch:create.
+  CreateWechatDispatch(request: CreateWechatDispatchRequest): Promise<WechatDispatch>;
   // GetWechatAppMenu returns the Custom Menu saved on one Service Account
   // and the last menu WeChat accepted. Neither is a secret. Permission:
   // wechat:app:list.
@@ -901,6 +1023,95 @@ export function createWechatServiceClient(
         service: "WechatService",
         method: "StartWechatAuthorization",
       }) as Promise<WechatAuthorization>;
+    },
+    ListAdoptedTemplates(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.appId) {
+        throw new Error("missing required field request.app_id");
+      }
+      const path = `wechat/app/${request.appId}/template`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "WechatService",
+        method: "ListAdoptedTemplates",
+      }) as Promise<AdoptedTemplateSet>;
+    },
+    AdoptWechatTemplate(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.appId) {
+        throw new Error("missing required field request.app_id");
+      }
+      const path = `wechat/app/${request.appId}/template`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "WechatService",
+        method: "AdoptWechatTemplate",
+      }) as Promise<AdoptedTemplate>;
+    },
+    ListWechatDispatches(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `wechat/dispatch`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      if (request.pageSize) {
+        queryParams.push(`pageSize=${encodeURIComponent(request.pageSize.toString())}`)
+      }
+      if (request.pageToken) {
+        queryParams.push(`pageToken=${encodeURIComponent(request.pageToken.toString())}`)
+      }
+      if (request.filter) {
+        queryParams.push(`filter=${encodeURIComponent(request.filter.toString())}`)
+      }
+      if (request.orderBy) {
+        queryParams.push(`orderBy=${encodeURIComponent(request.orderBy.toString())}`)
+      }
+      if (request.appId) {
+        queryParams.push(`appId=${encodeURIComponent(request.appId.toString())}`)
+      }
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "WechatService",
+        method: "ListWechatDispatches",
+      }) as Promise<WechatDispatchSet>;
+    },
+    CreateWechatDispatch(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `wechat/dispatch`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "WechatService",
+        method: "CreateWechatDispatch",
+      }) as Promise<WechatDispatch>;
     },
     GetWechatAppMenu(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
       if (!request.appId) {

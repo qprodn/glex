@@ -721,7 +721,7 @@ func TestAppIDUniquenessIsIndependentOfPlatform(t *testing.T) {
 
 func TestMissingMasterKeyRefusesAppSecretWrites(t *testing.T) {
 	t.Setenv(crypt.EnvMasterKey, "")
-	svc := NewAppService(newMemAppRepo(crypt.New()), nil, nil, "", slog.New(slog.DiscardHandler))
+	svc := NewAppService(newMemAppRepo(crypt.New()), nil, nil, nil, nil, "", slog.New(slog.DiscardHandler))
 	created, err := svc.Create(context.Background(), miniHold("wxminiappid000001", 7))
 	if !errors.Is(err, wechat.ErrMasterKeyMissing) || created != nil {
 		t.Fatalf("create = (%v, %v), want master-key refusal and no row", created, err)
@@ -736,7 +736,7 @@ func TestMissingMasterKeyRefusesAppSecretWrites(t *testing.T) {
 
 	t.Setenv(crypt.EnvMasterKey, "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=")
 	repo := newMemAppRepo(crypt.New())
-	svc = NewAppService(repo, nil, nil, "", slog.New(slog.DiscardHandler))
+	svc = NewAppService(repo, nil, nil, nil, nil, "", slog.New(slog.DiscardHandler))
 	stored, err := svc.Create(context.Background(), miniHold("wxminiappid000001", 7))
 	if err != nil {
 		t.Fatalf("create with key: %v", err)
@@ -817,7 +817,7 @@ func newTestAppService(t *testing.T) App {
 	t.Helper()
 	t.Setenv(crypt.EnvMasterKey, "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=")
 	repo := newMemAppRepo(crypt.New())
-	return NewAppService(repo, nil, nil, "", slog.New(slog.DiscardHandler))
+	return NewAppService(repo, nil, nil, nil, nil, "", slog.New(slog.DiscardHandler))
 }
 
 func cloneStoredApp(app *entity.App) *entity.App {
@@ -925,7 +925,7 @@ func newAuthFixture(t *testing.T) *authFixture {
 	platformRepo := newMemPlatformRepo(crypt.New())
 	appRepo := newMemAppRepo(crypt.New())
 	logger := slog.New(slog.DiscardHandler)
-	apps := NewAppService(appRepo, platformRepo, api, testCallbackBase, logger)
+	apps := NewAppService(appRepo, platformRepo, newMemTemplateRepo(), newMemDispatchRepo(), api, testCallbackBase, logger)
 	platforms := NewPlatformService(platformRepo, api, NewPushAuthenticator(), testCallbackBase, apps, logger)
 	return &authFixture{apps: apps, platforms: platforms, api: api, appRepo: appRepo}
 }
