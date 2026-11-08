@@ -63,6 +63,12 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 					// oper-log event.
 					OperationPayServiceChannelNotification,
 					OperationWechatServicePlatformCallback,
+					// Web Authorization identity calls carry no Principal
+					// and are not back-office oper logs. They also write
+					// no Login Log.
+					wechatv1.OperationWechatServiceStartWechatWebAuthorization,
+					wechatv1.OperationWechatServiceRedeemWechatHandoffCode,
+					OperationWechatServiceWebAuthorizationReturn,
 				),
 				operlog.WithSecretKeys(append(pay.ChannelSecretFields(), wechat.SecretFields()...)...),
 			),

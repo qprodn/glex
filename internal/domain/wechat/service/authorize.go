@@ -165,6 +165,7 @@ func (s *appImpl) applyGrant(ctx context.Context, p *entity.Platform, grant *Aut
 		Connection:   entity.ConnectionPlatformAuthorization,
 		PlatformID:   p.ID,
 		Capabilities: caps,
+		WebAuthScope: entity.WebAuthScopeOpenID,
 		KeyVersion:   entity.KeyVersion,
 		CreateBy:     systemActorID,
 		UpdateBy:     systemActorID,

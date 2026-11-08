@@ -62,6 +62,13 @@ func (WechatApp) Fields() []ent.Field {
 		// Hold secret. Cleared by a replacement AppSecret or a new grant
 		// on the same platform.
 		field.Bool("lapsed").Default(false),
+		// Where the browser lands after Web Authorization. Empty until an
+		// operator saves one on a Service Account. A request cannot
+		// substitute another address.
+		field.String("return_url").MaxLen(2048).Default(""),
+		// openid, or profile when the app also asks for nickname and
+		// avatar. A new Service Account starts at openid.
+		field.String("web_auth_scope").MaxLen(32).Default("openid"),
 		// The Custom Menu saved in this system. Writing it does not call
 		// WeChat. Null until an operator saves one.
 		field.JSON("saved_menu", &entity.CustomMenu{}).Optional(),

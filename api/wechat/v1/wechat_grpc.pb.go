@@ -20,30 +20,33 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	WechatService_CreateWechatPlatform_FullMethodName          = "/wechat.v1.WechatService/CreateWechatPlatform"
-	WechatService_ListWechatPlatforms_FullMethodName           = "/wechat.v1.WechatService/ListWechatPlatforms"
-	WechatService_GetWechatPlatform_FullMethodName             = "/wechat.v1.WechatService/GetWechatPlatform"
-	WechatService_UpdateWechatPlatform_FullMethodName          = "/wechat.v1.WechatService/UpdateWechatPlatform"
-	WechatService_WithdrawWechatPlatform_FullMethodName        = "/wechat.v1.WechatService/WithdrawWechatPlatform"
-	WechatService_ProbeWechatPlatform_FullMethodName           = "/wechat.v1.WechatService/ProbeWechatPlatform"
-	WechatService_CreateWechatApp_FullMethodName               = "/wechat.v1.WechatService/CreateWechatApp"
-	WechatService_ListWechatApps_FullMethodName                = "/wechat.v1.WechatService/ListWechatApps"
-	WechatService_GetWechatApp_FullMethodName                  = "/wechat.v1.WechatService/GetWechatApp"
-	WechatService_UpdateWechatApp_FullMethodName               = "/wechat.v1.WechatService/UpdateWechatApp"
-	WechatService_SetWechatAppSuspended_FullMethodName         = "/wechat.v1.WechatService/SetWechatAppSuspended"
-	WechatService_RegenerateWechatAppPushSecret_FullMethodName = "/wechat.v1.WechatService/RegenerateWechatAppPushSecret"
-	WechatService_WithdrawWechatApp_FullMethodName             = "/wechat.v1.WechatService/WithdrawWechatApp"
-	WechatService_ProbeWechatApp_FullMethodName                = "/wechat.v1.WechatService/ProbeWechatApp"
-	WechatService_ListAuthorizationPlatforms_FullMethodName    = "/wechat.v1.WechatService/ListAuthorizationPlatforms"
-	WechatService_StartWechatAuthorization_FullMethodName      = "/wechat.v1.WechatService/StartWechatAuthorization"
-	WechatService_ListAdoptedTemplates_FullMethodName          = "/wechat.v1.WechatService/ListAdoptedTemplates"
-	WechatService_AdoptWechatTemplate_FullMethodName           = "/wechat.v1.WechatService/AdoptWechatTemplate"
-	WechatService_ListWechatDispatches_FullMethodName          = "/wechat.v1.WechatService/ListWechatDispatches"
-	WechatService_CreateWechatDispatch_FullMethodName          = "/wechat.v1.WechatService/CreateWechatDispatch"
-	WechatService_GetWechatAppMenu_FullMethodName              = "/wechat.v1.WechatService/GetWechatAppMenu"
-	WechatService_SaveWechatAppMenu_FullMethodName             = "/wechat.v1.WechatService/SaveWechatAppMenu"
-	WechatService_PublishWechatAppMenu_FullMethodName          = "/wechat.v1.WechatService/PublishWechatAppMenu"
-	WechatService_MiniProgramLogin_FullMethodName              = "/wechat.v1.WechatService/MiniProgramLogin"
+	WechatService_CreateWechatPlatform_FullMethodName            = "/wechat.v1.WechatService/CreateWechatPlatform"
+	WechatService_ListWechatPlatforms_FullMethodName             = "/wechat.v1.WechatService/ListWechatPlatforms"
+	WechatService_GetWechatPlatform_FullMethodName               = "/wechat.v1.WechatService/GetWechatPlatform"
+	WechatService_UpdateWechatPlatform_FullMethodName            = "/wechat.v1.WechatService/UpdateWechatPlatform"
+	WechatService_WithdrawWechatPlatform_FullMethodName          = "/wechat.v1.WechatService/WithdrawWechatPlatform"
+	WechatService_ProbeWechatPlatform_FullMethodName             = "/wechat.v1.WechatService/ProbeWechatPlatform"
+	WechatService_CreateWechatApp_FullMethodName                 = "/wechat.v1.WechatService/CreateWechatApp"
+	WechatService_ListWechatApps_FullMethodName                  = "/wechat.v1.WechatService/ListWechatApps"
+	WechatService_GetWechatApp_FullMethodName                    = "/wechat.v1.WechatService/GetWechatApp"
+	WechatService_UpdateWechatApp_FullMethodName                 = "/wechat.v1.WechatService/UpdateWechatApp"
+	WechatService_SetWechatAppSuspended_FullMethodName           = "/wechat.v1.WechatService/SetWechatAppSuspended"
+	WechatService_RegenerateWechatAppPushSecret_FullMethodName   = "/wechat.v1.WechatService/RegenerateWechatAppPushSecret"
+	WechatService_WithdrawWechatApp_FullMethodName               = "/wechat.v1.WechatService/WithdrawWechatApp"
+	WechatService_ProbeWechatApp_FullMethodName                  = "/wechat.v1.WechatService/ProbeWechatApp"
+	WechatService_ListAuthorizationPlatforms_FullMethodName      = "/wechat.v1.WechatService/ListAuthorizationPlatforms"
+	WechatService_StartWechatAuthorization_FullMethodName        = "/wechat.v1.WechatService/StartWechatAuthorization"
+	WechatService_ListAdoptedTemplates_FullMethodName            = "/wechat.v1.WechatService/ListAdoptedTemplates"
+	WechatService_AdoptWechatTemplate_FullMethodName             = "/wechat.v1.WechatService/AdoptWechatTemplate"
+	WechatService_ListWechatDispatches_FullMethodName            = "/wechat.v1.WechatService/ListWechatDispatches"
+	WechatService_CreateWechatDispatch_FullMethodName            = "/wechat.v1.WechatService/CreateWechatDispatch"
+	WechatService_ConfigureWechatWebAuthorization_FullMethodName = "/wechat.v1.WechatService/ConfigureWechatWebAuthorization"
+	WechatService_StartWechatWebAuthorization_FullMethodName     = "/wechat.v1.WechatService/StartWechatWebAuthorization"
+	WechatService_RedeemWechatHandoffCode_FullMethodName         = "/wechat.v1.WechatService/RedeemWechatHandoffCode"
+	WechatService_GetWechatAppMenu_FullMethodName                = "/wechat.v1.WechatService/GetWechatAppMenu"
+	WechatService_SaveWechatAppMenu_FullMethodName               = "/wechat.v1.WechatService/SaveWechatAppMenu"
+	WechatService_PublishWechatAppMenu_FullMethodName            = "/wechat.v1.WechatService/PublishWechatAppMenu"
+	WechatService_MiniProgramLogin_FullMethodName                = "/wechat.v1.WechatService/MiniProgramLogin"
 )
 
 // WechatServiceClient is the client API for WechatService service.
@@ -135,6 +138,20 @@ type WechatServiceClient interface {
 	// waits until WeChat accepts or rejects. Acceptance and business
 	// rejection each leave a new dispatch. Permission: wechat:dispatch:create.
 	CreateWechatDispatch(ctx context.Context, in *CreateWechatDispatchRequest, opts ...grpc.CallOption) (*WechatDispatch, error)
+	// ConfigureWechatWebAuthorization stores the return URL and the scope
+	// on a Service Account. Permission: wechat:app:update. The actor is
+	// the authenticated Principal.
+	ConfigureWechatWebAuthorization(ctx context.Context, in *ConfigureWechatWebAuthorizationRequest, opts ...grpc.CallOption) (*WechatApp, error)
+	// StartWechatWebAuthorization begins Web Authorization for one Service
+	// Account. No back-office Principal is required. return_url on this
+	// request is ignored; the browser later lands on the URL stored on
+	// the app.
+	StartWechatWebAuthorization(ctx context.Context, in *StartWechatWebAuthorizationRequest, opts ...grpc.CallOption) (*WechatWebAuthorizationStart, error)
+	// RedeemWechatHandoffCode spends one Handoff Code. No back-office
+	// Principal is required. A second redeem, or a code this system did
+	// not issue, fails. The call creates no WeChat User, System User, or
+	// Login Session, and it writes no Login Log.
+	RedeemWechatHandoffCode(ctx context.Context, in *RedeemWechatHandoffCodeRequest, opts ...grpc.CallOption) (*WechatWebIdentity, error)
 	// GetWechatAppMenu returns the Custom Menu saved on one Service Account
 	// and the last menu WeChat accepted. Neither is a secret. Permission:
 	// wechat:app:list.
@@ -367,6 +384,36 @@ func (c *wechatServiceClient) CreateWechatDispatch(ctx context.Context, in *Crea
 	return out, nil
 }
 
+func (c *wechatServiceClient) ConfigureWechatWebAuthorization(ctx context.Context, in *ConfigureWechatWebAuthorizationRequest, opts ...grpc.CallOption) (*WechatApp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatApp)
+	err := c.cc.Invoke(ctx, WechatService_ConfigureWechatWebAuthorization_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) StartWechatWebAuthorization(ctx context.Context, in *StartWechatWebAuthorizationRequest, opts ...grpc.CallOption) (*WechatWebAuthorizationStart, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatWebAuthorizationStart)
+	err := c.cc.Invoke(ctx, WechatService_StartWechatWebAuthorization_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wechatServiceClient) RedeemWechatHandoffCode(ctx context.Context, in *RedeemWechatHandoffCodeRequest, opts ...grpc.CallOption) (*WechatWebIdentity, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WechatWebIdentity)
+	err := c.cc.Invoke(ctx, WechatService_RedeemWechatHandoffCode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *wechatServiceClient) GetWechatAppMenu(ctx context.Context, in *GetWechatAppMenuRequest, opts ...grpc.CallOption) (*WechatAppMenu, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(WechatAppMenu)
@@ -496,6 +543,20 @@ type WechatServiceServer interface {
 	// waits until WeChat accepts or rejects. Acceptance and business
 	// rejection each leave a new dispatch. Permission: wechat:dispatch:create.
 	CreateWechatDispatch(context.Context, *CreateWechatDispatchRequest) (*WechatDispatch, error)
+	// ConfigureWechatWebAuthorization stores the return URL and the scope
+	// on a Service Account. Permission: wechat:app:update. The actor is
+	// the authenticated Principal.
+	ConfigureWechatWebAuthorization(context.Context, *ConfigureWechatWebAuthorizationRequest) (*WechatApp, error)
+	// StartWechatWebAuthorization begins Web Authorization for one Service
+	// Account. No back-office Principal is required. return_url on this
+	// request is ignored; the browser later lands on the URL stored on
+	// the app.
+	StartWechatWebAuthorization(context.Context, *StartWechatWebAuthorizationRequest) (*WechatWebAuthorizationStart, error)
+	// RedeemWechatHandoffCode spends one Handoff Code. No back-office
+	// Principal is required. A second redeem, or a code this system did
+	// not issue, fails. The call creates no WeChat User, System User, or
+	// Login Session, and it writes no Login Log.
+	RedeemWechatHandoffCode(context.Context, *RedeemWechatHandoffCodeRequest) (*WechatWebIdentity, error)
 	// GetWechatAppMenu returns the Custom Menu saved on one Service Account
 	// and the last menu WeChat accepted. Neither is a secret. Permission:
 	// wechat:app:list.
@@ -587,6 +648,15 @@ func (UnimplementedWechatServiceServer) ListWechatDispatches(context.Context, *L
 }
 func (UnimplementedWechatServiceServer) CreateWechatDispatch(context.Context, *CreateWechatDispatchRequest) (*WechatDispatch, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateWechatDispatch not implemented")
+}
+func (UnimplementedWechatServiceServer) ConfigureWechatWebAuthorization(context.Context, *ConfigureWechatWebAuthorizationRequest) (*WechatApp, error) {
+	return nil, status.Error(codes.Unimplemented, "method ConfigureWechatWebAuthorization not implemented")
+}
+func (UnimplementedWechatServiceServer) StartWechatWebAuthorization(context.Context, *StartWechatWebAuthorizationRequest) (*WechatWebAuthorizationStart, error) {
+	return nil, status.Error(codes.Unimplemented, "method StartWechatWebAuthorization not implemented")
+}
+func (UnimplementedWechatServiceServer) RedeemWechatHandoffCode(context.Context, *RedeemWechatHandoffCodeRequest) (*WechatWebIdentity, error) {
+	return nil, status.Error(codes.Unimplemented, "method RedeemWechatHandoffCode not implemented")
 }
 func (UnimplementedWechatServiceServer) GetWechatAppMenu(context.Context, *GetWechatAppMenuRequest) (*WechatAppMenu, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetWechatAppMenu not implemented")
@@ -981,6 +1051,60 @@ func _WechatService_CreateWechatDispatch_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WechatService_ConfigureWechatWebAuthorization_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConfigureWechatWebAuthorizationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).ConfigureWechatWebAuthorization(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_ConfigureWechatWebAuthorization_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).ConfigureWechatWebAuthorization(ctx, req.(*ConfigureWechatWebAuthorizationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_StartWechatWebAuthorization_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartWechatWebAuthorizationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).StartWechatWebAuthorization(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_StartWechatWebAuthorization_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).StartWechatWebAuthorization(ctx, req.(*StartWechatWebAuthorizationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WechatService_RedeemWechatHandoffCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RedeemWechatHandoffCodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).RedeemWechatHandoffCode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_RedeemWechatHandoffCode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).RedeemWechatHandoffCode(ctx, req.(*RedeemWechatHandoffCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WechatService_GetWechatAppMenu_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetWechatAppMenuRequest)
 	if err := dec(in); err != nil {
@@ -1139,6 +1263,18 @@ var WechatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateWechatDispatch",
 			Handler:    _WechatService_CreateWechatDispatch_Handler,
+		},
+		{
+			MethodName: "ConfigureWechatWebAuthorization",
+			Handler:    _WechatService_ConfigureWechatWebAuthorization_Handler,
+		},
+		{
+			MethodName: "StartWechatWebAuthorization",
+			Handler:    _WechatService_StartWechatWebAuthorization_Handler,
+		},
+		{
+			MethodName: "RedeemWechatHandoffCode",
+			Handler:    _WechatService_RedeemWechatHandoffCode_Handler,
 		},
 		{
 			MethodName: "GetWechatAppMenu",

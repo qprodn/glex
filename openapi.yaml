@@ -2874,6 +2874,35 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/wechat.v1.AdoptedTemplate'
+    /wechat/app/{appId}/web-authorization:
+        post:
+            tags:
+                - WechatService
+            description: |-
+                ConfigureWechatWebAuthorization stores the return URL and the scope
+                 on a Service Account. Permission: wechat:app:update. The actor is
+                 the authenticated Principal.
+            operationId: WechatService_ConfigureWechatWebAuthorization
+            parameters:
+                - name: appId
+                  in: path
+                  description: Required. The Service Account to configure.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.ConfigureWechatWebAuthorizationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatApp'
     /wechat/dispatch:
         get:
             tags:
@@ -3114,6 +3143,52 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/wechat.v1.ProbeWechatPlatformResult'
+    /wechat/web-authorization:
+        post:
+            tags:
+                - WechatService
+            description: |-
+                StartWechatWebAuthorization begins Web Authorization for one Service
+                 Account. No back-office Principal is required. return_url on this
+                 request is ignored; the browser later lands on the URL stored on
+                 the app.
+            operationId: WechatService_StartWechatWebAuthorization
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.StartWechatWebAuthorizationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatWebAuthorizationStart'
+    /wechat/web-authorization/handoff:
+        post:
+            tags:
+                - WechatService
+            description: |-
+                RedeemWechatHandoffCode spends one Handoff Code. No back-office
+                 Principal is required. A second redeem, or a code this system did
+                 not issue, fails. The call creates no WeChat User, System User, or
+                 Login Session, and it writes no Login Log.
+            operationId: WechatService_RedeemWechatHandoffCode
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.RedeemWechatHandoffCodeRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatWebIdentity'
 components:
     schemas:
         access.v1.Menu:
@@ -4775,6 +4850,23 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/wechat.v1.AdoptedTemplate'
+        wechat.v1.ConfigureWechatWebAuthorizationRequest:
+            required:
+                - appId
+            type: object
+            properties:
+                appId:
+                    type: string
+                    description: Required. The Service Account to configure.
+                returnUrl:
+                    type: string
+                    description: |-
+                        Optional. Blank clears the stored return URL. A non-blank value is
+                         the absolute http(s) address the browser will land on.
+                webAuthScope:
+                    type: integer
+                    description: Optional. Unset means openid only.
+                    format: enum
         wechat.v1.CreateWechatAppRequest:
             required:
                 - name
@@ -4918,6 +5010,14 @@ components:
             properties:
                 appId:
                     type: string
+        wechat.v1.RedeemWechatHandoffCodeRequest:
+            required:
+                - code
+            type: object
+            properties:
+                code:
+                    type: string
+                    description: Required. The single-use Handoff Code from the return URL.
         wechat.v1.RegenerateWechatAppPushSecretRequest:
             required:
                 - appId
@@ -4955,6 +5055,17 @@ components:
                 platformId:
                     type: string
                     description: Required. The ready platform the grant will bind to.
+        wechat.v1.StartWechatWebAuthorizationRequest:
+            required:
+                - appId
+            type: object
+            properties:
+                appId:
+                    type: string
+                    description: Required. The Service Account the browser is authorizing.
+                returnUrl:
+                    type: string
+                    description: Ignored. The browser does not land on an address supplied here.
         wechat.v1.UpdateWechatAppRequest:
             required:
                 - appId
@@ -5076,6 +5187,17 @@ components:
                         Lapse is set when WeChat definitively refuses the grant or the
                          Direct Hold secret. It is not suspension. A lapsed app stays on the
                          live list and cannot be connectivity-tested until it is restored.
+                returnUrl:
+                    type: string
+                    description: |-
+                        Where the browser lands after Web Authorization. Empty until an
+                         operator saves one. A request cannot substitute another address.
+                webAuthScope:
+                    type: integer
+                    description: |-
+                        openid only, unless the operator asks for nickname and avatar too.
+                         A new Service Account is openid only.
+                    format: enum
             description: |-
                 WechatApp is one WeChat App (微信应用). A Direct Hold carries masks for
                  the AppSecret and the Push Secret and never the plaintext (ADR 0029).
@@ -5290,6 +5412,26 @@ components:
                     type: string
                     description: Opaque token for the next page; empty when on the last page.
             description: WechatPlatformSet is a page of WeChat Platforms.
+        wechat.v1.WechatWebAuthorizationStart:
+            type: object
+            properties:
+                authorizeUrl:
+                    type: string
+            description: WechatWebAuthorizationStart is the WeChat address the browser opens.
+        wechat.v1.WechatWebIdentity:
+            type: object
+            properties:
+                openid:
+                    type: string
+                unionid:
+                    type: string
+                nickname:
+                    type: string
+                avatarUrl:
+                    type: string
+            description: |-
+                WechatWebIdentity is one redeemed Web Authorization. nickname and
+                 avatar_url are empty unless that app asked for them.
 tags:
     - name: AuthService
       description: |-

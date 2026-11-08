@@ -37,6 +37,11 @@ const AppFormModal: React.FC<AppFormModalProps> = ({ open, record, onClose }) =>
         wxAppId: record?.wxAppId,
         appType: record?.appType,
         accountKind: record?.accountKind === "WECHAT_ACCOUNT_KIND_UNSPECIFIED" ? undefined : record?.accountKind,
+        returnUrl: record?.returnUrl,
+        webAuthScope:
+          record?.webAuthScope && record.webAuthScope !== "WECHAT_WEB_AUTH_SCOPE_UNSPECIFIED"
+            ? record.webAuthScope
+            : "WECHAT_WEB_AUTH_SCOPE_OPENID",
       });
     } else {
       form.resetFields();
@@ -79,6 +84,13 @@ const AppFormModal: React.FC<AppFormModalProps> = ({ open, record, onClose }) =>
             wxAppId: record?.wxAppId,
             appSecret: platformAuth ? "" : (values.appSecret ?? ""),
           });
+          if (record?.accountKind === SERVICE) {
+            await services.wechat.ConfigureWechatWebAuthorization({
+              appId: record.appId,
+              returnUrl: values.returnUrl ?? "",
+              webAuthScope: values.webAuthScope || "WECHAT_WEB_AUTH_SCOPE_OPENID",
+            });
+          }
           message.success(intl.formatMessage({ id: "common.saved", defaultMessage: "保存成功" }));
           onClose(true);
           return true;
@@ -129,6 +141,37 @@ const AppFormModal: React.FC<AppFormModalProps> = ({ open, record, onClose }) =>
           defaultMessage: "保存后不可修改。未撤回的应用之间，同一个 AppID 只有一条。",
         })}
       />
+      {isEdit && record?.accountKind === SERVICE ? (
+        <>
+          <ProFormText
+            name="returnUrl"
+            label={intl.formatMessage({ id: "pages.wechat.app.returnUrl", defaultMessage: "网页授权返回地址" })}
+            rules={[{ max: 2048 }]}
+            extra={intl.formatMessage({
+              id: "pages.wechat.app.returnUrl.hint",
+              defaultMessage: "浏览器完成授权后只回到这个地址。请求不能另指一个。留空则网页授权不能开始。",
+            })}
+          />
+          <ProFormSelect
+            name="webAuthScope"
+            label={intl.formatMessage({ id: "pages.wechat.app.webAuthScope", defaultMessage: "网页授权范围" })}
+            rules={[{ required: true }]}
+            options={[
+              {
+                value: "WECHAT_WEB_AUTH_SCOPE_OPENID",
+                label: intl.formatMessage({ id: "pages.wechat.app.webAuthScope.openid", defaultMessage: "只取 openid" }),
+              },
+              {
+                value: "WECHAT_WEB_AUTH_SCOPE_PROFILE",
+                label: intl.formatMessage({
+                  id: "pages.wechat.app.webAuthScope.profile",
+                  defaultMessage: "同时要昵称和头像",
+                }),
+              },
+            ]}
+          />
+        </>
+      ) : null}
       {platformAuth ? null : (
         <ProFormText.Password
           name="appSecret"

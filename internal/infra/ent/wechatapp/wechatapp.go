@@ -49,6 +49,10 @@ const (
 	FieldSuspended = "suspended"
 	// FieldLapsed holds the string denoting the lapsed field in the database.
 	FieldLapsed = "lapsed"
+	// FieldReturnURL holds the string denoting the return_url field in the database.
+	FieldReturnURL = "return_url"
+	// FieldWebAuthScope holds the string denoting the web_auth_scope field in the database.
+	FieldWebAuthScope = "web_auth_scope"
 	// FieldSavedMenu holds the string denoting the saved_menu field in the database.
 	FieldSavedMenu = "saved_menu"
 	// FieldAcceptedMenu holds the string denoting the accepted_menu field in the database.
@@ -80,6 +84,8 @@ var Columns = []string{
 	FieldEncodingAesKeyMask,
 	FieldSuspended,
 	FieldLapsed,
+	FieldReturnURL,
+	FieldWebAuthScope,
 	FieldSavedMenu,
 	FieldAcceptedMenu,
 	FieldKeyVersion,
@@ -130,6 +136,14 @@ var (
 	DefaultSuspended bool
 	// DefaultLapsed holds the default value on creation for the "lapsed" field.
 	DefaultLapsed bool
+	// DefaultReturnURL holds the default value on creation for the "return_url" field.
+	DefaultReturnURL string
+	// ReturnURLValidator is a validator for the "return_url" field. It is called by the builders before save.
+	ReturnURLValidator func(string) error
+	// DefaultWebAuthScope holds the default value on creation for the "web_auth_scope" field.
+	DefaultWebAuthScope string
+	// WebAuthScopeValidator is a validator for the "web_auth_scope" field. It is called by the builders before save.
+	WebAuthScopeValidator func(string) error
 	// DefaultKeyVersion holds the default value on creation for the "key_version" field.
 	DefaultKeyVersion int
 )
@@ -225,6 +239,16 @@ func BySuspended(opts ...sql.OrderTermOption) OrderOption {
 // ByLapsed orders the results by the lapsed field.
 func ByLapsed(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLapsed, opts...).ToFunc()
+}
+
+// ByReturnURL orders the results by the return_url field.
+func ByReturnURL(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldReturnURL, opts...).ToFunc()
+}
+
+// ByWebAuthScope orders the results by the web_auth_scope field.
+func ByWebAuthScope(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldWebAuthScope, opts...).ToFunc()
 }
 
 // ByKeyVersion orders the results by the key_version field.

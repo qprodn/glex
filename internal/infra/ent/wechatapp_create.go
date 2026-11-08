@@ -203,6 +203,34 @@ func (_c *WechatAppCreate) SetNillableLapsed(v *bool) *WechatAppCreate {
 	return _c
 }
 
+// SetReturnURL sets the "return_url" field.
+func (_c *WechatAppCreate) SetReturnURL(v string) *WechatAppCreate {
+	_c.mutation.SetReturnURL(v)
+	return _c
+}
+
+// SetNillableReturnURL sets the "return_url" field if the given value is not nil.
+func (_c *WechatAppCreate) SetNillableReturnURL(v *string) *WechatAppCreate {
+	if v != nil {
+		_c.SetReturnURL(*v)
+	}
+	return _c
+}
+
+// SetWebAuthScope sets the "web_auth_scope" field.
+func (_c *WechatAppCreate) SetWebAuthScope(v string) *WechatAppCreate {
+	_c.mutation.SetWebAuthScope(v)
+	return _c
+}
+
+// SetNillableWebAuthScope sets the "web_auth_scope" field if the given value is not nil.
+func (_c *WechatAppCreate) SetNillableWebAuthScope(v *string) *WechatAppCreate {
+	if v != nil {
+		_c.SetWebAuthScope(*v)
+	}
+	return _c
+}
+
 // SetSavedMenu sets the "saved_menu" field.
 func (_c *WechatAppCreate) SetSavedMenu(v *entity.CustomMenu) *WechatAppCreate {
 	_c.mutation.SetSavedMenu(v)
@@ -302,6 +330,14 @@ func (_c *WechatAppCreate) defaults() {
 		v := wechatapp.DefaultLapsed
 		_c.mutation.SetLapsed(v)
 	}
+	if _, ok := _c.mutation.ReturnURL(); !ok {
+		v := wechatapp.DefaultReturnURL
+		_c.mutation.SetReturnURL(v)
+	}
+	if _, ok := _c.mutation.WebAuthScope(); !ok {
+		v := wechatapp.DefaultWebAuthScope
+		_c.mutation.SetWebAuthScope(v)
+	}
 	if _, ok := _c.mutation.KeyVersion(); !ok {
 		v := wechatapp.DefaultKeyVersion
 		_c.mutation.SetKeyVersion(v)
@@ -391,6 +427,22 @@ func (_c *WechatAppCreate) check() error {
 	}
 	if _, ok := _c.mutation.Lapsed(); !ok {
 		return &ValidationError{Name: "lapsed", err: errors.New(`ent: missing required field "WechatApp.lapsed"`)}
+	}
+	if _, ok := _c.mutation.ReturnURL(); !ok {
+		return &ValidationError{Name: "return_url", err: errors.New(`ent: missing required field "WechatApp.return_url"`)}
+	}
+	if v, ok := _c.mutation.ReturnURL(); ok {
+		if err := wechatapp.ReturnURLValidator(v); err != nil {
+			return &ValidationError{Name: "return_url", err: fmt.Errorf(`ent: validator failed for field "WechatApp.return_url": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.WebAuthScope(); !ok {
+		return &ValidationError{Name: "web_auth_scope", err: errors.New(`ent: missing required field "WechatApp.web_auth_scope"`)}
+	}
+	if v, ok := _c.mutation.WebAuthScope(); ok {
+		if err := wechatapp.WebAuthScopeValidator(v); err != nil {
+			return &ValidationError{Name: "web_auth_scope", err: fmt.Errorf(`ent: validator failed for field "WechatApp.web_auth_scope": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.KeyVersion(); !ok {
 		return &ValidationError{Name: "key_version", err: errors.New(`ent: missing required field "WechatApp.key_version"`)}
@@ -499,6 +551,14 @@ func (_c *WechatAppCreate) createSpec() (*WechatApp, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Lapsed(); ok {
 		_spec.SetField(wechatapp.FieldLapsed, field.TypeBool, value)
 		_node.Lapsed = value
+	}
+	if value, ok := _c.mutation.ReturnURL(); ok {
+		_spec.SetField(wechatapp.FieldReturnURL, field.TypeString, value)
+		_node.ReturnURL = value
+	}
+	if value, ok := _c.mutation.WebAuthScope(); ok {
+		_spec.SetField(wechatapp.FieldWebAuthScope, field.TypeString, value)
+		_node.WebAuthScope = value
 	}
 	if value, ok := _c.mutation.SavedMenu(); ok {
 		_spec.SetField(wechatapp.FieldSavedMenu, field.TypeJSON, value)
@@ -753,6 +813,30 @@ func (u *WechatAppUpsert) SetLapsed(v bool) *WechatAppUpsert {
 // UpdateLapsed sets the "lapsed" field to the value that was provided on create.
 func (u *WechatAppUpsert) UpdateLapsed() *WechatAppUpsert {
 	u.SetExcluded(wechatapp.FieldLapsed)
+	return u
+}
+
+// SetReturnURL sets the "return_url" field.
+func (u *WechatAppUpsert) SetReturnURL(v string) *WechatAppUpsert {
+	u.Set(wechatapp.FieldReturnURL, v)
+	return u
+}
+
+// UpdateReturnURL sets the "return_url" field to the value that was provided on create.
+func (u *WechatAppUpsert) UpdateReturnURL() *WechatAppUpsert {
+	u.SetExcluded(wechatapp.FieldReturnURL)
+	return u
+}
+
+// SetWebAuthScope sets the "web_auth_scope" field.
+func (u *WechatAppUpsert) SetWebAuthScope(v string) *WechatAppUpsert {
+	u.Set(wechatapp.FieldWebAuthScope, v)
+	return u
+}
+
+// UpdateWebAuthScope sets the "web_auth_scope" field to the value that was provided on create.
+func (u *WechatAppUpsert) UpdateWebAuthScope() *WechatAppUpsert {
+	u.SetExcluded(wechatapp.FieldWebAuthScope)
 	return u
 }
 
@@ -1094,6 +1178,34 @@ func (u *WechatAppUpsertOne) SetLapsed(v bool) *WechatAppUpsertOne {
 func (u *WechatAppUpsertOne) UpdateLapsed() *WechatAppUpsertOne {
 	return u.Update(func(s *WechatAppUpsert) {
 		s.UpdateLapsed()
+	})
+}
+
+// SetReturnURL sets the "return_url" field.
+func (u *WechatAppUpsertOne) SetReturnURL(v string) *WechatAppUpsertOne {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.SetReturnURL(v)
+	})
+}
+
+// UpdateReturnURL sets the "return_url" field to the value that was provided on create.
+func (u *WechatAppUpsertOne) UpdateReturnURL() *WechatAppUpsertOne {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.UpdateReturnURL()
+	})
+}
+
+// SetWebAuthScope sets the "web_auth_scope" field.
+func (u *WechatAppUpsertOne) SetWebAuthScope(v string) *WechatAppUpsertOne {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.SetWebAuthScope(v)
+	})
+}
+
+// UpdateWebAuthScope sets the "web_auth_scope" field to the value that was provided on create.
+func (u *WechatAppUpsertOne) UpdateWebAuthScope() *WechatAppUpsertOne {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.UpdateWebAuthScope()
 	})
 }
 
@@ -1610,6 +1722,34 @@ func (u *WechatAppUpsertBulk) SetLapsed(v bool) *WechatAppUpsertBulk {
 func (u *WechatAppUpsertBulk) UpdateLapsed() *WechatAppUpsertBulk {
 	return u.Update(func(s *WechatAppUpsert) {
 		s.UpdateLapsed()
+	})
+}
+
+// SetReturnURL sets the "return_url" field.
+func (u *WechatAppUpsertBulk) SetReturnURL(v string) *WechatAppUpsertBulk {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.SetReturnURL(v)
+	})
+}
+
+// UpdateReturnURL sets the "return_url" field to the value that was provided on create.
+func (u *WechatAppUpsertBulk) UpdateReturnURL() *WechatAppUpsertBulk {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.UpdateReturnURL()
+	})
+}
+
+// SetWebAuthScope sets the "web_auth_scope" field.
+func (u *WechatAppUpsertBulk) SetWebAuthScope(v string) *WechatAppUpsertBulk {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.SetWebAuthScope(v)
+	})
+}
+
+// UpdateWebAuthScope sets the "web_auth_scope" field to the value that was provided on create.
+func (u *WechatAppUpsertBulk) UpdateWebAuthScope() *WechatAppUpsertBulk {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.UpdateWebAuthScope()
 	})
 }
 

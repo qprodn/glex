@@ -139,6 +139,16 @@ func Lapsed(v bool) predicate.WechatApp {
 	return predicate.WechatApp(sql.FieldEQ(FieldLapsed, v))
 }
 
+// ReturnURL applies equality check predicate on the "return_url" field. It's identical to ReturnURLEQ.
+func ReturnURL(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldEQ(FieldReturnURL, v))
+}
+
+// WebAuthScope applies equality check predicate on the "web_auth_scope" field. It's identical to WebAuthScopeEQ.
+func WebAuthScope(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldEQ(FieldWebAuthScope, v))
+}
+
 // KeyVersion applies equality check predicate on the "key_version" field. It's identical to KeyVersionEQ.
 func KeyVersion(v int) predicate.WechatApp {
 	return predicate.WechatApp(sql.FieldEQ(FieldKeyVersion, v))
@@ -1027,6 +1037,136 @@ func LapsedEQ(v bool) predicate.WechatApp {
 // LapsedNEQ applies the NEQ predicate on the "lapsed" field.
 func LapsedNEQ(v bool) predicate.WechatApp {
 	return predicate.WechatApp(sql.FieldNEQ(FieldLapsed, v))
+}
+
+// ReturnURLEQ applies the EQ predicate on the "return_url" field.
+func ReturnURLEQ(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldEQ(FieldReturnURL, v))
+}
+
+// ReturnURLNEQ applies the NEQ predicate on the "return_url" field.
+func ReturnURLNEQ(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldNEQ(FieldReturnURL, v))
+}
+
+// ReturnURLIn applies the In predicate on the "return_url" field.
+func ReturnURLIn(vs ...string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldIn(FieldReturnURL, vs...))
+}
+
+// ReturnURLNotIn applies the NotIn predicate on the "return_url" field.
+func ReturnURLNotIn(vs ...string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldNotIn(FieldReturnURL, vs...))
+}
+
+// ReturnURLGT applies the GT predicate on the "return_url" field.
+func ReturnURLGT(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldGT(FieldReturnURL, v))
+}
+
+// ReturnURLGTE applies the GTE predicate on the "return_url" field.
+func ReturnURLGTE(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldGTE(FieldReturnURL, v))
+}
+
+// ReturnURLLT applies the LT predicate on the "return_url" field.
+func ReturnURLLT(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldLT(FieldReturnURL, v))
+}
+
+// ReturnURLLTE applies the LTE predicate on the "return_url" field.
+func ReturnURLLTE(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldLTE(FieldReturnURL, v))
+}
+
+// ReturnURLContains applies the Contains predicate on the "return_url" field.
+func ReturnURLContains(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldContains(FieldReturnURL, v))
+}
+
+// ReturnURLHasPrefix applies the HasPrefix predicate on the "return_url" field.
+func ReturnURLHasPrefix(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldHasPrefix(FieldReturnURL, v))
+}
+
+// ReturnURLHasSuffix applies the HasSuffix predicate on the "return_url" field.
+func ReturnURLHasSuffix(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldHasSuffix(FieldReturnURL, v))
+}
+
+// ReturnURLEqualFold applies the EqualFold predicate on the "return_url" field.
+func ReturnURLEqualFold(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldEqualFold(FieldReturnURL, v))
+}
+
+// ReturnURLContainsFold applies the ContainsFold predicate on the "return_url" field.
+func ReturnURLContainsFold(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldContainsFold(FieldReturnURL, v))
+}
+
+// WebAuthScopeEQ applies the EQ predicate on the "web_auth_scope" field.
+func WebAuthScopeEQ(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldEQ(FieldWebAuthScope, v))
+}
+
+// WebAuthScopeNEQ applies the NEQ predicate on the "web_auth_scope" field.
+func WebAuthScopeNEQ(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldNEQ(FieldWebAuthScope, v))
+}
+
+// WebAuthScopeIn applies the In predicate on the "web_auth_scope" field.
+func WebAuthScopeIn(vs ...string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldIn(FieldWebAuthScope, vs...))
+}
+
+// WebAuthScopeNotIn applies the NotIn predicate on the "web_auth_scope" field.
+func WebAuthScopeNotIn(vs ...string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldNotIn(FieldWebAuthScope, vs...))
+}
+
+// WebAuthScopeGT applies the GT predicate on the "web_auth_scope" field.
+func WebAuthScopeGT(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldGT(FieldWebAuthScope, v))
+}
+
+// WebAuthScopeGTE applies the GTE predicate on the "web_auth_scope" field.
+func WebAuthScopeGTE(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldGTE(FieldWebAuthScope, v))
+}
+
+// WebAuthScopeLT applies the LT predicate on the "web_auth_scope" field.
+func WebAuthScopeLT(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldLT(FieldWebAuthScope, v))
+}
+
+// WebAuthScopeLTE applies the LTE predicate on the "web_auth_scope" field.
+func WebAuthScopeLTE(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldLTE(FieldWebAuthScope, v))
+}
+
+// WebAuthScopeContains applies the Contains predicate on the "web_auth_scope" field.
+func WebAuthScopeContains(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldContains(FieldWebAuthScope, v))
+}
+
+// WebAuthScopeHasPrefix applies the HasPrefix predicate on the "web_auth_scope" field.
+func WebAuthScopeHasPrefix(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldHasPrefix(FieldWebAuthScope, v))
+}
+
+// WebAuthScopeHasSuffix applies the HasSuffix predicate on the "web_auth_scope" field.
+func WebAuthScopeHasSuffix(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldHasSuffix(FieldWebAuthScope, v))
+}
+
+// WebAuthScopeEqualFold applies the EqualFold predicate on the "web_auth_scope" field.
+func WebAuthScopeEqualFold(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldEqualFold(FieldWebAuthScope, v))
+}
+
+// WebAuthScopeContainsFold applies the ContainsFold predicate on the "web_auth_scope" field.
+func WebAuthScopeContainsFold(v string) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldContainsFold(FieldWebAuthScope, v))
 }
 
 // SavedMenuIsNil applies the IsNil predicate on the "saved_menu" field.

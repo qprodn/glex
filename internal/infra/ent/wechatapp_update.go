@@ -240,6 +240,34 @@ func (_u *WechatAppUpdate) SetNillableLapsed(v *bool) *WechatAppUpdate {
 	return _u
 }
 
+// SetReturnURL sets the "return_url" field.
+func (_u *WechatAppUpdate) SetReturnURL(v string) *WechatAppUpdate {
+	_u.mutation.SetReturnURL(v)
+	return _u
+}
+
+// SetNillableReturnURL sets the "return_url" field if the given value is not nil.
+func (_u *WechatAppUpdate) SetNillableReturnURL(v *string) *WechatAppUpdate {
+	if v != nil {
+		_u.SetReturnURL(*v)
+	}
+	return _u
+}
+
+// SetWebAuthScope sets the "web_auth_scope" field.
+func (_u *WechatAppUpdate) SetWebAuthScope(v string) *WechatAppUpdate {
+	_u.mutation.SetWebAuthScope(v)
+	return _u
+}
+
+// SetNillableWebAuthScope sets the "web_auth_scope" field if the given value is not nil.
+func (_u *WechatAppUpdate) SetNillableWebAuthScope(v *string) *WechatAppUpdate {
+	if v != nil {
+		_u.SetWebAuthScope(*v)
+	}
+	return _u
+}
+
 // SetSavedMenu sets the "saved_menu" field.
 func (_u *WechatAppUpdate) SetSavedMenu(v *entity.CustomMenu) *WechatAppUpdate {
 	_u.mutation.SetSavedMenu(v)
@@ -353,6 +381,16 @@ func (_u *WechatAppUpdate) check() error {
 			return &ValidationError{Name: "encoding_aes_key_mask", err: fmt.Errorf(`ent: validator failed for field "WechatApp.encoding_aes_key_mask": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.ReturnURL(); ok {
+		if err := wechatapp.ReturnURLValidator(v); err != nil {
+			return &ValidationError{Name: "return_url", err: fmt.Errorf(`ent: validator failed for field "WechatApp.return_url": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.WebAuthScope(); ok {
+		if err := wechatapp.WebAuthScopeValidator(v); err != nil {
+			return &ValidationError{Name: "web_auth_scope", err: fmt.Errorf(`ent: validator failed for field "WechatApp.web_auth_scope": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -429,6 +467,12 @@ func (_u *WechatAppUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Lapsed(); ok {
 		_spec.SetField(wechatapp.FieldLapsed, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.ReturnURL(); ok {
+		_spec.SetField(wechatapp.FieldReturnURL, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.WebAuthScope(); ok {
+		_spec.SetField(wechatapp.FieldWebAuthScope, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.SavedMenu(); ok {
 		_spec.SetField(wechatapp.FieldSavedMenu, field.TypeJSON, value)
@@ -678,6 +722,34 @@ func (_u *WechatAppUpdateOne) SetNillableLapsed(v *bool) *WechatAppUpdateOne {
 	return _u
 }
 
+// SetReturnURL sets the "return_url" field.
+func (_u *WechatAppUpdateOne) SetReturnURL(v string) *WechatAppUpdateOne {
+	_u.mutation.SetReturnURL(v)
+	return _u
+}
+
+// SetNillableReturnURL sets the "return_url" field if the given value is not nil.
+func (_u *WechatAppUpdateOne) SetNillableReturnURL(v *string) *WechatAppUpdateOne {
+	if v != nil {
+		_u.SetReturnURL(*v)
+	}
+	return _u
+}
+
+// SetWebAuthScope sets the "web_auth_scope" field.
+func (_u *WechatAppUpdateOne) SetWebAuthScope(v string) *WechatAppUpdateOne {
+	_u.mutation.SetWebAuthScope(v)
+	return _u
+}
+
+// SetNillableWebAuthScope sets the "web_auth_scope" field if the given value is not nil.
+func (_u *WechatAppUpdateOne) SetNillableWebAuthScope(v *string) *WechatAppUpdateOne {
+	if v != nil {
+		_u.SetWebAuthScope(*v)
+	}
+	return _u
+}
+
 // SetSavedMenu sets the "saved_menu" field.
 func (_u *WechatAppUpdateOne) SetSavedMenu(v *entity.CustomMenu) *WechatAppUpdateOne {
 	_u.mutation.SetSavedMenu(v)
@@ -804,6 +876,16 @@ func (_u *WechatAppUpdateOne) check() error {
 			return &ValidationError{Name: "encoding_aes_key_mask", err: fmt.Errorf(`ent: validator failed for field "WechatApp.encoding_aes_key_mask": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.ReturnURL(); ok {
+		if err := wechatapp.ReturnURLValidator(v); err != nil {
+			return &ValidationError{Name: "return_url", err: fmt.Errorf(`ent: validator failed for field "WechatApp.return_url": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.WebAuthScope(); ok {
+		if err := wechatapp.WebAuthScopeValidator(v); err != nil {
+			return &ValidationError{Name: "web_auth_scope", err: fmt.Errorf(`ent: validator failed for field "WechatApp.web_auth_scope": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -897,6 +979,12 @@ func (_u *WechatAppUpdateOne) sqlSave(ctx context.Context) (_node *WechatApp, er
 	}
 	if value, ok := _u.mutation.Lapsed(); ok {
 		_spec.SetField(wechatapp.FieldLapsed, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.ReturnURL(); ok {
+		_spec.SetField(wechatapp.FieldReturnURL, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.WebAuthScope(); ok {
+		_spec.SetField(wechatapp.FieldWebAuthScope, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.SavedMenu(); ok {
 		_spec.SetField(wechatapp.FieldSavedMenu, field.TypeJSON, value)

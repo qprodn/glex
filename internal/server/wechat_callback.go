@@ -36,6 +36,7 @@ func registerWechatCallbackHTTP(s *khttp.Server, app *wechatapp.WechatApplicatio
 	r.Handle("POST", "/wechat/platform/{platform_id}/callback", wechatCallbackHandler(app))
 	r.Handle("POST", "/wechat/platform/{platform_id}/callback/{appid}", wechatCallbackHandler(app))
 	r.Handle("GET", "/wechat/platform/{platform_id}/authorization-return", authorizationReturnHandler())
+	r.Handle("GET", "/wechat/app/{app_id}/web-authorization/return", webAuthorizationReturnHandler(app))
 }
 
 // OperationWechatServiceAuthorizationReturn names the browser page WeChat

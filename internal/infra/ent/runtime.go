@@ -1145,8 +1145,20 @@ func init() {
 	wechatappDescLapsed := wechatappFields[13].Descriptor()
 	// wechatapp.DefaultLapsed holds the default value on creation for the lapsed field.
 	wechatapp.DefaultLapsed = wechatappDescLapsed.Default.(bool)
+	// wechatappDescReturnURL is the schema descriptor for return_url field.
+	wechatappDescReturnURL := wechatappFields[14].Descriptor()
+	// wechatapp.DefaultReturnURL holds the default value on creation for the return_url field.
+	wechatapp.DefaultReturnURL = wechatappDescReturnURL.Default.(string)
+	// wechatapp.ReturnURLValidator is a validator for the "return_url" field. It is called by the builders before save.
+	wechatapp.ReturnURLValidator = wechatappDescReturnURL.Validators[0].(func(string) error)
+	// wechatappDescWebAuthScope is the schema descriptor for web_auth_scope field.
+	wechatappDescWebAuthScope := wechatappFields[15].Descriptor()
+	// wechatapp.DefaultWebAuthScope holds the default value on creation for the web_auth_scope field.
+	wechatapp.DefaultWebAuthScope = wechatappDescWebAuthScope.Default.(string)
+	// wechatapp.WebAuthScopeValidator is a validator for the "web_auth_scope" field. It is called by the builders before save.
+	wechatapp.WebAuthScopeValidator = wechatappDescWebAuthScope.Validators[0].(func(string) error)
 	// wechatappDescKeyVersion is the schema descriptor for key_version field.
-	wechatappDescKeyVersion := wechatappFields[16].Descriptor()
+	wechatappDescKeyVersion := wechatappFields[18].Descriptor()
 	// wechatapp.DefaultKeyVersion holds the default value on creation for the key_version field.
 	wechatapp.DefaultKeyVersion = wechatappDescKeyVersion.Default.(int)
 	wechatdispatchMixin := schema.WechatDispatch{}.Mixin()
