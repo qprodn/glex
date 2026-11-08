@@ -2745,6 +2745,32 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/wechat.v1.WechatApp'
+    /wechat/mini-program/login:
+        post:
+            tags:
+                - WechatService
+            description: |-
+                MiniProgramLogin exchanges one mini program's one-time login code for
+                 that WeChat App's openid and, when WeChat supplied one, its unionid.
+                 Direct Hold and Platform Authorization share this entry; the caller
+                 does not name the connection. No back-office Principal and no menu
+                 permission are required. The response carries no session_key and no
+                 system credential. The call creates no WeChat User, System User, or
+                 Login Session, and it writes no Login Log.
+            operationId: WechatService_MiniProgramLogin
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.MiniProgramLoginRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.MiniProgramIdentity'
     /wechat/platform:
         get:
             tags:
@@ -4558,6 +4584,31 @@ components:
                 encodingAesKey:
                     type: string
                     description: Required. EncodingAESKey.
+        wechat.v1.MiniProgramIdentity:
+            type: object
+            properties:
+                openid:
+                    type: string
+                unionid:
+                    type: string
+            description: |-
+                MiniProgramIdentity is the person as known to that one WeChat App.
+                 unionid is empty when WeChat omitted it. session_key is not a field,
+                 and neither is a system credential or a Login Session.
+        wechat.v1.MiniProgramLoginRequest:
+            required:
+                - wxAppId
+                - code
+            type: object
+            properties:
+                wxAppId:
+                    type: string
+                    description: |-
+                        Required. WeChat AppID of the mini program. The caller does not
+                         send the row id or the connection.
+                code:
+                    type: string
+                    description: Required. One-time login code from that mini program.
         wechat.v1.ProbeWechatAppRequest:
             required:
                 - appId
@@ -4943,5 +4994,7 @@ tags:
         WechatService is the back-office surface for WeChat Platform
          registration and WeChat Apps. Platform permissions are
          wechat:platform:list, create, update, remove, and probe. App permissions
-         are wechat:app:list, create, update, remove, and probe. The platform callback
-         is a separate unauthenticated route; it is not an RPC.
+         are wechat:app:list, create, update, remove, and probe. Mini Program Login
+         is not a back-office mutation: it requires no Principal and no menu
+         permission. The platform callback is a separate unauthenticated route; it
+         is not an RPC.

@@ -118,6 +118,12 @@ type App interface {
 	// rejection, a timeout, or an unready platform fails the test and
 	// leaves the app unlapsed.
 	Probe(ctx context.Context, id int64) (*ProbeOutcome, error)
+	// MiniProgramLogin exchanges one mini program's one-time login code
+	// for that app's openid and, when WeChat supplied one, its unionid.
+	// Direct Hold and Platform Authorization share this entry. The call
+	// takes no back-office Principal. It does not create a WeChat User,
+	// a System User, or a Login Session, and session_key is not returned.
+	MiniProgramLogin(ctx context.Context, req MiniProgramLoginRequest) (*MiniProgramIdentity, error)
 }
 
 // PlatformBindings is the slice of the app service the platform service

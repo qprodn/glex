@@ -1077,6 +1077,9 @@ type scriptedOpenAPI struct {
 	appProbe     ProbeAppResult
 	appProbeErr  error
 	appProbes    []ProbeAppRequest
+	miniLogin    MiniProgramLoginResult
+	miniLoginErr error
+	miniLogins   []MiniProgramLoginCall
 }
 
 func (s *scriptedOpenAPI) ProbeApp(_ context.Context, req ProbeAppRequest) (ProbeAppResult, error) {
@@ -1092,6 +1095,17 @@ func (s *scriptedOpenAPI) ProbeApp(_ context.Context, req ProbeAppRequest) (Prob
 		result.Message = "连接成功"
 	}
 	return result, nil
+}
+
+func (s *scriptedOpenAPI) MiniProgramLogin(_ context.Context, req MiniProgramLoginCall) (MiniProgramLoginResult, error) {
+	if s == nil {
+		return MiniProgramLoginResult{}, nil
+	}
+	s.miniLogins = append(s.miniLogins, req)
+	if s.miniLoginErr != nil {
+		return MiniProgramLoginResult{}, s.miniLoginErr
+	}
+	return s.miniLogin, nil
 }
 
 func (s *scriptedOpenAPI) ProbePlatform(_ context.Context, req ProbePlatformRequest) error {

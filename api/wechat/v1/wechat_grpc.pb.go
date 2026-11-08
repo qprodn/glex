@@ -36,6 +36,7 @@ const (
 	WechatService_ProbeWechatApp_FullMethodName                = "/wechat.v1.WechatService/ProbeWechatApp"
 	WechatService_ListAuthorizationPlatforms_FullMethodName    = "/wechat.v1.WechatService/ListAuthorizationPlatforms"
 	WechatService_StartWechatAuthorization_FullMethodName      = "/wechat.v1.WechatService/StartWechatAuthorization"
+	WechatService_MiniProgramLogin_FullMethodName              = "/wechat.v1.WechatService/MiniProgramLogin"
 )
 
 // WechatServiceClient is the client API for WechatService service.
@@ -45,8 +46,10 @@ const (
 // WechatService is the back-office surface for WeChat Platform
 // registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
-// are wechat:app:list, create, update, remove, and probe. The platform callback
-// is a separate unauthenticated route; it is not an RPC.
+// are wechat:app:list, create, update, remove, and probe. Mini Program Login
+// is not a back-office mutation: it requires no Principal and no menu
+// permission. The platform callback is a separate unauthenticated route; it
+// is not an RPC.
 type WechatServiceClient interface {
 	// CreateWechatPlatform registers a platform. The response carries masks,
 	// never the secrets the operator just typed.
@@ -109,6 +112,14 @@ type WechatServiceClient interface {
 	// opens. The chosen platform must be ready and not withdrawn. No WeChat
 	// App is created by this call. Permission: wechat:app:create.
 	StartWechatAuthorization(ctx context.Context, in *StartWechatAuthorizationRequest, opts ...grpc.CallOption) (*WechatAuthorization, error)
+	// MiniProgramLogin exchanges one mini program's one-time login code for
+	// that WeChat App's openid and, when WeChat supplied one, its unionid.
+	// Direct Hold and Platform Authorization share this entry; the caller
+	// does not name the connection. No back-office Principal and no menu
+	// permission are required. The response carries no session_key and no
+	// system credential. The call creates no WeChat User, System User, or
+	// Login Session, and it writes no Login Log.
+	MiniProgramLogin(ctx context.Context, in *MiniProgramLoginRequest, opts ...grpc.CallOption) (*MiniProgramIdentity, error)
 }
 
 type wechatServiceClient struct {
@@ -279,6 +290,16 @@ func (c *wechatServiceClient) StartWechatAuthorization(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *wechatServiceClient) MiniProgramLogin(ctx context.Context, in *MiniProgramLoginRequest, opts ...grpc.CallOption) (*MiniProgramIdentity, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MiniProgramIdentity)
+	err := c.cc.Invoke(ctx, WechatService_MiniProgramLogin_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WechatServiceServer is the server API for WechatService service.
 // All implementations must embed UnimplementedWechatServiceServer
 // for forward compatibility.
@@ -286,8 +307,10 @@ func (c *wechatServiceClient) StartWechatAuthorization(ctx context.Context, in *
 // WechatService is the back-office surface for WeChat Platform
 // registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
-// are wechat:app:list, create, update, remove, and probe. The platform callback
-// is a separate unauthenticated route; it is not an RPC.
+// are wechat:app:list, create, update, remove, and probe. Mini Program Login
+// is not a back-office mutation: it requires no Principal and no menu
+// permission. The platform callback is a separate unauthenticated route; it
+// is not an RPC.
 type WechatServiceServer interface {
 	// CreateWechatPlatform registers a platform. The response carries masks,
 	// never the secrets the operator just typed.
@@ -350,6 +373,14 @@ type WechatServiceServer interface {
 	// opens. The chosen platform must be ready and not withdrawn. No WeChat
 	// App is created by this call. Permission: wechat:app:create.
 	StartWechatAuthorization(context.Context, *StartWechatAuthorizationRequest) (*WechatAuthorization, error)
+	// MiniProgramLogin exchanges one mini program's one-time login code for
+	// that WeChat App's openid and, when WeChat supplied one, its unionid.
+	// Direct Hold and Platform Authorization share this entry; the caller
+	// does not name the connection. No back-office Principal and no menu
+	// permission are required. The response carries no session_key and no
+	// system credential. The call creates no WeChat User, System User, or
+	// Login Session, and it writes no Login Log.
+	MiniProgramLogin(context.Context, *MiniProgramLoginRequest) (*MiniProgramIdentity, error)
 	mustEmbedUnimplementedWechatServiceServer()
 }
 
@@ -407,6 +438,9 @@ func (UnimplementedWechatServiceServer) ListAuthorizationPlatforms(context.Conte
 }
 func (UnimplementedWechatServiceServer) StartWechatAuthorization(context.Context, *StartWechatAuthorizationRequest) (*WechatAuthorization, error) {
 	return nil, status.Error(codes.Unimplemented, "method StartWechatAuthorization not implemented")
+}
+func (UnimplementedWechatServiceServer) MiniProgramLogin(context.Context, *MiniProgramLoginRequest) (*MiniProgramIdentity, error) {
+	return nil, status.Error(codes.Unimplemented, "method MiniProgramLogin not implemented")
 }
 func (UnimplementedWechatServiceServer) mustEmbedUnimplementedWechatServiceServer() {}
 func (UnimplementedWechatServiceServer) testEmbeddedByValue()                       {}
@@ -717,6 +751,24 @@ func _WechatService_StartWechatAuthorization_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WechatService_MiniProgramLogin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MiniProgramLoginRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).MiniProgramLogin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_MiniProgramLogin_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).MiniProgramLogin(ctx, req.(*MiniProgramLoginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WechatService_ServiceDesc is the grpc.ServiceDesc for WechatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -787,6 +839,10 @@ var WechatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StartWechatAuthorization",
 			Handler:    _WechatService_StartWechatAuthorization_Handler,
+		},
+		{
+			MethodName: "MiniProgramLogin",
+			Handler:    _WechatService_MiniProgramLogin_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
