@@ -23,6 +23,7 @@ const OperationWechatServiceCreateWechatApp = "/wechat.v1.WechatService/CreateWe
 const OperationWechatServiceCreateWechatDispatch = "/wechat.v1.WechatService/CreateWechatDispatch"
 const OperationWechatServiceCreateWechatPlatform = "/wechat.v1.WechatService/CreateWechatPlatform"
 const OperationWechatServiceGetWechatApp = "/wechat.v1.WechatService/GetWechatApp"
+const OperationWechatServiceGetWechatAppMenu = "/wechat.v1.WechatService/GetWechatAppMenu"
 const OperationWechatServiceGetWechatPlatform = "/wechat.v1.WechatService/GetWechatPlatform"
 const OperationWechatServiceListAdoptedTemplates = "/wechat.v1.WechatService/ListAdoptedTemplates"
 const OperationWechatServiceListAuthorizationPlatforms = "/wechat.v1.WechatService/ListAuthorizationPlatforms"
@@ -32,7 +33,9 @@ const OperationWechatServiceListWechatPlatforms = "/wechat.v1.WechatService/List
 const OperationWechatServiceMiniProgramLogin = "/wechat.v1.WechatService/MiniProgramLogin"
 const OperationWechatServiceProbeWechatApp = "/wechat.v1.WechatService/ProbeWechatApp"
 const OperationWechatServiceProbeWechatPlatform = "/wechat.v1.WechatService/ProbeWechatPlatform"
+const OperationWechatServicePublishWechatAppMenu = "/wechat.v1.WechatService/PublishWechatAppMenu"
 const OperationWechatServiceRegenerateWechatAppPushSecret = "/wechat.v1.WechatService/RegenerateWechatAppPushSecret"
+const OperationWechatServiceSaveWechatAppMenu = "/wechat.v1.WechatService/SaveWechatAppMenu"
 const OperationWechatServiceSetWechatAppSuspended = "/wechat.v1.WechatService/SetWechatAppSuspended"
 const OperationWechatServiceStartWechatAuthorization = "/wechat.v1.WechatService/StartWechatAuthorization"
 const OperationWechatServiceUpdateWechatApp = "/wechat.v1.WechatService/UpdateWechatApp"
@@ -60,6 +63,10 @@ type WechatServiceHTTPServer interface {
 	// GetWechatApp GetWechatApp retrieves one app that is not withdrawn. The response
 	// carries masks only.
 	GetWechatApp(context.Context, *GetWechatAppRequest) (*WechatApp, error)
+	// GetWechatAppMenu GetWechatAppMenu returns the Custom Menu saved on one Service Account
+	// and the last menu WeChat accepted. Neither is a secret. Permission:
+	// wechat:app:list.
+	GetWechatAppMenu(context.Context, *GetWechatAppMenuRequest) (*WechatAppMenu, error)
 	// GetWechatPlatform GetWechatPlatform retrieves one platform that is not withdrawn.
 	GetWechatPlatform(context.Context, *GetWechatPlatformRequest) (*WechatPlatform, error)
 	// ListAdoptedTemplates ListAdoptedTemplates lists templates adopted onto this app from
@@ -99,10 +106,20 @@ type WechatServiceHTTPServer interface {
 	// A platform that is missing a secret or a verify ticket fails the test.
 	// Success and failure change no WeChat App. Permission: wechat:platform:probe.
 	ProbeWechatPlatform(context.Context, *ProbeWechatPlatformRequest) (*ProbeWechatPlatformResult, error)
+	// PublishWechatAppMenu PublishWechatAppMenu sends the whole saved menu and replaces that
+	// Service Account's default menu at WeChat. A business refusal or a
+	// timeout leaves the previously accepted menu in place and does not
+	// lapse the app. A definitive refusal lapses the app and still leaves
+	// that menu. Permission: wechat:app:update.
+	PublishWechatAppMenu(context.Context, *PublishWechatAppMenuRequest) (*WechatAppMenu, error)
 	// RegenerateWechatAppPushSecret RegenerateWechatAppPushSecret replaces the Push Secret. The response
 	// returns the new pair in full once. The previous pair is invalidated
 	// immediately. The app is not withdrawn and its suspension is unchanged.
 	RegenerateWechatAppPushSecret(context.Context, *RegenerateWechatAppPushSecretRequest) (*WechatAppPushSecret, error)
+	// SaveWechatAppMenu SaveWechatAppMenu stores the Custom Menu in this system and does not
+	// call WeChat. The last menu WeChat accepted stays as it was.
+	// Permission: wechat:app:update.
+	SaveWechatAppMenu(context.Context, *SaveWechatAppMenuRequest) (*WechatAppMenu, error)
 	// SetWechatAppSuspended SetWechatAppSuspended suspends or resumes the app. The app stays on
 	// the live list either way.
 	SetWechatAppSuspended(context.Context, *SetWechatAppSuspendedRequest) (*WechatApp, error)
@@ -150,6 +167,9 @@ func RegisterWechatServiceHTTPServer(s *http.Server, srv WechatServiceHTTPServer
 	r.Handle("POST", "/wechat/app/{app_id}/template", _WechatService_AdoptWechatTemplate0_HTTP_Handler(srv))
 	r.Handle("GET", "/wechat/dispatch", _WechatService_ListWechatDispatches0_HTTP_Handler(srv))
 	r.Handle("POST", "/wechat/dispatch", _WechatService_CreateWechatDispatch0_HTTP_Handler(srv))
+	r.Handle("GET", "/wechat/app/{app_id}/menu", _WechatService_GetWechatAppMenu0_HTTP_Handler(srv))
+	r.Handle("PUT", "/wechat/app/{app_id}/menu", _WechatService_SaveWechatAppMenu0_HTTP_Handler(srv))
+	r.Handle("POST", "/wechat/app/{app_id}/menu/publish", _WechatService_PublishWechatAppMenu0_HTTP_Handler(srv))
 	r.Handle("POST", "/wechat/mini-program/login", _WechatService_MiniProgramLogin0_HTTP_Handler(srv))
 }
 
@@ -569,6 +589,72 @@ func _WechatService_CreateWechatDispatch0_HTTP_Handler(srv WechatServiceHTTPServ
 	}
 }
 
+func _WechatService_GetWechatAppMenu0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in GetWechatAppMenuRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceGetWechatAppMenu)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.GetWechatAppMenu(ctx, req.(*GetWechatAppMenuRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatAppMenu)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _WechatService_SaveWechatAppMenu0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in SaveWechatAppMenuRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceSaveWechatAppMenu)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.SaveWechatAppMenu(ctx, req.(*SaveWechatAppMenuRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatAppMenu)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _WechatService_PublishWechatAppMenu0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in PublishWechatAppMenuRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServicePublishWechatAppMenu)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.PublishWechatAppMenu(ctx, req.(*PublishWechatAppMenuRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WechatAppMenu)
+		return ctx.Result(200, reply)
+	}
+}
+
 func _WechatService_MiniProgramLogin0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in MiniProgramLoginRequest
@@ -608,6 +694,10 @@ type WechatServiceHTTPClient interface {
 	// GetWechatApp GetWechatApp retrieves one app that is not withdrawn. The response
 	// carries masks only.
 	GetWechatApp(ctx context.Context, req *GetWechatAppRequest, opts ...http.CallOption) (rsp *WechatApp, err error)
+	// GetWechatAppMenu GetWechatAppMenu returns the Custom Menu saved on one Service Account
+	// and the last menu WeChat accepted. Neither is a secret. Permission:
+	// wechat:app:list.
+	GetWechatAppMenu(ctx context.Context, req *GetWechatAppMenuRequest, opts ...http.CallOption) (rsp *WechatAppMenu, err error)
 	// GetWechatPlatform GetWechatPlatform retrieves one platform that is not withdrawn.
 	GetWechatPlatform(ctx context.Context, req *GetWechatPlatformRequest, opts ...http.CallOption) (rsp *WechatPlatform, err error)
 	// ListAdoptedTemplates ListAdoptedTemplates lists templates adopted onto this app from
@@ -647,10 +737,20 @@ type WechatServiceHTTPClient interface {
 	// A platform that is missing a secret or a verify ticket fails the test.
 	// Success and failure change no WeChat App. Permission: wechat:platform:probe.
 	ProbeWechatPlatform(ctx context.Context, req *ProbeWechatPlatformRequest, opts ...http.CallOption) (rsp *ProbeWechatPlatformResult, err error)
+	// PublishWechatAppMenu PublishWechatAppMenu sends the whole saved menu and replaces that
+	// Service Account's default menu at WeChat. A business refusal or a
+	// timeout leaves the previously accepted menu in place and does not
+	// lapse the app. A definitive refusal lapses the app and still leaves
+	// that menu. Permission: wechat:app:update.
+	PublishWechatAppMenu(ctx context.Context, req *PublishWechatAppMenuRequest, opts ...http.CallOption) (rsp *WechatAppMenu, err error)
 	// RegenerateWechatAppPushSecret RegenerateWechatAppPushSecret replaces the Push Secret. The response
 	// returns the new pair in full once. The previous pair is invalidated
 	// immediately. The app is not withdrawn and its suspension is unchanged.
 	RegenerateWechatAppPushSecret(ctx context.Context, req *RegenerateWechatAppPushSecretRequest, opts ...http.CallOption) (rsp *WechatAppPushSecret, err error)
+	// SaveWechatAppMenu SaveWechatAppMenu stores the Custom Menu in this system and does not
+	// call WeChat. The last menu WeChat accepted stays as it was.
+	// Permission: wechat:app:update.
+	SaveWechatAppMenu(ctx context.Context, req *SaveWechatAppMenuRequest, opts ...http.CallOption) (rsp *WechatAppMenu, err error)
 	// SetWechatAppSuspended SetWechatAppSuspended suspends or resumes the app. The app stays on
 	// the live list either way.
 	SetWechatAppSuspended(ctx context.Context, req *SetWechatAppSuspendedRequest, opts ...http.CallOption) (rsp *WechatApp, err error)
@@ -773,6 +873,25 @@ func (c *WechatServiceHTTPClientImpl) GetWechatApp(ctx context.Context, in *GetW
 	opts = append([]http.CallOption{
 		http.Accept("application/protojson"),
 		http.Operation(OperationWechatServiceGetWechatApp),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// GetWechatAppMenu GetWechatAppMenu returns the Custom Menu saved on one Service Account
+// and the last menu WeChat accepted. Neither is a secret. Permission:
+// wechat:app:list.
+func (c *WechatServiceHTTPClientImpl) GetWechatAppMenu(ctx context.Context, in *GetWechatAppMenuRequest, opts ...http.CallOption) (*WechatAppMenu, error) {
+	var out WechatAppMenu
+	pattern := "/wechat/app/{app_id}/menu"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationWechatServiceGetWechatAppMenu),
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
@@ -959,6 +1078,28 @@ func (c *WechatServiceHTTPClientImpl) ProbeWechatPlatform(ctx context.Context, i
 	return &out, nil
 }
 
+// PublishWechatAppMenu PublishWechatAppMenu sends the whole saved menu and replaces that
+// Service Account's default menu at WeChat. A business refusal or a
+// timeout leaves the previously accepted menu in place and does not
+// lapse the app. A definitive refusal lapses the app and still leaves
+// that menu. Permission: wechat:app:update.
+func (c *WechatServiceHTTPClientImpl) PublishWechatAppMenu(ctx context.Context, in *PublishWechatAppMenuRequest, opts ...http.CallOption) (*WechatAppMenu, error) {
+	var out WechatAppMenu
+	pattern := "/wechat/app/{app_id}/menu/publish"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationWechatServicePublishWechatAppMenu),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // RegenerateWechatAppPushSecret RegenerateWechatAppPushSecret replaces the Push Secret. The response
 // returns the new pair in full once. The previous pair is invalidated
 // immediately. The app is not withdrawn and its suspension is unchanged.
@@ -973,6 +1114,26 @@ func (c *WechatServiceHTTPClientImpl) RegenerateWechatAppPushSecret(ctx context.
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// SaveWechatAppMenu SaveWechatAppMenu stores the Custom Menu in this system and does not
+// call WeChat. The last menu WeChat accepted stays as it was.
+// Permission: wechat:app:update.
+func (c *WechatServiceHTTPClientImpl) SaveWechatAppMenu(ctx context.Context, in *SaveWechatAppMenuRequest, opts ...http.CallOption) (*WechatAppMenu, error) {
+	var out WechatAppMenu
+	pattern := "/wechat/app/{app_id}/menu"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationWechatServiceSaveWechatAppMenu),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "PUT", path, in, &out, opts...)
 	if err != nil {
 		return nil, err
 	}

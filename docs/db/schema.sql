@@ -843,6 +843,8 @@ create table if not exists wechat_app (
     encoding_aes_key_mask   varchar(16)  not null,
     suspended               boolean      not null default false, -- 停用；不是撤回，也不是失效
     lapsed                  boolean      not null default false, -- 失效；只有微信明确拒绝授权或直连密钥时设置
+    saved_menu              jsonb,                             -- 保存在本系统的自定义菜单；保存不调用微信
+    accepted_menu           jsonb,                             -- 微信最近一次接受的默认菜单；发布被拒或超时后仍是这一份
     key_version             int          not null default 1,   -- 主密钥版本（KEK 轮换预留，ADR 0018）
     create_by               bigint       not null default 0,
     update_by               bigint       not null default 0,
@@ -863,6 +865,8 @@ create index if not exists wechat_app_platform_id
 
 -- 表已按上一版脚本建过时，create table if not exists 不会补列。
 alter table wechat_app add column if not exists lapsed boolean not null default false;
+alter table wechat_app add column if not exists saved_menu jsonb;
+alter table wechat_app add column if not exists accepted_menu jsonb;
 
 comment on table wechat_app is '微信应用表（直连或平台授权，凭据密文落库 ADR 0018/0029）';
 
@@ -880,6 +884,8 @@ comment on column wechat_app.token_mask is '消息推送 Token 掩码回显；�
 comment on column wechat_app.encoding_aes_key_mask is 'EncodingAESKey 掩码回显；展示路径永不解密';
 comment on column wechat_app.suspended is '停用标记；停用不是撤回，也不是失效';
 comment on column wechat_app.lapsed is '失效标记；微信明确拒绝授权或直连密钥时设置。超时、业务拒绝、平台未就绪都不设置。换 AppSecret 或在原平台重新授权后清除';
+comment on column wechat_app.saved_menu is '保存在本系统的自定义菜单文档，含子按钮。保存不调用微信。未保存为 NULL';
+comment on column wechat_app.accepted_menu is '微信最近一次接受并作为该服务号默认菜单的那一份。发布被拒绝或超时后不改';
 comment on column wechat_app.key_version is '加密所用主密钥版本（WECHAT_MASTER_KEY，不是 PAY_MASTER_KEY）';
 comment on column wechat_app.create_by is '创建者用户ID';
 comment on column wechat_app.update_by is '更新者用户ID';

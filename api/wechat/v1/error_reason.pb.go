@@ -60,7 +60,7 @@ const (
 	ErrorReason_WECHAT_APP_DUPLICATE ErrorReason = 10
 	// The AppID is fixed for the life of the row.
 	ErrorReason_WECHAT_APP_ID_IMMUTABLE ErrorReason = 11
-	// The app is suspended, so adoption and sending are refused.
+	// The app is suspended, so adoption, sending, and menu publishing are refused.
 	ErrorReason_WECHAT_APP_SUSPENDED ErrorReason = 12
 	// WeChat has definitively refused this app.
 	ErrorReason_WECHAT_APP_LAPSED ErrorReason = 13
@@ -80,6 +80,14 @@ const (
 	ErrorReason_WECHAT_DISPATCH_REJECTED ErrorReason = 20
 	// The app's kind or granted capabilities do not include this send.
 	ErrorReason_WECHAT_CAPABILITY_DENIED ErrorReason = 21
+	// A Custom Menu button is not a leaf that opens a web page or a mini
+	// program, and not a parent that only holds sub-buttons.
+	ErrorReason_WECHAT_MENU_INVALID ErrorReason = 22
+	// WeChat did not accept the menu replacement. The app stays unlapsed.
+	ErrorReason_WECHAT_MENU_REJECTED ErrorReason = 23
+	// This app's kind, or the capabilities a Platform Authorization was
+	// granted, cannot perform the call. WeChat is not called.
+	ErrorReason_WECHAT_CAPABILITY_UNAVAILABLE ErrorReason = 24
 )
 
 // Enum value maps for ErrorReason.
@@ -107,6 +115,9 @@ var (
 		19: "WECHAT_DISPATCH_INVALID",
 		20: "WECHAT_DISPATCH_REJECTED",
 		21: "WECHAT_CAPABILITY_DENIED",
+		22: "WECHAT_MENU_INVALID",
+		23: "WECHAT_MENU_REJECTED",
+		24: "WECHAT_CAPABILITY_UNAVAILABLE",
 	}
 	ErrorReason_value = map[string]int32{
 		"ERROR_REASON_UNSPECIFIED":         0,
@@ -131,6 +142,9 @@ var (
 		"WECHAT_DISPATCH_INVALID":          19,
 		"WECHAT_DISPATCH_REJECTED":         20,
 		"WECHAT_CAPABILITY_DENIED":         21,
+		"WECHAT_MENU_INVALID":              22,
+		"WECHAT_MENU_REJECTED":             23,
+		"WECHAT_CAPABILITY_UNAVAILABLE":    24,
 	}
 )
 
@@ -165,7 +179,7 @@ var File_wechat_v1_error_reason_proto protoreflect.FileDescriptor
 
 const file_wechat_v1_error_reason_proto_rawDesc = "" +
 	"\n" +
-	"\x1cwechat/v1/error_reason.proto\x12\twechat.v1*\x8f\x05\n" +
+	"\x1cwechat/v1/error_reason.proto\x12\twechat.v1*\xe5\x05\n" +
 	"\vErrorReason\x12\x1c\n" +
 	"\x18ERROR_REASON_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19WECHAT_PLATFORM_NOT_FOUND\x10\x01\x12\x1b\n" +
@@ -189,7 +203,10 @@ const file_wechat_v1_error_reason_proto_rawDesc = "" +
 	"\x18WECHAT_TEMPLATE_REJECTED\x10\x12\x12\x1b\n" +
 	"\x17WECHAT_DISPATCH_INVALID\x10\x13\x12\x1c\n" +
 	"\x18WECHAT_DISPATCH_REJECTED\x10\x14\x12\x1c\n" +
-	"\x18WECHAT_CAPABILITY_DENIED\x10\x15B(\n" +
+	"\x18WECHAT_CAPABILITY_DENIED\x10\x15\x12\x17\n" +
+	"\x13WECHAT_MENU_INVALID\x10\x16\x12\x18\n" +
+	"\x14WECHAT_MENU_REJECTED\x10\x17\x12!\n" +
+	"\x1dWECHAT_CAPABILITY_UNAVAILABLE\x10\x18B(\n" +
 	"\rapi.wechat.v1P\x01Z\x15glex/api/wechat/v1;v1b\x06proto3"
 
 var (

@@ -330,6 +330,34 @@ service WechatService {
       body: "*"
     };
   }
+  // GetWechatAppMenu returns the Custom Menu saved on one Service Account
+  // and the last menu WeChat accepted. Neither is a secret. Permission:
+  // wechat:app:list.
+  rpc GetWechatAppMenu(GetWechatAppMenuRequest) returns (WechatAppMenu) {
+    option (google.api.http) = {
+      get: "/wechat/app/{app_id}/menu"
+    };
+  }
+  // SaveWechatAppMenu stores the Custom Menu in this system and does not
+  // call WeChat. The last menu WeChat accepted stays as it was.
+  // Permission: wechat:app:update.
+  rpc SaveWechatAppMenu(SaveWechatAppMenuRequest) returns (WechatAppMenu) {
+    option (google.api.http) = {
+      put: "/wechat/app/{app_id}/menu"
+      body: "*"
+    };
+  }
+  // PublishWechatAppMenu sends the whole saved menu and replaces that
+  // Service Account's default menu at WeChat. A business refusal or a
+  // timeout leaves the previously accepted menu in place and does not
+  // lapse the app. A definitive refusal lapses the app and still leaves
+  // that menu. Permission: wechat:app:update.
+  rpc PublishWechatAppMenu(PublishWechatAppMenuRequest) returns (WechatAppMenu) {
+    option (google.api.http) = {
+      post: "/wechat/app/{app_id}/menu/publish"
+      body: "*"
+    };
+  }
   // MiniProgramLogin exchanges one mini program's one-time login code for
   // that WeChat App's openid and, when WeChat supplied one, its unionid.
   // Direct Hold and Platform Authorization share this entry; the caller
@@ -591,6 +619,44 @@ message CreateWechatDispatchRequest {
   string content = 4;
   string web_url = 5;
   string mini_program_page = 6;
+}
+
+// WechatMenuButton is one button of a Custom Menu. A parent holds
+// sub-buttons and does not itself open a page. A leaf sets either a web
+// URL or a mini program, not both.
+message WechatMenuButton {
+  string name = 1;
+  string web_url = 2;
+  string mini_program_app_id = 3;
+  string mini_program_page = 4;
+  repeated WechatMenuButton sub_buttons = 5;
+}
+
+// WechatCustomMenu is one menu document, including nested sub-buttons.
+// There is no ceiling of three top-level buttons.
+message WechatCustomMenu {
+  repeated WechatMenuButton buttons = 1;
+}
+
+// WechatAppMenu is the menu an operator can read on one WeChat App.
+// saved is the document kept in this system. accepted is the last menu
+// WeChat accepted; it is empty until a publish succeeds.
+message WechatAppMenu {
+  WechatCustomMenu saved = 1;
+  WechatCustomMenu accepted = 2;
+}
+
+message GetWechatAppMenuRequest {
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message SaveWechatAppMenuRequest {
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+  WechatCustomMenu menu = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PublishWechatAppMenuRequest {
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message MiniProgramLoginRequest {

@@ -1029,6 +1029,26 @@ func LapsedNEQ(v bool) predicate.WechatApp {
 	return predicate.WechatApp(sql.FieldNEQ(FieldLapsed, v))
 }
 
+// SavedMenuIsNil applies the IsNil predicate on the "saved_menu" field.
+func SavedMenuIsNil() predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldIsNull(FieldSavedMenu))
+}
+
+// SavedMenuNotNil applies the NotNil predicate on the "saved_menu" field.
+func SavedMenuNotNil() predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldNotNull(FieldSavedMenu))
+}
+
+// AcceptedMenuIsNil applies the IsNil predicate on the "accepted_menu" field.
+func AcceptedMenuIsNil() predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldIsNull(FieldAcceptedMenu))
+}
+
+// AcceptedMenuNotNil applies the NotNil predicate on the "accepted_menu" field.
+func AcceptedMenuNotNil() predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldNotNull(FieldAcceptedMenu))
+}
+
 // KeyVersionEQ applies the EQ predicate on the "key_version" field.
 func KeyVersionEQ(v int) predicate.WechatApp {
 	return predicate.WechatApp(sql.FieldEQ(FieldKeyVersion, v))

@@ -44,7 +44,7 @@ enum ErrorReason {
   WECHAT_APP_DUPLICATE = 10;
   // The AppID is fixed for the life of the row.
   WECHAT_APP_ID_IMMUTABLE = 11;
-  // The app is suspended, so adoption and sending are refused.
+  // The app is suspended, so adoption, sending, and menu publishing are refused.
   WECHAT_APP_SUSPENDED = 12;
   // WeChat has definitively refused this app.
   WECHAT_APP_LAPSED = 13;
@@ -64,4 +64,12 @@ enum ErrorReason {
   WECHAT_DISPATCH_REJECTED = 20;
   // The app's kind or granted capabilities do not include this send.
   WECHAT_CAPABILITY_DENIED = 21;
+  // A Custom Menu button is not a leaf that opens a web page or a mini
+  // program, and not a parent that only holds sub-buttons.
+  WECHAT_MENU_INVALID = 22;
+  // WeChat did not accept the menu replacement. The app stays unlapsed.
+  WECHAT_MENU_REJECTED = 23;
+  // This app's kind, or the capabilities a Platform Authorization was
+  // granted, cannot perform the call. WeChat is not called.
+  WECHAT_CAPABILITY_UNAVAILABLE = 24;
 }

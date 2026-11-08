@@ -803,14 +803,3 @@ func (f *authFixture) grantService(t *testing.T, platformID int64, appID string,
 	}
 	return created
 }
-
-func serviceHold(appID string, actorID int64) CreateDirectHoldRequest {
-	return CreateDirectHoldRequest{
-		Name:      "演示服务号",
-		AppID:     appID,
-		AppType:   entity.AppTypeOfficialAccount,
-		Kind:      entity.AccountKindService,
-		AppSecret: testAppSecret,
-		ActorID:   actorID,
-	}
-}

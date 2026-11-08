@@ -49,6 +49,10 @@ const (
 	FieldSuspended = "suspended"
 	// FieldLapsed holds the string denoting the lapsed field in the database.
 	FieldLapsed = "lapsed"
+	// FieldSavedMenu holds the string denoting the saved_menu field in the database.
+	FieldSavedMenu = "saved_menu"
+	// FieldAcceptedMenu holds the string denoting the accepted_menu field in the database.
+	FieldAcceptedMenu = "accepted_menu"
 	// FieldKeyVersion holds the string denoting the key_version field in the database.
 	FieldKeyVersion = "key_version"
 	// Table holds the table name of the wechatapp in the database.
@@ -76,6 +80,8 @@ var Columns = []string{
 	FieldEncodingAesKeyMask,
 	FieldSuspended,
 	FieldLapsed,
+	FieldSavedMenu,
+	FieldAcceptedMenu,
 	FieldKeyVersion,
 }
 
