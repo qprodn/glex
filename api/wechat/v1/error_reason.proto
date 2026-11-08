@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package wechat.v1;
+
+option go_package = "glex/api/wechat/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.wechat.v1";
+
+// ErrorReason is the stable vocabulary for the `reason` field of the error
+// body. Values are wire-visible: protojson encodes them as their names, so
+// clients branch on the name rather than on an HTTP status. The integer
+// tags are internal to the enum; only the names cross the wire.
+enum ErrorReason {
+  // Unset. Never returned; reserved by proto3 for the zero value.
+  ERROR_REASON_UNSPECIFIED = 0;
+
+  // The requested WeChat Platform does not exist or is withdrawn (HTTP 404).
+  WECHAT_PLATFORM_NOT_FOUND = 1;
+  // A WeChat Platform parameter is invalid: blank name, blank component
+  // AppID, missing secret on register, or an over-length value.
+  WECHAT_PLATFORM_INVALID = 2;
+  // A platform that is not withdrawn already holds this component AppID
+  // (HTTP 409).
+  WECHAT_PLATFORM_DUPLICATE = 3;
+  // The component AppID is fixed for the life of the row.
+  WECHAT_PLATFORM_APP_ID_IMMUTABLE = 4;
+  // WECHAT_MASTER_KEY is absent or malformed — registration and secret
+  // replacement refuse to operate rather than store plaintext (ADR 0029).
+  WECHAT_MASTER_KEY_MISSING = 5;
+  // The stored ciphertext failed to decrypt or authenticate.
+  WECHAT_SECRET_CRYPTO_ERROR = 6;
+  // A wechat-store operation failed unexpectedly — the raw database error
+  // is logged server-side and this sentinel crosses the boundary (ADR 0007,
+  // HTTP 503).
+  WECHAT_STORE_UNAVAILABLE = 7;
+}

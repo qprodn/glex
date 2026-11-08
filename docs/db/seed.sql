@@ -461,4 +461,32 @@ values (1000000000000001010, '账号自助-是否开启用户注册功能', 'sys
         'true:开启, false:关闭；消费端：file 模块预览（未接入）', 0, 0)
 on conflict do nothing;
 
+-- ---------------------------------------------------------------------------
+-- wechat 模块：微信管理目录 + 微信平台（perms 与 auth_routes.go 对应）
+-- 本票种子 ID 停在 554。目录从 550 起。
+-- ---------------------------------------------------------------------------
+
+insert into sys_menu (id, menu_name, parent_id, order_num, path, menu_type, icon, create_by, update_by)
+values (1000000000000000550, '微信管理', 0, 4, 'wechat', 1, 'wechat', 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, path, component, menu_type, perms, icon, create_by, update_by)
+values (1000000000000000551, '微信平台', 1000000000000000550, 1, 'platform', 'wechat/platform/index', 2, 'wechat:platform:list', 'key', 0, 0)
+on conflict do nothing;
+
+insert into sys_menu (id, menu_name, parent_id, order_num, menu_type, perms, create_by, update_by)
+values (1000000000000000552, '平台新增', 1000000000000000551, 1, 3, 'wechat:platform:create', 0, 0),
+       (1000000000000000553, '平台修改', 1000000000000000551, 2, 3, 'wechat:platform:update', 0, 0),
+       (1000000000000000554, '平台撤除', 1000000000000000551, 3, 3, 'wechat:platform:remove', 0, 0)
+on conflict do nothing;
+
+-- superadmin 追加微信平台全部菜单。role_menu 与 menu 分表，主键同号不冲突。
+insert into sys_role_menu (id, role_id, menu_id, create_by, update_by)
+values (1000000000000000550, 1000000000000000101, 1000000000000000550, 0, 0),
+       (1000000000000000551, 1000000000000000101, 1000000000000000551, 0, 0),
+       (1000000000000000552, 1000000000000000101, 1000000000000000552, 0, 0),
+       (1000000000000000553, 1000000000000000101, 1000000000000000553, 0, 0),
+       (1000000000000000554, 1000000000000000101, 1000000000000000554, 0, 0)
+on conflict do nothing;
+
 commit;

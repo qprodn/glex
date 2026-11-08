@@ -13,6 +13,7 @@ import (
 	paramv1 "glex/api/param/v1"
 	payv1 "glex/api/pay/v1"
 	userv1 "glex/api/user/v1"
+	wechatv1 "glex/api/wechat/v1"
 	domainaudit "glex/internal/domain/audit"
 	auditentity "glex/internal/domain/audit/entity"
 	auditservice "glex/internal/domain/audit/service"
@@ -134,6 +135,13 @@ func authRoutes() map[string]authmw.Route {
 		payv1.OperationPayServiceGetRefund:                   {Permission: "pay:refund:list"},
 		payv1.OperationPayServiceListRefunds:                 {Permission: "pay:refund:list"},
 		payv1.OperationPayServiceQueryRefund:                 {Permission: "pay:refund:query"},
+
+		// wechat: platform registration. Ordinary reads show masks only.
+		wechatv1.OperationWechatServiceCreateWechatPlatform:   {Permission: "wechat:platform:create"},
+		wechatv1.OperationWechatServiceListWechatPlatforms:    {Permission: "wechat:platform:list"},
+		wechatv1.OperationWechatServiceGetWechatPlatform:      {Permission: "wechat:platform:list"},
+		wechatv1.OperationWechatServiceUpdateWechatPlatform:   {Permission: "wechat:platform:update"},
+		wechatv1.OperationWechatServiceWithdrawWechatPlatform: {Permission: "wechat:platform:remove"},
 
 		// job: scheduled-task console and run history (ADR 0023). The
 		// executor listing rides the list permission — it exists to power

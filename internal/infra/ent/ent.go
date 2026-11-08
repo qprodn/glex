@@ -26,6 +26,7 @@ import (
 	"glex/internal/infra/ent/user"
 	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
+	"glex/internal/infra/ent/wechatplatform"
 	"reflect"
 	"sync"
 
@@ -112,6 +113,7 @@ func checkColumn(t, c string) error {
 			user.Table:               user.ValidColumn,
 			userpost.Table:           userpost.ValidColumn,
 			userrole.Table:           userrole.ValidColumn,
+			wechatplatform.Table:     wechatplatform.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

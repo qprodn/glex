@@ -294,4 +294,12 @@ export default {
   "pages.config.keyPattern": "Start with a letter or digit; then letters, digits, dots, underscores, hyphens",
   "pages.config.delete.confirm": "Delete parameter \"{name}\"?",
   "pages.config.delete.hint": "Consumers referencing the key will read not-found; built-in parameters cannot be deleted.",
+  "pages.wechat.platform.new": "Register platform",
+  "pages.wechat.platform.edit": "Edit WeChat platform",
+  "pages.wechat.platform.name": "Display name",
+  "pages.wechat.platform.appId": "component AppID",
+  "pages.wechat.platform.appId.hint": "Cannot be changed after it is saved",
+  "pages.wechat.platform.secret": "component secret",
+  "pages.wechat.platform.secret.keep": "Leave blank to keep the stored value",
+  "pages.wechat.platform.withdraw.confirm": "Withdrawing removes this platform from the live list. Withdraw?",
 };

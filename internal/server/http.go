@@ -13,6 +13,7 @@ import (
 	paramv1 "glex/api/param/v1"
 	payv1 "glex/api/pay/v1"
 	userv1 "glex/api/user/v1"
+	wechatv1 "glex/api/wechat/v1"
 	accessapp "glex/internal/application/access"
 	auditapp "glex/internal/application/audit"
 	authnapp "glex/internal/application/authn"
@@ -23,6 +24,7 @@ import (
 	paramapp "glex/internal/application/param"
 	payapp "glex/internal/application/pay"
 	userapp "glex/internal/application/user"
+	wechatapp "glex/internal/application/wechat"
 	"glex/internal/conf"
 	auditservice "glex/internal/domain/audit/service"
 	authnrepo "glex/internal/domain/authn/repository"
@@ -37,7 +39,7 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, audit *auditapp.AuditApplication, dept *orgapp.DeptApplication, post *orgapp.PostApplication, postAssignment *orgapp.PostAssignmentApplication, pay *payapp.PayApplication, job *jobapp.JobApplication, config *paramapp.ConfigApplication, payNotifyLimiter NotifyLimiter, authenticator authnrepo.Authenticator, auditDomain auditservice.Audit, logger *slog.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessapp.MenuApplication, role *accessapp.RoleApplication, assignment *accessapp.RoleAssignmentApplication, login *authnapp.LoginApplication, online *authnapp.OnlineSessionApplication, dict *dictapp.DictApplication, file *fileapp.FileApplication, audit *auditapp.AuditApplication, dept *orgapp.DeptApplication, post *orgapp.PostApplication, postAssignment *orgapp.PostAssignmentApplication, pay *payapp.PayApplication, job *jobapp.JobApplication, config *paramapp.ConfigApplication, payNotifyLimiter NotifyLimiter, authenticator authnrepo.Authenticator, auditDomain auditservice.Audit, wechat *wechatapp.WechatApplication, logger *slog.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Filter(
 			requestid.HTTP(requestid.WithLogger(logger)),
@@ -58,7 +60,7 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 					// oper-log event.
 					OperationPayServiceChannelNotification,
 				),
-				operlog.WithSecretKeys(pay.ChannelSecretFields()...),
+				operlog.WithSecretKeys(append(pay.ChannelSecretFields(), wechat.SecretFields()...)...),
 			),
 		),
 	}
@@ -86,6 +88,7 @@ func NewHTTPServer(c *conf.Server, user *userapp.UserApplication, menu *accessap
 	auditv1.RegisterOperLogServiceHTTPServer(srv, audit)
 	auditv1.RegisterLoginLogServiceHTTPServer(srv, audit)
 	payv1.RegisterPayServiceHTTPServer(srv, pay)
+	wechatv1.RegisterWechatServiceHTTPServer(srv, wechat)
 	jobv1.RegisterJobServiceHTTPServer(srv, job)
 	paramv1.RegisterConfigServiceHTTPServer(srv, config)
 	registerPayNotifyHTTP(srv, pay, payNotifyLimiter)

@@ -15,4 +15,6 @@ export default {
   "menu.pay.merchant": "Merchant Accounts",
   "menu.pay.payment": "Payments",
   "menu.pay.refund": "Refunds",
+  "menu.wechat": "WeChat",
+  "menu.wechat.platform": "WeChat Platforms",
 };

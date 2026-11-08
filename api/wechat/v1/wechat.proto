@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package wechat.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "glex/api/wechat/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.wechat.v1";
+
+// WechatPlatform is one WeChat Platform registration (微信平台). The
+// component secret, Token, and EncodingAESKey never cross the wire —
+// every response carries only their masks (ADR 0029).
+message WechatPlatform {
+  // Snowflake ID.
+  int64 platform_id = 1;
+  // Display name.
+  string name = 2;
+  // Component AppID. Immutable for the life of the row.
+  string component_app_id = 3;
+  // Mask of the component secret, like "****ab12".
+  string component_secret_mask = 4;
+  // Mask of the Token.
+  string token_mask = 5;
+  // Mask of the EncodingAESKey.
+  string encoding_aes_key_mask = 6;
+  // Master-key version the ciphertext was written under (ADR 0018).
+  int32 key_version = 7;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  int64 create_by = 8;
+  int64 update_by = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// WechatPlatformSet is a page of WeChat Platforms.
+message WechatPlatformSet {
+  repeated WechatPlatform platforms = 1;
+  // Opaque token for the next page; empty when on the last page.
+  string next_page_token = 2;
+}
+
+// WechatService is the back-office surface for WeChat Platform
+// registration. Permissions are wechat:platform:list, create, update,
+// and remove.
+service WechatService {
+  // CreateWechatPlatform registers a platform. The response carries masks,
+  // never the secrets the operator just typed.
+  rpc CreateWechatPlatform(CreateWechatPlatformRequest) returns (WechatPlatform) {
+    option (google.api.http) = {
+      post: "/wechat/platform"
+      body: "*"
+    };
+  }
+  // ListWechatPlatforms lists platforms that are not withdrawn. Responses
+  // carry masks only.
+  rpc ListWechatPlatforms(ListWechatPlatformsRequest) returns (WechatPlatformSet) {
+    option (google.api.http) = {
+      get: "/wechat/platform"
+    };
+  }
+  // GetWechatPlatform retrieves one platform that is not withdrawn.
+  rpc GetWechatPlatform(GetWechatPlatformRequest) returns (WechatPlatform) {
+    option (google.api.http) = {
+      get: "/wechat/platform/{platform_id}"
+    };
+  }
+  // UpdateWechatPlatform corrects the display name and, when a secret is
+  // non-blank, replaces that secret. A component AppID that differs from
+  // the stored value is refused. Blank secrets keep their stored values.
+  rpc UpdateWechatPlatform(UpdateWechatPlatformRequest) returns (WechatPlatform) {
+    option (google.api.http) = {
+      patch: "/wechat/platform/{platform_id}"
+      body: "*"
+    };
+  }
+  // WithdrawWechatPlatform soft-deletes the platform. The row leaves the
+  // live list; it is not hard-deleted.
+  rpc WithdrawWechatPlatform(WithdrawWechatPlatformRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/wechat/platform/{platform_id}"
+    };
+  }
+}
+
+message CreateWechatPlatformRequest {
+  // Required. Display name, at most 64 characters.
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. Component AppID. Unique among platforms that are not withdrawn.
+  string component_app_id = 2 [(google.api.field_behavior) = REQUIRED];
+  // Required. Component secret. Stored as ciphertext; echoed as a mask.
+  string component_secret = 3 [(google.api.field_behavior) = REQUIRED];
+  // Required. Messaging Token.
+  string token = 4 [(google.api.field_behavior) = REQUIRED];
+  // Required. EncodingAESKey.
+  string encoding_aes_key = 5 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListWechatPlatformsRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `name` (e.g. `name="华东平台"`, exact)
+  //   * `component_app_id` (e.g. `component_app_id="wx123"`)
+  string filter = 3;
+  // Optional. AIP-132 order, e.g. `id desc` (the default).
+  string order_by = 4;
+}
+
+message GetWechatPlatformRequest {
+  // Required. The id of the platform to retrieve.
+  int64 platform_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateWechatPlatformRequest {
+  // Required. The id of the platform to update.
+  int64 platform_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. Display name.
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+  // Optional. Must be empty or equal to the stored component AppID.
+  // A different value is refused; the stored value never changes.
+  string component_app_id = 3;
+  // Optional. Blank keeps the stored component secret.
+  string component_secret = 4;
+  // Optional. Blank keeps the stored Token.
+  string token = 5;
+  // Optional. Blank keeps the stored EncodingAESKey.
+  string encoding_aes_key = 6;
+}
+
+message WithdrawWechatPlatformRequest {
+  // Required. The id of the platform to withdraw.
+  int64 platform_id = 1 [(google.api.field_behavior) = REQUIRED];
+}

@@ -15,4 +15,6 @@ export default {
   "menu.pay.merchant": "商户管理",
   "menu.pay.payment": "支付单",
   "menu.pay.refund": "退款单",
+  "menu.wechat": "微信管理",
+  "menu.wechat.platform": "微信平台",
 };

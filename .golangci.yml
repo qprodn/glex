@@ -8,7 +8,7 @@
 #      (cross-module access goes through crossdomain contracts only).
 #
 # The deny lists enumerate every module (access, authn, user, dict, file, org,
-# pay, job, audit, param) — new modules must be added to all three rule
+# pay, job, audit, param, wechat) — new modules must be added to all three rule
 # families. Enable more linters as the codebase adopts them; keep these rules
 # intact.
 version: "2"
@@ -44,6 +44,8 @@ linters:
               desc: application calls domain services, never repositories (ADR 0005)
             - pkg: glex/internal/domain/param/repository
               desc: application calls domain services, never repositories (ADR 0005)
+            - pkg: glex/internal/domain/wechat/repository
+              desc: application calls domain services, never repositories (ADR 0005)
         crossdomain-impl-no-repository:
           files:
             - "**/internal/crossdomain/**/impl/**"
@@ -68,6 +70,8 @@ linters:
               desc: crossdomain impls delegate to domain services (ADR 0005)
             - pkg: glex/internal/domain/param/repository
               desc: crossdomain impls delegate to domain services (ADR 0005)
+            - pkg: glex/internal/domain/wechat/repository
+              desc: crossdomain impls delegate to domain services (ADR 0005)
         domain-access-no-cross-module:
           files:
             - "**/internal/domain/access/**"
@@ -89,6 +93,8 @@ linters:
             - pkg: glex/internal/domain/audit
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/param
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/wechat
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
         domain-authn-no-cross-module:
           files:
@@ -112,6 +118,8 @@ linters:
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/param
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/wechat
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
         domain-user-no-cross-module:
           files:
             - "**/internal/domain/user/**"
@@ -133,6 +141,8 @@ linters:
             - pkg: glex/internal/domain/audit
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/param
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/wechat
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
         domain-dict-no-cross-module:
           files:
@@ -156,6 +166,8 @@ linters:
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/param
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/wechat
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
         domain-file-no-cross-module:
           files:
             - "**/internal/domain/file/**"
@@ -177,6 +189,8 @@ linters:
             - pkg: glex/internal/domain/audit
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/param
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/wechat
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
         domain-org-no-cross-module:
           files:
@@ -200,6 +214,8 @@ linters:
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/param
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/wechat
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
         domain-pay-no-cross-module:
           files:
             - "**/internal/domain/pay/**"
@@ -221,6 +237,8 @@ linters:
             - pkg: glex/internal/domain/audit
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/param
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/wechat
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
         domain-job-no-cross-module:
           files:
@@ -244,6 +262,8 @@ linters:
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/param
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/wechat
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
         domain-audit-no-cross-module:
           files:
             - "**/internal/domain/audit/**"
@@ -266,6 +286,8 @@ linters:
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/param
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/wechat
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
         domain-param-no-cross-module:
           files:
             - "**/internal/domain/param/**"
@@ -287,4 +309,30 @@ linters:
             - pkg: glex/internal/domain/job
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)
             - pkg: glex/internal/domain/audit
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/wechat
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+        domain-wechat-no-cross-module:
+          files:
+            - "**/internal/domain/wechat/**"
+          deny:
+            - pkg: glex/internal/domain/access
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/authn
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/user
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/dict
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/file
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/org
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/pay
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/job
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/audit
+              desc: cross-module access goes through crossdomain contracts only (ADR 0005)
+            - pkg: glex/internal/domain/param
               desc: cross-module access goes through crossdomain contracts only (ADR 0005)

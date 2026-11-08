@@ -2484,6 +2484,132 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/pay.v1.Refund'
+    /wechat/platform:
+        get:
+            tags:
+                - WechatService
+            description: |-
+                ListWechatPlatforms lists platforms that are not withdrawn. Responses
+                 carry masks only.
+            operationId: WechatService_ListWechatPlatforms
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `name` (e.g. `name="华东平台"`, exact)
+                       * `component_app_id` (e.g. `component_app_id="wx123"`)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: Optional. AIP-132 order, e.g. `id desc` (the default).
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatPlatformSet'
+        post:
+            tags:
+                - WechatService
+            description: |-
+                CreateWechatPlatform registers a platform. The response carries masks,
+                 never the secrets the operator just typed.
+            operationId: WechatService_CreateWechatPlatform
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.CreateWechatPlatformRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatPlatform'
+    /wechat/platform/{platformId}:
+        get:
+            tags:
+                - WechatService
+            description: GetWechatPlatform retrieves one platform that is not withdrawn.
+            operationId: WechatService_GetWechatPlatform
+            parameters:
+                - name: platformId
+                  in: path
+                  description: Required. The id of the platform to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatPlatform'
+        delete:
+            tags:
+                - WechatService
+            description: |-
+                WithdrawWechatPlatform soft-deletes the platform. The row leaves the
+                 live list; it is not hard-deleted.
+            operationId: WechatService_WithdrawWechatPlatform
+            parameters:
+                - name: platformId
+                  in: path
+                  description: Required. The id of the platform to withdraw.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+        patch:
+            tags:
+                - WechatService
+            description: |-
+                UpdateWechatPlatform corrects the display name and, when a secret is
+                 non-blank, replaces that secret. A component AppID that differs from
+                 the stored value is refused. Blank secrets keep their stored values.
+            operationId: WechatService_UpdateWechatPlatform
+            parameters:
+                - name: platformId
+                  in: path
+                  description: Required. The id of the platform to update.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.UpdateWechatPlatformRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.WechatPlatform'
 components:
     schemas:
         access.v1.Menu:
@@ -4089,6 +4215,107 @@ components:
                     type: string
                     description: Opaque token for the next page; empty when on the last page.
             description: UserSet is a page of users.
+        wechat.v1.CreateWechatPlatformRequest:
+            required:
+                - name
+                - componentAppId
+                - componentSecret
+                - token
+                - encodingAesKey
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: Required. Display name, at most 64 characters.
+                componentAppId:
+                    type: string
+                    description: Required. Component AppID. Unique among platforms that are not withdrawn.
+                componentSecret:
+                    type: string
+                    description: Required. Component secret. Stored as ciphertext; echoed as a mask.
+                token:
+                    type: string
+                    description: Required. Messaging Token.
+                encodingAesKey:
+                    type: string
+                    description: Required. EncodingAESKey.
+        wechat.v1.UpdateWechatPlatformRequest:
+            required:
+                - platformId
+                - name
+            type: object
+            properties:
+                platformId:
+                    type: string
+                    description: Required. The id of the platform to update.
+                name:
+                    type: string
+                    description: Required. Display name.
+                componentAppId:
+                    type: string
+                    description: |-
+                        Optional. Must be empty or equal to the stored component AppID.
+                         A different value is refused; the stored value never changes.
+                componentSecret:
+                    type: string
+                    description: Optional. Blank keeps the stored component secret.
+                token:
+                    type: string
+                    description: Optional. Blank keeps the stored Token.
+                encodingAesKey:
+                    type: string
+                    description: Optional. Blank keeps the stored EncodingAESKey.
+        wechat.v1.WechatPlatform:
+            type: object
+            properties:
+                platformId:
+                    type: string
+                    description: Snowflake ID.
+                name:
+                    type: string
+                    description: Display name.
+                componentAppId:
+                    type: string
+                    description: Component AppID. Immutable for the life of the row.
+                componentSecretMask:
+                    type: string
+                    description: Mask of the component secret, like "****ab12".
+                tokenMask:
+                    type: string
+                    description: Mask of the Token.
+                encodingAesKeyMask:
+                    type: string
+                    description: Mask of the EncodingAESKey.
+                keyVersion:
+                    type: integer
+                    description: Master-key version the ciphertext was written under (ADR 0018).
+                    format: int32
+                createBy:
+                    type: string
+                    description: 'Audit: who created/updated. Filled from the authenticated identity.'
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                WechatPlatform is one WeChat Platform registration (微信平台). The
+                 component secret, Token, and EncodingAESKey never cross the wire —
+                 every response carries only their masks (ADR 0029).
+        wechat.v1.WechatPlatformSet:
+            type: object
+            properties:
+                platforms:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/wechat.v1.WechatPlatform'
+                nextPageToken:
+                    type: string
+                    description: Opaque token for the next page; empty when on the last page.
+            description: WechatPlatformSet is a page of WeChat Platforms.
 tags:
     - name: AuthService
       description: |-
@@ -4157,3 +4384,8 @@ tags:
       description: RoleService is the system-role CRUD + Menu Grant service.
     - name: UserService
       description: UserService is the system-user CRUD service.
+    - name: WechatService
+      description: |-
+        WechatService is the back-office surface for WeChat Platform
+         registration. Permissions are wechat:platform:list, create, update,
+         and remove.

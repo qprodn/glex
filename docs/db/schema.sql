@@ -783,3 +783,45 @@ comment on column job_log.update_by is '更新者用户ID';
 comment on column job_log.created_at is '创建时间';
 comment on column job_log.updated_at is '更新时间';
 comment on column job_log.deleted_at is '软删除时间；NULL=未删除';
+
+-- ============================================================
+-- wechat 模块（原生设计，非 RuoYi 血统 —— 不用 sys_ 前缀）
+-- ============================================================
+
+create table if not exists wechat_platform (
+    id                      bigint       not null,
+    name                    varchar(64)  not null,             -- 显示名称
+    component_app_id        varchar(64)  not null,             -- component AppID；本行存续期间不可改
+    secret_cipher           text         not null,             -- component secret / Token / EncodingAESKey 的 JSON 密文（ADR 0018/0029）
+    component_secret_mask   varchar(16)  not null,             -- 写入时生成的掩码回显
+    token_mask              varchar(16)  not null,
+    encoding_aes_key_mask   varchar(16)  not null,
+    key_version             int          not null default 1,   -- 主密钥版本（KEK 轮换预留，ADR 0018）
+    create_by               bigint       not null default 0,
+    update_by               bigint       not null default 0,
+    created_at              timestamptz  not null default now(),
+    updated_at              timestamptz  not null default now(),
+    deleted_at              timestamptz,                       -- 软删除；NULL=未删除
+    constraint wechat_platform_pkey primary key (id)
+);
+
+-- 未撤回的平台里，一个 component AppID 只对应一条；撤回后可以再登记成新行（ADR 0029）。
+create unique index if not exists wechat_platform_component_app_id
+    on wechat_platform (component_app_id)
+    where deleted_at is null;
+
+comment on table wechat_platform is '微信平台表（第三方平台登记，凭据密文落库 ADR 0018/0029）';
+
+comment on column wechat_platform.id is '主键ID（雪花）';
+comment on column wechat_platform.name is '显示名称';
+comment on column wechat_platform.component_app_id is 'component AppID；本行存续期间不可改；未撤回行内唯一';
+comment on column wechat_platform.secret_cipher is 'component secret、Token、EncodingAESKey 的 JSON 密文；格式 key_version:nonce_b64:ciphertext_b64';
+comment on column wechat_platform.component_secret_mask is 'component secret 掩码回显（如 ****ab12）；展示路径永不解密';
+comment on column wechat_platform.token_mask is 'Token 掩码回显；展示路径永不解密';
+comment on column wechat_platform.encoding_aes_key_mask is 'EncodingAESKey 掩码回显；展示路径永不解密';
+comment on column wechat_platform.key_version is '加密所用主密钥版本（WECHAT_MASTER_KEY，不是 PAY_MASTER_KEY）';
+comment on column wechat_platform.create_by is '创建者用户ID';
+comment on column wechat_platform.update_by is '更新者用户ID';
+comment on column wechat_platform.created_at is '创建时间';
+comment on column wechat_platform.updated_at is '更新时间';
+comment on column wechat_platform.deleted_at is '软删除时间；NULL=未删除';

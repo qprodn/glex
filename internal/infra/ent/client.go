@@ -31,6 +31,7 @@ import (
 	"glex/internal/infra/ent/user"
 	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
+	"glex/internal/infra/ent/wechatplatform"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
@@ -85,6 +86,8 @@ type Client struct {
 	UserPost *UserPostClient
 	// UserRole is the client for interacting with the UserRole builders.
 	UserRole *UserRoleClient
+	// WechatPlatform is the client for interacting with the WechatPlatform builders.
+	WechatPlatform *WechatPlatformClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -116,6 +119,7 @@ func (c *Client) init() {
 	c.User = NewUserClient(c.config)
 	c.UserPost = NewUserPostClient(c.config)
 	c.UserRole = NewUserRoleClient(c.config)
+	c.WechatPlatform = NewWechatPlatformClient(c.config)
 }
 
 type (
@@ -228,6 +232,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		User:               NewUserClient(cfg),
 		UserPost:           NewUserPostClient(cfg),
 		UserRole:           NewUserRoleClient(cfg),
+		WechatPlatform:     NewWechatPlatformClient(cfg),
 	}, nil
 }
 
@@ -267,6 +272,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		User:               NewUserClient(cfg),
 		UserPost:           NewUserPostClient(cfg),
 		UserRole:           NewUserRoleClient(cfg),
+		WechatPlatform:     NewWechatPlatformClient(cfg),
 	}, nil
 }
 
@@ -299,6 +305,7 @@ func (c *Client) Use(hooks ...Hook) {
 		c.Dept, c.DictData, c.DictType, c.File, c.Job, c.JobLog, c.LoginLog, c.Menu,
 		c.OperLog, c.Param, c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment,
 		c.PayRefund, c.Post, c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
+		c.WechatPlatform,
 	} {
 		n.Use(hooks...)
 	}
@@ -311,6 +318,7 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.Dept, c.DictData, c.DictType, c.File, c.Job, c.JobLog, c.LoginLog, c.Menu,
 		c.OperLog, c.Param, c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment,
 		c.PayRefund, c.Post, c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
+		c.WechatPlatform,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -359,6 +367,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.UserPost.mutate(ctx, m)
 	case *UserRoleMutation:
 		return c.UserRole.mutate(ctx, m)
+	case *WechatPlatformMutation:
+		return c.WechatPlatform.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -3216,17 +3226,150 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 	}
 }
 
+// WechatPlatformClient is a client for the WechatPlatform schema.
+type WechatPlatformClient struct {
+	config
+}
+
+// NewWechatPlatformClient returns a client for the WechatPlatform from the given config.
+func NewWechatPlatformClient(c config) *WechatPlatformClient {
+	return &WechatPlatformClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `wechatplatform.Hooks(f(g(h())))`.
+func (c *WechatPlatformClient) Use(hooks ...Hook) {
+	c.hooks.WechatPlatform = append(c.hooks.WechatPlatform, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `wechatplatform.Intercept(f(g(h())))`.
+func (c *WechatPlatformClient) Intercept(interceptors ...Interceptor) {
+	c.inters.WechatPlatform = append(c.inters.WechatPlatform, interceptors...)
+}
+
+// Create returns a builder for creating a WechatPlatform entity.
+func (c *WechatPlatformClient) Create() *WechatPlatformCreate {
+	mutation := newWechatPlatformMutation(c.config, OpCreate)
+	return &WechatPlatformCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of WechatPlatform entities.
+func (c *WechatPlatformClient) CreateBulk(builders ...*WechatPlatformCreate) *WechatPlatformCreateBulk {
+	return &WechatPlatformCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *WechatPlatformClient) MapCreateBulk(slice any, setFunc func(*WechatPlatformCreate, int)) *WechatPlatformCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &WechatPlatformCreateBulk{err: fmt.Errorf("calling to WechatPlatformClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*WechatPlatformCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &WechatPlatformCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for WechatPlatform.
+func (c *WechatPlatformClient) Update() *WechatPlatformUpdate {
+	mutation := newWechatPlatformMutation(c.config, OpUpdate)
+	return &WechatPlatformUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *WechatPlatformClient) UpdateOne(_m *WechatPlatform) *WechatPlatformUpdateOne {
+	mutation := newWechatPlatformMutation(c.config, OpUpdateOne, withWechatPlatform(_m))
+	return &WechatPlatformUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *WechatPlatformClient) UpdateOneID(id int64) *WechatPlatformUpdateOne {
+	mutation := newWechatPlatformMutation(c.config, OpUpdateOne, withWechatPlatformID(id))
+	return &WechatPlatformUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for WechatPlatform.
+func (c *WechatPlatformClient) Delete() *WechatPlatformDelete {
+	mutation := newWechatPlatformMutation(c.config, OpDelete)
+	return &WechatPlatformDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *WechatPlatformClient) DeleteOne(_m *WechatPlatform) *WechatPlatformDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *WechatPlatformClient) DeleteOneID(id int64) *WechatPlatformDeleteOne {
+	builder := c.Delete().Where(wechatplatform.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &WechatPlatformDeleteOne{builder}
+}
+
+// Query returns a query builder for WechatPlatform.
+func (c *WechatPlatformClient) Query() *WechatPlatformQuery {
+	return &WechatPlatformQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeWechatPlatform},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a WechatPlatform entity by its id.
+func (c *WechatPlatformClient) Get(ctx context.Context, id int64) (*WechatPlatform, error) {
+	return c.Query().Where(wechatplatform.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *WechatPlatformClient) GetX(ctx context.Context, id int64) *WechatPlatform {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *WechatPlatformClient) Hooks() []Hook {
+	return c.hooks.WechatPlatform
+}
+
+// Interceptors returns the client interceptors.
+func (c *WechatPlatformClient) Interceptors() []Interceptor {
+	return c.inters.WechatPlatform
+}
+
+func (c *WechatPlatformClient) mutate(ctx context.Context, m *WechatPlatformMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&WechatPlatformCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&WechatPlatformUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&WechatPlatformUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&WechatPlatformDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown WechatPlatform mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
 		Dept, DictData, DictType, File, Job, JobLog, LoginLog, Menu, OperLog, Param,
 		PayMerchantAccount, PayNotifyLog, PayPayment, PayRefund, Post, Role, RoleMenu,
-		User, UserPost, UserRole []ent.Hook
+		User, UserPost, UserRole, WechatPlatform []ent.Hook
 	}
 	inters struct {
 		Dept, DictData, DictType, File, Job, JobLog, LoginLog, Menu, OperLog, Param,
 		PayMerchantAccount, PayNotifyLog, PayPayment, PayRefund, Post, Role, RoleMenu,
-		User, UserPost, UserRole []ent.Interceptor
+		User, UserPost, UserRole, WechatPlatform []ent.Interceptor
 	}
 )
 

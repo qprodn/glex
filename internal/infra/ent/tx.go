@@ -54,6 +54,8 @@ type Tx struct {
 	UserPost *UserPostClient
 	// UserRole is the client for interacting with the UserRole builders.
 	UserRole *UserRoleClient
+	// WechatPlatform is the client for interacting with the WechatPlatform builders.
+	WechatPlatform *WechatPlatformClient
 
 	// lazily loaded.
 	client     *Client
@@ -205,6 +207,7 @@ func (tx *Tx) init() {
 	tx.User = NewUserClient(tx.config)
 	tx.UserPost = NewUserPostClient(tx.config)
 	tx.UserRole = NewUserRoleClient(tx.config)
+	tx.WechatPlatform = NewWechatPlatformClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

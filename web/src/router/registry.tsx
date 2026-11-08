@@ -35,6 +35,7 @@ export const componentRegistry: Record<string, React.ComponentType> = {
   "pay/merchant/index": lazyPage(() => import("@/pages/pay/merchant")),
   "pay/payment/index": lazyPage(() => import("@/pages/pay/payment")),
   "pay/refund/index": lazyPage(() => import("@/pages/pay/refund")),
+  "wechat/platform/index": lazyPage(() => import("@/pages/wechat/platform")),
 };
 
 /** Keys the menu form offers as its component dropdown options. */

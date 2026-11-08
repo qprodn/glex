@@ -286,4 +286,12 @@ export default {
   "pages.config.keyPattern": "字母或数字开头，仅字母、数字、点、下划线、连字符",
   "pages.config.delete.confirm": "确定删除参数「{name}」吗？",
   "pages.config.delete.hint": "删除后按此键引用的消费方将读到 not-found；内置参数不可删除。",
+  "pages.wechat.platform.new": "登记平台",
+  "pages.wechat.platform.edit": "编辑微信平台",
+  "pages.wechat.platform.name": "显示名称",
+  "pages.wechat.platform.appId": "component AppID",
+  "pages.wechat.platform.appId.hint": "保存后不可修改",
+  "pages.wechat.platform.secret": "component secret",
+  "pages.wechat.platform.secret.keep": "留空保持原值",
+  "pages.wechat.platform.withdraw.confirm": "撤回后该平台离开列表，确定撤回？",
 };

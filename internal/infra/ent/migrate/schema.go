@@ -702,6 +702,38 @@ var (
 			},
 		},
 	}
+	// WechatPlatformColumns holds the columns for the "wechat_platform" table.
+	WechatPlatformColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "name", Type: field.TypeString, Size: 64},
+		{Name: "component_app_id", Type: field.TypeString, Size: 64},
+		{Name: "secret_cipher", Type: field.TypeString, Size: 2147483647},
+		{Name: "component_secret_mask", Type: field.TypeString, Size: 16},
+		{Name: "token_mask", Type: field.TypeString, Size: 16},
+		{Name: "encoding_aes_key_mask", Type: field.TypeString, Size: 16},
+		{Name: "key_version", Type: field.TypeInt, Default: 1},
+	}
+	// WechatPlatformTable holds the schema information for the "wechat_platform" table.
+	WechatPlatformTable = &schema.Table{
+		Name:       "wechat_platform",
+		Columns:    WechatPlatformColumns,
+		PrimaryKey: []*schema.Column{WechatPlatformColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "wechatplatform_component_app_id",
+				Unique:  true,
+				Columns: []*schema.Column{WechatPlatformColumns[7]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		SysDeptTable,
@@ -724,6 +756,7 @@ var (
 		SysUserTable,
 		SysUserPostTable,
 		SysUserRoleTable,
+		WechatPlatformTable,
 	}
 )
 
@@ -793,5 +826,8 @@ func init() {
 	SysUserRoleTable.ForeignKeys[1].RefTable = SysUserTable
 	SysUserRoleTable.Annotation = &entsql.Annotation{
 		Table: "sys_user_role",
+	}
+	WechatPlatformTable.Annotation = &entsql.Annotation{
+		Table: "wechat_platform",
 	}
 }

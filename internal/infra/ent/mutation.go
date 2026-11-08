@@ -27,6 +27,7 @@ import (
 	"glex/internal/infra/ent/user"
 	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
+	"glex/internal/infra/ent/wechatplatform"
 	"sync"
 	"time"
 
@@ -63,6 +64,7 @@ const (
 	TypeUser               = "User"
 	TypeUserPost           = "UserPost"
 	TypeUserRole           = "UserRole"
+	TypeWechatPlatform     = "WechatPlatform"
 )
 
 // DeptMutation represents an operation that mutates the Dept nodes in the graph.
@@ -24389,4 +24391,1094 @@ func (m *UserRoleMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown UserRole edge %s", name)
+}
+
+// WechatPlatformMutation represents an operation that mutates the WechatPlatform nodes in the graph.
+type WechatPlatformMutation struct {
+	config
+	op                    Op
+	typ                   string
+	id                    *int64
+	create_by             *int64
+	addcreate_by          *int64
+	update_by             *int64
+	addupdate_by          *int64
+	created_at            *time.Time
+	updated_at            *time.Time
+	deleted_at            *time.Time
+	name                  *string
+	component_app_id      *string
+	secret_cipher         *string
+	component_secret_mask *string
+	token_mask            *string
+	encoding_aes_key_mask *string
+	key_version           *int
+	addkey_version        *int
+	clearedFields         map[string]struct{}
+	done                  bool
+	oldValue              func(context.Context) (*WechatPlatform, error)
+	predicates            []predicate.WechatPlatform
+}
+
+var _ ent.Mutation = (*WechatPlatformMutation)(nil)
+
+// wechatplatformOption allows management of the mutation configuration using functional options.
+type wechatplatformOption func(*WechatPlatformMutation)
+
+// newWechatPlatformMutation creates new mutation for the WechatPlatform entity.
+func newWechatPlatformMutation(c config, op Op, opts ...wechatplatformOption) *WechatPlatformMutation {
+	m := &WechatPlatformMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeWechatPlatform,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withWechatPlatformID sets the ID field of the mutation.
+func withWechatPlatformID(id int64) wechatplatformOption {
+	return func(m *WechatPlatformMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *WechatPlatform
+		)
+		m.oldValue = func(ctx context.Context) (*WechatPlatform, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().WechatPlatform.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withWechatPlatform sets the old WechatPlatform of the mutation.
+func withWechatPlatform(node *WechatPlatform) wechatplatformOption {
+	return func(m *WechatPlatformMutation) {
+		m.oldValue = func(context.Context) (*WechatPlatform, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m WechatPlatformMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m WechatPlatformMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of WechatPlatform entities.
+func (m *WechatPlatformMutation) SetID(id int64) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *WechatPlatformMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *WechatPlatformMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().WechatPlatform.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreateBy sets the "create_by" field.
+func (m *WechatPlatformMutation) SetCreateBy(i int64) {
+	m.create_by = &i
+	m.addcreate_by = nil
+}
+
+// CreateBy returns the value of the "create_by" field in the mutation.
+func (m *WechatPlatformMutation) CreateBy() (r int64, exists bool) {
+	v := m.create_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreateBy returns the old "create_by" field's value of the WechatPlatform entity.
+// If the WechatPlatform object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatPlatformMutation) OldCreateBy(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreateBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreateBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreateBy: %w", err)
+	}
+	return oldValue.CreateBy, nil
+}
+
+// AddCreateBy adds i to the "create_by" field.
+func (m *WechatPlatformMutation) AddCreateBy(i int64) {
+	if m.addcreate_by != nil {
+		*m.addcreate_by += i
+	} else {
+		m.addcreate_by = &i
+	}
+}
+
+// AddedCreateBy returns the value that was added to the "create_by" field in this mutation.
+func (m *WechatPlatformMutation) AddedCreateBy() (r int64, exists bool) {
+	v := m.addcreate_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearCreateBy clears the value of the "create_by" field.
+func (m *WechatPlatformMutation) ClearCreateBy() {
+	m.create_by = nil
+	m.addcreate_by = nil
+	m.clearedFields[wechatplatform.FieldCreateBy] = struct{}{}
+}
+
+// CreateByCleared returns if the "create_by" field was cleared in this mutation.
+func (m *WechatPlatformMutation) CreateByCleared() bool {
+	_, ok := m.clearedFields[wechatplatform.FieldCreateBy]
+	return ok
+}
+
+// ResetCreateBy resets all changes to the "create_by" field.
+func (m *WechatPlatformMutation) ResetCreateBy() {
+	m.create_by = nil
+	m.addcreate_by = nil
+	delete(m.clearedFields, wechatplatform.FieldCreateBy)
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (m *WechatPlatformMutation) SetUpdateBy(i int64) {
+	m.update_by = &i
+	m.addupdate_by = nil
+}
+
+// UpdateBy returns the value of the "update_by" field in the mutation.
+func (m *WechatPlatformMutation) UpdateBy() (r int64, exists bool) {
+	v := m.update_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdateBy returns the old "update_by" field's value of the WechatPlatform entity.
+// If the WechatPlatform object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatPlatformMutation) OldUpdateBy(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdateBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdateBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdateBy: %w", err)
+	}
+	return oldValue.UpdateBy, nil
+}
+
+// AddUpdateBy adds i to the "update_by" field.
+func (m *WechatPlatformMutation) AddUpdateBy(i int64) {
+	if m.addupdate_by != nil {
+		*m.addupdate_by += i
+	} else {
+		m.addupdate_by = &i
+	}
+}
+
+// AddedUpdateBy returns the value that was added to the "update_by" field in this mutation.
+func (m *WechatPlatformMutation) AddedUpdateBy() (r int64, exists bool) {
+	v := m.addupdate_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearUpdateBy clears the value of the "update_by" field.
+func (m *WechatPlatformMutation) ClearUpdateBy() {
+	m.update_by = nil
+	m.addupdate_by = nil
+	m.clearedFields[wechatplatform.FieldUpdateBy] = struct{}{}
+}
+
+// UpdateByCleared returns if the "update_by" field was cleared in this mutation.
+func (m *WechatPlatformMutation) UpdateByCleared() bool {
+	_, ok := m.clearedFields[wechatplatform.FieldUpdateBy]
+	return ok
+}
+
+// ResetUpdateBy resets all changes to the "update_by" field.
+func (m *WechatPlatformMutation) ResetUpdateBy() {
+	m.update_by = nil
+	m.addupdate_by = nil
+	delete(m.clearedFields, wechatplatform.FieldUpdateBy)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *WechatPlatformMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *WechatPlatformMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the WechatPlatform entity.
+// If the WechatPlatform object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatPlatformMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *WechatPlatformMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *WechatPlatformMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *WechatPlatformMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the WechatPlatform entity.
+// If the WechatPlatform object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatPlatformMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *WechatPlatformMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *WechatPlatformMutation) SetDeletedAt(t time.Time) {
+	m.deleted_at = &t
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *WechatPlatformMutation) DeletedAt() (r time.Time, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the WechatPlatform entity.
+// If the WechatPlatform object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatPlatformMutation) OldDeletedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (m *WechatPlatformMutation) ClearDeletedAt() {
+	m.deleted_at = nil
+	m.clearedFields[wechatplatform.FieldDeletedAt] = struct{}{}
+}
+
+// DeletedAtCleared returns if the "deleted_at" field was cleared in this mutation.
+func (m *WechatPlatformMutation) DeletedAtCleared() bool {
+	_, ok := m.clearedFields[wechatplatform.FieldDeletedAt]
+	return ok
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *WechatPlatformMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	delete(m.clearedFields, wechatplatform.FieldDeletedAt)
+}
+
+// SetName sets the "name" field.
+func (m *WechatPlatformMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *WechatPlatformMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the WechatPlatform entity.
+// If the WechatPlatform object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatPlatformMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *WechatPlatformMutation) ResetName() {
+	m.name = nil
+}
+
+// SetComponentAppID sets the "component_app_id" field.
+func (m *WechatPlatformMutation) SetComponentAppID(s string) {
+	m.component_app_id = &s
+}
+
+// ComponentAppID returns the value of the "component_app_id" field in the mutation.
+func (m *WechatPlatformMutation) ComponentAppID() (r string, exists bool) {
+	v := m.component_app_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldComponentAppID returns the old "component_app_id" field's value of the WechatPlatform entity.
+// If the WechatPlatform object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatPlatformMutation) OldComponentAppID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldComponentAppID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldComponentAppID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldComponentAppID: %w", err)
+	}
+	return oldValue.ComponentAppID, nil
+}
+
+// ResetComponentAppID resets all changes to the "component_app_id" field.
+func (m *WechatPlatformMutation) ResetComponentAppID() {
+	m.component_app_id = nil
+}
+
+// SetSecretCipher sets the "secret_cipher" field.
+func (m *WechatPlatformMutation) SetSecretCipher(s string) {
+	m.secret_cipher = &s
+}
+
+// SecretCipher returns the value of the "secret_cipher" field in the mutation.
+func (m *WechatPlatformMutation) SecretCipher() (r string, exists bool) {
+	v := m.secret_cipher
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSecretCipher returns the old "secret_cipher" field's value of the WechatPlatform entity.
+// If the WechatPlatform object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatPlatformMutation) OldSecretCipher(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSecretCipher is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSecretCipher requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSecretCipher: %w", err)
+	}
+	return oldValue.SecretCipher, nil
+}
+
+// ResetSecretCipher resets all changes to the "secret_cipher" field.
+func (m *WechatPlatformMutation) ResetSecretCipher() {
+	m.secret_cipher = nil
+}
+
+// SetComponentSecretMask sets the "component_secret_mask" field.
+func (m *WechatPlatformMutation) SetComponentSecretMask(s string) {
+	m.component_secret_mask = &s
+}
+
+// ComponentSecretMask returns the value of the "component_secret_mask" field in the mutation.
+func (m *WechatPlatformMutation) ComponentSecretMask() (r string, exists bool) {
+	v := m.component_secret_mask
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldComponentSecretMask returns the old "component_secret_mask" field's value of the WechatPlatform entity.
+// If the WechatPlatform object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatPlatformMutation) OldComponentSecretMask(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldComponentSecretMask is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldComponentSecretMask requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldComponentSecretMask: %w", err)
+	}
+	return oldValue.ComponentSecretMask, nil
+}
+
+// ResetComponentSecretMask resets all changes to the "component_secret_mask" field.
+func (m *WechatPlatformMutation) ResetComponentSecretMask() {
+	m.component_secret_mask = nil
+}
+
+// SetTokenMask sets the "token_mask" field.
+func (m *WechatPlatformMutation) SetTokenMask(s string) {
+	m.token_mask = &s
+}
+
+// TokenMask returns the value of the "token_mask" field in the mutation.
+func (m *WechatPlatformMutation) TokenMask() (r string, exists bool) {
+	v := m.token_mask
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTokenMask returns the old "token_mask" field's value of the WechatPlatform entity.
+// If the WechatPlatform object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatPlatformMutation) OldTokenMask(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTokenMask is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTokenMask requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTokenMask: %w", err)
+	}
+	return oldValue.TokenMask, nil
+}
+
+// ResetTokenMask resets all changes to the "token_mask" field.
+func (m *WechatPlatformMutation) ResetTokenMask() {
+	m.token_mask = nil
+}
+
+// SetEncodingAesKeyMask sets the "encoding_aes_key_mask" field.
+func (m *WechatPlatformMutation) SetEncodingAesKeyMask(s string) {
+	m.encoding_aes_key_mask = &s
+}
+
+// EncodingAesKeyMask returns the value of the "encoding_aes_key_mask" field in the mutation.
+func (m *WechatPlatformMutation) EncodingAesKeyMask() (r string, exists bool) {
+	v := m.encoding_aes_key_mask
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEncodingAesKeyMask returns the old "encoding_aes_key_mask" field's value of the WechatPlatform entity.
+// If the WechatPlatform object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatPlatformMutation) OldEncodingAesKeyMask(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEncodingAesKeyMask is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEncodingAesKeyMask requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEncodingAesKeyMask: %w", err)
+	}
+	return oldValue.EncodingAesKeyMask, nil
+}
+
+// ResetEncodingAesKeyMask resets all changes to the "encoding_aes_key_mask" field.
+func (m *WechatPlatformMutation) ResetEncodingAesKeyMask() {
+	m.encoding_aes_key_mask = nil
+}
+
+// SetKeyVersion sets the "key_version" field.
+func (m *WechatPlatformMutation) SetKeyVersion(i int) {
+	m.key_version = &i
+	m.addkey_version = nil
+}
+
+// KeyVersion returns the value of the "key_version" field in the mutation.
+func (m *WechatPlatformMutation) KeyVersion() (r int, exists bool) {
+	v := m.key_version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKeyVersion returns the old "key_version" field's value of the WechatPlatform entity.
+// If the WechatPlatform object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatPlatformMutation) OldKeyVersion(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKeyVersion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKeyVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKeyVersion: %w", err)
+	}
+	return oldValue.KeyVersion, nil
+}
+
+// AddKeyVersion adds i to the "key_version" field.
+func (m *WechatPlatformMutation) AddKeyVersion(i int) {
+	if m.addkey_version != nil {
+		*m.addkey_version += i
+	} else {
+		m.addkey_version = &i
+	}
+}
+
+// AddedKeyVersion returns the value that was added to the "key_version" field in this mutation.
+func (m *WechatPlatformMutation) AddedKeyVersion() (r int, exists bool) {
+	v := m.addkey_version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetKeyVersion resets all changes to the "key_version" field.
+func (m *WechatPlatformMutation) ResetKeyVersion() {
+	m.key_version = nil
+	m.addkey_version = nil
+}
+
+// Where appends a list predicates to the WechatPlatformMutation builder.
+func (m *WechatPlatformMutation) Where(ps ...predicate.WechatPlatform) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the WechatPlatformMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *WechatPlatformMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.WechatPlatform, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *WechatPlatformMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *WechatPlatformMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (WechatPlatform).
+func (m *WechatPlatformMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *WechatPlatformMutation) Fields() []string {
+	fields := make([]string, 0, 12)
+	if m.create_by != nil {
+		fields = append(fields, wechatplatform.FieldCreateBy)
+	}
+	if m.update_by != nil {
+		fields = append(fields, wechatplatform.FieldUpdateBy)
+	}
+	if m.created_at != nil {
+		fields = append(fields, wechatplatform.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, wechatplatform.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, wechatplatform.FieldDeletedAt)
+	}
+	if m.name != nil {
+		fields = append(fields, wechatplatform.FieldName)
+	}
+	if m.component_app_id != nil {
+		fields = append(fields, wechatplatform.FieldComponentAppID)
+	}
+	if m.secret_cipher != nil {
+		fields = append(fields, wechatplatform.FieldSecretCipher)
+	}
+	if m.component_secret_mask != nil {
+		fields = append(fields, wechatplatform.FieldComponentSecretMask)
+	}
+	if m.token_mask != nil {
+		fields = append(fields, wechatplatform.FieldTokenMask)
+	}
+	if m.encoding_aes_key_mask != nil {
+		fields = append(fields, wechatplatform.FieldEncodingAesKeyMask)
+	}
+	if m.key_version != nil {
+		fields = append(fields, wechatplatform.FieldKeyVersion)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *WechatPlatformMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case wechatplatform.FieldCreateBy:
+		return m.CreateBy()
+	case wechatplatform.FieldUpdateBy:
+		return m.UpdateBy()
+	case wechatplatform.FieldCreatedAt:
+		return m.CreatedAt()
+	case wechatplatform.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case wechatplatform.FieldDeletedAt:
+		return m.DeletedAt()
+	case wechatplatform.FieldName:
+		return m.Name()
+	case wechatplatform.FieldComponentAppID:
+		return m.ComponentAppID()
+	case wechatplatform.FieldSecretCipher:
+		return m.SecretCipher()
+	case wechatplatform.FieldComponentSecretMask:
+		return m.ComponentSecretMask()
+	case wechatplatform.FieldTokenMask:
+		return m.TokenMask()
+	case wechatplatform.FieldEncodingAesKeyMask:
+		return m.EncodingAesKeyMask()
+	case wechatplatform.FieldKeyVersion:
+		return m.KeyVersion()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *WechatPlatformMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case wechatplatform.FieldCreateBy:
+		return m.OldCreateBy(ctx)
+	case wechatplatform.FieldUpdateBy:
+		return m.OldUpdateBy(ctx)
+	case wechatplatform.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case wechatplatform.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case wechatplatform.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case wechatplatform.FieldName:
+		return m.OldName(ctx)
+	case wechatplatform.FieldComponentAppID:
+		return m.OldComponentAppID(ctx)
+	case wechatplatform.FieldSecretCipher:
+		return m.OldSecretCipher(ctx)
+	case wechatplatform.FieldComponentSecretMask:
+		return m.OldComponentSecretMask(ctx)
+	case wechatplatform.FieldTokenMask:
+		return m.OldTokenMask(ctx)
+	case wechatplatform.FieldEncodingAesKeyMask:
+		return m.OldEncodingAesKeyMask(ctx)
+	case wechatplatform.FieldKeyVersion:
+		return m.OldKeyVersion(ctx)
+	}
+	return nil, fmt.Errorf("unknown WechatPlatform field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WechatPlatformMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case wechatplatform.FieldCreateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreateBy(v)
+		return nil
+	case wechatplatform.FieldUpdateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdateBy(v)
+		return nil
+	case wechatplatform.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case wechatplatform.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case wechatplatform.FieldDeletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case wechatplatform.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case wechatplatform.FieldComponentAppID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetComponentAppID(v)
+		return nil
+	case wechatplatform.FieldSecretCipher:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSecretCipher(v)
+		return nil
+	case wechatplatform.FieldComponentSecretMask:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetComponentSecretMask(v)
+		return nil
+	case wechatplatform.FieldTokenMask:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTokenMask(v)
+		return nil
+	case wechatplatform.FieldEncodingAesKeyMask:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEncodingAesKeyMask(v)
+		return nil
+	case wechatplatform.FieldKeyVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKeyVersion(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WechatPlatform field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *WechatPlatformMutation) AddedFields() []string {
+	var fields []string
+	if m.addcreate_by != nil {
+		fields = append(fields, wechatplatform.FieldCreateBy)
+	}
+	if m.addupdate_by != nil {
+		fields = append(fields, wechatplatform.FieldUpdateBy)
+	}
+	if m.addkey_version != nil {
+		fields = append(fields, wechatplatform.FieldKeyVersion)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *WechatPlatformMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case wechatplatform.FieldCreateBy:
+		return m.AddedCreateBy()
+	case wechatplatform.FieldUpdateBy:
+		return m.AddedUpdateBy()
+	case wechatplatform.FieldKeyVersion:
+		return m.AddedKeyVersion()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WechatPlatformMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case wechatplatform.FieldCreateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCreateBy(v)
+		return nil
+	case wechatplatform.FieldUpdateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddUpdateBy(v)
+		return nil
+	case wechatplatform.FieldKeyVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddKeyVersion(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WechatPlatform numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *WechatPlatformMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(wechatplatform.FieldCreateBy) {
+		fields = append(fields, wechatplatform.FieldCreateBy)
+	}
+	if m.FieldCleared(wechatplatform.FieldUpdateBy) {
+		fields = append(fields, wechatplatform.FieldUpdateBy)
+	}
+	if m.FieldCleared(wechatplatform.FieldDeletedAt) {
+		fields = append(fields, wechatplatform.FieldDeletedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *WechatPlatformMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *WechatPlatformMutation) ClearField(name string) error {
+	switch name {
+	case wechatplatform.FieldCreateBy:
+		m.ClearCreateBy()
+		return nil
+	case wechatplatform.FieldUpdateBy:
+		m.ClearUpdateBy()
+		return nil
+	case wechatplatform.FieldDeletedAt:
+		m.ClearDeletedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown WechatPlatform nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *WechatPlatformMutation) ResetField(name string) error {
+	switch name {
+	case wechatplatform.FieldCreateBy:
+		m.ResetCreateBy()
+		return nil
+	case wechatplatform.FieldUpdateBy:
+		m.ResetUpdateBy()
+		return nil
+	case wechatplatform.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case wechatplatform.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case wechatplatform.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case wechatplatform.FieldName:
+		m.ResetName()
+		return nil
+	case wechatplatform.FieldComponentAppID:
+		m.ResetComponentAppID()
+		return nil
+	case wechatplatform.FieldSecretCipher:
+		m.ResetSecretCipher()
+		return nil
+	case wechatplatform.FieldComponentSecretMask:
+		m.ResetComponentSecretMask()
+		return nil
+	case wechatplatform.FieldTokenMask:
+		m.ResetTokenMask()
+		return nil
+	case wechatplatform.FieldEncodingAesKeyMask:
+		m.ResetEncodingAesKeyMask()
+		return nil
+	case wechatplatform.FieldKeyVersion:
+		m.ResetKeyVersion()
+		return nil
+	}
+	return fmt.Errorf("unknown WechatPlatform field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *WechatPlatformMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *WechatPlatformMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *WechatPlatformMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *WechatPlatformMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *WechatPlatformMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *WechatPlatformMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *WechatPlatformMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown WechatPlatform unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *WechatPlatformMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown WechatPlatform edge %s", name)
 }

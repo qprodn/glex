@@ -24,6 +24,7 @@ import (
 	"glex/internal/infra/ent/user"
 	"glex/internal/infra/ent/userpost"
 	"glex/internal/infra/ent/userrole"
+	"glex/internal/infra/ent/wechatplatform"
 	"time"
 )
 
@@ -1029,4 +1030,51 @@ func init() {
 	userrole.DefaultUpdatedAt = userroleDescUpdatedAt.Default.(func() time.Time)
 	// userrole.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	userrole.UpdateDefaultUpdatedAt = userroleDescUpdatedAt.UpdateDefault.(func() time.Time)
+	wechatplatformMixin := schema.WechatPlatform{}.Mixin()
+	wechatplatformMixinFields0 := wechatplatformMixin[0].Fields()
+	_ = wechatplatformMixinFields0
+	wechatplatformFields := schema.WechatPlatform{}.Fields()
+	_ = wechatplatformFields
+	// wechatplatformDescCreateBy is the schema descriptor for create_by field.
+	wechatplatformDescCreateBy := wechatplatformMixinFields0[0].Descriptor()
+	// wechatplatform.DefaultCreateBy holds the default value on creation for the create_by field.
+	wechatplatform.DefaultCreateBy = wechatplatformDescCreateBy.Default.(int64)
+	// wechatplatformDescUpdateBy is the schema descriptor for update_by field.
+	wechatplatformDescUpdateBy := wechatplatformMixinFields0[1].Descriptor()
+	// wechatplatform.DefaultUpdateBy holds the default value on creation for the update_by field.
+	wechatplatform.DefaultUpdateBy = wechatplatformDescUpdateBy.Default.(int64)
+	// wechatplatformDescCreatedAt is the schema descriptor for created_at field.
+	wechatplatformDescCreatedAt := wechatplatformMixinFields0[2].Descriptor()
+	// wechatplatform.DefaultCreatedAt holds the default value on creation for the created_at field.
+	wechatplatform.DefaultCreatedAt = wechatplatformDescCreatedAt.Default.(func() time.Time)
+	// wechatplatformDescUpdatedAt is the schema descriptor for updated_at field.
+	wechatplatformDescUpdatedAt := wechatplatformMixinFields0[3].Descriptor()
+	// wechatplatform.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	wechatplatform.DefaultUpdatedAt = wechatplatformDescUpdatedAt.Default.(func() time.Time)
+	// wechatplatform.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	wechatplatform.UpdateDefaultUpdatedAt = wechatplatformDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// wechatplatformDescName is the schema descriptor for name field.
+	wechatplatformDescName := wechatplatformFields[1].Descriptor()
+	// wechatplatform.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	wechatplatform.NameValidator = wechatplatformDescName.Validators[0].(func(string) error)
+	// wechatplatformDescComponentAppID is the schema descriptor for component_app_id field.
+	wechatplatformDescComponentAppID := wechatplatformFields[2].Descriptor()
+	// wechatplatform.ComponentAppIDValidator is a validator for the "component_app_id" field. It is called by the builders before save.
+	wechatplatform.ComponentAppIDValidator = wechatplatformDescComponentAppID.Validators[0].(func(string) error)
+	// wechatplatformDescComponentSecretMask is the schema descriptor for component_secret_mask field.
+	wechatplatformDescComponentSecretMask := wechatplatformFields[4].Descriptor()
+	// wechatplatform.ComponentSecretMaskValidator is a validator for the "component_secret_mask" field. It is called by the builders before save.
+	wechatplatform.ComponentSecretMaskValidator = wechatplatformDescComponentSecretMask.Validators[0].(func(string) error)
+	// wechatplatformDescTokenMask is the schema descriptor for token_mask field.
+	wechatplatformDescTokenMask := wechatplatformFields[5].Descriptor()
+	// wechatplatform.TokenMaskValidator is a validator for the "token_mask" field. It is called by the builders before save.
+	wechatplatform.TokenMaskValidator = wechatplatformDescTokenMask.Validators[0].(func(string) error)
+	// wechatplatformDescEncodingAesKeyMask is the schema descriptor for encoding_aes_key_mask field.
+	wechatplatformDescEncodingAesKeyMask := wechatplatformFields[6].Descriptor()
+	// wechatplatform.EncodingAesKeyMaskValidator is a validator for the "encoding_aes_key_mask" field. It is called by the builders before save.
+	wechatplatform.EncodingAesKeyMaskValidator = wechatplatformDescEncodingAesKeyMask.Validators[0].(func(string) error)
+	// wechatplatformDescKeyVersion is the schema descriptor for key_version field.
+	wechatplatformDescKeyVersion := wechatplatformFields[7].Descriptor()
+	// wechatplatform.DefaultKeyVersion holds the default value on creation for the key_version field.
+	wechatplatform.DefaultKeyVersion = wechatplatformDescKeyVersion.Default.(int)
 }

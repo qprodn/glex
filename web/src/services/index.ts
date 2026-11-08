@@ -15,6 +15,7 @@ import { createFileServiceClient } from "@/services/file/v1";
 import { createJobServiceClient } from "@/services/job/v1";
 import { createConfigServiceClient } from "@/services/param/v1";
 import { createPayServiceClient } from "@/services/pay/v1";
+import { createWechatServiceClient } from "@/services/wechat/v1";
 import { createUserServiceClient } from "@/services/user/v1";
 import { request } from "@umijs/max";
 import { getToken } from "@/utils/token";
@@ -65,6 +66,7 @@ export const services = {
   audit: createOperLogServiceClient(requestHandler),
   loginlog: createLoginLogServiceClient(requestHandler),
   pay: createPayServiceClient(requestHandler),
+  wechat: createWechatServiceClient(requestHandler),
   job: createJobServiceClient(requestHandler),
   config: createConfigServiceClient(requestHandler),
 };

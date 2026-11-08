@@ -11,6 +11,7 @@ import (
 	paramapp "glex/internal/application/param"
 	payapp "glex/internal/application/pay"
 	userapp "glex/internal/application/user"
+	wechatapp "glex/internal/application/wechat"
 	accessimpl "glex/internal/crossdomain/access/impl"
 	auditimpl "glex/internal/crossdomain/audit/impl"
 	authnimpl "glex/internal/crossdomain/authn/impl"
@@ -31,6 +32,7 @@ import (
 	payentity "glex/internal/domain/pay/entity"
 	payservice "glex/internal/domain/pay/service"
 	userservice "glex/internal/domain/user/service"
+	wechatservice "glex/internal/domain/wechat/service"
 	"glex/internal/eventbus"
 	accessinfra "glex/internal/infra/access"
 	auditinfra "glex/internal/infra/audit"
@@ -45,6 +47,7 @@ import (
 	payinfra "glex/internal/infra/pay"
 	"glex/internal/infra/store"
 	userinfra "glex/internal/infra/user"
+	wechatinfra "glex/internal/infra/wechat"
 	"glex/internal/server"
 
 	"go.uber.org/fx"
@@ -72,6 +75,7 @@ var appModule = fx.Options(
 	lockerinfra.Module,
 	orginfra.Module,
 	payinfra.Module,
+	wechatinfra.Module,
 	eventbusinfra.Module,
 	jobinfra.Module,
 	paraminfra.Module,
@@ -84,6 +88,7 @@ var appModule = fx.Options(
 	fileservice.Module,
 	orgservice.Module,
 	payservice.Module,
+	wechatservice.Module,
 	jobservice.Module,
 	paramservice.Module,
 	// crossdomain contract adapters
@@ -105,6 +110,7 @@ var appModule = fx.Options(
 	fileapp.Module,
 	orgapp.Module,
 	payapp.Module,
+	wechatapp.Module,
 	jobapp.Module,
 	paramapp.Module,
 	// transport
