@@ -33,6 +33,7 @@ const (
 	WechatService_SetWechatAppSuspended_FullMethodName         = "/wechat.v1.WechatService/SetWechatAppSuspended"
 	WechatService_RegenerateWechatAppPushSecret_FullMethodName = "/wechat.v1.WechatService/RegenerateWechatAppPushSecret"
 	WechatService_WithdrawWechatApp_FullMethodName             = "/wechat.v1.WechatService/WithdrawWechatApp"
+	WechatService_ProbeWechatApp_FullMethodName                = "/wechat.v1.WechatService/ProbeWechatApp"
 	WechatService_ListAuthorizationPlatforms_FullMethodName    = "/wechat.v1.WechatService/ListAuthorizationPlatforms"
 	WechatService_StartWechatAuthorization_FullMethodName      = "/wechat.v1.WechatService/StartWechatAuthorization"
 )
@@ -44,7 +45,7 @@ const (
 // WechatService is the back-office surface for WeChat Platform
 // registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
-// are wechat:app:list, create, update, and remove. The platform callback
+// are wechat:app:list, create, update, remove, and probe. The platform callback
 // is a separate unauthenticated route; it is not an RPC.
 type WechatServiceClient interface {
 	// CreateWechatPlatform registers a platform. The response carries masks,
@@ -92,6 +93,13 @@ type WechatServiceClient interface {
 	// it is not hard-deleted. The same AppID can be connected again as a
 	// new row.
 	WithdrawWechatApp(ctx context.Context, in *WithdrawWechatAppRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ProbeWechatApp runs the WeChat Connectivity Test for one app. The
+	// test uses the app's current token and creates no WeChat Dispatch. A
+	// definitive refusal lapses the app. A timeout, a business rejection,
+	// or an unready platform fails the test and leaves the app unlapsed.
+	// A lapsed app is refused until it is restored. A suspended app can
+	// still be tested. Permission: wechat:app:probe.
+	ProbeWechatApp(ctx context.Context, in *ProbeWechatAppRequest, opts ...grpc.CallOption) (*ProbeWechatAppResult, error)
 	// ListAuthorizationPlatforms lists ready platforms an operator can
 	// choose when starting a Platform Authorization. Withdrawn and unready
 	// platforms are omitted. Masks and secrets are not returned. Permission:
@@ -241,6 +249,16 @@ func (c *wechatServiceClient) WithdrawWechatApp(ctx context.Context, in *Withdra
 	return out, nil
 }
 
+func (c *wechatServiceClient) ProbeWechatApp(ctx context.Context, in *ProbeWechatAppRequest, opts ...grpc.CallOption) (*ProbeWechatAppResult, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProbeWechatAppResult)
+	err := c.cc.Invoke(ctx, WechatService_ProbeWechatApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *wechatServiceClient) ListAuthorizationPlatforms(ctx context.Context, in *ListAuthorizationPlatformsRequest, opts ...grpc.CallOption) (*WechatAuthorizationPlatformSet, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(WechatAuthorizationPlatformSet)
@@ -268,7 +286,7 @@ func (c *wechatServiceClient) StartWechatAuthorization(ctx context.Context, in *
 // WechatService is the back-office surface for WeChat Platform
 // registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
-// are wechat:app:list, create, update, and remove. The platform callback
+// are wechat:app:list, create, update, remove, and probe. The platform callback
 // is a separate unauthenticated route; it is not an RPC.
 type WechatServiceServer interface {
 	// CreateWechatPlatform registers a platform. The response carries masks,
@@ -316,6 +334,13 @@ type WechatServiceServer interface {
 	// it is not hard-deleted. The same AppID can be connected again as a
 	// new row.
 	WithdrawWechatApp(context.Context, *WithdrawWechatAppRequest) (*emptypb.Empty, error)
+	// ProbeWechatApp runs the WeChat Connectivity Test for one app. The
+	// test uses the app's current token and creates no WeChat Dispatch. A
+	// definitive refusal lapses the app. A timeout, a business rejection,
+	// or an unready platform fails the test and leaves the app unlapsed.
+	// A lapsed app is refused until it is restored. A suspended app can
+	// still be tested. Permission: wechat:app:probe.
+	ProbeWechatApp(context.Context, *ProbeWechatAppRequest) (*ProbeWechatAppResult, error)
 	// ListAuthorizationPlatforms lists ready platforms an operator can
 	// choose when starting a Platform Authorization. Withdrawn and unready
 	// platforms are omitted. Masks and secrets are not returned. Permission:
@@ -373,6 +398,9 @@ func (UnimplementedWechatServiceServer) RegenerateWechatAppPushSecret(context.Co
 }
 func (UnimplementedWechatServiceServer) WithdrawWechatApp(context.Context, *WithdrawWechatAppRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method WithdrawWechatApp not implemented")
+}
+func (UnimplementedWechatServiceServer) ProbeWechatApp(context.Context, *ProbeWechatAppRequest) (*ProbeWechatAppResult, error) {
+	return nil, status.Error(codes.Unimplemented, "method ProbeWechatApp not implemented")
 }
 func (UnimplementedWechatServiceServer) ListAuthorizationPlatforms(context.Context, *ListAuthorizationPlatformsRequest) (*WechatAuthorizationPlatformSet, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListAuthorizationPlatforms not implemented")
@@ -635,6 +663,24 @@ func _WechatService_WithdrawWechatApp_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WechatService_ProbeWechatApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProbeWechatAppRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WechatServiceServer).ProbeWechatApp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WechatService_ProbeWechatApp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WechatServiceServer).ProbeWechatApp(ctx, req.(*ProbeWechatAppRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WechatService_ListAuthorizationPlatforms_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListAuthorizationPlatformsRequest)
 	if err := dec(in); err != nil {
@@ -729,6 +775,10 @@ var WechatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "WithdrawWechatApp",
 			Handler:    _WechatService_WithdrawWechatApp_Handler,
+		},
+		{
+			MethodName: "ProbeWechatApp",
+			Handler:    _WechatService_ProbeWechatApp_Handler,
 		},
 		{
 			MethodName: "ListAuthorizationPlatforms",

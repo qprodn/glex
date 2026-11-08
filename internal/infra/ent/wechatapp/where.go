@@ -134,6 +134,11 @@ func Suspended(v bool) predicate.WechatApp {
 	return predicate.WechatApp(sql.FieldEQ(FieldSuspended, v))
 }
 
+// Lapsed applies equality check predicate on the "lapsed" field. It's identical to LapsedEQ.
+func Lapsed(v bool) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldEQ(FieldLapsed, v))
+}
+
 // KeyVersion applies equality check predicate on the "key_version" field. It's identical to KeyVersionEQ.
 func KeyVersion(v int) predicate.WechatApp {
 	return predicate.WechatApp(sql.FieldEQ(FieldKeyVersion, v))
@@ -1012,6 +1017,16 @@ func SuspendedEQ(v bool) predicate.WechatApp {
 // SuspendedNEQ applies the NEQ predicate on the "suspended" field.
 func SuspendedNEQ(v bool) predicate.WechatApp {
 	return predicate.WechatApp(sql.FieldNEQ(FieldSuspended, v))
+}
+
+// LapsedEQ applies the EQ predicate on the "lapsed" field.
+func LapsedEQ(v bool) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldEQ(FieldLapsed, v))
+}
+
+// LapsedNEQ applies the NEQ predicate on the "lapsed" field.
+func LapsedNEQ(v bool) predicate.WechatApp {
+	return predicate.WechatApp(sql.FieldNEQ(FieldLapsed, v))
 }
 
 // KeyVersionEQ applies the EQ predicate on the "key_version" field.

@@ -17,8 +17,8 @@ import (
 // AppID, the connection, and the platform binding are immutable. Among
 // rows that are not withdrawn, one AppID identifies one app, which is a
 // different uniqueness rule from a platform's component AppID. Suspension
-// is a flag; withdrawal sets deleted_at (ADR 0002). This ticket does not
-// store a lapse flag.
+// is a flag; withdrawal sets deleted_at (ADR 0002). Lapse is a separate
+// flag, set only when WeChat definitively refuses the app.
 type WechatApp struct {
 	ent.Schema
 }
@@ -56,6 +56,10 @@ func (WechatApp) Fields() []ent.Field {
 		field.String("encoding_aes_key_mask").MaxLen(16),
 		// Operator switch. Not withdrawal and not lapse.
 		field.Bool("suspended").Default(false),
+		// Set when WeChat definitively refuses the grant or the Direct
+		// Hold secret. Cleared by a replacement AppSecret or a new grant
+		// on the same platform.
+		field.Bool("lapsed").Default(false),
 		// Master-key version (KEK rotation reserve, ADR 0018).
 		field.Int("key_version").Default(1),
 	}

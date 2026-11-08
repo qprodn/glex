@@ -24422,6 +24422,7 @@ type WechatAppMutation struct {
 	token_mask                 *string
 	encoding_aes_key_mask      *string
 	suspended                  *bool
+	lapsed                     *bool
 	key_version                *int
 	addkey_version             *int
 	clearedFields              map[string]struct{}
@@ -25276,6 +25277,42 @@ func (m *WechatAppMutation) ResetSuspended() {
 	m.suspended = nil
 }
 
+// SetLapsed sets the "lapsed" field.
+func (m *WechatAppMutation) SetLapsed(b bool) {
+	m.lapsed = &b
+}
+
+// Lapsed returns the value of the "lapsed" field in the mutation.
+func (m *WechatAppMutation) Lapsed() (r bool, exists bool) {
+	v := m.lapsed
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLapsed returns the old "lapsed" field's value of the WechatApp entity.
+// If the WechatApp object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatAppMutation) OldLapsed(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLapsed is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLapsed requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLapsed: %w", err)
+	}
+	return oldValue.Lapsed, nil
+}
+
+// ResetLapsed resets all changes to the "lapsed" field.
+func (m *WechatAppMutation) ResetLapsed() {
+	m.lapsed = nil
+}
+
 // SetKeyVersion sets the "key_version" field.
 func (m *WechatAppMutation) SetKeyVersion(i int) {
 	m.key_version = &i
@@ -25366,7 +25403,7 @@ func (m *WechatAppMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *WechatAppMutation) Fields() []string {
-	fields := make([]string, 0, 18)
+	fields := make([]string, 0, 19)
 	if m.create_by != nil {
 		fields = append(fields, wechatapp.FieldCreateBy)
 	}
@@ -25418,6 +25455,9 @@ func (m *WechatAppMutation) Fields() []string {
 	if m.suspended != nil {
 		fields = append(fields, wechatapp.FieldSuspended)
 	}
+	if m.lapsed != nil {
+		fields = append(fields, wechatapp.FieldLapsed)
+	}
 	if m.key_version != nil {
 		fields = append(fields, wechatapp.FieldKeyVersion)
 	}
@@ -25463,6 +25503,8 @@ func (m *WechatAppMutation) Field(name string) (ent.Value, bool) {
 		return m.EncodingAesKeyMask()
 	case wechatapp.FieldSuspended:
 		return m.Suspended()
+	case wechatapp.FieldLapsed:
+		return m.Lapsed()
 	case wechatapp.FieldKeyVersion:
 		return m.KeyVersion()
 	}
@@ -25508,6 +25550,8 @@ func (m *WechatAppMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldEncodingAesKeyMask(ctx)
 	case wechatapp.FieldSuspended:
 		return m.OldSuspended(ctx)
+	case wechatapp.FieldLapsed:
+		return m.OldLapsed(ctx)
 	case wechatapp.FieldKeyVersion:
 		return m.OldKeyVersion(ctx)
 	}
@@ -25637,6 +25681,13 @@ func (m *WechatAppMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSuspended(v)
+		return nil
+	case wechatapp.FieldLapsed:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLapsed(v)
 		return nil
 	case wechatapp.FieldKeyVersion:
 		v, ok := value.(int)
@@ -25822,6 +25873,9 @@ func (m *WechatAppMutation) ResetField(name string) error {
 		return nil
 	case wechatapp.FieldSuspended:
 		m.ResetSuspended()
+		return nil
+	case wechatapp.FieldLapsed:
+		m.ResetLapsed()
 		return nil
 	case wechatapp.FieldKeyVersion:
 		m.ResetKeyVersion()

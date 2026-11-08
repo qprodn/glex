@@ -33,6 +33,7 @@ func convertApp(app *entity.App) *wechatv1.WechatApp {
 		EncodingAesKeyMask:  app.EncodingAESKeyMask,
 		CallbackAddress:     app.CallbackAddress,
 		Suspended:           app.Suspended,
+		Lapsed:              app.Lapsed,
 		KeyVersion:          int32(app.KeyVersion),
 		CreateBy:            app.CreateBy,
 		UpdateBy:            app.UpdateBy,
@@ -207,6 +208,20 @@ func (s *WechatApplication) RegenerateWechatAppPushSecret(ctx context.Context, r
 		return nil, err
 	}
 	return convertReveal(reveal), nil
+}
+
+// ProbeWechatApp runs the WeChat Connectivity Test. A failed test is
+// the outcome; a lapsed or missing app is an error.
+func (s *WechatApplication) ProbeWechatApp(ctx context.Context, req *wechatv1.ProbeWechatAppRequest) (*wechatv1.ProbeWechatAppResult, error) {
+	outcome, err := s.apps.Probe(ctx, req.GetAppId())
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "wechat.probe_app", err)
+		return nil, err
+	}
+	return &wechatv1.ProbeWechatAppResult{
+		Ok:      outcome.OK,
+		Message: outcome.Message,
+	}, nil
 }
 
 // WithdrawWechatApp soft-deletes the app.

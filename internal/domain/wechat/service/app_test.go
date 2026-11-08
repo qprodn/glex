@@ -1572,7 +1572,7 @@ func describeApp(app *entity.App) string {
 		app.TokenMask,
 		app.EncodingAESKeyMask,
 		app.CallbackAddress,
-	}, "|") + "|" + itoa(app.ID) + "|" + itoa(app.PlatformID) + "|" + boolWord(app.Suspended) + "|" + itoa(app.CreateBy) + "|" + itoa(app.UpdateBy)
+	}, "|") + "|" + itoa(app.ID) + "|" + itoa(app.PlatformID) + "|" + boolWord(app.Suspended) + "|" + lapseWord(app.Lapsed) + "|" + itoa(app.CreateBy) + "|" + itoa(app.UpdateBy)
 }
 
 func boolWord(v bool) string {
@@ -1580,6 +1580,13 @@ func boolWord(v bool) string {
 		return "suspended"
 	}
 	return "live"
+}
+
+func lapseWord(v bool) string {
+	if v {
+		return "lapsed"
+	}
+	return "clear"
 }
 
 func itoa(v int64) string {

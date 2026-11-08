@@ -157,6 +157,7 @@ func authRoutes() map[string]authmw.Route {
 		wechatv1.OperationWechatServiceSetWechatAppSuspended:         {Permission: "wechat:app:update"},
 		wechatv1.OperationWechatServiceRegenerateWechatAppPushSecret: {Permission: "wechat:app:update"},
 		wechatv1.OperationWechatServiceWithdrawWechatApp:             {Permission: "wechat:app:remove"},
+		wechatv1.OperationWechatServiceProbeWechatApp:                {Permission: "wechat:app:probe"},
 		// Starting a Platform Authorization is an app create: the operator
 		// chooses a ready platform from the WeChat App area. The grant
 		// itself arrives on the platform callback and is not this route.

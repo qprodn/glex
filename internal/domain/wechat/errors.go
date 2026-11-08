@@ -57,4 +57,8 @@ var (
 	// ErrAppIDImmutable: the AppID is fixed for the life of the row
 	// (ADR 0029).
 	ErrAppIDImmutable = errors.BadRequest("WECHAT_APP_ID_IMMUTABLE", "app id cannot be changed")
+	// ErrAppLapsed: WeChat has definitively refused this app, so
+	// connectivity testing is refused until a replacement AppSecret or a
+	// new grant on the same platform restores it.
+	ErrAppLapsed = errors.BadRequest("WECHAT_APP_LAPSED", "wechat app has lapsed")
 )

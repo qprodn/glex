@@ -142,6 +142,7 @@ func (s *appImpl) applyGrant(ctx context.Context, p *entity.Platform, grant *Aut
 			return nil, err
 		}
 		existing.Capabilities = caps
+		existing.Lapsed = false
 		existing.UpdateBy = systemActorID
 		updated, err := s.apps.Update(ctx, repository.SaveAppRequest{
 			App:            existing,

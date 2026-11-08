@@ -44,6 +44,105 @@ func (c *openAPI) ProbePlatform(ctx context.Context, req wechatservice.ProbePlat
 	return err
 }
 
+// ProbeApp proves an app's current token. A Direct Hold asks for its own
+// access token. A Platform Authorization refreshes the authorizer token
+// through the platform. Neither call sends a message. Which WeChat codes
+// are a definitive refusal is left unset, so a WeChat error body stays a
+// business rejection and a transport failure stays unavailable. The domain
+// lapses an app only when this port returns that class.
+func (c *openAPI) ProbeApp(ctx context.Context, req wechatservice.ProbeAppRequest) (wechatservice.ProbeAppResult, error) {
+	switch req.Connection {
+	case entity.ConnectionDirectHold:
+		token, err := c.clientCredentialToken(ctx, req.AppID, req.AppSecret)
+		return classifyAppProbe(token != "", "", err)
+	case entity.ConnectionPlatformAuthorization:
+		component, err := c.componentToken(ctx, req.ComponentAppID, req.ComponentSecret, req.VerifyTicket)
+		if err != nil {
+			return classifyAppProbe(false, "", err)
+		}
+		access, refresh, err := c.refreshAuthorizerToken(ctx, component, req.ComponentAppID, req.AppID, req.AuthorizerRefreshToken)
+		return classifyAppProbe(access != "", refresh, err)
+	default:
+		return wechatservice.ProbeAppResult{Class: wechatservice.CallBusinessRejection, Message: "未知接入方式"}, nil
+	}
+}
+
+func (c *openAPI) clientCredentialToken(ctx context.Context, appID, secret string) (string, error) {
+	query := url.Values{}
+	query.Set("grant_type", "client_credential")
+	query.Set("appid", appID)
+	query.Set("secret", secret)
+	body, err := c.get(ctx, c.base+"/cgi-bin/token?"+query.Encode())
+	if err != nil {
+		return "", err
+	}
+	var resp struct {
+		ErrCode     int    `json:"errcode"`
+		ErrMsg      string `json:"errmsg"`
+		AccessToken string `json:"access_token"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return "", errors.New("wechat open api: unreadable response")
+	}
+	if resp.ErrCode != 0 || resp.AccessToken == "" {
+		return "", openAPIFailure(resp.ErrMsg, "access token was not issued")
+	}
+	return resp.AccessToken, nil
+}
+
+func (c *openAPI) refreshAuthorizerToken(ctx context.Context, componentToken, componentAppID, authorizerAppID, refreshToken string) (string, string, error) {
+	endpoint := c.base + "/cgi-bin/component/api_authorizer_token?component_access_token=" + url.QueryEscape(componentToken)
+	body, err := c.postJSON(ctx, endpoint, map[string]string{
+		"component_appid":          componentAppID,
+		"authorizer_appid":         authorizerAppID,
+		"authorizer_refresh_token": refreshToken,
+	})
+	if err != nil {
+		return "", "", err
+	}
+	var resp struct {
+		ErrCode                int    `json:"errcode"`
+		ErrMsg                 string `json:"errmsg"`
+		AuthorizerAccessToken  string `json:"authorizer_access_token"`
+		AuthorizerRefreshToken string `json:"authorizer_refresh_token"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return "", "", errors.New("wechat open api: unreadable response")
+	}
+	if resp.ErrCode != 0 || resp.AuthorizerAccessToken == "" {
+		return "", "", openAPIFailure(resp.ErrMsg, "authorizer token was not issued")
+	}
+	return resp.AuthorizerAccessToken, resp.AuthorizerRefreshToken, nil
+}
+
+// classifyAppProbe turns a token attempt into the port's four classes.
+// A canceled caller is returned as-is. A WeChat error body is a business
+// rejection because the definitive-refusal codes are unset.
+func classifyAppProbe(issued bool, refresh string, err error) (wechatservice.ProbeAppResult, error) {
+	if errors.Is(err, context.Canceled) {
+		return wechatservice.ProbeAppResult{}, err
+	}
+	if err == nil && issued {
+		return wechatservice.ProbeAppResult{
+			Class:                  wechatservice.CallSuccess,
+			Message:                "连接成功",
+			AuthorizerRefreshToken: refresh,
+		}, nil
+	}
+	if err == nil || errors.Is(err, context.DeadlineExceeded) || probeUnavailable(err) {
+		return wechatservice.ProbeAppResult{Class: wechatservice.CallUnavailable, Message: "微信不可用"}, nil
+	}
+	return wechatservice.ProbeAppResult{Class: wechatservice.CallBusinessRejection, Message: "微信没有受理这次调用"}, nil
+}
+
+func probeUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "request failed") || strings.Contains(msg, "unreadable") || strings.Contains(msg, "http ")
+}
+
 func (c *openAPI) StartAuthorization(ctx context.Context, req wechatservice.OpenAuthorizationStart) (*wechatservice.AuthorizationLink, error) {
 	componentToken, err := c.componentToken(ctx, req.ComponentAppID, req.ComponentSecret, req.VerifyTicket)
 	if err != nil {
@@ -329,6 +428,29 @@ func (c *openAPI) sendCustomerText(ctx context.Context, authorizerToken, toUser,
 		return openAPIFailure(resp.ErrMsg, "customer message was not accepted")
 	}
 	return nil
+}
+
+func (c *openAPI) get(ctx context.Context, endpoint string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, openAPITransport(err)
+	}
+	resp, err := c.client.Do(req)
+	if err != nil {
+		// The endpoint may carry an app secret in the query string.
+		// The raw client error quotes that URL, so it does not cross
+		// this boundary.
+		return nil, openAPITransport(err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, openAPITransport(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("wechat open api: http %d", resp.StatusCode)
+	}
+	return body, nil
 }
 
 func (c *openAPI) postJSON(ctx context.Context, endpoint string, payload any) ([]byte, error) {

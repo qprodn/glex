@@ -111,6 +111,20 @@ const AppList: React.FC = () => {
       .catch(fail);
   };
 
+  const probe = (record: WechatApp) => {
+    services.wechat
+      .ProbeWechatApp({ appId: record.appId })
+      .then((result) => {
+        if (result.ok) {
+          message.success(result.message || "连接成功");
+        } else {
+          message.warning(result.message || "连通性测试失败");
+        }
+        actionRef.current?.reload();
+      })
+      .catch(fail);
+  };
+
   const columns: ProColumns<WechatApp>[] = [
     {
       title: "ID",
@@ -195,13 +209,20 @@ const AppList: React.FC = () => {
       title: intl.formatMessage({ id: "common.status", defaultMessage: "状态" }),
       dataIndex: "suspended",
       search: false,
-      width: 90,
-      render: (_, r) =>
-        r.suspended ? (
-          <Tag color="warning">{intl.formatMessage({ id: "pages.wechat.app.status.suspended", defaultMessage: "停用" })}</Tag>
-        ) : (
-          <Tag color="success">{intl.formatMessage({ id: "pages.wechat.app.status.live", defaultMessage: "正常" })}</Tag>
-        ),
+      width: 120,
+      render: (_, r) => (
+        <>
+          {r.lapsed ? (
+            <Tag color="error">{intl.formatMessage({ id: "pages.wechat.app.status.lapsed", defaultMessage: "失效" })}</Tag>
+          ) : null}
+          {r.suspended ? (
+            <Tag color="warning">{intl.formatMessage({ id: "pages.wechat.app.status.suspended", defaultMessage: "停用" })}</Tag>
+          ) : null}
+          {!r.lapsed && !r.suspended ? (
+            <Tag color="success">{intl.formatMessage({ id: "pages.wechat.app.status.live", defaultMessage: "正常" })}</Tag>
+          ) : null}
+        </>
+      ),
     },
     {
       title: intl.formatMessage({ id: "common.createTime", defaultMessage: "创建时间" }),
@@ -213,8 +234,13 @@ const AppList: React.FC = () => {
     {
       title: intl.formatMessage({ id: "common.option", defaultMessage: "操作" }),
       valueType: "option",
-      width: 280,
+      width: 360,
       render: (_, record) => [
+        <Access key="probe" accessible={access.perm("wechat:app:probe")}>
+          <a onClick={() => probe(record)}>
+            {intl.formatMessage({ id: "pages.wechat.app.probe", defaultMessage: "连通性测试" })}
+          </a>
+        </Access>,
         <Access key="edit" accessible={access.perm("wechat:app:update")}>
           <a
             onClick={() => {

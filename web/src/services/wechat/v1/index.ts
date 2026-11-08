@@ -152,6 +152,10 @@ export type WechatApp = {
   platformId: number | undefined;
   // Capabilities WeChat granted. Empty for a Direct Hold.
   grantedCapabilities: WechatCapability[] | undefined;
+  // Lapse is set when WeChat definitively refuses the grant or the
+  // Direct Hold secret. It is not suspension. A lapsed app stays on the
+  // live list and cannot be connectivity-tested until it is restored.
+  lapsed: boolean | undefined;
 };
 
 // WechatAppSet is a page of WeChat Apps that are not withdrawn.
@@ -342,6 +346,22 @@ export type WithdrawWechatAppRequest = {
   appId: number | undefined;
 };
 
+export type ProbeWechatAppRequest = {
+  // Required. The id of the app to test.
+  //
+  // Behaviors: REQUIRED
+  appId: number | undefined;
+};
+
+// ProbeWechatAppResult is one WeChat Connectivity Test. ok is false when
+// the app's token was not proved. A definitive refusal also lapses the
+// app; a timeout, a business rejection, or an unready platform does not.
+export type ProbeWechatAppResult = {
+  ok: boolean | undefined;
+  // Human-readable outcome; the failure reason when ok is false.
+  message: string | undefined;
+};
+
 export type ListAuthorizationPlatformsRequest = {
 };
 
@@ -374,7 +394,7 @@ export type WechatAuthorization = {
 // WechatService is the back-office surface for WeChat Platform
 // registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
-// are wechat:app:list, create, update, and remove. The platform callback
+// are wechat:app:list, create, update, remove, and probe. The platform callback
 // is a separate unauthenticated route; it is not an RPC.
 export interface WechatService {
   // CreateWechatPlatform registers a platform. The response carries masks,
@@ -422,6 +442,13 @@ export interface WechatService {
   // it is not hard-deleted. The same AppID can be connected again as a
   // new row.
   WithdrawWechatApp(request: WithdrawWechatAppRequest): Promise<wellKnownEmpty>;
+  // ProbeWechatApp runs the WeChat Connectivity Test for one app. The
+  // test uses the app's current token and creates no WeChat Dispatch. A
+  // definitive refusal lapses the app. A timeout, a business rejection,
+  // or an unready platform fails the test and leaves the app unlapsed.
+  // A lapsed app is refused until it is restored. A suspended app can
+  // still be tested. Permission: wechat:app:probe.
+  ProbeWechatApp(request: ProbeWechatAppRequest): Promise<ProbeWechatAppResult>;
   // ListAuthorizationPlatforms lists ready platforms an operator can
   // choose when starting a Platform Authorization. Withdrawn and unready
   // platforms are omitted. Masks and secrets are not returned. Permission:
@@ -716,6 +743,26 @@ export function createWechatServiceClient(
         service: "WechatService",
         method: "WithdrawWechatApp",
       }) as Promise<wellKnownEmpty>;
+    },
+    ProbeWechatApp(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.appId) {
+        throw new Error("missing required field request.app_id");
+      }
+      const path = `wechat/app/${request.appId}/probe`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "WechatService",
+        method: "ProbeWechatApp",
+      }) as Promise<ProbeWechatAppResult>;
     },
     ListAuthorizationPlatforms(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
       const path = `wechat/app/authorization/platforms`; // eslint-disable-line quotes

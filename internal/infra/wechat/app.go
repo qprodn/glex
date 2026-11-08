@@ -34,6 +34,7 @@ func toBizApp(po *ent.WechatApp) *entity.App {
 		TokenMask:          po.TokenMask,
 		EncodingAESKeyMask: po.EncodingAesKeyMask,
 		Suspended:          po.Suspended,
+		Lapsed:             po.Lapsed,
 		KeyVersion:         po.KeyVersion,
 		CreateBy:           po.CreateBy,
 		UpdateBy:           po.UpdateBy,
@@ -190,6 +191,7 @@ func (r *appRepo) Create(ctx context.Context, req wechatrepo.SaveAppRequest) (*e
 		SetTokenMask(app.TokenMask).
 		SetEncodingAesKeyMask(app.EncodingAESKeyMask).
 		SetSuspended(app.Suspended).
+		SetLapsed(app.Lapsed).
 		SetKeyVersion(app.KeyVersion).
 		SetCreateBy(app.CreateBy).
 		SetUpdateBy(app.UpdateBy)
@@ -212,6 +214,7 @@ func (r *appRepo) Update(ctx context.Context, req wechatrepo.SaveAppRequest) (*e
 		Where(entapp.IDEQ(app.ID), entapp.DeletedAtIsNil()).
 		SetName(app.Name).
 		SetSuspended(app.Suspended).
+		SetLapsed(app.Lapsed).
 		SetUpdateBy(req.ActorID)
 	if app.Capabilities != nil {
 		upd.SetGrantedCapabilities(app.Capabilities)

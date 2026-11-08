@@ -55,9 +55,15 @@ type App struct {
 	EncodingAESKeyMask string
 	CallbackAddress    string
 	Suspended          bool
-	KeyVersion         int
-	CreateBy           int64
-	UpdateBy           int64
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	// Lapsed is set only when WeChat definitively refuses this app: the
+	// Platform Authorization was cancelled, or the Direct Hold secret was
+	// rejected. A timeout, a business rejection, and an unready platform
+	// do not set it. A replacement AppSecret, or a new grant on the same
+	// platform, clears it. Suspension is a separate flag.
+	Lapsed     bool
+	KeyVersion int
+	CreateBy   int64
+	UpdateBy   int64
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }

@@ -52,6 +52,8 @@ type WechatApp struct {
 	EncodingAesKeyMask string `json:"encoding_aes_key_mask,omitempty"`
 	// Suspended holds the value of the "suspended" field.
 	Suspended bool `json:"suspended,omitempty"`
+	// Lapsed holds the value of the "lapsed" field.
+	Lapsed bool `json:"lapsed,omitempty"`
 	// KeyVersion holds the value of the "key_version" field.
 	KeyVersion   int `json:"key_version,omitempty"`
 	selectValues sql.SelectValues
@@ -64,7 +66,7 @@ func (*WechatApp) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case wechatapp.FieldGrantedCapabilities:
 			values[i] = new([]byte)
-		case wechatapp.FieldSuspended:
+		case wechatapp.FieldSuspended, wechatapp.FieldLapsed:
 			values[i] = new(sql.NullBool)
 		case wechatapp.FieldID, wechatapp.FieldCreateBy, wechatapp.FieldUpdateBy, wechatapp.FieldPlatformID, wechatapp.FieldKeyVersion:
 			values[i] = new(sql.NullInt64)
@@ -198,6 +200,12 @@ func (_m *WechatApp) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Suspended = value.Bool
 			}
+		case wechatapp.FieldLapsed:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field lapsed", values[i])
+			} else if value.Valid {
+				_m.Lapsed = value.Bool
+			}
 		case wechatapp.FieldKeyVersion:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field key_version", values[i])
@@ -292,6 +300,9 @@ func (_m *WechatApp) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("suspended=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Suspended))
+	builder.WriteString(", ")
+	builder.WriteString("lapsed=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Lapsed))
 	builder.WriteString(", ")
 	builder.WriteString("key_version=")
 	builder.WriteString(fmt.Sprintf("%v", _m.KeyVersion))

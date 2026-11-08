@@ -1096,8 +1096,12 @@ func init() {
 	wechatappDescSuspended := wechatappFields[12].Descriptor()
 	// wechatapp.DefaultSuspended holds the default value on creation for the suspended field.
 	wechatapp.DefaultSuspended = wechatappDescSuspended.Default.(bool)
+	// wechatappDescLapsed is the schema descriptor for lapsed field.
+	wechatappDescLapsed := wechatappFields[13].Descriptor()
+	// wechatapp.DefaultLapsed holds the default value on creation for the lapsed field.
+	wechatapp.DefaultLapsed = wechatappDescLapsed.Default.(bool)
 	// wechatappDescKeyVersion is the schema descriptor for key_version field.
-	wechatappDescKeyVersion := wechatappFields[13].Descriptor()
+	wechatappDescKeyVersion := wechatappFields[14].Descriptor()
 	// wechatapp.DefaultKeyVersion holds the default value on creation for the key_version field.
 	wechatapp.DefaultKeyVersion = wechatappDescKeyVersion.Default.(int)
 	wechatplatformMixin := schema.WechatPlatform{}.Mixin()

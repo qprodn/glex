@@ -110,6 +110,14 @@ type App interface {
 	// CountLiveAuthorizations counts apps not withdrawn that are
 	// authorized through this platform.
 	CountLiveAuthorizations(ctx context.Context, platformID int64) (int, error)
+	// Probe runs the WeChat Connectivity Test for one live app. It
+	// creates no WeChat Dispatch. A suspended app can be tested. A
+	// lapsed app is refused until it is restored. A withdrawn app is
+	// not found. Success leaves suspension, lapse, and connection as
+	// they were. A definitive refusal lapses the app. A business
+	// rejection, a timeout, or an unready platform fails the test and
+	// leaves the app unlapsed.
+	Probe(ctx context.Context, id int64) (*ProbeOutcome, error)
 }
 
 // PlatformBindings is the slice of the app service the platform service
@@ -264,6 +272,7 @@ func (s *appImpl) Update(ctx context.Context, req UpdateDirectHoldRequest) (*ent
 		current.TokenMask = maskSecret(stored.Token)
 		current.EncodingAESKeyMask = maskSecret(stored.EncodingAESKey)
 		current.KeyVersion = entity.KeyVersion
+		current.Lapsed = false
 		save.Secrets = stored
 		save.ReplaceSecrets = true
 	}

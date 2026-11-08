@@ -47,6 +47,8 @@ const (
 	FieldEncodingAesKeyMask = "encoding_aes_key_mask"
 	// FieldSuspended holds the string denoting the suspended field in the database.
 	FieldSuspended = "suspended"
+	// FieldLapsed holds the string denoting the lapsed field in the database.
+	FieldLapsed = "lapsed"
 	// FieldKeyVersion holds the string denoting the key_version field in the database.
 	FieldKeyVersion = "key_version"
 	// Table holds the table name of the wechatapp in the database.
@@ -73,6 +75,7 @@ var Columns = []string{
 	FieldTokenMask,
 	FieldEncodingAesKeyMask,
 	FieldSuspended,
+	FieldLapsed,
 	FieldKeyVersion,
 }
 
@@ -119,6 +122,8 @@ var (
 	EncodingAesKeyMaskValidator func(string) error
 	// DefaultSuspended holds the default value on creation for the "suspended" field.
 	DefaultSuspended bool
+	// DefaultLapsed holds the default value on creation for the "lapsed" field.
+	DefaultLapsed bool
 	// DefaultKeyVersion holds the default value on creation for the "key_version" field.
 	DefaultKeyVersion int
 )
@@ -209,6 +214,11 @@ func ByEncodingAesKeyMask(opts ...sql.OrderTermOption) OrderOption {
 // BySuspended orders the results by the suspended field.
 func BySuspended(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSuspended, opts...).ToFunc()
+}
+
+// ByLapsed orders the results by the lapsed field.
+func ByLapsed(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLapsed, opts...).ToFunc()
 }
 
 // ByKeyVersion orders the results by the key_version field.

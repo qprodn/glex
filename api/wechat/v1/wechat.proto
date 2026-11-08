@@ -127,6 +127,10 @@ message WechatApp {
   int64 platform_id = 17;
   // Capabilities WeChat granted. Empty for a Direct Hold.
   repeated WechatCapability granted_capabilities = 18;
+  // Lapse is set when WeChat definitively refuses the grant or the
+  // Direct Hold secret. It is not suspension. A lapsed app stays on the
+  // live list and cannot be connectivity-tested until it is restored.
+  bool lapsed = 19;
 }
 
 // WechatAppSet is a page of WeChat Apps that are not withdrawn.
@@ -150,7 +154,7 @@ message WechatAppPushSecret {
 // WechatService is the back-office surface for WeChat Platform
 // registration and WeChat Apps. Platform permissions are
 // wechat:platform:list, create, update, remove, and probe. App permissions
-// are wechat:app:list, create, update, and remove. The platform callback
+// are wechat:app:list, create, update, remove, and probe. The platform callback
 // is a separate unauthenticated route; it is not an RPC.
 service WechatService {
   // CreateWechatPlatform registers a platform. The response carries masks,
@@ -256,6 +260,18 @@ service WechatService {
   rpc WithdrawWechatApp(WithdrawWechatAppRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/wechat/app/{app_id}"
+    };
+  }
+  // ProbeWechatApp runs the WeChat Connectivity Test for one app. The
+  // test uses the app's current token and creates no WeChat Dispatch. A
+  // definitive refusal lapses the app. A timeout, a business rejection,
+  // or an unready platform fails the test and leaves the app unlapsed.
+  // A lapsed app is refused until it is restored. A suspended app can
+  // still be tested. Permission: wechat:app:probe.
+  rpc ProbeWechatApp(ProbeWechatAppRequest) returns (ProbeWechatAppResult) {
+    option (google.api.http) = {
+      post: "/wechat/app/{app_id}/probe"
+      body: "*"
     };
   }
 
@@ -407,6 +423,20 @@ message RegenerateWechatAppPushSecretRequest {
 message WithdrawWechatAppRequest {
   // Required. The id of the app to withdraw.
   int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ProbeWechatAppRequest {
+  // Required. The id of the app to test.
+  int64 app_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// ProbeWechatAppResult is one WeChat Connectivity Test. ok is false when
+// the app's token was not proved. A definitive refusal also lapses the
+// app; a timeout, a business rejection, or an unready platform does not.
+message ProbeWechatAppResult {
+  bool ok = 1;
+  // Human-readable outcome; the failure reason when ok is false.
+  string message = 2;
 }
 
 message ListAuthorizationPlatformsRequest {}

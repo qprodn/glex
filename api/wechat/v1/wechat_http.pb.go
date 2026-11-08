@@ -25,6 +25,7 @@ const OperationWechatServiceGetWechatPlatform = "/wechat.v1.WechatService/GetWec
 const OperationWechatServiceListAuthorizationPlatforms = "/wechat.v1.WechatService/ListAuthorizationPlatforms"
 const OperationWechatServiceListWechatApps = "/wechat.v1.WechatService/ListWechatApps"
 const OperationWechatServiceListWechatPlatforms = "/wechat.v1.WechatService/ListWechatPlatforms"
+const OperationWechatServiceProbeWechatApp = "/wechat.v1.WechatService/ProbeWechatApp"
 const OperationWechatServiceProbeWechatPlatform = "/wechat.v1.WechatService/ProbeWechatPlatform"
 const OperationWechatServiceRegenerateWechatAppPushSecret = "/wechat.v1.WechatService/RegenerateWechatAppPushSecret"
 const OperationWechatServiceSetWechatAppSuspended = "/wechat.v1.WechatService/SetWechatAppSuspended"
@@ -58,6 +59,13 @@ type WechatServiceHTTPServer interface {
 	// ListWechatPlatforms ListWechatPlatforms lists platforms that are not withdrawn. Responses
 	// carry masks only.
 	ListWechatPlatforms(context.Context, *ListWechatPlatformsRequest) (*WechatPlatformSet, error)
+	// ProbeWechatApp ProbeWechatApp runs the WeChat Connectivity Test for one app. The
+	// test uses the app's current token and creates no WeChat Dispatch. A
+	// definitive refusal lapses the app. A timeout, a business rejection,
+	// or an unready platform fails the test and leaves the app unlapsed.
+	// A lapsed app is refused until it is restored. A suspended app can
+	// still be tested. Permission: wechat:app:probe.
+	ProbeWechatApp(context.Context, *ProbeWechatAppRequest) (*ProbeWechatAppResult, error)
 	// ProbeWechatPlatform ProbeWechatPlatform runs the WeChat Connectivity Test for one platform.
 	// A platform that is missing a secret or a verify ticket fails the test.
 	// Success and failure change no WeChat App. Permission: wechat:platform:probe.
@@ -106,6 +114,7 @@ func RegisterWechatServiceHTTPServer(s *http.Server, srv WechatServiceHTTPServer
 	r.Handle("POST", "/wechat/app/{app_id}/suspended", _WechatService_SetWechatAppSuspended0_HTTP_Handler(srv))
 	r.Handle("POST", "/wechat/app/{app_id}/push-secret", _WechatService_RegenerateWechatAppPushSecret0_HTTP_Handler(srv))
 	r.Handle("DELETE", "/wechat/app/{app_id}", _WechatService_WithdrawWechatApp0_HTTP_Handler(srv))
+	r.Handle("POST", "/wechat/app/{app_id}/probe", _WechatService_ProbeWechatApp0_HTTP_Handler(srv))
 	r.Handle("GET", "/wechat/app/authorization/platforms", _WechatService_ListAuthorizationPlatforms0_HTTP_Handler(srv))
 	r.Handle("POST", "/wechat/app/authorization", _WechatService_StartWechatAuthorization0_HTTP_Handler(srv))
 }
@@ -384,6 +393,28 @@ func _WechatService_WithdrawWechatApp0_HTTP_Handler(srv WechatServiceHTTPServer)
 	}
 }
 
+func _WechatService_ProbeWechatApp0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ProbeWechatAppRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationWechatServiceProbeWechatApp)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ProbeWechatApp(ctx, req.(*ProbeWechatAppRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ProbeWechatAppResult)
+		return ctx.Result(200, reply)
+	}
+}
+
 func _WechatService_ListAuthorizationPlatforms0_HTTP_Handler(srv WechatServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in ListAuthorizationPlatformsRequest
@@ -446,6 +477,13 @@ type WechatServiceHTTPClient interface {
 	// ListWechatPlatforms ListWechatPlatforms lists platforms that are not withdrawn. Responses
 	// carry masks only.
 	ListWechatPlatforms(ctx context.Context, req *ListWechatPlatformsRequest, opts ...http.CallOption) (rsp *WechatPlatformSet, err error)
+	// ProbeWechatApp ProbeWechatApp runs the WeChat Connectivity Test for one app. The
+	// test uses the app's current token and creates no WeChat Dispatch. A
+	// definitive refusal lapses the app. A timeout, a business rejection,
+	// or an unready platform fails the test and leaves the app unlapsed.
+	// A lapsed app is refused until it is restored. A suspended app can
+	// still be tested. Permission: wechat:app:probe.
+	ProbeWechatApp(ctx context.Context, req *ProbeWechatAppRequest, opts ...http.CallOption) (rsp *ProbeWechatAppResult, err error)
 	// ProbeWechatPlatform ProbeWechatPlatform runs the WeChat Connectivity Test for one platform.
 	// A platform that is missing a secret or a verify ticket fails the test.
 	// Success and failure change no WeChat App. Permission: wechat:platform:probe.
@@ -611,6 +649,29 @@ func (c *WechatServiceHTTPClientImpl) ListWechatPlatforms(ctx context.Context, i
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ProbeWechatApp ProbeWechatApp runs the WeChat Connectivity Test for one app. The
+// test uses the app's current token and creates no WeChat Dispatch. A
+// definitive refusal lapses the app. A timeout, a business rejection,
+// or an unready platform fails the test and leaves the app unlapsed.
+// A lapsed app is refused until it is restored. A suspended app can
+// still be tested. Permission: wechat:app:probe.
+func (c *WechatServiceHTTPClientImpl) ProbeWechatApp(ctx context.Context, in *ProbeWechatAppRequest, opts ...http.CallOption) (*ProbeWechatAppResult, error) {
+	var out ProbeWechatAppResult
+	pattern := "/wechat/app/{app_id}/probe"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationWechatServiceProbeWechatApp),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
 	if err != nil {
 		return nil, err
 	}

@@ -9,9 +9,9 @@ import (
 )
 
 // ProbeOutcome is one WeChat Connectivity Test. OK is false when the
-// platform cannot yield a token — missing credentials, no verify ticket,
-// or WeChat refusing the call. The test changes no platform field an
-// operator reads and no WeChat App.
+// call did not prove a token. A platform test changes no WeChat App.
+// An app test leaves suspension, lapse, and connection as they were,
+// unless WeChat definitively refused, which lapses that same app.
 type ProbeOutcome struct {
 	OK      bool
 	Message string

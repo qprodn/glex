@@ -188,6 +188,20 @@ func (_c *WechatAppCreate) SetNillableSuspended(v *bool) *WechatAppCreate {
 	return _c
 }
 
+// SetLapsed sets the "lapsed" field.
+func (_c *WechatAppCreate) SetLapsed(v bool) *WechatAppCreate {
+	_c.mutation.SetLapsed(v)
+	return _c
+}
+
+// SetNillableLapsed sets the "lapsed" field if the given value is not nil.
+func (_c *WechatAppCreate) SetNillableLapsed(v *bool) *WechatAppCreate {
+	if v != nil {
+		_c.SetLapsed(*v)
+	}
+	return _c
+}
+
 // SetKeyVersion sets the "key_version" field.
 func (_c *WechatAppCreate) SetKeyVersion(v int) *WechatAppCreate {
 	_c.mutation.SetKeyVersion(v)
@@ -270,6 +284,10 @@ func (_c *WechatAppCreate) defaults() {
 	if _, ok := _c.mutation.Suspended(); !ok {
 		v := wechatapp.DefaultSuspended
 		_c.mutation.SetSuspended(v)
+	}
+	if _, ok := _c.mutation.Lapsed(); !ok {
+		v := wechatapp.DefaultLapsed
+		_c.mutation.SetLapsed(v)
 	}
 	if _, ok := _c.mutation.KeyVersion(); !ok {
 		v := wechatapp.DefaultKeyVersion
@@ -357,6 +375,9 @@ func (_c *WechatAppCreate) check() error {
 	}
 	if _, ok := _c.mutation.Suspended(); !ok {
 		return &ValidationError{Name: "suspended", err: errors.New(`ent: missing required field "WechatApp.suspended"`)}
+	}
+	if _, ok := _c.mutation.Lapsed(); !ok {
+		return &ValidationError{Name: "lapsed", err: errors.New(`ent: missing required field "WechatApp.lapsed"`)}
 	}
 	if _, ok := _c.mutation.KeyVersion(); !ok {
 		return &ValidationError{Name: "key_version", err: errors.New(`ent: missing required field "WechatApp.key_version"`)}
@@ -461,6 +482,10 @@ func (_c *WechatAppCreate) createSpec() (*WechatApp, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Suspended(); ok {
 		_spec.SetField(wechatapp.FieldSuspended, field.TypeBool, value)
 		_node.Suspended = value
+	}
+	if value, ok := _c.mutation.Lapsed(); ok {
+		_spec.SetField(wechatapp.FieldLapsed, field.TypeBool, value)
+		_node.Lapsed = value
 	}
 	if value, ok := _c.mutation.KeyVersion(); ok {
 		_spec.SetField(wechatapp.FieldKeyVersion, field.TypeInt, value)
@@ -695,6 +720,18 @@ func (u *WechatAppUpsert) SetSuspended(v bool) *WechatAppUpsert {
 // UpdateSuspended sets the "suspended" field to the value that was provided on create.
 func (u *WechatAppUpsert) UpdateSuspended() *WechatAppUpsert {
 	u.SetExcluded(wechatapp.FieldSuspended)
+	return u
+}
+
+// SetLapsed sets the "lapsed" field.
+func (u *WechatAppUpsert) SetLapsed(v bool) *WechatAppUpsert {
+	u.Set(wechatapp.FieldLapsed, v)
+	return u
+}
+
+// UpdateLapsed sets the "lapsed" field to the value that was provided on create.
+func (u *WechatAppUpsert) UpdateLapsed() *WechatAppUpsert {
+	u.SetExcluded(wechatapp.FieldLapsed)
 	return u
 }
 
@@ -986,6 +1023,20 @@ func (u *WechatAppUpsertOne) SetSuspended(v bool) *WechatAppUpsertOne {
 func (u *WechatAppUpsertOne) UpdateSuspended() *WechatAppUpsertOne {
 	return u.Update(func(s *WechatAppUpsert) {
 		s.UpdateSuspended()
+	})
+}
+
+// SetLapsed sets the "lapsed" field.
+func (u *WechatAppUpsertOne) SetLapsed(v bool) *WechatAppUpsertOne {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.SetLapsed(v)
+	})
+}
+
+// UpdateLapsed sets the "lapsed" field to the value that was provided on create.
+func (u *WechatAppUpsertOne) UpdateLapsed() *WechatAppUpsertOne {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.UpdateLapsed()
 	})
 }
 
@@ -1446,6 +1497,20 @@ func (u *WechatAppUpsertBulk) SetSuspended(v bool) *WechatAppUpsertBulk {
 func (u *WechatAppUpsertBulk) UpdateSuspended() *WechatAppUpsertBulk {
 	return u.Update(func(s *WechatAppUpsert) {
 		s.UpdateSuspended()
+	})
+}
+
+// SetLapsed sets the "lapsed" field.
+func (u *WechatAppUpsertBulk) SetLapsed(v bool) *WechatAppUpsertBulk {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.SetLapsed(v)
+	})
+}
+
+// UpdateLapsed sets the "lapsed" field to the value that was provided on create.
+func (u *WechatAppUpsertBulk) UpdateLapsed() *WechatAppUpsertBulk {
+	return u.Update(func(s *WechatAppUpsert) {
+		s.UpdateLapsed()
 	})
 }
 

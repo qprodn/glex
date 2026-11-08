@@ -225,6 +225,20 @@ func (_u *WechatAppUpdate) SetNillableSuspended(v *bool) *WechatAppUpdate {
 	return _u
 }
 
+// SetLapsed sets the "lapsed" field.
+func (_u *WechatAppUpdate) SetLapsed(v bool) *WechatAppUpdate {
+	_u.mutation.SetLapsed(v)
+	return _u
+}
+
+// SetNillableLapsed sets the "lapsed" field if the given value is not nil.
+func (_u *WechatAppUpdate) SetNillableLapsed(v *bool) *WechatAppUpdate {
+	if v != nil {
+		_u.SetLapsed(*v)
+	}
+	return _u
+}
+
 // SetKeyVersion sets the "key_version" field.
 func (_u *WechatAppUpdate) SetKeyVersion(v int) *WechatAppUpdate {
 	_u.mutation.ResetKeyVersion()
@@ -387,6 +401,9 @@ func (_u *WechatAppUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Suspended(); ok {
 		_spec.SetField(wechatapp.FieldSuspended, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.Lapsed(); ok {
+		_spec.SetField(wechatapp.FieldLapsed, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.KeyVersion(); ok {
 		_spec.SetField(wechatapp.FieldKeyVersion, field.TypeInt, value)
@@ -610,6 +627,20 @@ func (_u *WechatAppUpdateOne) SetNillableSuspended(v *bool) *WechatAppUpdateOne 
 	return _u
 }
 
+// SetLapsed sets the "lapsed" field.
+func (_u *WechatAppUpdateOne) SetLapsed(v bool) *WechatAppUpdateOne {
+	_u.mutation.SetLapsed(v)
+	return _u
+}
+
+// SetNillableLapsed sets the "lapsed" field if the given value is not nil.
+func (_u *WechatAppUpdateOne) SetNillableLapsed(v *bool) *WechatAppUpdateOne {
+	if v != nil {
+		_u.SetLapsed(*v)
+	}
+	return _u
+}
+
 // SetKeyVersion sets the "key_version" field.
 func (_u *WechatAppUpdateOne) SetKeyVersion(v int) *WechatAppUpdateOne {
 	_u.mutation.ResetKeyVersion()
@@ -802,6 +833,9 @@ func (_u *WechatAppUpdateOne) sqlSave(ctx context.Context) (_node *WechatApp, er
 	}
 	if value, ok := _u.mutation.Suspended(); ok {
 		_spec.SetField(wechatapp.FieldSuspended, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.Lapsed(); ok {
+		_spec.SetField(wechatapp.FieldLapsed, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.KeyVersion(); ok {
 		_spec.SetField(wechatapp.FieldKeyVersion, field.TypeInt, value)

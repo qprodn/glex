@@ -2656,6 +2656,38 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/wechat.v1.WechatApp'
+    /wechat/app/{appId}/probe:
+        post:
+            tags:
+                - WechatService
+            description: |-
+                ProbeWechatApp runs the WeChat Connectivity Test for one app. The
+                 test uses the app's current token and creates no WeChat Dispatch. A
+                 definitive refusal lapses the app. A timeout, a business rejection,
+                 or an unready platform fails the test and leaves the app unlapsed.
+                 A lapsed app is refused until it is restored. A suspended app can
+                 still be tested. Permission: wechat:app:probe.
+            operationId: WechatService_ProbeWechatApp
+            parameters:
+                - name: appId
+                  in: path
+                  description: Required. The id of the app to test.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/wechat.v1.ProbeWechatAppRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/wechat.v1.ProbeWechatAppResult'
     /wechat/app/{appId}/push-secret:
         post:
             tags:
@@ -4526,6 +4558,26 @@ components:
                 encodingAesKey:
                     type: string
                     description: Required. EncodingAESKey.
+        wechat.v1.ProbeWechatAppRequest:
+            required:
+                - appId
+            type: object
+            properties:
+                appId:
+                    type: string
+                    description: Required. The id of the app to test.
+        wechat.v1.ProbeWechatAppResult:
+            type: object
+            properties:
+                ok:
+                    type: boolean
+                message:
+                    type: string
+                    description: Human-readable outcome; the failure reason when ok is false.
+            description: |-
+                ProbeWechatAppResult is one WeChat Connectivity Test. ok is false when
+                 the app's token was not proved. A definitive refusal also lapses the
+                 app; a timeout, a business rejection, or an unready platform does not.
         wechat.v1.ProbeWechatPlatformRequest:
             required:
                 - platformId
@@ -4687,6 +4739,12 @@ components:
                         type: integer
                         format: enum
                     description: Capabilities WeChat granted. Empty for a Direct Hold.
+                lapsed:
+                    type: boolean
+                    description: |-
+                        Lapse is set when WeChat definitively refuses the grant or the
+                         Direct Hold secret. It is not suspension. A lapsed app stays on the
+                         live list and cannot be connectivity-tested until it is restored.
             description: |-
                 WechatApp is one WeChat App (微信应用). A Direct Hold carries masks for
                  the AppSecret and the Push Secret and never the plaintext (ADR 0029).
@@ -4885,5 +4943,5 @@ tags:
         WechatService is the back-office surface for WeChat Platform
          registration and WeChat Apps. Platform permissions are
          wechat:platform:list, create, update, remove, and probe. App permissions
-         are wechat:app:list, create, update, and remove. The platform callback
+         are wechat:app:list, create, update, remove, and probe. The platform callback
          is a separate unauthenticated route; it is not an RPC.

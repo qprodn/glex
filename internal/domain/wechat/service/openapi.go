@@ -66,10 +66,57 @@ type AuthorizationGrant struct {
 	RefreshToken string
 }
 
+// CallClass is how the Open API port classifies one WeChat call. The
+// domain service does not inspect WeChat error codes. Only
+// CallDefinitiveRefusal lapses a WeChat App. Which codes fall into which
+// class is the port's concern and is left unset.
+type CallClass int
+
+const (
+	// CallSuccess is a call WeChat accepted. An app connectivity test
+	// that succeeds changes no suspension, lapse, or connection.
+	CallSuccess CallClass = iota
+	// CallBusinessRejection is an ordinary WeChat refusal, such as a
+	// person who has not subscribed. The app stays unlapsed.
+	CallBusinessRejection
+	// CallUnavailable is a timeout or WeChat being unreachable. The app
+	// stays unlapsed.
+	CallUnavailable
+	// CallDefinitiveRefusal is WeChat rejecting the grant or the Direct
+	// Hold secret. The app lapses.
+	CallDefinitiveRefusal
+)
+
+// ProbeAppRequest is one WeChat Connectivity Test of an app's current
+// token. A Direct Hold carries AppID and AppSecret. A Platform
+// Authorization carries the platform registration and the authorizer
+// refresh material, and no authorizer AppSecret. The call sends no
+// message and creates no WeChat Dispatch.
+type ProbeAppRequest struct {
+	Connection             string
+	AppID                  string
+	AppSecret              string
+	ComponentAppID         string
+	ComponentSecret        string
+	VerifyTicket           string
+	AuthorizerRefreshToken string
+}
+
+// ProbeAppResult is the port's classification of that test. Message is
+// operator-readable and is not a WeChat error code. AuthorizerRefreshToken
+// is set when WeChat issued a replacement during a successful platform
+// test; empty means the stored material stays.
+type ProbeAppResult struct {
+	Class                  CallClass
+	Message                string
+	AuthorizerRefreshToken string
+}
+
 // OpenAPI is the domain service's only path to WeChat. Tests script it to
 // succeed or fail. The process binds the HTTP adapter.
 type OpenAPI interface {
 	ProbePlatform(ctx context.Context, req ProbePlatformRequest) error
+	ProbeApp(ctx context.Context, req ProbeAppRequest) (ProbeAppResult, error)
 	AnswerFullNetwork(ctx context.Context, req FullNetworkReply) error
 	StartAuthorization(ctx context.Context, req OpenAuthorizationStart) (*AuthorizationLink, error)
 	CompleteAuthorization(ctx context.Context, req OpenAuthorizationCode) (*AuthorizationGrant, error)

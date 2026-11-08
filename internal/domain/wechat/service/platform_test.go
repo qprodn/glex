@@ -1074,6 +1074,24 @@ type scriptedOpenAPI struct {
 	grant        *AuthorizationGrant
 	grantErr     error
 	completes    []OpenAuthorizationCode
+	appProbe     ProbeAppResult
+	appProbeErr  error
+	appProbes    []ProbeAppRequest
+}
+
+func (s *scriptedOpenAPI) ProbeApp(_ context.Context, req ProbeAppRequest) (ProbeAppResult, error) {
+	if s == nil {
+		return ProbeAppResult{Class: CallSuccess, Message: "连接成功"}, nil
+	}
+	s.appProbes = append(s.appProbes, req)
+	if s.appProbeErr != nil {
+		return ProbeAppResult{}, s.appProbeErr
+	}
+	result := s.appProbe
+	if result.Class == CallSuccess && result.Message == "" {
+		result.Message = "连接成功"
+	}
+	return result, nil
 }
 
 func (s *scriptedOpenAPI) ProbePlatform(_ context.Context, req ProbePlatformRequest) error {
