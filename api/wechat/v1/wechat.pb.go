@@ -2338,15 +2338,17 @@ type WechatDispatch struct {
 	LibraryTemplateId string                 `protobuf:"bytes,5,opt,name=library_template_id,json=libraryTemplateId,proto3" json:"library_template_id,omitempty"`
 	Channel           WechatCapability       `protobuf:"varint,6,opt,name=channel,proto3,enum=wechat.v1.WechatCapability" json:"channel,omitempty"`
 	// The filled content. It is not a secret.
-	Content         string                 `protobuf:"bytes,7,opt,name=content,proto3" json:"content,omitempty"`
-	WebUrl          string                 `protobuf:"bytes,8,opt,name=web_url,json=webUrl,proto3" json:"web_url,omitempty"`
-	MiniProgramPage string                 `protobuf:"bytes,9,opt,name=mini_program_page,json=miniProgramPage,proto3" json:"mini_program_page,omitempty"`
-	Accepted        bool                   `protobuf:"varint,10,opt,name=accepted,proto3" json:"accepted,omitempty"`
-	Msgid           string                 `protobuf:"bytes,11,opt,name=msgid,proto3" json:"msgid,omitempty"`
-	CreateBy        int64                  `protobuf:"varint,12,opt,name=create_by,json=createBy,proto3" json:"create_by,omitempty"`
-	UpdateBy        int64                  `protobuf:"varint,13,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
-	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt       *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Content         string `protobuf:"bytes,7,opt,name=content,proto3" json:"content,omitempty"`
+	WebUrl          string `protobuf:"bytes,8,opt,name=web_url,json=webUrl,proto3" json:"web_url,omitempty"`
+	MiniProgramPage string `protobuf:"bytes,9,opt,name=mini_program_page,json=miniProgramPage,proto3" json:"mini_program_page,omitempty"`
+	// The mini program WeChat should open with mini_program_page.
+	MiniProgramAppId string                 `protobuf:"bytes,17,opt,name=mini_program_app_id,json=miniProgramAppId,proto3" json:"mini_program_app_id,omitempty"`
+	Accepted         bool                   `protobuf:"varint,10,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	Msgid            string                 `protobuf:"bytes,11,opt,name=msgid,proto3" json:"msgid,omitempty"`
+	CreateBy         int64                  `protobuf:"varint,12,opt,name=create_by,json=createBy,proto3" json:"create_by,omitempty"`
+	UpdateBy         int64                  `protobuf:"varint,13,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
+	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt        *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// True after a delivery report for this msgid. Acceptance is not delivery.
 	Delivered     bool `protobuf:"varint,16,opt,name=delivered,proto3" json:"delivered,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -2442,6 +2444,13 @@ func (x *WechatDispatch) GetWebUrl() string {
 func (x *WechatDispatch) GetMiniProgramPage() string {
 	if x != nil {
 		return x.MiniProgramPage
+	}
+	return ""
+}
+
+func (x *WechatDispatch) GetMiniProgramAppId() string {
+	if x != nil {
+		return x.MiniProgramAppId
 	}
 	return ""
 }
@@ -2632,8 +2641,10 @@ type CreateWechatDispatchRequest struct {
 	Content         string                 `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`
 	WebUrl          string                 `protobuf:"bytes,5,opt,name=web_url,json=webUrl,proto3" json:"web_url,omitempty"`
 	MiniProgramPage string                 `protobuf:"bytes,6,opt,name=mini_program_page,json=miniProgramPage,proto3" json:"mini_program_page,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The mini program WeChat should open with mini_program_page.
+	MiniProgramAppId string `protobuf:"bytes,7,opt,name=mini_program_app_id,json=miniProgramAppId,proto3" json:"mini_program_app_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *CreateWechatDispatchRequest) Reset() {
@@ -2704,6 +2715,13 @@ func (x *CreateWechatDispatchRequest) GetWebUrl() string {
 func (x *CreateWechatDispatchRequest) GetMiniProgramPage() string {
 	if x != nil {
 		return x.MiniProgramPage
+	}
+	return ""
+}
+
+func (x *CreateWechatDispatchRequest) GetMiniProgramAppId() string {
+	if x != nil {
+		return x.MiniProgramAppId
 	}
 	return ""
 }
@@ -3584,7 +3602,7 @@ const file_wechat_v1_wechat_proto_rawDesc = "" +
 	"\x1aAdoptWechatTemplateRequest\x12\x1a\n" +
 	"\x06app_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x05appId\x123\n" +
 	"\x13library_template_id\x18\x02 \x01(\tB\x03\xe0A\x02R\x11libraryTemplateId\x12:\n" +
-	"\achannel\x18\x03 \x01(\x0e2\x1b.wechat.v1.WechatCapabilityB\x03\xe0A\x02R\achannel\"\xc7\x04\n" +
+	"\achannel\x18\x03 \x01(\x0e2\x1b.wechat.v1.WechatCapabilityB\x03\xe0A\x02R\achannel\"\xf6\x04\n" +
 	"\x0eWechatDispatch\x12\x1f\n" +
 	"\vdispatch_id\x18\x01 \x01(\x03R\n" +
 	"dispatchId\x12\x15\n" +
@@ -3596,7 +3614,8 @@ const file_wechat_v1_wechat_proto_rawDesc = "" +
 	"\achannel\x18\x06 \x01(\x0e2\x1b.wechat.v1.WechatCapabilityR\achannel\x12\x18\n" +
 	"\acontent\x18\a \x01(\tR\acontent\x12\x17\n" +
 	"\aweb_url\x18\b \x01(\tR\x06webUrl\x12*\n" +
-	"\x11mini_program_page\x18\t \x01(\tR\x0fminiProgramPage\x12\x1a\n" +
+	"\x11mini_program_page\x18\t \x01(\tR\x0fminiProgramPage\x12-\n" +
+	"\x13mini_program_app_id\x18\x11 \x01(\tR\x10miniProgramAppId\x12\x1a\n" +
 	"\baccepted\x18\n" +
 	" \x01(\bR\baccepted\x12\x14\n" +
 	"\x05msgid\x18\v \x01(\tR\x05msgid\x12\x1b\n" +
@@ -3618,7 +3637,7 @@ const file_wechat_v1_wechat_proto_rawDesc = "" +
 	"page_token\x18\x02 \x01(\tR\tpageToken\x12\x16\n" +
 	"\x06filter\x18\x03 \x01(\tR\x06filter\x12\x19\n" +
 	"\border_by\x18\x04 \x01(\tR\aorderBy\x12\x15\n" +
-	"\x06app_id\x18\x05 \x01(\x03R\x05appId\"\xdb\x01\n" +
+	"\x06app_id\x18\x05 \x01(\x03R\x05appId\"\x8a\x02\n" +
 	"\x1bCreateWechatDispatchRequest\x12\x1a\n" +
 	"\x06app_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x05appId\x12$\n" +
 	"\vtemplate_id\x18\x02 \x01(\x03B\x03\xe0A\x02R\n" +
@@ -3626,7 +3645,8 @@ const file_wechat_v1_wechat_proto_rawDesc = "" +
 	"\x06openid\x18\x03 \x01(\tB\x03\xe0A\x02R\x06openid\x12\x18\n" +
 	"\acontent\x18\x04 \x01(\tR\acontent\x12\x17\n" +
 	"\aweb_url\x18\x05 \x01(\tR\x06webUrl\x12*\n" +
-	"\x11mini_program_page\x18\x06 \x01(\tR\x0fminiProgramPage\"\xa8\x01\n" +
+	"\x11mini_program_page\x18\x06 \x01(\tR\x0fminiProgramPage\x12-\n" +
+	"\x13mini_program_app_id\x18\a \x01(\tR\x10miniProgramAppId\"\xa8\x01\n" +
 	"&ConfigureWechatWebAuthorizationRequest\x12\x1a\n" +
 	"\x06app_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x05appId\x12\x1d\n" +
 	"\n" +

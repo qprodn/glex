@@ -234,6 +234,20 @@ func (_u *WechatDispatchUpdate) SetNillableWebURL(v *string) *WechatDispatchUpda
 	return _u
 }
 
+// SetMiniProgramAppID sets the "mini_program_app_id" field.
+func (_u *WechatDispatchUpdate) SetMiniProgramAppID(v string) *WechatDispatchUpdate {
+	_u.mutation.SetMiniProgramAppID(v)
+	return _u
+}
+
+// SetNillableMiniProgramAppID sets the "mini_program_app_id" field if the given value is not nil.
+func (_u *WechatDispatchUpdate) SetNillableMiniProgramAppID(v *string) *WechatDispatchUpdate {
+	if v != nil {
+		_u.SetMiniProgramAppID(*v)
+	}
+	return _u
+}
+
 // SetMiniProgramPage sets the "mini_program_page" field.
 func (_u *WechatDispatchUpdate) SetMiniProgramPage(v string) *WechatDispatchUpdate {
 	_u.mutation.SetMiniProgramPage(v)
@@ -358,6 +372,11 @@ func (_u *WechatDispatchUpdate) check() error {
 			return &ValidationError{Name: "web_url", err: fmt.Errorf(`ent: validator failed for field "WechatDispatch.web_url": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.MiniProgramAppID(); ok {
+		if err := wechatdispatch.MiniProgramAppIDValidator(v); err != nil {
+			return &ValidationError{Name: "mini_program_app_id", err: fmt.Errorf(`ent: validator failed for field "WechatDispatch.mini_program_app_id": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.MiniProgramPage(); ok {
 		if err := wechatdispatch.MiniProgramPageValidator(v); err != nil {
 			return &ValidationError{Name: "mini_program_page", err: fmt.Errorf(`ent: validator failed for field "WechatDispatch.mini_program_page": %w`, err)}
@@ -439,6 +458,9 @@ func (_u *WechatDispatchUpdate) sqlSave(ctx context.Context) (_node int, err err
 	}
 	if value, ok := _u.mutation.WebURL(); ok {
 		_spec.SetField(wechatdispatch.FieldWebURL, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MiniProgramAppID(); ok {
+		_spec.SetField(wechatdispatch.FieldMiniProgramAppID, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.MiniProgramPage(); ok {
 		_spec.SetField(wechatdispatch.FieldMiniProgramPage, field.TypeString, value)
@@ -678,6 +700,20 @@ func (_u *WechatDispatchUpdateOne) SetNillableWebURL(v *string) *WechatDispatchU
 	return _u
 }
 
+// SetMiniProgramAppID sets the "mini_program_app_id" field.
+func (_u *WechatDispatchUpdateOne) SetMiniProgramAppID(v string) *WechatDispatchUpdateOne {
+	_u.mutation.SetMiniProgramAppID(v)
+	return _u
+}
+
+// SetNillableMiniProgramAppID sets the "mini_program_app_id" field if the given value is not nil.
+func (_u *WechatDispatchUpdateOne) SetNillableMiniProgramAppID(v *string) *WechatDispatchUpdateOne {
+	if v != nil {
+		_u.SetMiniProgramAppID(*v)
+	}
+	return _u
+}
+
 // SetMiniProgramPage sets the "mini_program_page" field.
 func (_u *WechatDispatchUpdateOne) SetMiniProgramPage(v string) *WechatDispatchUpdateOne {
 	_u.mutation.SetMiniProgramPage(v)
@@ -815,6 +851,11 @@ func (_u *WechatDispatchUpdateOne) check() error {
 			return &ValidationError{Name: "web_url", err: fmt.Errorf(`ent: validator failed for field "WechatDispatch.web_url": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.MiniProgramAppID(); ok {
+		if err := wechatdispatch.MiniProgramAppIDValidator(v); err != nil {
+			return &ValidationError{Name: "mini_program_app_id", err: fmt.Errorf(`ent: validator failed for field "WechatDispatch.mini_program_app_id": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.MiniProgramPage(); ok {
 		if err := wechatdispatch.MiniProgramPageValidator(v); err != nil {
 			return &ValidationError{Name: "mini_program_page", err: fmt.Errorf(`ent: validator failed for field "WechatDispatch.mini_program_page": %w`, err)}
@@ -913,6 +954,9 @@ func (_u *WechatDispatchUpdateOne) sqlSave(ctx context.Context) (_node *WechatDi
 	}
 	if value, ok := _u.mutation.WebURL(); ok {
 		_spec.SetField(wechatdispatch.FieldWebURL, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MiniProgramAppID(); ok {
+		_spec.SetField(wechatdispatch.FieldMiniProgramAppID, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.MiniProgramPage(); ok {
 		_spec.SetField(wechatdispatch.FieldMiniProgramPage, field.TypeString, value)

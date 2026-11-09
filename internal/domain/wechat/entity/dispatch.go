@@ -18,6 +18,7 @@ type Dispatch struct {
 	Channel           string
 	Content           string
 	WebURL            string
+	MiniProgramAppID  string
 	MiniProgramPage   string
 	Accepted          bool
 	Delivered         bool

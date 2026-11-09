@@ -145,7 +145,7 @@ func classifyMiniProgramLogin(openid, unionid string, err error) (wechatservice.
 // unavailable. The domain lapses an app only when this port returns that
 // class.
 func (c *openAPI) PublishMenu(ctx context.Context, req wechatservice.PublishMenuCall) (wechatservice.PublishMenuResult, error) {
-	token, refresh, err := c.menuAccessToken(ctx, req)
+	token, refresh, err := c.accessToken(ctx, req.ProbeAppRequest)
 	if errors.Is(err, context.Canceled) {
 		return wechatservice.PublishMenuResult{}, err
 	}
@@ -170,22 +170,6 @@ func (c *openAPI) PublishMenu(ctx context.Context, req wechatservice.PublishMenu
 		return classifyMenuPublish(false, refresh, openAPIFailure(resp.ErrMsg, "custom menu was not accepted")), nil
 	}
 	return classifyMenuPublish(true, refresh, nil), nil
-}
-
-func (c *openAPI) menuAccessToken(ctx context.Context, req wechatservice.PublishMenuCall) (string, string, error) {
-	switch req.Connection {
-	case entity.ConnectionDirectHold:
-		token, err := c.clientCredentialToken(ctx, req.AppID, req.AppSecret)
-		return token, "", err
-	case entity.ConnectionPlatformAuthorization:
-		component, err := c.componentToken(ctx, req.ComponentAppID, req.ComponentSecret, req.VerifyTicket)
-		if err != nil {
-			return "", "", err
-		}
-		return c.refreshAuthorizerToken(ctx, component, req.ComponentAppID, req.AppID, req.AuthorizerRefreshToken)
-	default:
-		return "", "", errors.New("wechat open api: unknown connection")
-	}
 }
 
 func classifyMenuPublish(accepted bool, refresh string, err error) wechatservice.PublishMenuResult {
@@ -368,7 +352,7 @@ func (c *openAPI) CompleteAuthorization(ctx context.Context, req wechatservice.O
 		Name:         profile.name,
 		AppType:      profile.appType,
 		Kind:         profile.kind,
-		Capabilities: classifyGranted(queried.funcIDs, profile.appType),
+		Capabilities: classifyGranted(queried.funcIDs),
 		RefreshToken: queried.refreshToken,
 	}, nil
 }
@@ -433,7 +417,7 @@ func sendEndpoint(base, token string, req wechatservice.SendMessageRequest) (str
 			payload["page"] = req.WebURL
 		}
 		if req.MiniProgramPage != "" {
-			payload["miniprogram"] = map[string]string{"pagepath": req.MiniProgramPage}
+			payload["miniprogram"] = miniProgramTarget(req.MiniProgramAppID, req.MiniProgramPage)
 		}
 		return base + "/cgi-bin/message/subscribe/bizsend?access_token=" + url.QueryEscape(token), payload
 	default:
@@ -441,9 +425,19 @@ func sendEndpoint(base, token string, req wechatservice.SendMessageRequest) (str
 			payload["url"] = req.WebURL
 		}
 		if req.MiniProgramPage != "" {
-			payload["miniprogram"] = map[string]string{"pagepath": req.MiniProgramPage}
+			payload["miniprogram"] = miniProgramTarget(req.MiniProgramAppID, req.MiniProgramPage)
 		}
 		return base + "/cgi-bin/message/template/send?access_token=" + url.QueryEscape(token), payload
+	}
+}
+
+// miniProgramTarget is the object WeChat requires when a template send
+// or a subscribe notification also opens a mini program. Both fields
+// travel together; pagepath alone is not enough for WeChat to prefer it.
+func miniProgramTarget(appID, page string) map[string]string {
+	return map[string]string{
+		"appid":    appID,
+		"pagepath": page,
 	}
 }
 
@@ -480,7 +474,11 @@ func (c *openAPI) AdoptLibraryTemplate(ctx context.Context, req wechatservice.Ad
 	if err != nil {
 		return classifyLibraryAdopt("", "", refresh, err)
 	}
-	endpoint, payload := adoptEndpoint(c.base, token, req)
+	kids, err := c.templateKeywordIDs(ctx, token, req)
+	if err != nil {
+		return classifyLibraryAdopt("", "", refresh, err)
+	}
+	endpoint, payload := adoptEndpoint(c.base, token, req, kids)
 	body, err := c.postJSON(ctx, endpoint, payload)
 	if err != nil {
 		return classifyLibraryAdopt("", "", refresh, err)
@@ -504,12 +502,59 @@ func (c *openAPI) AdoptLibraryTemplate(ctx context.Context, req wechatservice.Ad
 	return classifyLibraryAdopt(resp.TemplateID, title, refresh, nil)
 }
 
-func adoptEndpoint(base, token string, req wechatservice.AdoptLibraryTemplateRequest) (string, any) {
+// addTemplateKeywordLimit is WeChat's maximum keyword combination on
+// addtemplate. The ids themselves come from the public template, not
+// from a table kept here.
+const addTemplateKeywordLimit = 5
+
+func (c *openAPI) templateKeywordIDs(ctx context.Context, token string, req wechatservice.AdoptLibraryTemplateRequest) ([]int, error) {
+	switch req.Channel {
+	case entity.CapabilitySubscribeMessage, entity.CapabilitySubscribeNotification:
+	default:
+		return nil, nil
+	}
+	query := url.Values{}
+	query.Set("access_token", token)
+	query.Set("tid", req.LibraryTemplateID)
+	body, err := c.get(ctx, c.base+"/wxaapi/newtmpl/getpubtemplatekeywords?"+query.Encode())
+	if err != nil {
+		return nil, err
+	}
+	var resp struct {
+		ErrCode int    `json:"errcode"`
+		ErrMsg  string `json:"errmsg"`
+		Data    []struct {
+			Kid int `json:"kid"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, errors.New("wechat open api: unreadable response")
+	}
+	if resp.ErrCode != 0 {
+		return nil, openAPIFailure(resp.ErrMsg, "template keywords were not returned")
+	}
+	ids := make([]int, 0, len(resp.Data))
+	for _, row := range resp.Data {
+		if row.Kid == 0 {
+			continue
+		}
+		ids = append(ids, row.Kid)
+		if len(ids) == addTemplateKeywordLimit {
+			break
+		}
+	}
+	if len(ids) == 0 {
+		return nil, errors.New("wechat open api: template has no keywords")
+	}
+	return ids, nil
+}
+
+func adoptEndpoint(base, token string, req wechatservice.AdoptLibraryTemplateRequest, kids []int) (string, any) {
 	switch req.Channel {
 	case entity.CapabilitySubscribeMessage, entity.CapabilitySubscribeNotification:
 		return base + "/wxaapi/newtmpl/addtemplate?access_token=" + url.QueryEscape(token), map[string]any{
 			"tid":       req.LibraryTemplateID,
-			"kidList":   []int{},
+			"kidList":   kids,
 			"sceneDesc": req.LibraryTemplateID,
 		}
 	default:
@@ -750,9 +795,9 @@ var publishedCapability = map[int]string{
 	89: entity.CapabilitySubscribeNotification, // 服务号订阅通知
 }
 
-func classifyGranted(funcIDs []int, appType string) []string {
+func classifyGranted(funcIDs []int) []string {
 	seen := map[string]struct{}{}
-	out := make([]string, 0, len(funcIDs)+1)
+	out := make([]string, 0, len(funcIDs))
 	add := func(name string) {
 		if name == "" {
 			return
@@ -765,9 +810,6 @@ func classifyGranted(funcIDs []int, appType string) []string {
 	}
 	for _, id := range funcIDs {
 		add(publishedCapability[id])
-	}
-	if appType == entity.AppTypeMiniProgram {
-		add(entity.CapabilityMiniProgramLogin)
 	}
 	return out
 }

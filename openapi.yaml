@@ -4915,6 +4915,9 @@ components:
                     type: string
                 miniProgramPage:
                     type: string
+                miniProgramAppId:
+                    type: string
+                    description: The mini program WeChat should open with mini_program_page.
         wechat.v1.CreateWechatPlatformRequest:
             required:
                 - name
@@ -5304,6 +5307,9 @@ components:
                     type: string
                 miniProgramPage:
                     type: string
+                miniProgramAppId:
+                    type: string
+                    description: The mini program WeChat should open with mini_program_page.
                 accepted:
                     type: boolean
                 msgid:

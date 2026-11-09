@@ -636,6 +636,8 @@ message WechatDispatch {
   string content = 7;
   string web_url = 8;
   string mini_program_page = 9;
+  // The mini program WeChat should open with mini_program_page.
+  string mini_program_app_id = 17;
   bool accepted = 10;
   string msgid = 11;
   int64 create_by = 12;
@@ -667,6 +669,8 @@ message CreateWechatDispatchRequest {
   string content = 4;
   string web_url = 5;
   string mini_program_page = 6;
+  // The mini program WeChat should open with mini_program_page.
+  string mini_program_app_id = 7;
 }
 
 message ConfigureWechatWebAuthorizationRequest {

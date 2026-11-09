@@ -47,3 +47,6 @@ go-wind-admin/*
 # Local build output (`go build` at the repo root, or inside cmd/glex)
 /glex
 /cmd/glex/glex
+
+# Java/MPS build output
+target/

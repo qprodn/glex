@@ -38,12 +38,16 @@ func (s *WechatApplication) SaveWechatAppMenu(ctx context.Context, req *wechatv1
 // PublishWechatAppMenu replaces the Service Account's default menu at
 // WeChat with the menu already saved.
 func (s *WechatApplication) PublishWechatAppMenu(ctx context.Context, req *wechatv1.PublishWechatAppMenuRequest) (*wechatv1.WechatAppMenu, error) {
-	app, err := s.apps.PublishMenu(ctx, wechatservice.PublishMenuRequest{
-		ID:      req.GetAppId(),
-		ActorID: s.actor(ctx),
+	var app *entity.App
+	err := s.inTx(ctx, "wechat.publish_app_menu", func(ctx context.Context) error {
+		var callErr error
+		app, callErr = s.apps.PublishMenu(ctx, wechatservice.PublishMenuRequest{
+			ID:      req.GetAppId(),
+			ActorID: s.actor(ctx),
+		})
+		return callErr
 	})
 	if err != nil {
-		logx.Propagate(ctx, s.logger, "wechat.publish_app_menu", err)
 		return nil, err
 	}
 	return menuView(app), nil

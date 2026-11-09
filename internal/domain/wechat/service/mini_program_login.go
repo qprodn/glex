@@ -114,10 +114,12 @@ func (s *appImpl) miniProgramLoginCall(ctx context.Context, app *entity.App, cod
 	}
 	if app.Connection == entity.ConnectionDirectHold {
 		return MiniProgramLoginCall{
-			Connection: app.Connection,
-			AppID:      app.AppID,
-			AppSecret:  secrets.AppSecret,
-			Code:       code,
+			ProbeAppRequest: ProbeAppRequest{
+				Connection: app.Connection,
+				AppID:      app.AppID,
+				AppSecret:  secrets.AppSecret,
+			},
+			Code: code,
 		}, nil
 	}
 	if s.platforms == nil {
@@ -154,12 +156,14 @@ func (s *appImpl) miniProgramLoginCall(ctx context.Context, app *entity.App, cod
 		return MiniProgramLoginCall{}, err
 	}
 	return MiniProgramLoginCall{
-		Connection:             app.Connection,
-		AppID:                  app.AppID,
-		ComponentAppID:         p.ComponentAppID,
-		ComponentSecret:        platformSecrets.ComponentSecret,
-		VerifyTicket:           ticket,
-		AuthorizerRefreshToken: secrets.AuthorizerRefreshToken,
-		Code:                   code,
+		ProbeAppRequest: ProbeAppRequest{
+			Connection:             app.Connection,
+			AppID:                  app.AppID,
+			ComponentAppID:         p.ComponentAppID,
+			ComponentSecret:        platformSecrets.ComponentSecret,
+			VerifyTicket:           ticket,
+			AuthorizerRefreshToken: secrets.AuthorizerRefreshToken,
+		},
+		Code: code,
 	}, nil
 }

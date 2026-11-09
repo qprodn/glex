@@ -39,9 +39,9 @@ func (r *memTemplateRepo) FindByID(_ context.Context, id int64) (*entity.Adopted
 	return cloneTemplate(row), nil
 }
 
-func (r *memTemplateRepo) FindByAppAndLibrary(_ context.Context, appID int64, libraryTemplateID string) (*entity.AdoptedTemplate, error) {
+func (r *memTemplateRepo) FindByAppAndLibrary(_ context.Context, req repository.FindByAppAndLibraryRequest) (*entity.AdoptedTemplate, error) {
 	for _, row := range r.rows {
-		if row.AppID == appID && row.LibraryTemplateID == libraryTemplateID {
+		if row.AppID == req.AppID && row.LibraryTemplateID == req.LibraryTemplateID {
 			return cloneTemplate(row), nil
 		}
 	}
@@ -655,16 +655,10 @@ func TestKindAndCapabilityRefusedLocally(t *testing.T) {
 	partial := f.grantService(t, platform.ID, "wxservice0000099", []string{entity.CapabilityTemplateMessage})
 	f.api.send = SendMessageResult{Class: CallSuccess, MsgID: "msgid-100"}
 
-	serviceTemplate := adoptTemplate(t, f, serviceApp.App.ID, "TM00015", entity.CapabilityTemplateMessage, "wx-tmpl-9001")
+	_ = adoptTemplate(t, f, serviceApp.App.ID, "TM00015", entity.CapabilityTemplateMessage, "wx-tmpl-9001")
 	serviceNotice := adoptTemplate(t, f, serviceApp.App.ID, "TID00015", entity.CapabilitySubscribeNotification, "wx-tmpl-9002")
-	subTemplate := adoptTemplate(t, f, subscription.App.ID, "TM00016", entity.CapabilityTemplateMessage, "wx-tmpl-9003")
-	subNotice := adoptTemplate(t, f, subscription.App.ID, "TID00016", entity.CapabilitySubscribeNotification, "wx-tmpl-9004")
 	miniMessage := adoptTemplate(t, f, mini.App.ID, "TID00017", entity.CapabilitySubscribeMessage, "wx-tmpl-9005")
-	miniTemplate := adoptTemplate(t, f, mini.App.ID, "TM00017", entity.CapabilityTemplateMessage, "wx-tmpl-9006")
-	miniNotice := adoptTemplate(t, f, mini.App.ID, "TID00018", entity.CapabilitySubscribeNotification, "wx-tmpl-9007")
-	officialMini := adoptTemplate(t, f, serviceApp.App.ID, "TID00019", entity.CapabilitySubscribeMessage, "wx-tmpl-9008")
 	granted := adoptTemplate(t, f, partial.ID, "TM00018", entity.CapabilityTemplateMessage, "wx-tmpl-9009")
-	missing := adoptTemplate(t, f, partial.ID, "TID00020", entity.CapabilitySubscribeNotification, "wx-tmpl-9010")
 	f.api.sends = nil
 
 	if _, err := f.apps.Send(context.Background(), sendOf(serviceApp.App.ID, serviceNotice.ID)); err != nil {
@@ -677,33 +671,39 @@ func TestKindAndCapabilityRefusedLocally(t *testing.T) {
 		t.Fatalf("granted template message: %v", err)
 	}
 	refused := []struct {
-		name string
-		app  int64
-		tpl  int64
+		name    string
+		app     int64
+		library string
+		channel string
 	}{
-		{"subscription template message", subscription.App.ID, subTemplate.ID},
-		{"subscription subscribe notification", subscription.App.ID, subNotice.ID},
-		{"mini program template message", mini.App.ID, miniTemplate.ID},
-		{"mini program subscribe notification", mini.App.ID, miniNotice.ID},
-		{"service account subscribe message", serviceApp.App.ID, officialMini.ID},
-		{"platform missing subscribe notification", partial.ID, missing.ID},
+		{"subscription account", subscription.App.ID, "TM00016", entity.CapabilityTemplateMessage},
+		{"subscription subscribe notification", subscription.App.ID, "TID00016", entity.CapabilitySubscribeNotification},
+		{"mini program template message", mini.App.ID, "TM00017", entity.CapabilityTemplateMessage},
+		{"mini program subscribe notification", mini.App.ID, "TID00018", entity.CapabilitySubscribeNotification},
+		{"service account subscribe message", serviceApp.App.ID, "TID00019", entity.CapabilitySubscribeMessage},
+		{"platform missing subscribe notification", partial.ID, "TID00020", entity.CapabilitySubscribeNotification},
 	}
-	calls := len(f.api.sends)
+	adopts := len(f.api.adopts)
+	sends := len(f.api.sends)
 	for _, tc := range refused {
-		sent, err := f.apps.Send(context.Background(), sendOf(tc.app, tc.tpl))
-		if !errors.Is(err, wechat.ErrCapabilityDenied) || sent != nil {
-			t.Fatalf("%s = (%v, %v)", tc.name, sent, err)
+		adopted, err := f.apps.AdoptTemplate(context.Background(), AdoptTemplateRequest{
+			AppID:             tc.app,
+			LibraryTemplateID: tc.library,
+			Channel:           tc.channel,
+			ActorID:           7,
+		})
+		if !errors.Is(err, wechat.ErrCapabilityDenied) || adopted != nil {
+			t.Fatalf("%s = (%v, %v)", tc.name, adopted, err)
 		}
 	}
-	if len(f.api.sends) != calls {
-		t.Fatalf("a local refusal called WeChat: %d sends, want %d", len(f.api.sends), calls)
+	if len(f.api.adopts) != adopts || len(f.api.sends) != sends {
+		t.Fatalf("a local refusal called WeChat: adopts %d sends %d", len(f.api.adopts), len(f.api.sends))
 	}
 	for _, id := range []int64{serviceApp.App.ID, subscription.App.ID, mini.App.ID, partial.ID} {
 		if mustGetApp(t, f, id).Lapsed {
 			t.Fatalf("app %d lapsed on a local refusal", id)
 		}
 	}
-	_ = serviceTemplate
 }
 
 func sendOf(appID, templateID int64) SendDispatchRequest {
@@ -736,21 +736,22 @@ func TestSendRecordsWebURLAndMiniProgramPage(t *testing.T) {
 	template := adoptTemplate(t, f, held.App.ID, "TM00015", entity.CapabilityTemplateMessage, "wx-tmpl-9001")
 	f.api.send = SendMessageResult{Class: CallSuccess, MsgID: "msgid-200"}
 	sent, err := f.apps.Send(context.Background(), SendDispatchRequest{
-		AppID:           held.App.ID,
-		TemplateID:      template.ID,
-		OpenID:          "openid-a",
-		Content:         "已发货",
-		WebURL:          "https://shop.example/orders/1",
-		MiniProgramPage: "pages/order/index?id=1",
-		ActorID:         7,
+		AppID:            held.App.ID,
+		TemplateID:       template.ID,
+		OpenID:           "openid-a",
+		Content:          "已发货",
+		WebURL:           "https://shop.example/orders/1",
+		MiniProgramAppID: "wxminiappid000001",
+		MiniProgramPage:  "pages/order/index?id=1",
+		ActorID:          7,
 	})
 	if err != nil {
 		t.Fatalf("send: %v", err)
 	}
-	if sent.WebURL != "https://shop.example/orders/1" || sent.MiniProgramPage != "pages/order/index?id=1" || sent.MsgID != "msgid-200" || !sent.Accepted {
+	if sent.WebURL != "https://shop.example/orders/1" || sent.MiniProgramAppID != "wxminiappid000001" || sent.MiniProgramPage != "pages/order/index?id=1" || sent.MsgID != "msgid-200" || !sent.Accepted {
 		t.Fatalf("dispatch = %+v", sent)
 	}
-	if len(f.api.sends) != 1 || f.api.sends[0].WebURL != sent.WebURL || f.api.sends[0].MiniProgramPage != sent.MiniProgramPage {
+	if len(f.api.sends) != 1 || f.api.sends[0].WebURL != sent.WebURL || f.api.sends[0].MiniProgramAppID != sent.MiniProgramAppID || f.api.sends[0].MiniProgramPage != sent.MiniProgramPage {
 		t.Fatalf("send call = %+v", f.api.sends)
 	}
 }

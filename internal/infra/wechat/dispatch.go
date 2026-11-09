@@ -25,6 +25,7 @@ func toBizDispatch(po *ent.WechatDispatch) *entity.Dispatch {
 		Channel:           po.Channel,
 		Content:           po.Content,
 		WebURL:            po.WebURL,
+		MiniProgramAppID:  po.MiniProgramAppID,
 		MiniProgramPage:   po.MiniProgramPage,
 		Accepted:          po.Accepted,
 		Delivered:         po.Delivered,
@@ -64,6 +65,7 @@ func (r *dispatchRepo) Create(ctx context.Context, row *entity.Dispatch) (*entit
 		SetChannel(row.Channel).
 		SetContent(row.Content).
 		SetWebURL(row.WebURL).
+		SetMiniProgramAppID(row.MiniProgramAppID).
 		SetMiniProgramPage(row.MiniProgramPage).
 		SetAccepted(row.Accepted).
 		SetDelivered(row.Delivered).

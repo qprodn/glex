@@ -39,6 +39,8 @@ const (
 	FieldContent = "content"
 	// FieldWebURL holds the string denoting the web_url field in the database.
 	FieldWebURL = "web_url"
+	// FieldMiniProgramAppID holds the string denoting the mini_program_app_id field in the database.
+	FieldMiniProgramAppID = "mini_program_app_id"
 	// FieldMiniProgramPage holds the string denoting the mini_program_page field in the database.
 	FieldMiniProgramPage = "mini_program_page"
 	// FieldAccepted holds the string denoting the accepted field in the database.
@@ -67,6 +69,7 @@ var Columns = []string{
 	FieldChannel,
 	FieldContent,
 	FieldWebURL,
+	FieldMiniProgramAppID,
 	FieldMiniProgramPage,
 	FieldAccepted,
 	FieldMsgid,
@@ -114,6 +117,10 @@ var (
 	DefaultWebURL string
 	// WebURLValidator is a validator for the "web_url" field. It is called by the builders before save.
 	WebURLValidator func(string) error
+	// DefaultMiniProgramAppID holds the default value on creation for the "mini_program_app_id" field.
+	DefaultMiniProgramAppID string
+	// MiniProgramAppIDValidator is a validator for the "mini_program_app_id" field. It is called by the builders before save.
+	MiniProgramAppIDValidator func(string) error
 	// DefaultMiniProgramPage holds the default value on creation for the "mini_program_page" field.
 	DefaultMiniProgramPage string
 	// MiniProgramPageValidator is a validator for the "mini_program_page" field. It is called by the builders before save.
@@ -199,6 +206,11 @@ func ByContent(opts ...sql.OrderTermOption) OrderOption {
 // ByWebURL orders the results by the web_url field.
 func ByWebURL(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldWebURL, opts...).ToFunc()
+}
+
+// ByMiniProgramAppID orders the results by the mini_program_app_id field.
+func ByMiniProgramAppID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMiniProgramAppID, opts...).ToFunc()
 }
 
 // ByMiniProgramPage orders the results by the mini_program_page field.

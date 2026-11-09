@@ -550,6 +550,49 @@ func TestFullNetworkReleaseTextIsAnsweredWithoutCreatingRecords(t *testing.T) {
 	}
 }
 
+func TestFullNetworkReleaseEventIsAnsweredWithoutCreatingRecords(t *testing.T) {
+	api := &scriptedOpenAPI{}
+	svc := newScriptedPlatform(t, api)
+	created, err := svc.Create(context.Background(), pushRegisterInput(7))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	before := mustGet(t, svc, created.ID)
+	event := "<xml><ToUserName><![CDATA[gh_3c884a361561]]></ToUserName><FromUserName><![CDATA[oTestFanOpenId0001]]></FromUserName><CreateTime>1413192605</CreateTime><MsgType><![CDATA[event]]></MsgType><Event><![CDATA[subscribe]]></Event></xml>"
+	reply, err := svc.Receive(context.Background(), encryptedMessagePush(t, created.ID, created.ComponentAppID, event))
+	if err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+	if reply.Body == "success" {
+		t.Fatal("full-network event fell through to a plain success body")
+	}
+	plain := decryptReply(t, created.ComponentAppID, reply.Body)
+	if !strings.Contains(plain, "TESTCOMPONENT_MSG_TYPE_TEXT_callback") || !strings.Contains(plain, "oTestFanOpenId0001") || !strings.Contains(plain, "gh_3c884a361561") {
+		t.Fatalf("full-network event reply = %s", plain)
+	}
+	after := mustGet(t, svc, created.ID)
+	if after.Ready || operatorView(after) != operatorView(before) || after.UpdateBy != before.UpdateBy {
+		t.Fatalf("event traffic changed the platform: %s -> %s", operatorView(before), operatorView(after))
+	}
+	if len(api.replies) != 0 || len(api.probes) != 0 || len(api.completes) != 0 || len(api.starts) != 0 {
+		t.Fatal("full-network event created a WeChat call")
+	}
+	ordinary, err := svc.Receive(context.Background(), encryptedMessagePush(t, created.ID, created.ComponentAppID, "<xml><ToUserName><![CDATA[gh_not_a_test_account]]></ToUserName><FromUserName><![CDATA[oSomeone]]></FromUserName><CreateTime>1413192605</CreateTime><MsgType><![CDATA[event]]></MsgType><Event><![CDATA[subscribe]]></Event></xml>"))
+	if err != nil {
+		t.Fatalf("ordinary event: %v", err)
+	}
+	if ordinary.Body != "success" {
+		t.Fatalf("ordinary event reply = %q, want success", ordinary.Body)
+	}
+	listed, err := svc.List(context.Background(), listq.Query{})
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(listed) != 1 || listed[0].ID != created.ID || listed[0].Ready {
+		t.Fatalf("live platforms = %+v, want the one unready registration and no app", listed)
+	}
+}
+
 func TestFullNetworkReleaseQueryAuthCodeIsAnsweredWithoutCreatingRecords(t *testing.T) {
 	api := &scriptedOpenAPI{}
 	svc := newScriptedPlatform(t, api)

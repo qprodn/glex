@@ -489,6 +489,8 @@ export type WechatDispatch = {
   content: string | undefined;
   webUrl: string | undefined;
   miniProgramPage: string | undefined;
+  // The mini program WeChat should open with mini_program_page.
+  miniProgramAppId: string | undefined;
   accepted: boolean | undefined;
   msgid: string | undefined;
   createBy: number | undefined;
@@ -526,6 +528,8 @@ export type CreateWechatDispatchRequest = {
   content: string | undefined;
   webUrl: string | undefined;
   miniProgramPage: string | undefined;
+  // The mini program WeChat should open with mini_program_page.
+  miniProgramAppId: string | undefined;
 };
 
 export type ConfigureWechatWebAuthorizationRequest = {

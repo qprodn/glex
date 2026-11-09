@@ -15,14 +15,16 @@ type WechatApplication struct {
 
 	platforms wechatservice.Platform
 	apps      wechatservice.App
+	tx        Transaction
 	logger    *slog.Logger
 }
 
 // NewWechatApplication creates the WechatApplication.
-func NewWechatApplication(platforms wechatservice.Platform, apps wechatservice.App, logger *slog.Logger) *WechatApplication {
+func NewWechatApplication(platforms wechatservice.Platform, apps wechatservice.App, tx Transaction, logger *slog.Logger) *WechatApplication {
 	return &WechatApplication{
 		platforms: platforms,
 		apps:      apps,
+		tx:        tx,
 		logger:    logger.With(slog.String("component", "application.wechat")),
 	}
 }

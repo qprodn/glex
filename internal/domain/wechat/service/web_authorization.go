@@ -210,10 +210,12 @@ func (s *appImpl) webExchangeRequest(ctx context.Context, app *entity.App, code,
 		return ExchangeWebAuthorizationRequest{}, err
 	}
 	req := ExchangeWebAuthorizationRequest{
-		Connection: app.Connection,
-		AppID:      app.AppID,
-		Code:       code,
-		Profile:    app.WebAuthScope == entity.WebAuthScopeProfile,
+		ProbeAppRequest: ProbeAppRequest{
+			Connection: app.Connection,
+			AppID:      app.AppID,
+		},
+		Code:    code,
+		Profile: app.WebAuthScope == entity.WebAuthScopeProfile,
 	}
 	if app.Connection == entity.ConnectionDirectHold {
 		req.AppSecret = secrets.AppSecret

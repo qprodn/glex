@@ -43,6 +43,8 @@ type WechatDispatch struct {
 	Content string `json:"content,omitempty"`
 	// WebURL holds the value of the "web_url" field.
 	WebURL string `json:"web_url,omitempty"`
+	// MiniProgramAppID holds the value of the "mini_program_app_id" field.
+	MiniProgramAppID string `json:"mini_program_app_id,omitempty"`
 	// MiniProgramPage holds the value of the "mini_program_page" field.
 	MiniProgramPage string `json:"mini_program_page,omitempty"`
 	// Accepted holds the value of the "accepted" field.
@@ -63,7 +65,7 @@ func (*WechatDispatch) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case wechatdispatch.FieldID, wechatdispatch.FieldCreateBy, wechatdispatch.FieldUpdateBy, wechatdispatch.FieldAppID, wechatdispatch.FieldTemplateID:
 			values[i] = new(sql.NullInt64)
-		case wechatdispatch.FieldOpenid, wechatdispatch.FieldLibraryTemplateID, wechatdispatch.FieldWechatTemplateID, wechatdispatch.FieldChannel, wechatdispatch.FieldContent, wechatdispatch.FieldWebURL, wechatdispatch.FieldMiniProgramPage, wechatdispatch.FieldMsgid:
+		case wechatdispatch.FieldOpenid, wechatdispatch.FieldLibraryTemplateID, wechatdispatch.FieldWechatTemplateID, wechatdispatch.FieldChannel, wechatdispatch.FieldContent, wechatdispatch.FieldWebURL, wechatdispatch.FieldMiniProgramAppID, wechatdispatch.FieldMiniProgramPage, wechatdispatch.FieldMsgid:
 			values[i] = new(sql.NullString)
 		case wechatdispatch.FieldCreatedAt, wechatdispatch.FieldUpdatedAt, wechatdispatch.FieldDeletedAt:
 			values[i] = new(sql.NullTime)
@@ -167,6 +169,12 @@ func (_m *WechatDispatch) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.WebURL = value.String
 			}
+		case wechatdispatch.FieldMiniProgramAppID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field mini_program_app_id", values[i])
+			} else if value.Valid {
+				_m.MiniProgramAppID = value.String
+			}
 		case wechatdispatch.FieldMiniProgramPage:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field mini_program_page", values[i])
@@ -267,6 +275,9 @@ func (_m *WechatDispatch) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("web_url=")
 	builder.WriteString(_m.WebURL)
+	builder.WriteString(", ")
+	builder.WriteString("mini_program_app_id=")
+	builder.WriteString(_m.MiniProgramAppID)
 	builder.WriteString(", ")
 	builder.WriteString("mini_program_page=")
 	builder.WriteString(_m.MiniProgramPage)

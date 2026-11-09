@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — 登记微信平台
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] 运营可以直连接入小程序，填写名称、AppID 和 AppSecret
 - [x] 运营直连公众号时必须标明服务号或订阅号，否则不能创建

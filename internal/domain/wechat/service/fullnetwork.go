@@ -46,22 +46,27 @@ func (s *platformImpl) answerFullNetwork(ctx context.Context, p *entity.Platform
 		s.deliverFullNetworkQuery(ctx, p, secrets, msg)
 		return &PushOutcome{Body: "", ContentType: "text/plain; charset=utf-8"}, true, nil
 	}
-	if msg.MsgType == "text" && msg.Content == "TESTCOMPONENT_MSG_TYPE_TEXT" {
-		plain := textReplyXML(msg.FromUserName, msg.ToUserName, fullNetworkTextCallback)
-		sealed, err := s.pushes.SealReply(ctx, SealReplyRequest{
-			Token:          secrets.Token,
-			EncodingAESKey: secrets.EncodingAESKey,
-			ComponentAppID: p.ComponentAppID,
-			Nonce:          req.Nonce,
-			Plaintext:      plain,
-		})
-		if err != nil {
-			logx.Propagate(ctx, s.logger, "wechat.svc.platform.receive", err)
-			return nil, true, err
-		}
-		return &PushOutcome{Body: sealed, ContentType: "application/xml; charset=utf-8"}, true, nil
+	return s.fullNetworkTextReply(ctx, p, secrets, req, msg)
+}
+
+// fullNetworkTextReply is the encrypted text callback WeChat's full-network
+// release expects for every verified push from a published test account
+// other than QUERY_AUTH_CODE. The body is the published callback text.
+// Nothing is stored: no WeChat App and no WeChat Dispatch.
+func (s *platformImpl) fullNetworkTextReply(ctx context.Context, p *entity.Platform, secrets repository.Secrets, req PushRequest, msg inboundPush) (*PushOutcome, bool, error) {
+	plain := textReplyXML(msg.FromUserName, msg.ToUserName, fullNetworkTextCallback)
+	sealed, err := s.pushes.SealReply(ctx, SealReplyRequest{
+		Token:          secrets.Token,
+		EncodingAESKey: secrets.EncodingAESKey,
+		ComponentAppID: p.ComponentAppID,
+		Nonce:          req.Nonce,
+		Plaintext:      plain,
+	})
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "wechat.svc.platform.receive", err)
+		return nil, true, err
 	}
-	return nil, false, nil
+	return &PushOutcome{Body: sealed, ContentType: "application/xml; charset=utf-8"}, true, nil
 }
 
 func (s *platformImpl) deliverFullNetworkQuery(ctx context.Context, p *entity.Platform, secrets repository.Secrets, msg inboundPush) {

@@ -180,6 +180,20 @@ func (_c *WechatDispatchCreate) SetNillableWebURL(v *string) *WechatDispatchCrea
 	return _c
 }
 
+// SetMiniProgramAppID sets the "mini_program_app_id" field.
+func (_c *WechatDispatchCreate) SetMiniProgramAppID(v string) *WechatDispatchCreate {
+	_c.mutation.SetMiniProgramAppID(v)
+	return _c
+}
+
+// SetNillableMiniProgramAppID sets the "mini_program_app_id" field if the given value is not nil.
+func (_c *WechatDispatchCreate) SetNillableMiniProgramAppID(v *string) *WechatDispatchCreate {
+	if v != nil {
+		_c.SetMiniProgramAppID(*v)
+	}
+	return _c
+}
+
 // SetMiniProgramPage sets the "mini_program_page" field.
 func (_c *WechatDispatchCreate) SetMiniProgramPage(v string) *WechatDispatchCreate {
 	_c.mutation.SetMiniProgramPage(v)
@@ -313,6 +327,10 @@ func (_c *WechatDispatchCreate) defaults() {
 		v := wechatdispatch.DefaultWebURL
 		_c.mutation.SetWebURL(v)
 	}
+	if _, ok := _c.mutation.MiniProgramAppID(); !ok {
+		v := wechatdispatch.DefaultMiniProgramAppID
+		_c.mutation.SetMiniProgramAppID(v)
+	}
 	if _, ok := _c.mutation.MiniProgramPage(); !ok {
 		v := wechatdispatch.DefaultMiniProgramPage
 		_c.mutation.SetMiniProgramPage(v)
@@ -386,6 +404,14 @@ func (_c *WechatDispatchCreate) check() error {
 	if v, ok := _c.mutation.WebURL(); ok {
 		if err := wechatdispatch.WebURLValidator(v); err != nil {
 			return &ValidationError{Name: "web_url", err: fmt.Errorf(`ent: validator failed for field "WechatDispatch.web_url": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.MiniProgramAppID(); !ok {
+		return &ValidationError{Name: "mini_program_app_id", err: errors.New(`ent: missing required field "WechatDispatch.mini_program_app_id"`)}
+	}
+	if v, ok := _c.mutation.MiniProgramAppID(); ok {
+		if err := wechatdispatch.MiniProgramAppIDValidator(v); err != nil {
+			return &ValidationError{Name: "mini_program_app_id", err: fmt.Errorf(`ent: validator failed for field "WechatDispatch.mini_program_app_id": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.MiniProgramPage(); !ok {
@@ -494,6 +520,10 @@ func (_c *WechatDispatchCreate) createSpec() (*WechatDispatch, *sqlgraph.CreateS
 	if value, ok := _c.mutation.WebURL(); ok {
 		_spec.SetField(wechatdispatch.FieldWebURL, field.TypeString, value)
 		_node.WebURL = value
+	}
+	if value, ok := _c.mutation.MiniProgramAppID(); ok {
+		_spec.SetField(wechatdispatch.FieldMiniProgramAppID, field.TypeString, value)
+		_node.MiniProgramAppID = value
 	}
 	if value, ok := _c.mutation.MiniProgramPage(); ok {
 		_spec.SetField(wechatdispatch.FieldMiniProgramPage, field.TypeString, value)
@@ -746,6 +776,18 @@ func (u *WechatDispatchUpsert) SetWebURL(v string) *WechatDispatchUpsert {
 // UpdateWebURL sets the "web_url" field to the value that was provided on create.
 func (u *WechatDispatchUpsert) UpdateWebURL() *WechatDispatchUpsert {
 	u.SetExcluded(wechatdispatch.FieldWebURL)
+	return u
+}
+
+// SetMiniProgramAppID sets the "mini_program_app_id" field.
+func (u *WechatDispatchUpsert) SetMiniProgramAppID(v string) *WechatDispatchUpsert {
+	u.Set(wechatdispatch.FieldMiniProgramAppID, v)
+	return u
+}
+
+// UpdateMiniProgramAppID sets the "mini_program_app_id" field to the value that was provided on create.
+func (u *WechatDispatchUpsert) UpdateMiniProgramAppID() *WechatDispatchUpsert {
+	u.SetExcluded(wechatdispatch.FieldMiniProgramAppID)
 	return u
 }
 
@@ -1062,6 +1104,20 @@ func (u *WechatDispatchUpsertOne) SetWebURL(v string) *WechatDispatchUpsertOne {
 func (u *WechatDispatchUpsertOne) UpdateWebURL() *WechatDispatchUpsertOne {
 	return u.Update(func(s *WechatDispatchUpsert) {
 		s.UpdateWebURL()
+	})
+}
+
+// SetMiniProgramAppID sets the "mini_program_app_id" field.
+func (u *WechatDispatchUpsertOne) SetMiniProgramAppID(v string) *WechatDispatchUpsertOne {
+	return u.Update(func(s *WechatDispatchUpsert) {
+		s.SetMiniProgramAppID(v)
+	})
+}
+
+// UpdateMiniProgramAppID sets the "mini_program_app_id" field to the value that was provided on create.
+func (u *WechatDispatchUpsertOne) UpdateMiniProgramAppID() *WechatDispatchUpsertOne {
+	return u.Update(func(s *WechatDispatchUpsert) {
+		s.UpdateMiniProgramAppID()
 	})
 }
 
@@ -1552,6 +1608,20 @@ func (u *WechatDispatchUpsertBulk) SetWebURL(v string) *WechatDispatchUpsertBulk
 func (u *WechatDispatchUpsertBulk) UpdateWebURL() *WechatDispatchUpsertBulk {
 	return u.Update(func(s *WechatDispatchUpsert) {
 		s.UpdateWebURL()
+	})
+}
+
+// SetMiniProgramAppID sets the "mini_program_app_id" field.
+func (u *WechatDispatchUpsertBulk) SetMiniProgramAppID(v string) *WechatDispatchUpsertBulk {
+	return u.Update(func(s *WechatDispatchUpsert) {
+		s.SetMiniProgramAppID(v)
+	})
+}
+
+// UpdateMiniProgramAppID sets the "mini_program_app_id" field to the value that was provided on create.
+func (u *WechatDispatchUpsertBulk) UpdateMiniProgramAppID() *WechatDispatchUpsertBulk {
+	return u.Update(func(s *WechatDispatchUpsert) {
+		s.UpdateMiniProgramAppID()
 	})
 }
 

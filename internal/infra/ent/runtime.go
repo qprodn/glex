@@ -1216,24 +1216,30 @@ func init() {
 	wechatdispatch.DefaultWebURL = wechatdispatchDescWebURL.Default.(string)
 	// wechatdispatch.WebURLValidator is a validator for the "web_url" field. It is called by the builders before save.
 	wechatdispatch.WebURLValidator = wechatdispatchDescWebURL.Validators[0].(func(string) error)
+	// wechatdispatchDescMiniProgramAppID is the schema descriptor for mini_program_app_id field.
+	wechatdispatchDescMiniProgramAppID := wechatdispatchFields[9].Descriptor()
+	// wechatdispatch.DefaultMiniProgramAppID holds the default value on creation for the mini_program_app_id field.
+	wechatdispatch.DefaultMiniProgramAppID = wechatdispatchDescMiniProgramAppID.Default.(string)
+	// wechatdispatch.MiniProgramAppIDValidator is a validator for the "mini_program_app_id" field. It is called by the builders before save.
+	wechatdispatch.MiniProgramAppIDValidator = wechatdispatchDescMiniProgramAppID.Validators[0].(func(string) error)
 	// wechatdispatchDescMiniProgramPage is the schema descriptor for mini_program_page field.
-	wechatdispatchDescMiniProgramPage := wechatdispatchFields[9].Descriptor()
+	wechatdispatchDescMiniProgramPage := wechatdispatchFields[10].Descriptor()
 	// wechatdispatch.DefaultMiniProgramPage holds the default value on creation for the mini_program_page field.
 	wechatdispatch.DefaultMiniProgramPage = wechatdispatchDescMiniProgramPage.Default.(string)
 	// wechatdispatch.MiniProgramPageValidator is a validator for the "mini_program_page" field. It is called by the builders before save.
 	wechatdispatch.MiniProgramPageValidator = wechatdispatchDescMiniProgramPage.Validators[0].(func(string) error)
 	// wechatdispatchDescAccepted is the schema descriptor for accepted field.
-	wechatdispatchDescAccepted := wechatdispatchFields[10].Descriptor()
+	wechatdispatchDescAccepted := wechatdispatchFields[11].Descriptor()
 	// wechatdispatch.DefaultAccepted holds the default value on creation for the accepted field.
 	wechatdispatch.DefaultAccepted = wechatdispatchDescAccepted.Default.(bool)
 	// wechatdispatchDescMsgid is the schema descriptor for msgid field.
-	wechatdispatchDescMsgid := wechatdispatchFields[11].Descriptor()
+	wechatdispatchDescMsgid := wechatdispatchFields[12].Descriptor()
 	// wechatdispatch.DefaultMsgid holds the default value on creation for the msgid field.
 	wechatdispatch.DefaultMsgid = wechatdispatchDescMsgid.Default.(string)
 	// wechatdispatch.MsgidValidator is a validator for the "msgid" field. It is called by the builders before save.
 	wechatdispatch.MsgidValidator = wechatdispatchDescMsgid.Validators[0].(func(string) error)
 	// wechatdispatchDescDelivered is the schema descriptor for delivered field.
-	wechatdispatchDescDelivered := wechatdispatchFields[12].Descriptor()
+	wechatdispatchDescDelivered := wechatdispatchFields[13].Descriptor()
 	// wechatdispatch.DefaultDelivered holds the default value on creation for the delivered field.
 	wechatdispatch.DefaultDelivered = wechatdispatchDescDelivered.Default.(bool)
 	wechatplatformMixin := schema.WechatPlatform{}.Mixin()

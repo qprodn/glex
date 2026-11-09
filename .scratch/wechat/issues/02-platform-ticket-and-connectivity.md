@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — 登记微信平台
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] 每条平台向运营展示自己的回调地址
 - [x] 一条平台收到加密验证票据后变为就绪，其他平台不变

@@ -119,6 +119,11 @@ func WebURL(v string) predicate.WechatDispatch {
 	return predicate.WechatDispatch(sql.FieldEQ(FieldWebURL, v))
 }
 
+// MiniProgramAppID applies equality check predicate on the "mini_program_app_id" field. It's identical to MiniProgramAppIDEQ.
+func MiniProgramAppID(v string) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldEQ(FieldMiniProgramAppID, v))
+}
+
 // MiniProgramPage applies equality check predicate on the "mini_program_page" field. It's identical to MiniProgramPageEQ.
 func MiniProgramPage(v string) predicate.WechatDispatch {
 	return predicate.WechatDispatch(sql.FieldEQ(FieldMiniProgramPage, v))
@@ -837,6 +842,71 @@ func WebURLEqualFold(v string) predicate.WechatDispatch {
 // WebURLContainsFold applies the ContainsFold predicate on the "web_url" field.
 func WebURLContainsFold(v string) predicate.WechatDispatch {
 	return predicate.WechatDispatch(sql.FieldContainsFold(FieldWebURL, v))
+}
+
+// MiniProgramAppIDEQ applies the EQ predicate on the "mini_program_app_id" field.
+func MiniProgramAppIDEQ(v string) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldEQ(FieldMiniProgramAppID, v))
+}
+
+// MiniProgramAppIDNEQ applies the NEQ predicate on the "mini_program_app_id" field.
+func MiniProgramAppIDNEQ(v string) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldNEQ(FieldMiniProgramAppID, v))
+}
+
+// MiniProgramAppIDIn applies the In predicate on the "mini_program_app_id" field.
+func MiniProgramAppIDIn(vs ...string) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldIn(FieldMiniProgramAppID, vs...))
+}
+
+// MiniProgramAppIDNotIn applies the NotIn predicate on the "mini_program_app_id" field.
+func MiniProgramAppIDNotIn(vs ...string) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldNotIn(FieldMiniProgramAppID, vs...))
+}
+
+// MiniProgramAppIDGT applies the GT predicate on the "mini_program_app_id" field.
+func MiniProgramAppIDGT(v string) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldGT(FieldMiniProgramAppID, v))
+}
+
+// MiniProgramAppIDGTE applies the GTE predicate on the "mini_program_app_id" field.
+func MiniProgramAppIDGTE(v string) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldGTE(FieldMiniProgramAppID, v))
+}
+
+// MiniProgramAppIDLT applies the LT predicate on the "mini_program_app_id" field.
+func MiniProgramAppIDLT(v string) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldLT(FieldMiniProgramAppID, v))
+}
+
+// MiniProgramAppIDLTE applies the LTE predicate on the "mini_program_app_id" field.
+func MiniProgramAppIDLTE(v string) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldLTE(FieldMiniProgramAppID, v))
+}
+
+// MiniProgramAppIDContains applies the Contains predicate on the "mini_program_app_id" field.
+func MiniProgramAppIDContains(v string) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldContains(FieldMiniProgramAppID, v))
+}
+
+// MiniProgramAppIDHasPrefix applies the HasPrefix predicate on the "mini_program_app_id" field.
+func MiniProgramAppIDHasPrefix(v string) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldHasPrefix(FieldMiniProgramAppID, v))
+}
+
+// MiniProgramAppIDHasSuffix applies the HasSuffix predicate on the "mini_program_app_id" field.
+func MiniProgramAppIDHasSuffix(v string) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldHasSuffix(FieldMiniProgramAppID, v))
+}
+
+// MiniProgramAppIDEqualFold applies the EqualFold predicate on the "mini_program_app_id" field.
+func MiniProgramAppIDEqualFold(v string) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldEqualFold(FieldMiniProgramAppID, v))
+}
+
+// MiniProgramAppIDContainsFold applies the ContainsFold predicate on the "mini_program_app_id" field.
+func MiniProgramAppIDContainsFold(v string) predicate.WechatDispatch {
+	return predicate.WechatDispatch(sql.FieldContainsFold(FieldMiniProgramAppID, v))
 }
 
 // MiniProgramPageEQ applies the EQ predicate on the "mini_program_page" field.

@@ -90,6 +90,7 @@ const AppDetailDrawer: React.FC<Props> = ({ app, onClose }) => {
         openid: values.openid,
         content: values.content,
         webUrl: values.webUrl || undefined,
+        miniProgramAppId: values.miniProgramAppId || undefined,
         miniProgramPage: values.miniProgramPage || undefined,
       });
       message.success(
@@ -165,6 +166,9 @@ const AppDetailDrawer: React.FC<Props> = ({ app, onClose }) => {
             <Input.TextArea rows={3} />
           </Form.Item>
           <Form.Item name="webUrl" label="网页 URL">
+            <Input />
+          </Form.Item>
+          <Form.Item name="miniProgramAppId" label="小程序 AppID">
             <Input />
           </Form.Item>
           <Form.Item name="miniProgramPage" label="小程序页面">

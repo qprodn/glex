@@ -130,11 +130,13 @@ func (s *appImpl) platformProbeMaterial(ctx context.Context, app *entity.App, se
 // successful test. An empty value leaves the stored material, the
 // suspension, the lapse, and the connection untouched.
 func (s *appImpl) keepAuthorizerRefresh(ctx context.Context, app *entity.App, refresh string) error {
+	const op = "wechat.svc.app.keep_authorizer_refresh"
 	if refresh == "" || app.Connection != entity.ConnectionPlatformAuthorization {
 		return nil
 	}
 	stored, err := s.apps.LoadSecrets(ctx, app.ID)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, op, err)
 		return err
 	}
 	if stored.AuthorizerRefreshToken == refresh {
@@ -148,18 +150,25 @@ func (s *appImpl) keepAuthorizerRefresh(ctx context.Context, app *entity.App, re
 		ReplaceSecrets: true,
 		ActorID:        systemActorID,
 	})
+	if err != nil {
+		logx.Propagate(ctx, s.logger, op, err)
+	}
 	return err
 }
 
 // lapse records that WeChat definitively refused this same app. The
 // stamp is the system itself: WeChat caused the write.
 func (s *appImpl) lapse(ctx context.Context, app *entity.App) error {
+	const op = "wechat.svc.app.lapse"
 	app.Lapsed = true
 	app.UpdateBy = systemActorID
 	_, err := s.apps.Update(ctx, repository.SaveAppRequest{
 		App:     app,
 		ActorID: systemActorID,
 	})
+	if err != nil {
+		logx.Propagate(ctx, s.logger, op, err)
+	}
 	return err
 }
 

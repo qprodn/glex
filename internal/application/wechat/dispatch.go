@@ -40,6 +40,7 @@ func convertDispatch(row *entity.Dispatch) *wechatv1.WechatDispatch {
 		Content:           row.Content,
 		WebUrl:            row.WebURL,
 		MiniProgramPage:   row.MiniProgramPage,
+		MiniProgramAppId:  row.MiniProgramAppID,
 		Accepted:          row.Accepted,
 		Msgid:             row.MsgID,
 		Delivered:         row.Delivered,
@@ -102,14 +103,18 @@ func (s *WechatApplication) ListAdoptedTemplates(ctx context.Context, req *wecha
 // AdoptWechatTemplate adopts one public-library template. create_by is
 // the authenticated Principal. The request does not carry audit fields.
 func (s *WechatApplication) AdoptWechatTemplate(ctx context.Context, req *wechatv1.AdoptWechatTemplateRequest) (*wechatv1.AdoptedTemplate, error) {
-	created, err := s.apps.AdoptTemplate(ctx, wechatservice.AdoptTemplateRequest{
-		AppID:             req.GetAppId(),
-		LibraryTemplateID: req.GetLibraryTemplateId(),
-		Channel:           channelDomain(req.GetChannel()),
-		ActorID:           s.actor(ctx),
+	var created *entity.AdoptedTemplate
+	err := s.inTx(ctx, "wechat.adopt_template", func(ctx context.Context) error {
+		var callErr error
+		created, callErr = s.apps.AdoptTemplate(ctx, wechatservice.AdoptTemplateRequest{
+			AppID:             req.GetAppId(),
+			LibraryTemplateID: req.GetLibraryTemplateId(),
+			Channel:           channelDomain(req.GetChannel()),
+			ActorID:           s.actor(ctx),
+		})
+		return callErr
 	})
 	if err != nil {
-		logx.Propagate(ctx, s.logger, "wechat.adopt_template", err)
 		return nil, err
 	}
 	return convertTemplate(created), nil
@@ -144,17 +149,22 @@ func (s *WechatApplication) ListWechatDispatches(ctx context.Context, req *wecha
 // the authenticated Principal. A business rejection is returned as that
 // error after the rejected dispatch has been recorded.
 func (s *WechatApplication) CreateWechatDispatch(ctx context.Context, req *wechatv1.CreateWechatDispatchRequest) (*wechatv1.WechatDispatch, error) {
-	created, err := s.apps.Send(ctx, wechatservice.SendDispatchRequest{
-		AppID:           req.GetAppId(),
-		TemplateID:      req.GetTemplateId(),
-		OpenID:          req.GetOpenid(),
-		Content:         req.GetContent(),
-		WebURL:          req.GetWebUrl(),
-		MiniProgramPage: req.GetMiniProgramPage(),
-		ActorID:         s.actor(ctx),
+	var created *entity.Dispatch
+	err := s.inTx(ctx, "wechat.create_dispatch", func(ctx context.Context) error {
+		var callErr error
+		created, callErr = s.apps.Send(ctx, wechatservice.SendDispatchRequest{
+			AppID:            req.GetAppId(),
+			TemplateID:       req.GetTemplateId(),
+			OpenID:           req.GetOpenid(),
+			Content:          req.GetContent(),
+			WebURL:           req.GetWebUrl(),
+			MiniProgramAppID: req.GetMiniProgramAppId(),
+			MiniProgramPage:  req.GetMiniProgramPage(),
+			ActorID:          s.actor(ctx),
+		})
+		return callErr
 	})
 	if err != nil {
-		logx.Propagate(ctx, s.logger, "wechat.create_dispatch", err)
 		return nil, err
 	}
 	return convertDispatch(created), nil

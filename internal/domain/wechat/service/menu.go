@@ -83,14 +83,18 @@ func (s *appImpl) PublishMenu(ctx context.Context, req PublishMenuRequest) (*ent
 }
 
 func (s *appImpl) publishCall(ctx context.Context, app *entity.App) (PublishMenuCall, error) {
+	const op = "wechat.svc.app.publish_menu"
 	secrets, err := s.apps.LoadSecrets(ctx, app.ID)
 	if err != nil {
+		logx.Propagate(ctx, s.logger, op, err)
 		return PublishMenuCall{}, err
 	}
 	call := PublishMenuCall{
-		Connection: app.Connection,
-		AppID:      app.AppID,
-		Menu:       cloneMenu(*app.SavedMenu),
+		ProbeAppRequest: ProbeAppRequest{
+			Connection: app.Connection,
+			AppID:      app.AppID,
+		},
+		Menu: cloneMenu(*app.SavedMenu),
 	}
 	if app.Connection == entity.ConnectionDirectHold {
 		call.AppSecret = secrets.AppSecret

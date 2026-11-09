@@ -27196,6 +27196,7 @@ type WechatDispatchMutation struct {
 	channel             *string
 	content             *string
 	web_url             *string
+	mini_program_app_id *string
 	mini_program_page   *string
 	accepted            *bool
 	msgid               *string
@@ -27899,6 +27900,42 @@ func (m *WechatDispatchMutation) ResetWebURL() {
 	m.web_url = nil
 }
 
+// SetMiniProgramAppID sets the "mini_program_app_id" field.
+func (m *WechatDispatchMutation) SetMiniProgramAppID(s string) {
+	m.mini_program_app_id = &s
+}
+
+// MiniProgramAppID returns the value of the "mini_program_app_id" field in the mutation.
+func (m *WechatDispatchMutation) MiniProgramAppID() (r string, exists bool) {
+	v := m.mini_program_app_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMiniProgramAppID returns the old "mini_program_app_id" field's value of the WechatDispatch entity.
+// If the WechatDispatch object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WechatDispatchMutation) OldMiniProgramAppID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMiniProgramAppID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMiniProgramAppID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMiniProgramAppID: %w", err)
+	}
+	return oldValue.MiniProgramAppID, nil
+}
+
+// ResetMiniProgramAppID resets all changes to the "mini_program_app_id" field.
+func (m *WechatDispatchMutation) ResetMiniProgramAppID() {
+	m.mini_program_app_id = nil
+}
+
 // SetMiniProgramPage sets the "mini_program_page" field.
 func (m *WechatDispatchMutation) SetMiniProgramPage(s string) {
 	m.mini_program_page = &s
@@ -28077,7 +28114,7 @@ func (m *WechatDispatchMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *WechatDispatchMutation) Fields() []string {
-	fields := make([]string, 0, 17)
+	fields := make([]string, 0, 18)
 	if m.create_by != nil {
 		fields = append(fields, wechatdispatch.FieldCreateBy)
 	}
@@ -28116,6 +28153,9 @@ func (m *WechatDispatchMutation) Fields() []string {
 	}
 	if m.web_url != nil {
 		fields = append(fields, wechatdispatch.FieldWebURL)
+	}
+	if m.mini_program_app_id != nil {
+		fields = append(fields, wechatdispatch.FieldMiniProgramAppID)
 	}
 	if m.mini_program_page != nil {
 		fields = append(fields, wechatdispatch.FieldMiniProgramPage)
@@ -28163,6 +28203,8 @@ func (m *WechatDispatchMutation) Field(name string) (ent.Value, bool) {
 		return m.Content()
 	case wechatdispatch.FieldWebURL:
 		return m.WebURL()
+	case wechatdispatch.FieldMiniProgramAppID:
+		return m.MiniProgramAppID()
 	case wechatdispatch.FieldMiniProgramPage:
 		return m.MiniProgramPage()
 	case wechatdispatch.FieldAccepted:
@@ -28206,6 +28248,8 @@ func (m *WechatDispatchMutation) OldField(ctx context.Context, name string) (ent
 		return m.OldContent(ctx)
 	case wechatdispatch.FieldWebURL:
 		return m.OldWebURL(ctx)
+	case wechatdispatch.FieldMiniProgramAppID:
+		return m.OldMiniProgramAppID(ctx)
 	case wechatdispatch.FieldMiniProgramPage:
 		return m.OldMiniProgramPage(ctx)
 	case wechatdispatch.FieldAccepted:
@@ -28313,6 +28357,13 @@ func (m *WechatDispatchMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetWebURL(v)
+		return nil
+	case wechatdispatch.FieldMiniProgramAppID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMiniProgramAppID(v)
 		return nil
 	case wechatdispatch.FieldMiniProgramPage:
 		v, ok := value.(string)
@@ -28501,6 +28552,9 @@ func (m *WechatDispatchMutation) ResetField(name string) error {
 		return nil
 	case wechatdispatch.FieldWebURL:
 		m.ResetWebURL()
+		return nil
+	case wechatdispatch.FieldMiniProgramAppID:
+		m.ResetMiniProgramAppID()
 		return nil
 	case wechatdispatch.FieldMiniProgramPage:
 		m.ResetMiniProgramPage()

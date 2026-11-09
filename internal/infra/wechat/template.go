@@ -56,11 +56,11 @@ func (r *templateRepo) FindByID(ctx context.Context, id int64) (*entity.AdoptedT
 	return toBizTemplate(po), nil
 }
 
-func (r *templateRepo) FindByAppAndLibrary(ctx context.Context, appID int64, libraryTemplateID string) (*entity.AdoptedTemplate, error) {
+func (r *templateRepo) FindByAppAndLibrary(ctx context.Context, req wechatrepo.FindByAppAndLibraryRequest) (*entity.AdoptedTemplate, error) {
 	po, err := r.data.DB.WechatAdoptedTemplate(ctx).Query().
 		Where(
-			enttemplate.AppIDEQ(appID),
-			enttemplate.LibraryTemplateIDEQ(libraryTemplateID),
+			enttemplate.AppIDEQ(req.AppID),
+			enttemplate.LibraryTemplateIDEQ(req.LibraryTemplateID),
 			enttemplate.DeletedAtIsNil(),
 		).
 		Only(ctx)

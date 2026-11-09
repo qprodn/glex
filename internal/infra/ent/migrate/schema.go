@@ -801,6 +801,7 @@ var (
 		{Name: "channel", Type: field.TypeString, Size: 64, Default: ""},
 		{Name: "content", Type: field.TypeString, Size: 2147483647, Default: ""},
 		{Name: "web_url", Type: field.TypeString, Size: 1024, Default: ""},
+		{Name: "mini_program_app_id", Type: field.TypeString, Size: 64, Default: ""},
 		{Name: "mini_program_page", Type: field.TypeString, Size: 1024, Default: ""},
 		{Name: "accepted", Type: field.TypeBool, Default: false},
 		{Name: "msgid", Type: field.TypeString, Size: 64, Default: ""},
@@ -820,7 +821,7 @@ var (
 			{
 				Name:    "wechatdispatch_msgid",
 				Unique:  false,
-				Columns: []*schema.Column{WechatDispatchColumns[16]},
+				Columns: []*schema.Column{WechatDispatchColumns[17]},
 			},
 		},
 	}

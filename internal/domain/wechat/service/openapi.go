@@ -140,7 +140,8 @@ type AdoptLibraryTemplateResult struct {
 // SendMessageRequest is one synchronous send of an adopted template to
 // one openid. The port classifies WeChat's answer. MsgID is set only
 // when WeChat accepts. WebURL and MiniProgramPage are both handed over
-// when the operator set both.
+// when the operator set both. MiniProgramAppID travels with the page so
+// WeChat can open that mini program.
 type SendMessageRequest struct {
 	ProbeAppRequest
 	Channel          string
@@ -148,6 +149,7 @@ type SendMessageRequest struct {
 	WechatTemplateID string
 	Content          string
 	WebURL           string
+	MiniProgramAppID string
 	MiniProgramPage  string
 }
 
@@ -164,14 +166,8 @@ type SendMessageResult struct {
 // Hold carries AppID and AppSecret. A Platform Authorization carries the
 // platform registration and the authorizer refresh material.
 type PublishMenuCall struct {
-	Connection             string
-	AppID                  string
-	AppSecret              string
-	ComponentAppID         string
-	ComponentSecret        string
-	VerifyTicket           string
-	AuthorizerRefreshToken string
-	Menu                   entity.CustomMenu
+	ProbeAppRequest
+	Menu entity.CustomMenu
 }
 
 // PublishMenuResult is the port's classification of that replacement.
@@ -189,14 +185,8 @@ type PublishMenuResult struct {
 // Authorization carries the platform registration and no authorizer
 // AppSecret. The port drops session_key: it is not a field here.
 type MiniProgramLoginCall struct {
-	Connection             string
-	AppID                  string
-	AppSecret              string
-	ComponentAppID         string
-	ComponentSecret        string
-	VerifyTicket           string
-	AuthorizerRefreshToken string
-	Code                   string
+	ProbeAppRequest
+	Code string
 }
 
 // MiniProgramLoginResult is the port's classification of that exchange.
@@ -229,15 +219,9 @@ type OpenAPI interface {
 // ExchangeWebAuthorizationRequest is one completed Web Authorization code.
 // Profile is true when the app asked for nickname and avatar.
 type ExchangeWebAuthorizationRequest struct {
-	Connection             string
-	AppID                  string
-	AppSecret              string
-	ComponentAppID         string
-	ComponentSecret        string
-	VerifyTicket           string
-	AuthorizerRefreshToken string
-	Code                   string
-	Profile                bool
+	ProbeAppRequest
+	Code    string
+	Profile bool
 }
 
 // WebAuthorizationExchange is the identity WeChat returned, already

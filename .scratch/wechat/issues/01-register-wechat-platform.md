@@ -4,7 +4,7 @@
 
 **Blocked by:** None（可以马上开始）
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] 运营可以登记微信平台，填写显示名称、component AppID、component secret、Token 和 EncodingAESKey
 - [x] 登记之后的查询只返回这些秘密的掩码，响应里不再出现明文

@@ -34,6 +34,7 @@ func (WechatDispatch) Fields() []ent.Field {
 		field.String("channel").MaxLen(64).Default(""),
 		field.Text("content").Default(""),
 		field.String("web_url").MaxLen(1024).Default(""),
+		field.String("mini_program_app_id").MaxLen(64).Default(""),
 		field.String("mini_program_page").MaxLen(1024).Default(""),
 		field.Bool("accepted").Default(false),
 		field.String("msgid").MaxLen(64).Default(""),

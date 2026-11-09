@@ -74,8 +74,15 @@ func (s *appImpl) AdoptTemplate(ctx context.Context, req AdoptTemplateRequest) (
 		logx.Propagate(ctx, s.logger, op, err)
 		return nil, err
 	}
+	if err := refuseChannel(app, req.Channel); err != nil {
+		logx.Propagate(ctx, s.logger, op, err)
+		return nil, err
+	}
 	libraryID := strings.TrimSpace(req.LibraryTemplateID)
-	existing, err := s.templates.FindByAppAndLibrary(ctx, app.ID, libraryID)
+	existing, err := s.templates.FindByAppAndLibrary(ctx, repository.FindByAppAndLibraryRequest{
+		AppID:             app.ID,
+		LibraryTemplateID: libraryID,
+	})
 	if err != nil && !errors.Is(err, wechat.ErrTemplateNotFound) {
 		logx.Propagate(ctx, s.logger, op, err)
 		return nil, err
@@ -155,14 +162,17 @@ func (s *appImpl) AdoptTemplate(ctx context.Context, req AdoptTemplateRequest) (
 // SendDispatchRequest is one synchronous send of an adopted template to
 // one openid. The actor is stamped into the audit fields. A blank openid
 // or a template this app has not adopted creates no dispatch.
+// MiniProgramAppID is the mini program WeChat should open when
+// MiniProgramPage is set.
 type SendDispatchRequest struct {
-	AppID           int64
-	TemplateID      int64
-	OpenID          string
-	Content         string
-	WebURL          string
-	MiniProgramPage string
-	ActorID         int64
+	AppID            int64
+	TemplateID       int64
+	OpenID           string
+	Content          string
+	WebURL           string
+	MiniProgramAppID string
+	MiniProgramPage  string
+	ActorID          int64
 }
 
 // ListDispatchesRequest selects WeChat Dispatches. AppID 0 lists every
@@ -228,6 +238,7 @@ func (s *appImpl) Send(ctx context.Context, req SendDispatchRequest) (*entity.Di
 		WechatTemplateID: tpl.WechatTemplateID,
 		Content:          req.Content,
 		WebURL:           strings.TrimSpace(req.WebURL),
+		MiniProgramAppID: strings.TrimSpace(req.MiniProgramAppID),
 		MiniProgramPage:  strings.TrimSpace(req.MiniProgramPage),
 	})
 	if errors.Is(err, context.Canceled) {
@@ -284,6 +295,7 @@ func (s *appImpl) recordDispatch(ctx context.Context, req SendDispatchRequest, a
 		Channel:           tpl.Channel,
 		Content:           req.Content,
 		WebURL:            strings.TrimSpace(req.WebURL),
+		MiniProgramAppID:  strings.TrimSpace(req.MiniProgramAppID),
 		MiniProgramPage:   strings.TrimSpace(req.MiniProgramPage),
 		Accepted:          accepted,
 		MsgID:             msgid,

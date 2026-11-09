@@ -945,6 +945,7 @@ create table if not exists wechat_dispatch (
     channel               varchar(64)   not null default '',
     content               text          not null default '',
     web_url               varchar(1024) not null default '',
+    mini_program_app_id   varchar(64)   not null default '',
     mini_program_page     varchar(1024) not null default '',
     accepted              boolean       not null default false,
     msgid                 varchar(64)   not null default '',
@@ -973,6 +974,7 @@ comment on column wechat_dispatch.wechat_template_id is '交给微信的模板 I
 comment on column wechat_dispatch.channel is 'template_message、subscribe_notification 或 subscribe_message';
 comment on column wechat_dispatch.content is '填好的内容；不是密钥';
 comment on column wechat_dispatch.web_url is '选填的网页 URL；与小程序页面都填写时两条都记下';
+comment on column wechat_dispatch.mini_program_app_id is '选填的小程序 AppID；与页面一起交给微信，微信才能优先打开小程序';
 comment on column wechat_dispatch.mini_program_page is '选填的小程序页面';
 comment on column wechat_dispatch.accepted is '微信是否受理；业务拒绝为 false，且 msgid 为空';
 comment on column wechat_dispatch.msgid is '微信受理后返回的 msgid；拒绝时为空';
