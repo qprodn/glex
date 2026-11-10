@@ -34,6 +34,8 @@ type Tx struct {
 	OperLog *OperLogClient
 	// Param is the client for interacting with the Param builders.
 	Param *ParamClient
+	// PayApplication is the client for interacting with the PayApplication builders.
+	PayApplication *PayApplicationClient
 	// PayMerchantAccount is the client for interacting with the PayMerchantAccount builders.
 	PayMerchantAccount *PayMerchantAccountClient
 	// PayNotifyLog is the client for interacting with the PayNotifyLog builders.
@@ -203,6 +205,7 @@ func (tx *Tx) init() {
 	tx.Menu = NewMenuClient(tx.config)
 	tx.OperLog = NewOperLogClient(tx.config)
 	tx.Param = NewParamClient(tx.config)
+	tx.PayApplication = NewPayApplicationClient(tx.config)
 	tx.PayMerchantAccount = NewPayMerchantAccountClient(tx.config)
 	tx.PayNotifyLog = NewPayNotifyLogClient(tx.config)
 	tx.PayPayment = NewPayPaymentClient(tx.config)

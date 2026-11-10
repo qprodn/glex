@@ -13,6 +13,7 @@ import (
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/operlog"
 	"glex/internal/infra/ent/param"
+	"glex/internal/infra/ent/payapplication"
 	"glex/internal/infra/ent/paymerchantaccount"
 	"glex/internal/infra/ent/paynotifylog"
 	"glex/internal/infra/ent/paypayment"
@@ -613,6 +614,55 @@ func init() {
 	param.DefaultRemark = paramDescRemark.Default.(string)
 	// param.RemarkValidator is a validator for the "remark" field. It is called by the builders before save.
 	param.RemarkValidator = paramDescRemark.Validators[0].(func(string) error)
+	payapplicationMixin := schema.PayApplication{}.Mixin()
+	payapplicationMixinFields0 := payapplicationMixin[0].Fields()
+	_ = payapplicationMixinFields0
+	payapplicationFields := schema.PayApplication{}.Fields()
+	_ = payapplicationFields
+	// payapplicationDescCreateBy is the schema descriptor for create_by field.
+	payapplicationDescCreateBy := payapplicationMixinFields0[0].Descriptor()
+	// payapplication.DefaultCreateBy holds the default value on creation for the create_by field.
+	payapplication.DefaultCreateBy = payapplicationDescCreateBy.Default.(int64)
+	// payapplicationDescUpdateBy is the schema descriptor for update_by field.
+	payapplicationDescUpdateBy := payapplicationMixinFields0[1].Descriptor()
+	// payapplication.DefaultUpdateBy holds the default value on creation for the update_by field.
+	payapplication.DefaultUpdateBy = payapplicationDescUpdateBy.Default.(int64)
+	// payapplicationDescCreatedAt is the schema descriptor for created_at field.
+	payapplicationDescCreatedAt := payapplicationMixinFields0[2].Descriptor()
+	// payapplication.DefaultCreatedAt holds the default value on creation for the created_at field.
+	payapplication.DefaultCreatedAt = payapplicationDescCreatedAt.Default.(func() time.Time)
+	// payapplicationDescUpdatedAt is the schema descriptor for updated_at field.
+	payapplicationDescUpdatedAt := payapplicationMixinFields0[3].Descriptor()
+	// payapplication.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	payapplication.DefaultUpdatedAt = payapplicationDescUpdatedAt.Default.(func() time.Time)
+	// payapplication.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	payapplication.UpdateDefaultUpdatedAt = payapplicationDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// payapplicationDescName is the schema descriptor for name field.
+	payapplicationDescName := payapplicationFields[1].Descriptor()
+	// payapplication.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	payapplication.NameValidator = payapplicationDescName.Validators[0].(func(string) error)
+	// payapplicationDescStatus is the schema descriptor for status field.
+	payapplicationDescStatus := payapplicationFields[3].Descriptor()
+	// payapplication.DefaultStatus holds the default value on creation for the status field.
+	payapplication.DefaultStatus = payapplicationDescStatus.Default.(int16)
+	// payapplicationDescOrderNotifyURL is the schema descriptor for order_notify_url field.
+	payapplicationDescOrderNotifyURL := payapplicationFields[4].Descriptor()
+	// payapplication.DefaultOrderNotifyURL holds the default value on creation for the order_notify_url field.
+	payapplication.DefaultOrderNotifyURL = payapplicationDescOrderNotifyURL.Default.(string)
+	// payapplication.OrderNotifyURLValidator is a validator for the "order_notify_url" field. It is called by the builders before save.
+	payapplication.OrderNotifyURLValidator = payapplicationDescOrderNotifyURL.Validators[0].(func(string) error)
+	// payapplicationDescRefundNotifyURL is the schema descriptor for refund_notify_url field.
+	payapplicationDescRefundNotifyURL := payapplicationFields[5].Descriptor()
+	// payapplication.DefaultRefundNotifyURL holds the default value on creation for the refund_notify_url field.
+	payapplication.DefaultRefundNotifyURL = payapplicationDescRefundNotifyURL.Default.(string)
+	// payapplication.RefundNotifyURLValidator is a validator for the "refund_notify_url" field. It is called by the builders before save.
+	payapplication.RefundNotifyURLValidator = payapplicationDescRefundNotifyURL.Validators[0].(func(string) error)
+	// payapplicationDescRemark is the schema descriptor for remark field.
+	payapplicationDescRemark := payapplicationFields[6].Descriptor()
+	// payapplication.DefaultRemark holds the default value on creation for the remark field.
+	payapplication.DefaultRemark = payapplicationDescRemark.Default.(string)
+	// payapplication.RemarkValidator is a validator for the "remark" field. It is called by the builders before save.
+	payapplication.RemarkValidator = payapplicationDescRemark.Validators[0].(func(string) error)
 	paymerchantaccountMixin := schema.PayMerchantAccount{}.Mixin()
 	paymerchantaccountMixinFields0 := paymerchantaccountMixin[0].Fields()
 	_ = paymerchantaccountMixinFields0

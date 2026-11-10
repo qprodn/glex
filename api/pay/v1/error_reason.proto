@@ -55,4 +55,13 @@ enum ErrorReason {
   // logged server-side and this sentinel crosses the boundary (ADR 0007,
   // HTTP 503).
   PAY_STORE_UNAVAILABLE = 14;
+  // The requested Pay Application does not exist (or is withdrawn).
+  APPLICATION_NOT_FOUND = 15;
+  // A Pay Application parameter is invalid: blank or over-length display
+  // name, over-length result address, or a status other than enabled or
+  // disabled.
+  APPLICATION_INVALID = 16;
+  // The display name is already taken by a Pay Application that is not
+  // withdrawn (HTTP 409).
+  APPLICATION_DUPLICATE = 17;
 }

@@ -1,5 +1,6 @@
-// Package entity holds the pay module's domain objects: Merchant Accounts,
-// Payments, Refunds, Channel Notifications, and the module's enumerations.
+// Package entity holds the pay module's domain objects: Pay Applications,
+// Merchant Accounts, Payments, Refunds, Channel Notifications, and the
+// module's enumerations.
 package entity
 
 import (

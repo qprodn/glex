@@ -48,6 +48,36 @@ message MerchantAccountSet {
   string next_page_token = 2;
 }
 
+// PayApplication is one caller identity (支付应用). It is named by its own
+// number and by a display name, and it is bound to exactly one Merchant
+// Account. There is no app key and no secret (ADR 0030).
+message PayApplication {
+  // Snowflake ID. Does not change.
+  int64 application_id = 1;
+  // Display name, unique among Pay Applications that are not withdrawn.
+  string name = 2;
+  // Merchant Account bound at creation. Not editable.
+  int64 merchant_id = 3;
+  // 0 enabled, 1 disabled.
+  int32 status = 4;
+  // Payment result address. Empty is allowed.
+  string order_notify_url = 5;
+  // Refund result address. Empty is allowed.
+  string refund_notify_url = 6;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  int64 create_by = 7;
+  int64 update_by = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// PayApplicationSet is a page of Pay Applications.
+message PayApplicationSet {
+  repeated PayApplication applications = 1;
+  // Opaque token for the next page; empty when on the last page.
+  string next_page_token = 2;
+}
+
 // SchemaOption is one labeled choice of a select field.
 message SchemaOption {
   string value = 1;
@@ -180,11 +210,59 @@ message RefundSet {
   string next_page_token = 2;
 }
 
-// PayService is the payment module's management surface: Merchant Account
-// configuration, unified Payment initiation, and Refunds. Channel
-// callbacks arrive on the auth-exempt notify route (ADR 0020) — a
-// hand-written route, not part of this service.
+// PayService is the payment module's management surface: Pay Application
+// lifecycle, Merchant Account configuration, unified Payment initiation,
+// and Refunds. Channel callbacks arrive on the auth-exempt notify route
+// (ADR 0020) — a hand-written route, not part of this service.
 service PayService {
+  // ---- Pay Applications (perms pay:application:*) ----
+
+  // CreatePayApplication binds a new Pay Application to exactly one
+  // Merchant Account that is enabled and not withdrawn. Either result
+  // address may be empty. There is no app key and no secret.
+  rpc CreatePayApplication(CreatePayApplicationRequest) returns (PayApplication) {
+    option (google.api.http) = {
+      post: "/pay/application"
+      body: "*"
+    };
+  }
+  // ListPayApplications lists Pay Applications that are not withdrawn,
+  // with AIP filter/order/page-token. Filterable by merchant_id and status.
+  rpc ListPayApplications(ListPayApplicationsRequest) returns (PayApplicationSet) {
+    option (google.api.http) = {
+      get: "/pay/application"
+    };
+  }
+  // GetPayApplication retrieves one Pay Application that is not withdrawn.
+  rpc GetPayApplication(GetPayApplicationRequest) returns (PayApplication) {
+    option (google.api.http) = {
+      get: "/pay/application/{application_id}"
+    };
+  }
+  // UpdatePayApplication changes the display name and either result
+  // address. The number and the Merchant Account binding stay fixed.
+  rpc UpdatePayApplication(UpdatePayApplicationRequest) returns (PayApplication) {
+    option (google.api.http) = {
+      patch: "/pay/application/{application_id}"
+      body: "*"
+    };
+  }
+  // ChangePayApplicationStatus enables or disables a Pay Application.
+  // Disabling stops new Payments and Refunds; in-flight ones still settle.
+  rpc ChangePayApplicationStatus(ChangePayApplicationStatusRequest) returns (PayApplication) {
+    option (google.api.http) = {
+      put: "/pay/application/{application_id}/status"
+      body: "*"
+    };
+  }
+  // WithdrawPayApplication soft-deletes the Pay Application so it leaves
+  // the live set. Its display name can be used again.
+  rpc WithdrawPayApplication(WithdrawPayApplicationRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/pay/application/{application_id}"
+    };
+  }
+
   // ---- Merchant Accounts (perms pay:merchant:*) ----
 
   // CreateMerchantAccount validates the config against the Channel's
@@ -390,6 +468,63 @@ message ProbeMerchantAccountRequest {
 }
 
 message GetChannelSchemasRequest {}
+
+message CreatePayApplicationRequest {
+  // Required. Display name, unique among Pay Applications that are not
+  // withdrawn, ≤ 64 chars.
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. The Merchant Account to bind. Must be enabled and not
+  // withdrawn. The binding cannot be changed later.
+  int64 merchant_id = 2 [(google.api.field_behavior) = REQUIRED];
+  // Optional. Payment result address, ≤ 512 chars. Empty is allowed.
+  string order_notify_url = 3;
+  // Optional. Refund result address, ≤ 512 chars. Empty is allowed.
+  string refund_notify_url = 4;
+}
+
+message ListPayApplicationsRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. Supported fields:
+  //   * `name` (e.g. `name="收银台"`, exact)
+  //   * `merchant_id` (e.g. `merchant_id=42`)
+  //   * `status` (e.g. `status=0`)
+  string filter = 3;
+  // Optional. AIP-132 order on a pay_application column, e.g.
+  // `id desc` (the default), `created_at`.
+  string order_by = 4;
+}
+
+message GetPayApplicationRequest {
+  // Required. The id of the Pay Application to retrieve.
+  int64 application_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdatePayApplicationRequest {
+  // Required. The id of the Pay Application to update. The number itself
+  // does not change.
+  int64 application_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. New display name.
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+  // Optional. New payment result address. Empty clears it.
+  string order_notify_url = 3;
+  // Optional. New refund result address. Empty clears it.
+  string refund_notify_url = 4;
+}
+
+message ChangePayApplicationStatusRequest {
+  // Required. The id of the Pay Application.
+  int64 application_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. 0 enabled, 1 disabled.
+  int32 status = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message WithdrawPayApplicationRequest {
+  // Required. The id of the Pay Application to withdraw.
+  int64 application_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
 
 message CreatePaymentRequest {
   // Required. The Merchant Account to collect into; must exist and be

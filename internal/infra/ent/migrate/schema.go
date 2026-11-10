@@ -336,6 +336,45 @@ var (
 			},
 		},
 	}
+	// PayApplicationColumns holds the columns for the "pay_application" table.
+	PayApplicationColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "name", Type: field.TypeString, Size: 64},
+		{Name: "merchant_id", Type: field.TypeInt64},
+		{Name: "status", Type: field.TypeInt16, Default: 0},
+		{Name: "order_notify_url", Type: field.TypeString, Size: 512, Default: ""},
+		{Name: "refund_notify_url", Type: field.TypeString, Size: 512, Default: ""},
+		{Name: "remark", Type: field.TypeString, Size: 500, Default: ""},
+	}
+	// PayApplicationTable holds the schema information for the "pay_application" table.
+	PayApplicationTable = &schema.Table{
+		Name:       "pay_application",
+		Columns:    PayApplicationColumns,
+		PrimaryKey: []*schema.Column{PayApplicationColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "payapplication_name",
+				Unique:  true,
+				Columns: []*schema.Column{PayApplicationColumns[6]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+			{
+				Name:    "payapplication_merchant_id",
+				Unique:  false,
+				Columns: []*schema.Column{PayApplicationColumns[7]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+		},
+	}
 	// PayMerchantAccountColumns holds the columns for the "pay_merchant_account" table.
 	PayMerchantAccountColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -870,6 +909,7 @@ var (
 		SysMenuTable,
 		SysOperLogTable,
 		SysConfigTable,
+		PayApplicationTable,
 		PayMerchantAccountTable,
 		PayNotifyLogTable,
 		PayPaymentTable,
@@ -917,6 +957,9 @@ func init() {
 	}
 	SysConfigTable.Annotation = &entsql.Annotation{
 		Table: "sys_config",
+	}
+	PayApplicationTable.Annotation = &entsql.Annotation{
+		Table: "pay_application",
 	}
 	PayMerchantAccountTable.Annotation = &entsql.Annotation{
 		Table: "pay_merchant_account",

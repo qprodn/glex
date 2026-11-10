@@ -20,6 +20,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	PayService_CreatePayApplication_FullMethodName        = "/pay.v1.PayService/CreatePayApplication"
+	PayService_ListPayApplications_FullMethodName         = "/pay.v1.PayService/ListPayApplications"
+	PayService_GetPayApplication_FullMethodName           = "/pay.v1.PayService/GetPayApplication"
+	PayService_UpdatePayApplication_FullMethodName        = "/pay.v1.PayService/UpdatePayApplication"
+	PayService_ChangePayApplicationStatus_FullMethodName  = "/pay.v1.PayService/ChangePayApplicationStatus"
+	PayService_WithdrawPayApplication_FullMethodName      = "/pay.v1.PayService/WithdrawPayApplication"
 	PayService_CreateMerchantAccount_FullMethodName       = "/pay.v1.PayService/CreateMerchantAccount"
 	PayService_ListMerchantAccounts_FullMethodName        = "/pay.v1.PayService/ListMerchantAccounts"
 	PayService_GetMerchantAccount_FullMethodName          = "/pay.v1.PayService/GetMerchantAccount"
@@ -43,11 +49,29 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// PayService is the payment module's management surface: Merchant Account
-// configuration, unified Payment initiation, and Refunds. Channel
-// callbacks arrive on the auth-exempt notify route (ADR 0020) — a
-// hand-written route, not part of this service.
+// PayService is the payment module's management surface: Pay Application
+// lifecycle, Merchant Account configuration, unified Payment initiation,
+// and Refunds. Channel callbacks arrive on the auth-exempt notify route
+// (ADR 0020) — a hand-written route, not part of this service.
 type PayServiceClient interface {
+	// CreatePayApplication binds a new Pay Application to exactly one
+	// Merchant Account that is enabled and not withdrawn. Either result
+	// address may be empty. There is no app key and no secret.
+	CreatePayApplication(ctx context.Context, in *CreatePayApplicationRequest, opts ...grpc.CallOption) (*PayApplication, error)
+	// ListPayApplications lists Pay Applications that are not withdrawn,
+	// with AIP filter/order/page-token. Filterable by merchant_id and status.
+	ListPayApplications(ctx context.Context, in *ListPayApplicationsRequest, opts ...grpc.CallOption) (*PayApplicationSet, error)
+	// GetPayApplication retrieves one Pay Application that is not withdrawn.
+	GetPayApplication(ctx context.Context, in *GetPayApplicationRequest, opts ...grpc.CallOption) (*PayApplication, error)
+	// UpdatePayApplication changes the display name and either result
+	// address. The number and the Merchant Account binding stay fixed.
+	UpdatePayApplication(ctx context.Context, in *UpdatePayApplicationRequest, opts ...grpc.CallOption) (*PayApplication, error)
+	// ChangePayApplicationStatus enables or disables a Pay Application.
+	// Disabling stops new Payments and Refunds; in-flight ones still settle.
+	ChangePayApplicationStatus(ctx context.Context, in *ChangePayApplicationStatusRequest, opts ...grpc.CallOption) (*PayApplication, error)
+	// WithdrawPayApplication soft-deletes the Pay Application so it leaves
+	// the live set. Its display name can be used again.
+	WithdrawPayApplication(ctx context.Context, in *WithdrawPayApplicationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// CreateMerchantAccount validates the config against the Channel's
 	// schema, encrypts it whole (ADR 0018), and records the masked echo.
 	CreateMerchantAccount(ctx context.Context, in *CreateMerchantAccountRequest, opts ...grpc.CallOption) (*MerchantAccount, error)
@@ -112,6 +136,66 @@ type payServiceClient struct {
 
 func NewPayServiceClient(cc grpc.ClientConnInterface) PayServiceClient {
 	return &payServiceClient{cc}
+}
+
+func (c *payServiceClient) CreatePayApplication(ctx context.Context, in *CreatePayApplicationRequest, opts ...grpc.CallOption) (*PayApplication, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PayApplication)
+	err := c.cc.Invoke(ctx, PayService_CreatePayApplication_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *payServiceClient) ListPayApplications(ctx context.Context, in *ListPayApplicationsRequest, opts ...grpc.CallOption) (*PayApplicationSet, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PayApplicationSet)
+	err := c.cc.Invoke(ctx, PayService_ListPayApplications_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *payServiceClient) GetPayApplication(ctx context.Context, in *GetPayApplicationRequest, opts ...grpc.CallOption) (*PayApplication, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PayApplication)
+	err := c.cc.Invoke(ctx, PayService_GetPayApplication_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *payServiceClient) UpdatePayApplication(ctx context.Context, in *UpdatePayApplicationRequest, opts ...grpc.CallOption) (*PayApplication, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PayApplication)
+	err := c.cc.Invoke(ctx, PayService_UpdatePayApplication_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *payServiceClient) ChangePayApplicationStatus(ctx context.Context, in *ChangePayApplicationStatusRequest, opts ...grpc.CallOption) (*PayApplication, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PayApplication)
+	err := c.cc.Invoke(ctx, PayService_ChangePayApplicationStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *payServiceClient) WithdrawPayApplication(ctx context.Context, in *WithdrawPayApplicationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PayService_WithdrawPayApplication_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *payServiceClient) CreateMerchantAccount(ctx context.Context, in *CreateMerchantAccountRequest, opts ...grpc.CallOption) (*MerchantAccount, error) {
@@ -288,11 +372,29 @@ func (c *payServiceClient) QueryRefund(ctx context.Context, in *QueryRefundReque
 // All implementations must embed UnimplementedPayServiceServer
 // for forward compatibility.
 //
-// PayService is the payment module's management surface: Merchant Account
-// configuration, unified Payment initiation, and Refunds. Channel
-// callbacks arrive on the auth-exempt notify route (ADR 0020) — a
-// hand-written route, not part of this service.
+// PayService is the payment module's management surface: Pay Application
+// lifecycle, Merchant Account configuration, unified Payment initiation,
+// and Refunds. Channel callbacks arrive on the auth-exempt notify route
+// (ADR 0020) — a hand-written route, not part of this service.
 type PayServiceServer interface {
+	// CreatePayApplication binds a new Pay Application to exactly one
+	// Merchant Account that is enabled and not withdrawn. Either result
+	// address may be empty. There is no app key and no secret.
+	CreatePayApplication(context.Context, *CreatePayApplicationRequest) (*PayApplication, error)
+	// ListPayApplications lists Pay Applications that are not withdrawn,
+	// with AIP filter/order/page-token. Filterable by merchant_id and status.
+	ListPayApplications(context.Context, *ListPayApplicationsRequest) (*PayApplicationSet, error)
+	// GetPayApplication retrieves one Pay Application that is not withdrawn.
+	GetPayApplication(context.Context, *GetPayApplicationRequest) (*PayApplication, error)
+	// UpdatePayApplication changes the display name and either result
+	// address. The number and the Merchant Account binding stay fixed.
+	UpdatePayApplication(context.Context, *UpdatePayApplicationRequest) (*PayApplication, error)
+	// ChangePayApplicationStatus enables or disables a Pay Application.
+	// Disabling stops new Payments and Refunds; in-flight ones still settle.
+	ChangePayApplicationStatus(context.Context, *ChangePayApplicationStatusRequest) (*PayApplication, error)
+	// WithdrawPayApplication soft-deletes the Pay Application so it leaves
+	// the live set. Its display name can be used again.
+	WithdrawPayApplication(context.Context, *WithdrawPayApplicationRequest) (*emptypb.Empty, error)
 	// CreateMerchantAccount validates the config against the Channel's
 	// schema, encrypts it whole (ADR 0018), and records the masked echo.
 	CreateMerchantAccount(context.Context, *CreateMerchantAccountRequest) (*MerchantAccount, error)
@@ -359,6 +461,24 @@ type PayServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedPayServiceServer struct{}
 
+func (UnimplementedPayServiceServer) CreatePayApplication(context.Context, *CreatePayApplicationRequest) (*PayApplication, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreatePayApplication not implemented")
+}
+func (UnimplementedPayServiceServer) ListPayApplications(context.Context, *ListPayApplicationsRequest) (*PayApplicationSet, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPayApplications not implemented")
+}
+func (UnimplementedPayServiceServer) GetPayApplication(context.Context, *GetPayApplicationRequest) (*PayApplication, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPayApplication not implemented")
+}
+func (UnimplementedPayServiceServer) UpdatePayApplication(context.Context, *UpdatePayApplicationRequest) (*PayApplication, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdatePayApplication not implemented")
+}
+func (UnimplementedPayServiceServer) ChangePayApplicationStatus(context.Context, *ChangePayApplicationStatusRequest) (*PayApplication, error) {
+	return nil, status.Error(codes.Unimplemented, "method ChangePayApplicationStatus not implemented")
+}
+func (UnimplementedPayServiceServer) WithdrawPayApplication(context.Context, *WithdrawPayApplicationRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method WithdrawPayApplication not implemented")
+}
 func (UnimplementedPayServiceServer) CreateMerchantAccount(context.Context, *CreateMerchantAccountRequest) (*MerchantAccount, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateMerchantAccount not implemented")
 }
@@ -429,6 +549,114 @@ func RegisterPayServiceServer(s grpc.ServiceRegistrar, srv PayServiceServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&PayService_ServiceDesc, srv)
+}
+
+func _PayService_CreatePayApplication_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePayApplicationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PayServiceServer).CreatePayApplication(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PayService_CreatePayApplication_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PayServiceServer).CreatePayApplication(ctx, req.(*CreatePayApplicationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PayService_ListPayApplications_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPayApplicationsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PayServiceServer).ListPayApplications(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PayService_ListPayApplications_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PayServiceServer).ListPayApplications(ctx, req.(*ListPayApplicationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PayService_GetPayApplication_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPayApplicationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PayServiceServer).GetPayApplication(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PayService_GetPayApplication_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PayServiceServer).GetPayApplication(ctx, req.(*GetPayApplicationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PayService_UpdatePayApplication_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdatePayApplicationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PayServiceServer).UpdatePayApplication(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PayService_UpdatePayApplication_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PayServiceServer).UpdatePayApplication(ctx, req.(*UpdatePayApplicationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PayService_ChangePayApplicationStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangePayApplicationStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PayServiceServer).ChangePayApplicationStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PayService_ChangePayApplicationStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PayServiceServer).ChangePayApplicationStatus(ctx, req.(*ChangePayApplicationStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PayService_WithdrawPayApplication_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WithdrawPayApplicationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PayServiceServer).WithdrawPayApplication(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PayService_WithdrawPayApplication_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PayServiceServer).WithdrawPayApplication(ctx, req.(*WithdrawPayApplicationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _PayService_CreateMerchantAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -744,6 +972,30 @@ var PayService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "pay.v1.PayService",
 	HandlerType: (*PayServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CreatePayApplication",
+			Handler:    _PayService_CreatePayApplication_Handler,
+		},
+		{
+			MethodName: "ListPayApplications",
+			Handler:    _PayService_ListPayApplications_Handler,
+		},
+		{
+			MethodName: "GetPayApplication",
+			Handler:    _PayService_GetPayApplication_Handler,
+		},
+		{
+			MethodName: "UpdatePayApplication",
+			Handler:    _PayService_UpdatePayApplication_Handler,
+		},
+		{
+			MethodName: "ChangePayApplicationStatus",
+			Handler:    _PayService_ChangePayApplicationStatus_Handler,
+		},
+		{
+			MethodName: "WithdrawPayApplication",
+			Handler:    _PayService_WithdrawPayApplication_Handler,
+		},
 		{
 			MethodName: "CreateMerchantAccount",
 			Handler:    _PayService_CreateMerchantAccount_Handler,

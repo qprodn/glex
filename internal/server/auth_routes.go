@@ -115,9 +115,16 @@ func authRoutes() map[string]authmw.Route {
 		auditv1.OperationLoginLogServiceListLoginLogs:  {Permission: "monitor:loginlog:list"},
 		auditv1.OperationLoginLogServiceDeleteLoginLog: {Permission: "monitor:loginlog:remove"},
 
-		// pay: merchant management, unified payments, refunds (design §9).
-		// The notify route is deliberately absent — the channel's request
-		// signature is the authentication there (ADR 0020).
+		// pay: Pay Applications, merchant management, unified payments,
+		// refunds (design §8, §9). The notify route is deliberately absent
+		// — the channel's request signature is the authentication there
+		// (ADR 0020). Status is its own action, separate from update.
+		payv1.OperationPayServiceCreatePayApplication:        {Permission: "pay:application:create"},
+		payv1.OperationPayServiceListPayApplications:         {Permission: "pay:application:list"},
+		payv1.OperationPayServiceGetPayApplication:           {Permission: "pay:application:list"},
+		payv1.OperationPayServiceUpdatePayApplication:        {Permission: "pay:application:update"},
+		payv1.OperationPayServiceChangePayApplicationStatus:  {Permission: "pay:application:status"},
+		payv1.OperationPayServiceWithdrawPayApplication:      {Permission: "pay:application:withdraw"},
 		payv1.OperationPayServiceCreateMerchantAccount:       {Permission: "pay:merchant:create"},
 		payv1.OperationPayServiceListMerchantAccounts:        {Permission: "pay:merchant:list"},
 		payv1.OperationPayServiceGetMerchantAccount:          {Permission: "pay:merchant:list"},

@@ -7,6 +7,7 @@ import "go.uber.org/fx"
 var Module = fx.Module("pay-domain-service",
 	fx.Provide(
 		fx.Annotate(NewMerchantService, fx.As(new(Merchant))),
+		fx.Annotate(NewApplicationService, fx.As(new(Application))),
 		fx.Annotate(NewPaymentService, fx.As(new(Payment))),
 		fx.Annotate(NewRefundService, fx.As(new(Refund))),
 		fx.Annotate(NewIntake, fx.As(new(Intake))),

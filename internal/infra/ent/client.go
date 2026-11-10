@@ -21,6 +21,7 @@ import (
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/operlog"
 	"glex/internal/infra/ent/param"
+	"glex/internal/infra/ent/payapplication"
 	"glex/internal/infra/ent/paymerchantaccount"
 	"glex/internal/infra/ent/paynotifylog"
 	"glex/internal/infra/ent/paypayment"
@@ -69,6 +70,8 @@ type Client struct {
 	OperLog *OperLogClient
 	// Param is the client for interacting with the Param builders.
 	Param *ParamClient
+	// PayApplication is the client for interacting with the PayApplication builders.
+	PayApplication *PayApplicationClient
 	// PayMerchantAccount is the client for interacting with the PayMerchantAccount builders.
 	PayMerchantAccount *PayMerchantAccountClient
 	// PayNotifyLog is the client for interacting with the PayNotifyLog builders.
@@ -118,6 +121,7 @@ func (c *Client) init() {
 	c.Menu = NewMenuClient(c.config)
 	c.OperLog = NewOperLogClient(c.config)
 	c.Param = NewParamClient(c.config)
+	c.PayApplication = NewPayApplicationClient(c.config)
 	c.PayMerchantAccount = NewPayMerchantAccountClient(c.config)
 	c.PayNotifyLog = NewPayNotifyLogClient(c.config)
 	c.PayPayment = NewPayPaymentClient(c.config)
@@ -234,6 +238,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Menu:                  NewMenuClient(cfg),
 		OperLog:               NewOperLogClient(cfg),
 		Param:                 NewParamClient(cfg),
+		PayApplication:        NewPayApplicationClient(cfg),
 		PayMerchantAccount:    NewPayMerchantAccountClient(cfg),
 		PayNotifyLog:          NewPayNotifyLogClient(cfg),
 		PayPayment:            NewPayPaymentClient(cfg),
@@ -277,6 +282,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Menu:                  NewMenuClient(cfg),
 		OperLog:               NewOperLogClient(cfg),
 		Param:                 NewParamClient(cfg),
+		PayApplication:        NewPayApplicationClient(cfg),
 		PayMerchantAccount:    NewPayMerchantAccountClient(cfg),
 		PayNotifyLog:          NewPayNotifyLogClient(cfg),
 		PayPayment:            NewPayPaymentClient(cfg),
@@ -321,9 +327,10 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Dept, c.DictData, c.DictType, c.File, c.Job, c.JobLog, c.LoginLog, c.Menu,
-		c.OperLog, c.Param, c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment,
-		c.PayRefund, c.Post, c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
-		c.WechatAdoptedTemplate, c.WechatApp, c.WechatDispatch, c.WechatPlatform,
+		c.OperLog, c.Param, c.PayApplication, c.PayMerchantAccount, c.PayNotifyLog,
+		c.PayPayment, c.PayRefund, c.Post, c.Role, c.RoleMenu, c.User, c.UserPost,
+		c.UserRole, c.WechatAdoptedTemplate, c.WechatApp, c.WechatDispatch,
+		c.WechatPlatform,
 	} {
 		n.Use(hooks...)
 	}
@@ -334,9 +341,10 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Dept, c.DictData, c.DictType, c.File, c.Job, c.JobLog, c.LoginLog, c.Menu,
-		c.OperLog, c.Param, c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment,
-		c.PayRefund, c.Post, c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole,
-		c.WechatAdoptedTemplate, c.WechatApp, c.WechatDispatch, c.WechatPlatform,
+		c.OperLog, c.Param, c.PayApplication, c.PayMerchantAccount, c.PayNotifyLog,
+		c.PayPayment, c.PayRefund, c.Post, c.Role, c.RoleMenu, c.User, c.UserPost,
+		c.UserRole, c.WechatAdoptedTemplate, c.WechatApp, c.WechatDispatch,
+		c.WechatPlatform,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -365,6 +373,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.OperLog.mutate(ctx, m)
 	case *ParamMutation:
 		return c.Param.mutate(ctx, m)
+	case *PayApplicationMutation:
+		return c.PayApplication.mutate(ctx, m)
 	case *PayMerchantAccountMutation:
 		return c.PayMerchantAccount.mutate(ctx, m)
 	case *PayNotifyLogMutation:
@@ -1741,6 +1751,139 @@ func (c *ParamClient) mutate(ctx context.Context, m *ParamMutation) (Value, erro
 		return (&ParamDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Param mutation op: %q", m.Op())
+	}
+}
+
+// PayApplicationClient is a client for the PayApplication schema.
+type PayApplicationClient struct {
+	config
+}
+
+// NewPayApplicationClient returns a client for the PayApplication from the given config.
+func NewPayApplicationClient(c config) *PayApplicationClient {
+	return &PayApplicationClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `payapplication.Hooks(f(g(h())))`.
+func (c *PayApplicationClient) Use(hooks ...Hook) {
+	c.hooks.PayApplication = append(c.hooks.PayApplication, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `payapplication.Intercept(f(g(h())))`.
+func (c *PayApplicationClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PayApplication = append(c.inters.PayApplication, interceptors...)
+}
+
+// Create returns a builder for creating a PayApplication entity.
+func (c *PayApplicationClient) Create() *PayApplicationCreate {
+	mutation := newPayApplicationMutation(c.config, OpCreate)
+	return &PayApplicationCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PayApplication entities.
+func (c *PayApplicationClient) CreateBulk(builders ...*PayApplicationCreate) *PayApplicationCreateBulk {
+	return &PayApplicationCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PayApplicationClient) MapCreateBulk(slice any, setFunc func(*PayApplicationCreate, int)) *PayApplicationCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PayApplicationCreateBulk{err: fmt.Errorf("calling to PayApplicationClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PayApplicationCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PayApplicationCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PayApplication.
+func (c *PayApplicationClient) Update() *PayApplicationUpdate {
+	mutation := newPayApplicationMutation(c.config, OpUpdate)
+	return &PayApplicationUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PayApplicationClient) UpdateOne(_m *PayApplication) *PayApplicationUpdateOne {
+	mutation := newPayApplicationMutation(c.config, OpUpdateOne, withPayApplication(_m))
+	return &PayApplicationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PayApplicationClient) UpdateOneID(id int64) *PayApplicationUpdateOne {
+	mutation := newPayApplicationMutation(c.config, OpUpdateOne, withPayApplicationID(id))
+	return &PayApplicationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PayApplication.
+func (c *PayApplicationClient) Delete() *PayApplicationDelete {
+	mutation := newPayApplicationMutation(c.config, OpDelete)
+	return &PayApplicationDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PayApplicationClient) DeleteOne(_m *PayApplication) *PayApplicationDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PayApplicationClient) DeleteOneID(id int64) *PayApplicationDeleteOne {
+	builder := c.Delete().Where(payapplication.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PayApplicationDeleteOne{builder}
+}
+
+// Query returns a query builder for PayApplication.
+func (c *PayApplicationClient) Query() *PayApplicationQuery {
+	return &PayApplicationQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePayApplication},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PayApplication entity by its id.
+func (c *PayApplicationClient) Get(ctx context.Context, id int64) (*PayApplication, error) {
+	return c.Query().Where(payapplication.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PayApplicationClient) GetX(ctx context.Context, id int64) *PayApplication {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PayApplicationClient) Hooks() []Hook {
+	return c.hooks.PayApplication
+}
+
+// Interceptors returns the client interceptors.
+func (c *PayApplicationClient) Interceptors() []Interceptor {
+	return c.inters.PayApplication
+}
+
+func (c *PayApplicationClient) mutate(ctx context.Context, m *PayApplicationMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PayApplicationCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PayApplicationUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PayApplicationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PayApplicationDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PayApplication mutation op: %q", m.Op())
 	}
 }
 
@@ -3786,15 +3929,15 @@ func (c *WechatPlatformClient) mutate(ctx context.Context, m *WechatPlatformMuta
 type (
 	hooks struct {
 		Dept, DictData, DictType, File, Job, JobLog, LoginLog, Menu, OperLog, Param,
-		PayMerchantAccount, PayNotifyLog, PayPayment, PayRefund, Post, Role, RoleMenu,
-		User, UserPost, UserRole, WechatAdoptedTemplate, WechatApp, WechatDispatch,
-		WechatPlatform []ent.Hook
+		PayApplication, PayMerchantAccount, PayNotifyLog, PayPayment, PayRefund, Post,
+		Role, RoleMenu, User, UserPost, UserRole, WechatAdoptedTemplate, WechatApp,
+		WechatDispatch, WechatPlatform []ent.Hook
 	}
 	inters struct {
 		Dept, DictData, DictType, File, Job, JobLog, LoginLog, Menu, OperLog, Param,
-		PayMerchantAccount, PayNotifyLog, PayPayment, PayRefund, Post, Role, RoleMenu,
-		User, UserPost, UserRole, WechatAdoptedTemplate, WechatApp, WechatDispatch,
-		WechatPlatform []ent.Interceptor
+		PayApplication, PayMerchantAccount, PayNotifyLog, PayPayment, PayRefund, Post,
+		Role, RoleMenu, User, UserPost, UserRole, WechatAdoptedTemplate, WechatApp,
+		WechatDispatch, WechatPlatform []ent.Interceptor
 	}
 )
 

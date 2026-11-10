@@ -17,19 +17,21 @@ import (
 type PayApplication struct {
 	payv1.UnimplementedPayServiceServer
 
-	merchants payservice.Merchant
-	payments  payservice.Payment
-	refunds   payservice.Refund
-	intake    payservice.Intake
-	tx        Transaction
-	locker    lock.Locker
-	payConfig *conf.Pay
-	logger    *slog.Logger
+	merchants    payservice.Merchant
+	applications payservice.Application
+	payments     payservice.Payment
+	refunds      payservice.Refund
+	intake       payservice.Intake
+	tx           Transaction
+	locker       lock.Locker
+	payConfig    *conf.Pay
+	logger       *slog.Logger
 }
 
 // NewPayApplication creates the PayApplication.
 func NewPayApplication(
 	merchants payservice.Merchant,
+	applications payservice.Application,
 	payments payservice.Payment,
 	refunds payservice.Refund,
 	intake payservice.Intake,
@@ -39,14 +41,15 @@ func NewPayApplication(
 	logger *slog.Logger,
 ) *PayApplication {
 	return &PayApplication{
-		merchants: merchants,
-		payments:  payments,
-		refunds:   refunds,
-		intake:    intake,
-		tx:        tx,
-		locker:    locker,
-		payConfig: payConfig,
-		logger:    logger.With(slog.String("component", "application.pay")),
+		merchants:    merchants,
+		applications: applications,
+		payments:     payments,
+		refunds:      refunds,
+		intake:       intake,
+		tx:           tx,
+		locker:       locker,
+		payConfig:    payConfig,
+		logger:       logger.With(slog.String("component", "application.pay")),
 	}
 }
 

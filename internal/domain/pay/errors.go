@@ -57,4 +57,14 @@ var (
 	// (connectivity, deadlock) — the raw error is logged at the handling
 	// site and this sentinel crosses the boundary instead (ADR 0007).
 	ErrPayStoreUnavailable = errors.ServiceUnavailable("PAY_STORE_UNAVAILABLE", "payment store unavailable")
+	// ErrApplicationNotFound: the requested Pay Application does not exist
+	// (or is withdrawn).
+	ErrApplicationNotFound = errors.NotFound("APPLICATION_NOT_FOUND", "pay application not found")
+	// ErrApplicationInvalid: a Pay Application parameter is invalid — blank
+	// or over-length display name, over-length result address, or a status
+	// other than enabled or disabled.
+	ErrApplicationInvalid = errors.BadRequest("APPLICATION_INVALID", "pay application parameters are invalid")
+	// ErrApplicationDuplicate: the display name is already taken by a Pay
+	// Application that is not withdrawn.
+	ErrApplicationDuplicate = errors.Conflict("APPLICATION_DUPLICATE", "pay application name already exists")
 )

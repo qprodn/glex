@@ -49,7 +49,16 @@ export type ErrorReason =
   // A pay-store operation failed unexpectedly — the raw database error is
   // logged server-side and this sentinel crosses the boundary (ADR 0007,
   // HTTP 503).
-  | "PAY_STORE_UNAVAILABLE";
+  | "PAY_STORE_UNAVAILABLE"
+  // The requested Pay Application does not exist (or is withdrawn).
+  | "APPLICATION_NOT_FOUND"
+  // A Pay Application parameter is invalid: blank or over-length display
+  // name, over-length result address, or a status other than enabled or
+  // disabled.
+  | "APPLICATION_INVALID"
+  // The display name is already taken by a Pay Application that is not
+  // withdrawn (HTTP 409).
+  | "APPLICATION_DUPLICATE";
 // MerchantAccount is one Channel Merchant Account (商户账号): the platform's
 // own collecting account at one Channel. The credential config is never
 // served — every response carries only config_masked, the write-time masked
@@ -88,6 +97,36 @@ type wellKnownTimestamp = string;
 // MerchantAccountSet is a page of Merchant Accounts.
 export type MerchantAccountSet = {
   merchants: MerchantAccount[] | undefined;
+  // Opaque token for the next page; empty when on the last page.
+  nextPageToken: string | undefined;
+};
+
+// PayApplication is one caller identity (支付应用). It is named by its own
+// number and by a display name, and it is bound to exactly one Merchant
+// Account. There is no app key and no secret (ADR 0030).
+export type PayApplication = {
+  // Snowflake ID. Does not change.
+  applicationId: number | undefined;
+  // Display name, unique among Pay Applications that are not withdrawn.
+  name: string | undefined;
+  // Merchant Account bound at creation. Not editable.
+  merchantId: number | undefined;
+  // 0 enabled, 1 disabled.
+  status: number | undefined;
+  // Payment result address. Empty is allowed.
+  orderNotifyUrl: string | undefined;
+  // Refund result address. Empty is allowed.
+  refundNotifyUrl: string | undefined;
+  // Audit: who created/updated. Filled from the authenticated identity.
+  createBy: number | undefined;
+  updateBy: number | undefined;
+  createdAt: wellKnownTimestamp | undefined;
+  updatedAt: wellKnownTimestamp | undefined;
+};
+
+// PayApplicationSet is a page of Pay Applications.
+export type PayApplicationSet = {
+  applications: PayApplication[] | undefined;
   // Opaque token for the next page; empty when on the last page.
   nextPageToken: string | undefined;
 };
@@ -310,6 +349,79 @@ export type ProbeMerchantAccountRequest = {
 export type GetChannelSchemasRequest = {
 };
 
+export type CreatePayApplicationRequest = {
+  // Required. Display name, unique among Pay Applications that are not
+  // withdrawn, ≤ 64 chars.
+  //
+  // Behaviors: REQUIRED
+  name: string | undefined;
+  // Required. The Merchant Account to bind. Must be enabled and not
+  // withdrawn. The binding cannot be changed later.
+  //
+  // Behaviors: REQUIRED
+  merchantId: number | undefined;
+  // Optional. Payment result address, ≤ 512 chars. Empty is allowed.
+  orderNotifyUrl: string | undefined;
+  // Optional. Refund result address, ≤ 512 chars. Empty is allowed.
+  refundNotifyUrl: string | undefined;
+};
+
+export type ListPayApplicationsRequest = {
+  // Optional. Page size.
+  pageSize: number | undefined;
+  // Optional. Page token from a previous response.
+  pageToken: string | undefined;
+  // Optional. AIP-160 filter. Supported fields:
+  // * `name` (e.g. `name="收银台"`, exact)
+  // * `merchant_id` (e.g. `merchant_id=42`)
+  // * `status` (e.g. `status=0`)
+  filter: string | undefined;
+  // Optional. AIP-132 order on a pay_application column, e.g.
+  // `id desc` (the default), `created_at`.
+  orderBy: string | undefined;
+};
+
+export type GetPayApplicationRequest = {
+  // Required. The id of the Pay Application to retrieve.
+  //
+  // Behaviors: REQUIRED
+  applicationId: number | undefined;
+};
+
+export type UpdatePayApplicationRequest = {
+  // Required. The id of the Pay Application to update. The number itself
+  // does not change.
+  //
+  // Behaviors: REQUIRED
+  applicationId: number | undefined;
+  // Required. New display name.
+  //
+  // Behaviors: REQUIRED
+  name: string | undefined;
+  // Optional. New payment result address. Empty clears it.
+  orderNotifyUrl: string | undefined;
+  // Optional. New refund result address. Empty clears it.
+  refundNotifyUrl: string | undefined;
+};
+
+export type ChangePayApplicationStatusRequest = {
+  // Required. The id of the Pay Application.
+  //
+  // Behaviors: REQUIRED
+  applicationId: number | undefined;
+  // Required. 0 enabled, 1 disabled.
+  //
+  // Behaviors: REQUIRED
+  status: number | undefined;
+};
+
+export type WithdrawPayApplicationRequest = {
+  // Required. The id of the Pay Application to withdraw.
+  //
+  // Behaviors: REQUIRED
+  applicationId: number | undefined;
+};
+
 export type CreatePaymentRequest = {
   // Required. The Merchant Account to collect into; must exist and be
   // enabled, and its Channel must have a registered adapter.
@@ -417,11 +529,29 @@ export type QueryRefundRequest = {
   refundId: number | undefined;
 };
 
-// PayService is the payment module's management surface: Merchant Account
-// configuration, unified Payment initiation, and Refunds. Channel
-// callbacks arrive on the auth-exempt notify route (ADR 0020) — a
-// hand-written route, not part of this service.
+// PayService is the payment module's management surface: Pay Application
+// lifecycle, Merchant Account configuration, unified Payment initiation,
+// and Refunds. Channel callbacks arrive on the auth-exempt notify route
+// (ADR 0020) — a hand-written route, not part of this service.
 export interface PayService {
+  // CreatePayApplication binds a new Pay Application to exactly one
+  // Merchant Account that is enabled and not withdrawn. Either result
+  // address may be empty. There is no app key and no secret.
+  CreatePayApplication(request: CreatePayApplicationRequest): Promise<PayApplication>;
+  // ListPayApplications lists Pay Applications that are not withdrawn,
+  // with AIP filter/order/page-token. Filterable by merchant_id and status.
+  ListPayApplications(request: ListPayApplicationsRequest): Promise<PayApplicationSet>;
+  // GetPayApplication retrieves one Pay Application that is not withdrawn.
+  GetPayApplication(request: GetPayApplicationRequest): Promise<PayApplication>;
+  // UpdatePayApplication changes the display name and either result
+  // address. The number and the Merchant Account binding stay fixed.
+  UpdatePayApplication(request: UpdatePayApplicationRequest): Promise<PayApplication>;
+  // ChangePayApplicationStatus enables or disables a Pay Application.
+  // Disabling stops new Payments and Refunds; in-flight ones still settle.
+  ChangePayApplicationStatus(request: ChangePayApplicationStatusRequest): Promise<PayApplication>;
+  // WithdrawPayApplication soft-deletes the Pay Application so it leaves
+  // the live set. Its display name can be used again.
+  WithdrawPayApplication(request: WithdrawPayApplicationRequest): Promise<wellKnownEmpty>;
   // CreateMerchantAccount validates the config against the Channel's
   // schema, encrypts it whole (ADR 0018), and records the masked echo.
   CreateMerchantAccount(request: CreateMerchantAccountRequest): Promise<MerchantAccount>;
@@ -492,6 +622,132 @@ export function createPayServiceClient(
   handler: RequestHandler
 ): PayService {
   return {
+    CreatePayApplication(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `pay/application`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "PayService",
+        method: "CreatePayApplication",
+      }) as Promise<PayApplication>;
+    },
+    ListPayApplications(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `pay/application`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      if (request.pageSize) {
+        queryParams.push(`pageSize=${encodeURIComponent(request.pageSize.toString())}`)
+      }
+      if (request.pageToken) {
+        queryParams.push(`pageToken=${encodeURIComponent(request.pageToken.toString())}`)
+      }
+      if (request.filter) {
+        queryParams.push(`filter=${encodeURIComponent(request.filter.toString())}`)
+      }
+      if (request.orderBy) {
+        queryParams.push(`orderBy=${encodeURIComponent(request.orderBy.toString())}`)
+      }
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "PayService",
+        method: "ListPayApplications",
+      }) as Promise<PayApplicationSet>;
+    },
+    GetPayApplication(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.applicationId) {
+        throw new Error("missing required field request.application_id");
+      }
+      const path = `pay/application/${request.applicationId}`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "PayService",
+        method: "GetPayApplication",
+      }) as Promise<PayApplication>;
+    },
+    UpdatePayApplication(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.applicationId) {
+        throw new Error("missing required field request.application_id");
+      }
+      const path = `pay/application/${request.applicationId}`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "PATCH",
+        body,
+      }, {
+        service: "PayService",
+        method: "UpdatePayApplication",
+      }) as Promise<PayApplication>;
+    },
+    ChangePayApplicationStatus(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.applicationId) {
+        throw new Error("missing required field request.application_id");
+      }
+      const path = `pay/application/${request.applicationId}/status`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "PUT",
+        body,
+      }, {
+        service: "PayService",
+        method: "ChangePayApplicationStatus",
+      }) as Promise<PayApplication>;
+    },
+    WithdrawPayApplication(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.applicationId) {
+        throw new Error("missing required field request.application_id");
+      }
+      const path = `pay/application/${request.applicationId}`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "DELETE",
+        body,
+      }, {
+        service: "PayService",
+        method: "WithdrawPayApplication",
+      }) as Promise<wellKnownEmpty>;
+    },
     CreateMerchantAccount(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
       const path = `pay/merchant`; // eslint-disable-line quotes
       const body = JSON.stringify(request);

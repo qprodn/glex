@@ -411,6 +411,7 @@ func newGoldFixture(t *testing.T) *goldFixture {
 
 	app := pay.NewPayApplication(
 		merchantSvc,
+		nil,
 		paymentSvc,
 		refundSvc,
 		intake,

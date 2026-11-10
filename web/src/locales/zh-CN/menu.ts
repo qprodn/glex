@@ -13,6 +13,7 @@ export default {
   "menu.monitor.job": "定时任务",
   "menu.monitor.joblog": "任务日志",
   "menu.pay.merchant": "商户管理",
+  "menu.pay.application": "支付应用",
   "menu.pay.payment": "支付单",
   "menu.pay.refund": "退款单",
   "menu.wechat": "微信管理",

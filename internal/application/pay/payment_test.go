@@ -66,6 +66,7 @@ func (f *fakePaymentSvc) Prepay(ctx context.Context, req payservice.PrepayPaymen
 func newTestPayApplication(locker *fakeLocker, payments *fakePaymentSvc) *PayApplication {
 	return NewPayApplication(
 		&fakeMerchantSvc{},
+		nil,
 		payments,
 		&fakeRefundSvc{},
 		nil,

@@ -2023,6 +2023,165 @@ paths:
                 "200":
                     description: OK
                     content: {}
+    /pay/application:
+        get:
+            tags:
+                - PayService
+            description: |-
+                ListPayApplications lists Pay Applications that are not withdrawn,
+                 with AIP filter/order/page-token. Filterable by merchant_id and status.
+            operationId: PayService_ListPayApplications
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: Optional. Page size.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: Optional. Page token from a previous response.
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    Optional. AIP-160 filter. Supported fields:
+                       * `name` (e.g. `name="收银台"`, exact)
+                       * `merchant_id` (e.g. `merchant_id=42`)
+                       * `status` (e.g. `status=0`)
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: |-
+                    Optional. AIP-132 order on a pay_application column, e.g.
+                     `id desc` (the default), `created_at`.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.PayApplicationSet'
+        post:
+            tags:
+                - PayService
+            description: |-
+                CreatePayApplication binds a new Pay Application to exactly one
+                 Merchant Account that is enabled and not withdrawn. Either result
+                 address may be empty. There is no app key and no secret.
+            operationId: PayService_CreatePayApplication
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/pay.v1.CreatePayApplicationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.PayApplication'
+    /pay/application/{applicationId}:
+        get:
+            tags:
+                - PayService
+            description: GetPayApplication retrieves one Pay Application that is not withdrawn.
+            operationId: PayService_GetPayApplication
+            parameters:
+                - name: applicationId
+                  in: path
+                  description: Required. The id of the Pay Application to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.PayApplication'
+        delete:
+            tags:
+                - PayService
+            description: |-
+                WithdrawPayApplication soft-deletes the Pay Application so it leaves
+                 the live set. Its display name can be used again.
+            operationId: PayService_WithdrawPayApplication
+            parameters:
+                - name: applicationId
+                  in: path
+                  description: Required. The id of the Pay Application to withdraw.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+        patch:
+            tags:
+                - PayService
+            description: |-
+                UpdatePayApplication changes the display name and either result
+                 address. The number and the Merchant Account binding stay fixed.
+            operationId: PayService_UpdatePayApplication
+            parameters:
+                - name: applicationId
+                  in: path
+                  description: |-
+                    Required. The id of the Pay Application to update. The number itself
+                     does not change.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/pay.v1.UpdatePayApplicationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.PayApplication'
+    /pay/application/{applicationId}/status:
+        put:
+            tags:
+                - PayService
+            description: |-
+                ChangePayApplicationStatus enables or disables a Pay Application.
+                 Disabling stops new Payments and Refunds; in-flight ones still settle.
+            operationId: PayService_ChangePayApplicationStatus
+            parameters:
+                - name: applicationId
+                  in: path
+                  description: Required. The id of the Pay Application.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/pay.v1.ChangePayApplicationStatusRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/pay.v1.PayApplication'
     /pay/channel-schemas:
         get:
             tags:
@@ -4205,6 +4364,19 @@ components:
                     type: integer
                     description: Required. 0 enabled, 1 disabled.
                     format: int32
+        pay.v1.ChangePayApplicationStatusRequest:
+            required:
+                - applicationId
+                - status
+            type: object
+            properties:
+                applicationId:
+                    type: string
+                    description: Required. The id of the Pay Application.
+                status:
+                    type: integer
+                    description: Required. 0 enabled, 1 disabled.
+                    format: int32
         pay.v1.ChannelSchema:
             type: object
             properties:
@@ -4259,6 +4431,28 @@ components:
                 remark:
                     type: string
                     description: Optional. Remark, ≤ 500 chars.
+        pay.v1.CreatePayApplicationRequest:
+            required:
+                - name
+                - merchantId
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: |-
+                        Required. Display name, unique among Pay Applications that are not
+                         withdrawn, ≤ 64 chars.
+                merchantId:
+                    type: string
+                    description: |-
+                        Required. The Merchant Account to bind. Must be enabled and not
+                         withdrawn. The binding cannot be changed later.
+                orderNotifyUrl:
+                    type: string
+                    description: Optional. Payment result address, ≤ 512 chars. Empty is allowed.
+                refundNotifyUrl:
+                    type: string
+                    description: Optional. Refund result address, ≤ 512 chars. Empty is allowed.
         pay.v1.CreatePaymentRequest:
             required:
                 - merchantId
@@ -4377,6 +4571,54 @@ components:
                     type: string
                     description: Opaque token for the next page; empty when on the last page.
             description: MerchantAccountSet is a page of Merchant Accounts.
+        pay.v1.PayApplication:
+            type: object
+            properties:
+                applicationId:
+                    type: string
+                    description: Snowflake ID. Does not change.
+                name:
+                    type: string
+                    description: Display name, unique among Pay Applications that are not withdrawn.
+                merchantId:
+                    type: string
+                    description: Merchant Account bound at creation. Not editable.
+                status:
+                    type: integer
+                    description: 0 enabled, 1 disabled.
+                    format: int32
+                orderNotifyUrl:
+                    type: string
+                    description: Payment result address. Empty is allowed.
+                refundNotifyUrl:
+                    type: string
+                    description: Refund result address. Empty is allowed.
+                createBy:
+                    type: string
+                    description: 'Audit: who created/updated. Filled from the authenticated identity.'
+                updateBy:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+            description: |-
+                PayApplication is one caller identity (支付应用). It is named by its own
+                 number and by a display name, and it is bound to exactly one Merchant
+                 Account. There is no app key and no secret (ADR 0030).
+        pay.v1.PayApplicationSet:
+            type: object
+            properties:
+                applications:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/pay.v1.PayApplication'
+                nextPageToken:
+                    type: string
+                    description: Opaque token for the next page; empty when on the last page.
+            description: PayApplicationSet is a page of Pay Applications.
         pay.v1.Payment:
             type: object
             properties:
@@ -4616,6 +4858,26 @@ components:
                 remark:
                     type: string
                     description: Optional. New remark.
+        pay.v1.UpdatePayApplicationRequest:
+            required:
+                - applicationId
+                - name
+            type: object
+            properties:
+                applicationId:
+                    type: string
+                    description: |-
+                        Required. The id of the Pay Application to update. The number itself
+                         does not change.
+                name:
+                    type: string
+                    description: Required. New display name.
+                orderNotifyUrl:
+                    type: string
+                    description: Optional. New payment result address. Empty clears it.
+                refundNotifyUrl:
+                    type: string
+                    description: Optional. New refund result address. Empty clears it.
         user.v1.CurrentUser:
             type: object
             properties:
@@ -5492,10 +5754,10 @@ tags:
          updates them.
     - name: PayService
       description: |-
-        PayService is the payment module's management surface: Merchant Account
-         configuration, unified Payment initiation, and Refunds. Channel
-         callbacks arrive on the auth-exempt notify route (ADR 0020) — a
-         hand-written route, not part of this service.
+        PayService is the payment module's management surface: Pay Application
+         lifecycle, Merchant Account configuration, unified Payment initiation,
+         and Refunds. Channel callbacks arrive on the auth-exempt notify route
+         (ADR 0020) — a hand-written route, not part of this service.
     - name: PostAssignmentService
       description: |-
         PostAssignmentService owns the user↔post link (**Post Assignment**):

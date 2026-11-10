@@ -13,6 +13,7 @@ export default {
   "menu.monitor.job": "Scheduled Jobs",
   "menu.monitor.joblog": "Job Logs",
   "menu.pay.merchant": "Merchant Accounts",
+  "menu.pay.application": "Pay Applications",
   "menu.pay.payment": "Payments",
   "menu.pay.refund": "Refunds",
   "menu.wechat": "WeChat",

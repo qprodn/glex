@@ -16,6 +16,7 @@ import (
 	"glex/internal/infra/ent/menu"
 	"glex/internal/infra/ent/operlog"
 	"glex/internal/infra/ent/param"
+	"glex/internal/infra/ent/payapplication"
 	"glex/internal/infra/ent/paymerchantaccount"
 	"glex/internal/infra/ent/paynotifylog"
 	"glex/internal/infra/ent/paypayment"
@@ -106,6 +107,7 @@ func checkColumn(t, c string) error {
 			menu.Table:                  menu.ValidColumn,
 			operlog.Table:               operlog.ValidColumn,
 			param.Table:                 param.ValidColumn,
+			payapplication.Table:        payapplication.ValidColumn,
 			paymerchantaccount.Table:    paymerchantaccount.ValidColumn,
 			paynotifylog.Table:          paynotifylog.ValidColumn,
 			paypayment.Table:            paypayment.ValidColumn,

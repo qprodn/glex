@@ -71,6 +71,15 @@ const (
 	// logged server-side and this sentinel crosses the boundary (ADR 0007,
 	// HTTP 503).
 	ErrorReason_PAY_STORE_UNAVAILABLE ErrorReason = 14
+	// The requested Pay Application does not exist (or is withdrawn).
+	ErrorReason_APPLICATION_NOT_FOUND ErrorReason = 15
+	// A Pay Application parameter is invalid: blank or over-length display
+	// name, over-length result address, or a status other than enabled or
+	// disabled.
+	ErrorReason_APPLICATION_INVALID ErrorReason = 16
+	// The display name is already taken by a Pay Application that is not
+	// withdrawn (HTTP 409).
+	ErrorReason_APPLICATION_DUPLICATE ErrorReason = 17
 )
 
 // Enum value maps for ErrorReason.
@@ -91,6 +100,9 @@ var (
 		12: "CHANNEL_ERROR",
 		13: "CHANNEL_NOTIFY_INVALID",
 		14: "PAY_STORE_UNAVAILABLE",
+		15: "APPLICATION_NOT_FOUND",
+		16: "APPLICATION_INVALID",
+		17: "APPLICATION_DUPLICATE",
 	}
 	ErrorReason_value = map[string]int32{
 		"ERROR_REASON_UNSPECIFIED": 0,
@@ -108,6 +120,9 @@ var (
 		"CHANNEL_ERROR":            12,
 		"CHANNEL_NOTIFY_INVALID":   13,
 		"PAY_STORE_UNAVAILABLE":    14,
+		"APPLICATION_NOT_FOUND":    15,
+		"APPLICATION_INVALID":      16,
+		"APPLICATION_DUPLICATE":    17,
 	}
 )
 
@@ -142,7 +157,7 @@ var File_pay_v1_error_reason_proto protoreflect.FileDescriptor
 
 const file_pay_v1_error_reason_proto_rawDesc = "" +
 	"\n" +
-	"\x19pay/v1/error_reason.proto\x12\x06pay.v1*\xf6\x02\n" +
+	"\x19pay/v1/error_reason.proto\x12\x06pay.v1*\xc5\x03\n" +
 	"\vErrorReason\x12\x1c\n" +
 	"\x18ERROR_REASON_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12MERCHANT_NOT_FOUND\x10\x01\x12\x14\n" +
@@ -159,7 +174,10 @@ const file_pay_v1_error_reason_proto_rawDesc = "" +
 	"\x13REFUND_EXCEED_LIMIT\x10\v\x12\x11\n" +
 	"\rCHANNEL_ERROR\x10\f\x12\x1a\n" +
 	"\x16CHANNEL_NOTIFY_INVALID\x10\r\x12\x19\n" +
-	"\x15PAY_STORE_UNAVAILABLE\x10\x0eB\"\n" +
+	"\x15PAY_STORE_UNAVAILABLE\x10\x0e\x12\x19\n" +
+	"\x15APPLICATION_NOT_FOUND\x10\x0f\x12\x17\n" +
+	"\x13APPLICATION_INVALID\x10\x10\x12\x19\n" +
+	"\x15APPLICATION_DUPLICATE\x10\x11B\"\n" +
 	"\n" +
 	"api.pay.v1P\x01Z\x12glex/api/pay/v1;v1b\x06proto3"
 

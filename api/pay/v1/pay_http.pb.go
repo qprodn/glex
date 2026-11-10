@@ -19,27 +19,36 @@ var _ = new(context.Context)
 const _ = http.SupportPackageIsVersion3
 
 const OperationPayServiceChangeMerchantAccountStatus = "/pay.v1.PayService/ChangeMerchantAccountStatus"
+const OperationPayServiceChangePayApplicationStatus = "/pay.v1.PayService/ChangePayApplicationStatus"
 const OperationPayServiceClosePayment = "/pay.v1.PayService/ClosePayment"
 const OperationPayServiceCreateMerchantAccount = "/pay.v1.PayService/CreateMerchantAccount"
+const OperationPayServiceCreatePayApplication = "/pay.v1.PayService/CreatePayApplication"
 const OperationPayServiceCreatePayment = "/pay.v1.PayService/CreatePayment"
 const OperationPayServiceCreateRefund = "/pay.v1.PayService/CreateRefund"
 const OperationPayServiceGetChannelSchemas = "/pay.v1.PayService/GetChannelSchemas"
 const OperationPayServiceGetMerchantAccount = "/pay.v1.PayService/GetMerchantAccount"
+const OperationPayServiceGetPayApplication = "/pay.v1.PayService/GetPayApplication"
 const OperationPayServiceGetPayment = "/pay.v1.PayService/GetPayment"
 const OperationPayServiceGetRefund = "/pay.v1.PayService/GetRefund"
 const OperationPayServiceListMerchantAccounts = "/pay.v1.PayService/ListMerchantAccounts"
+const OperationPayServiceListPayApplications = "/pay.v1.PayService/ListPayApplications"
 const OperationPayServiceListPayments = "/pay.v1.PayService/ListPayments"
 const OperationPayServiceListRefunds = "/pay.v1.PayService/ListRefunds"
 const OperationPayServiceProbeMerchantAccount = "/pay.v1.PayService/ProbeMerchantAccount"
 const OperationPayServiceQueryPayment = "/pay.v1.PayService/QueryPayment"
 const OperationPayServiceQueryRefund = "/pay.v1.PayService/QueryRefund"
 const OperationPayServiceUpdateMerchantAccount = "/pay.v1.PayService/UpdateMerchantAccount"
+const OperationPayServiceUpdatePayApplication = "/pay.v1.PayService/UpdatePayApplication"
 const OperationPayServiceWithdrawMerchantAccount = "/pay.v1.PayService/WithdrawMerchantAccount"
+const OperationPayServiceWithdrawPayApplication = "/pay.v1.PayService/WithdrawPayApplication"
 
 type PayServiceHTTPServer interface {
 	// ChangeMerchantAccountStatus ChangeMerchantAccountStatus enables or disables a Merchant Account.
 	// Disabling stops new Payments only; in-flight ones still settle.
 	ChangeMerchantAccountStatus(context.Context, *ChangeMerchantAccountStatusRequest) (*MerchantAccount, error)
+	// ChangePayApplicationStatus ChangePayApplicationStatus enables or disables a Pay Application.
+	// Disabling stops new Payments and Refunds; in-flight ones still settle.
+	ChangePayApplicationStatus(context.Context, *ChangePayApplicationStatusRequest) (*PayApplication, error)
 	// ClosePayment ClosePayment closes a PENDING Payment at the Channel, then locally. A
 	// Channel "already paid" answer flips to a query and settles PAID; late
 	// close intents on terminal Payments are no-ops.
@@ -47,6 +56,10 @@ type PayServiceHTTPServer interface {
 	// CreateMerchantAccount CreateMerchantAccount validates the config against the Channel's
 	// schema, encrypts it whole (ADR 0018), and records the masked echo.
 	CreateMerchantAccount(context.Context, *CreateMerchantAccountRequest) (*MerchantAccount, error)
+	// CreatePayApplication CreatePayApplication binds a new Pay Application to exactly one
+	// Merchant Account that is enabled and not withdrawn. Either result
+	// address may be empty. There is no app key and no secret.
+	CreatePayApplication(context.Context, *CreatePayApplicationRequest) (*PayApplication, error)
 	// CreatePayment CreatePayment initiates one Native Payment: it closes the Merchant
 	// Account's still-pending Payments for the Business Order Number, then
 	// prepays at the Channel and returns the Payment carrying the QR payload
@@ -63,6 +76,8 @@ type PayServiceHTTPServer interface {
 	GetChannelSchemas(context.Context, *GetChannelSchemasRequest) (*GetChannelSchemasResponse, error)
 	// GetMerchantAccount GetMerchantAccount retrieves one Merchant Account (masked config).
 	GetMerchantAccount(context.Context, *GetMerchantAccountRequest) (*MerchantAccount, error)
+	// GetPayApplication GetPayApplication retrieves one Pay Application that is not withdrawn.
+	GetPayApplication(context.Context, *GetPayApplicationRequest) (*PayApplication, error)
 	// GetPayment GetPayment retrieves one Payment. A PENDING payment past its expiry
 	// settles first (channel-confirmed PAID wins, else EXPIRED).
 	GetPayment(context.Context, *GetPaymentRequest) (*Payment, error)
@@ -71,6 +86,9 @@ type PayServiceHTTPServer interface {
 	// ListMerchantAccounts ListMerchantAccounts lists Merchant Accounts with AIP filter/order/
 	// page-token. Responses carry masked configs only.
 	ListMerchantAccounts(context.Context, *ListMerchantAccountsRequest) (*MerchantAccountSet, error)
+	// ListPayApplications ListPayApplications lists Pay Applications that are not withdrawn,
+	// with AIP filter/order/page-token. Filterable by merchant_id and status.
+	ListPayApplications(context.Context, *ListPayApplicationsRequest) (*PayApplicationSet, error)
 	// ListPayments ListPayments lists Payments with AIP filter/order/page-token. List
 	// reads never touch the Channel.
 	ListPayments(context.Context, *ListPaymentsRequest) (*PaymentSet, error)
@@ -90,13 +108,25 @@ type PayServiceHTTPServer interface {
 	// config form; secret fields left blank keep their stored values
 	// (schema semantics, ADR 0021).
 	UpdateMerchantAccount(context.Context, *UpdateMerchantAccountRequest) (*MerchantAccount, error)
+	// UpdatePayApplication UpdatePayApplication changes the display name and either result
+	// address. The number and the Merchant Account binding stay fixed.
+	UpdatePayApplication(context.Context, *UpdatePayApplicationRequest) (*PayApplication, error)
 	// WithdrawMerchantAccount WithdrawMerchantAccount soft-deletes the Merchant Account. In-flight
 	// Payments are not blocked — their channel is snapshotted; new ones are.
 	WithdrawMerchantAccount(context.Context, *WithdrawMerchantAccountRequest) (*emptypb.Empty, error)
+	// WithdrawPayApplication WithdrawPayApplication soft-deletes the Pay Application so it leaves
+	// the live set. Its display name can be used again.
+	WithdrawPayApplication(context.Context, *WithdrawPayApplicationRequest) (*emptypb.Empty, error)
 }
 
 func RegisterPayServiceHTTPServer(s *http.Server, srv PayServiceHTTPServer) {
 	r := s.Route("/")
+	r.Handle("POST", "/pay/application", _PayService_CreatePayApplication0_HTTP_Handler(srv))
+	r.Handle("GET", "/pay/application", _PayService_ListPayApplications0_HTTP_Handler(srv))
+	r.Handle("GET", "/pay/application/{application_id}", _PayService_GetPayApplication0_HTTP_Handler(srv))
+	r.Handle("PATCH", "/pay/application/{application_id}", _PayService_UpdatePayApplication0_HTTP_Handler(srv))
+	r.Handle("PUT", "/pay/application/{application_id}/status", _PayService_ChangePayApplicationStatus0_HTTP_Handler(srv))
+	r.Handle("DELETE", "/pay/application/{application_id}", _PayService_WithdrawPayApplication0_HTTP_Handler(srv))
 	r.Handle("POST", "/pay/merchant", _PayService_CreateMerchantAccount0_HTTP_Handler(srv))
 	r.Handle("GET", "/pay/merchant", _PayService_ListMerchantAccounts0_HTTP_Handler(srv))
 	r.Handle("GET", "/pay/merchant/{merchant_id}", _PayService_GetMerchantAccount0_HTTP_Handler(srv))
@@ -114,6 +144,132 @@ func RegisterPayServiceHTTPServer(s *http.Server, srv PayServiceHTTPServer) {
 	r.Handle("GET", "/pay/refund/{refund_id}", _PayService_GetRefund0_HTTP_Handler(srv))
 	r.Handle("GET", "/pay/refund", _PayService_ListRefunds0_HTTP_Handler(srv))
 	r.Handle("POST", "/pay/refund/{refund_id}/query", _PayService_QueryRefund0_HTTP_Handler(srv))
+}
+
+func _PayService_CreatePayApplication0_HTTP_Handler(srv PayServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in CreatePayApplicationRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationPayServiceCreatePayApplication)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.CreatePayApplication(ctx, req.(*CreatePayApplicationRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*PayApplication)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _PayService_ListPayApplications0_HTTP_Handler(srv PayServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListPayApplicationsRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationPayServiceListPayApplications)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListPayApplications(ctx, req.(*ListPayApplicationsRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*PayApplicationSet)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _PayService_GetPayApplication0_HTTP_Handler(srv PayServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in GetPayApplicationRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationPayServiceGetPayApplication)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.GetPayApplication(ctx, req.(*GetPayApplicationRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*PayApplication)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _PayService_UpdatePayApplication0_HTTP_Handler(srv PayServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in UpdatePayApplicationRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationPayServiceUpdatePayApplication)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.UpdatePayApplication(ctx, req.(*UpdatePayApplicationRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*PayApplication)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _PayService_ChangePayApplicationStatus0_HTTP_Handler(srv PayServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ChangePayApplicationStatusRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationPayServiceChangePayApplicationStatus)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ChangePayApplicationStatus(ctx, req.(*ChangePayApplicationStatusRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*PayApplication)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _PayService_WithdrawPayApplication0_HTTP_Handler(srv PayServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in WithdrawPayApplicationRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationPayServiceWithdrawPayApplication)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.WithdrawPayApplication(ctx, req.(*WithdrawPayApplicationRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*emptypb.Empty)
+		return ctx.Result(200, reply)
+	}
 }
 
 func _PayService_CreateMerchantAccount0_HTTP_Handler(srv PayServiceHTTPServer) func(ctx http.Context) error {
@@ -473,6 +629,9 @@ type PayServiceHTTPClient interface {
 	// ChangeMerchantAccountStatus ChangeMerchantAccountStatus enables or disables a Merchant Account.
 	// Disabling stops new Payments only; in-flight ones still settle.
 	ChangeMerchantAccountStatus(ctx context.Context, req *ChangeMerchantAccountStatusRequest, opts ...http.CallOption) (rsp *MerchantAccount, err error)
+	// ChangePayApplicationStatus ChangePayApplicationStatus enables or disables a Pay Application.
+	// Disabling stops new Payments and Refunds; in-flight ones still settle.
+	ChangePayApplicationStatus(ctx context.Context, req *ChangePayApplicationStatusRequest, opts ...http.CallOption) (rsp *PayApplication, err error)
 	// ClosePayment ClosePayment closes a PENDING Payment at the Channel, then locally. A
 	// Channel "already paid" answer flips to a query and settles PAID; late
 	// close intents on terminal Payments are no-ops.
@@ -480,6 +639,10 @@ type PayServiceHTTPClient interface {
 	// CreateMerchantAccount CreateMerchantAccount validates the config against the Channel's
 	// schema, encrypts it whole (ADR 0018), and records the masked echo.
 	CreateMerchantAccount(ctx context.Context, req *CreateMerchantAccountRequest, opts ...http.CallOption) (rsp *MerchantAccount, err error)
+	// CreatePayApplication CreatePayApplication binds a new Pay Application to exactly one
+	// Merchant Account that is enabled and not withdrawn. Either result
+	// address may be empty. There is no app key and no secret.
+	CreatePayApplication(ctx context.Context, req *CreatePayApplicationRequest, opts ...http.CallOption) (rsp *PayApplication, err error)
 	// CreatePayment CreatePayment initiates one Native Payment: it closes the Merchant
 	// Account's still-pending Payments for the Business Order Number, then
 	// prepays at the Channel and returns the Payment carrying the QR payload
@@ -496,6 +659,8 @@ type PayServiceHTTPClient interface {
 	GetChannelSchemas(ctx context.Context, req *GetChannelSchemasRequest, opts ...http.CallOption) (rsp *GetChannelSchemasResponse, err error)
 	// GetMerchantAccount GetMerchantAccount retrieves one Merchant Account (masked config).
 	GetMerchantAccount(ctx context.Context, req *GetMerchantAccountRequest, opts ...http.CallOption) (rsp *MerchantAccount, err error)
+	// GetPayApplication GetPayApplication retrieves one Pay Application that is not withdrawn.
+	GetPayApplication(ctx context.Context, req *GetPayApplicationRequest, opts ...http.CallOption) (rsp *PayApplication, err error)
 	// GetPayment GetPayment retrieves one Payment. A PENDING payment past its expiry
 	// settles first (channel-confirmed PAID wins, else EXPIRED).
 	GetPayment(ctx context.Context, req *GetPaymentRequest, opts ...http.CallOption) (rsp *Payment, err error)
@@ -504,6 +669,9 @@ type PayServiceHTTPClient interface {
 	// ListMerchantAccounts ListMerchantAccounts lists Merchant Accounts with AIP filter/order/
 	// page-token. Responses carry masked configs only.
 	ListMerchantAccounts(ctx context.Context, req *ListMerchantAccountsRequest, opts ...http.CallOption) (rsp *MerchantAccountSet, err error)
+	// ListPayApplications ListPayApplications lists Pay Applications that are not withdrawn,
+	// with AIP filter/order/page-token. Filterable by merchant_id and status.
+	ListPayApplications(ctx context.Context, req *ListPayApplicationsRequest, opts ...http.CallOption) (rsp *PayApplicationSet, err error)
 	// ListPayments ListPayments lists Payments with AIP filter/order/page-token. List
 	// reads never touch the Channel.
 	ListPayments(ctx context.Context, req *ListPaymentsRequest, opts ...http.CallOption) (rsp *PaymentSet, err error)
@@ -523,9 +691,15 @@ type PayServiceHTTPClient interface {
 	// config form; secret fields left blank keep their stored values
 	// (schema semantics, ADR 0021).
 	UpdateMerchantAccount(ctx context.Context, req *UpdateMerchantAccountRequest, opts ...http.CallOption) (rsp *MerchantAccount, err error)
+	// UpdatePayApplication UpdatePayApplication changes the display name and either result
+	// address. The number and the Merchant Account binding stay fixed.
+	UpdatePayApplication(ctx context.Context, req *UpdatePayApplicationRequest, opts ...http.CallOption) (rsp *PayApplication, err error)
 	// WithdrawMerchantAccount WithdrawMerchantAccount soft-deletes the Merchant Account. In-flight
 	// Payments are not blocked — their channel is snapshotted; new ones are.
 	WithdrawMerchantAccount(ctx context.Context, req *WithdrawMerchantAccountRequest, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
+	// WithdrawPayApplication WithdrawPayApplication soft-deletes the Pay Application so it leaves
+	// the live set. Its display name can be used again.
+	WithdrawPayApplication(ctx context.Context, req *WithdrawPayApplicationRequest, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
 }
 
 type PayServiceHTTPClientImpl struct {
@@ -546,6 +720,25 @@ func (c *PayServiceHTTPClientImpl) ChangeMerchantAccountStatus(ctx context.Conte
 		http.Accept("application/protojson"),
 		http.ContentType("application/protojson"),
 		http.Operation(OperationPayServiceChangeMerchantAccountStatus),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "PUT", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ChangePayApplicationStatus ChangePayApplicationStatus enables or disables a Pay Application.
+// Disabling stops new Payments and Refunds; in-flight ones still settle.
+func (c *PayServiceHTTPClientImpl) ChangePayApplicationStatus(ctx context.Context, in *ChangePayApplicationStatusRequest, opts ...http.CallOption) (*PayApplication, error) {
+	var out PayApplication
+	pattern := "/pay/application/{application_id}/status"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationPayServiceChangePayApplicationStatus),
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "PUT", path, in, &out, opts...)
@@ -585,6 +778,26 @@ func (c *PayServiceHTTPClientImpl) CreateMerchantAccount(ctx context.Context, in
 		http.Accept("application/protojson"),
 		http.ContentType("application/protojson"),
 		http.Operation(OperationPayServiceCreateMerchantAccount),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// CreatePayApplication CreatePayApplication binds a new Pay Application to exactly one
+// Merchant Account that is enabled and not withdrawn. Either result
+// address may be empty. There is no app key and no secret.
+func (c *PayServiceHTTPClientImpl) CreatePayApplication(ctx context.Context, in *CreatePayApplicationRequest, opts ...http.CallOption) (*PayApplication, error) {
+	var out PayApplication
+	pattern := "/pay/application"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationPayServiceCreatePayApplication),
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
@@ -672,6 +885,23 @@ func (c *PayServiceHTTPClientImpl) GetMerchantAccount(ctx context.Context, in *G
 	return &out, nil
 }
 
+// GetPayApplication GetPayApplication retrieves one Pay Application that is not withdrawn.
+func (c *PayServiceHTTPClientImpl) GetPayApplication(ctx context.Context, in *GetPayApplicationRequest, opts ...http.CallOption) (*PayApplication, error) {
+	var out PayApplication
+	pattern := "/pay/application/{application_id}"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationPayServiceGetPayApplication),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // GetPayment GetPayment retrieves one Payment. A PENDING payment past its expiry
 // settles first (channel-confirmed PAID wins, else EXPIRED).
 func (c *PayServiceHTTPClientImpl) GetPayment(ctx context.Context, in *GetPaymentRequest, opts ...http.CallOption) (*Payment, error) {
@@ -716,6 +946,24 @@ func (c *PayServiceHTTPClientImpl) ListMerchantAccounts(ctx context.Context, in 
 	opts = append([]http.CallOption{
 		http.Accept("application/protojson"),
 		http.Operation(OperationPayServiceListMerchantAccounts),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListPayApplications ListPayApplications lists Pay Applications that are not withdrawn,
+// with AIP filter/order/page-token. Filterable by merchant_id and status.
+func (c *PayServiceHTTPClientImpl) ListPayApplications(ctx context.Context, in *ListPayApplicationsRequest, opts ...http.CallOption) (*PayApplicationSet, error) {
+	var out PayApplicationSet
+	pattern := "/pay/application"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationPayServiceListPayApplications),
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
@@ -838,6 +1086,25 @@ func (c *PayServiceHTTPClientImpl) UpdateMerchantAccount(ctx context.Context, in
 	return &out, nil
 }
 
+// UpdatePayApplication UpdatePayApplication changes the display name and either result
+// address. The number and the Merchant Account binding stay fixed.
+func (c *PayServiceHTTPClientImpl) UpdatePayApplication(ctx context.Context, in *UpdatePayApplicationRequest, opts ...http.CallOption) (*PayApplication, error) {
+	var out PayApplication
+	pattern := "/pay/application/{application_id}"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationPayServiceUpdatePayApplication),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "PATCH", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // WithdrawMerchantAccount WithdrawMerchantAccount soft-deletes the Merchant Account. In-flight
 // Payments are not blocked — their channel is snapshotted; new ones are.
 func (c *PayServiceHTTPClientImpl) WithdrawMerchantAccount(ctx context.Context, in *WithdrawMerchantAccountRequest, opts ...http.CallOption) (*emptypb.Empty, error) {
@@ -847,6 +1114,24 @@ func (c *PayServiceHTTPClientImpl) WithdrawMerchantAccount(ctx context.Context, 
 	opts = append([]http.CallOption{
 		http.Accept("application/protojson"),
 		http.Operation(OperationPayServiceWithdrawMerchantAccount),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "DELETE", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// WithdrawPayApplication WithdrawPayApplication soft-deletes the Pay Application so it leaves
+// the live set. Its display name can be used again.
+func (c *PayServiceHTTPClientImpl) WithdrawPayApplication(ctx context.Context, in *WithdrawPayApplicationRequest, opts ...http.CallOption) (*emptypb.Empty, error) {
+	var out emptypb.Empty
+	pattern := "/pay/application/{application_id}"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationPayServiceWithdrawPayApplication),
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "DELETE", path, nil, &out, opts...)

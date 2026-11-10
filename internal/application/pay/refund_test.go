@@ -73,6 +73,7 @@ func TestCreateRefundConcurrentCapRaceExactlyOneWins(t *testing.T) {
 	locker := &serialLocker{}
 	app := NewPayApplication(
 		&fakeMerchantSvc{},
+		nil,
 		&fakePaymentSvc{},
 		refunds,
 		nil,

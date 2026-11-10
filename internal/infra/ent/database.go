@@ -129,6 +129,11 @@ func (db *Database) Param(ctx context.Context) *ParamClient {
 	return db.loadClient(ctx).Param
 }
 
+// PayApplication is the client for interacting with the PayApplication builders.
+func (db *Database) PayApplication(ctx context.Context) *PayApplicationClient {
+	return db.loadClient(ctx).PayApplication
+}
+
 // PayMerchantAccount is the client for interacting with the PayMerchantAccount builders.
 func (db *Database) PayMerchantAccount(ctx context.Context) *PayMerchantAccountClient {
 	return db.loadClient(ctx).PayMerchantAccount
