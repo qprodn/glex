@@ -36,6 +36,8 @@ type Tx struct {
 	Param *ParamClient
 	// PayApplication is the client for interacting with the PayApplication builders.
 	PayApplication *PayApplicationClient
+	// PayBusinessNotice is the client for interacting with the PayBusinessNotice builders.
+	PayBusinessNotice *PayBusinessNoticeClient
 	// PayMerchantAccount is the client for interacting with the PayMerchantAccount builders.
 	PayMerchantAccount *PayMerchantAccountClient
 	// PayNotifyLog is the client for interacting with the PayNotifyLog builders.
@@ -206,6 +208,7 @@ func (tx *Tx) init() {
 	tx.OperLog = NewOperLogClient(tx.config)
 	tx.Param = NewParamClient(tx.config)
 	tx.PayApplication = NewPayApplicationClient(tx.config)
+	tx.PayBusinessNotice = NewPayBusinessNoticeClient(tx.config)
 	tx.PayMerchantAccount = NewPayMerchantAccountClient(tx.config)
 	tx.PayNotifyLog = NewPayNotifyLogClient(tx.config)
 	tx.PayPayment = NewPayPaymentClient(tx.config)

@@ -20,15 +20,19 @@ const EventTypePaymentCompleted = "payment.completed"
 // prompt to look at the Payment, never as proof for moving money
 // (ADR 0022).
 //
-// Scope: today only the Channel Notification intake publishes this fact —
-// the query-settle, lazy-expiry-settle, and close-flip paths also land
-// PAID durably without an event. The coverage grows with the first real
-// subscriber; until then, absence of the event is not absence of payment.
+// Only Channel Notification intake publishes it, and only when that
+// intake's compare-and-swap is what first moves the Payment from pending
+// to paid. A read, an active query, the expiry sweep, and close may settle
+// the Payment as paid and still publish nothing. Absence of the event is
+// not absence of payment. ApplicationID is the Pay Application number,
+// added on the JSON without renaming or removing the fields already there
+// (ADR 0030).
 type PaymentCompletedEvent struct {
 	EventID        int64     `json:"event_id"`
 	OccurredAt     time.Time `json:"occurred_at"`
 	Type           string    `json:"type"`
 	PaymentID      int64     `json:"payment_id"`
+	ApplicationID  int64     `json:"application_id"`
 	MerchantID     int64     `json:"merchant_id"`
 	Channel        string    `json:"channel"`
 	BizNo          string    `json:"biz_no"`
@@ -48,6 +52,7 @@ func NewPaymentCompletedEvent(eventID int64, p *Payment, notif *ChannelNotificat
 		EventID:        eventID,
 		OccurredAt:     time.Now(),
 		PaymentID:      p.ID,
+		ApplicationID:  p.ApplicationID,
 		MerchantID:     p.MerchantID,
 		Channel:        p.Channel.Code(),
 		BizNo:          p.BizNo,

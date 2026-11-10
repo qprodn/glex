@@ -375,6 +375,48 @@ var (
 			},
 		},
 	}
+	// PayBusinessNoticeColumns holds the columns for the "pay_business_notice" table.
+	PayBusinessNoticeColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "application_id", Type: field.TypeInt64},
+		{Name: "kind", Type: field.TypeInt16},
+		{Name: "payment_id", Type: field.TypeInt64},
+		{Name: "refund_id", Type: field.TypeInt64, Nullable: true},
+		{Name: "biz_no", Type: field.TypeString, Size: 64},
+		{Name: "notify_url", Type: field.TypeString, Size: 512},
+		{Name: "status", Type: field.TypeInt16},
+		{Name: "attempt_count", Type: field.TypeInt, Default: 0},
+		{Name: "next_attempt_at", Type: field.TypeTime, Nullable: true},
+	}
+	// PayBusinessNoticeTable holds the schema information for the "pay_business_notice" table.
+	PayBusinessNoticeTable = &schema.Table{
+		Name:       "pay_business_notice",
+		Columns:    PayBusinessNoticeColumns,
+		PrimaryKey: []*schema.Column{PayBusinessNoticeColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "paybusinessnotice_kind_payment_id",
+				Unique:  true,
+				Columns: []*schema.Column{PayBusinessNoticeColumns[7], PayBusinessNoticeColumns[8]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL AND kind = 1",
+				},
+			},
+			{
+				Name:    "paybusinessnotice_kind_refund_id",
+				Unique:  true,
+				Columns: []*schema.Column{PayBusinessNoticeColumns[7], PayBusinessNoticeColumns[9]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL AND kind = 2",
+				},
+			},
+		},
+	}
 	// PayMerchantAccountColumns holds the columns for the "pay_merchant_account" table.
 	PayMerchantAccountColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -920,6 +962,7 @@ var (
 		SysOperLogTable,
 		SysConfigTable,
 		PayApplicationTable,
+		PayBusinessNoticeTable,
 		PayMerchantAccountTable,
 		PayNotifyLogTable,
 		PayPaymentTable,
@@ -970,6 +1013,9 @@ func init() {
 	}
 	PayApplicationTable.Annotation = &entsql.Annotation{
 		Table: "pay_application",
+	}
+	PayBusinessNoticeTable.Annotation = &entsql.Annotation{
+		Table: "pay_business_notice",
 	}
 	PayMerchantAccountTable.Annotation = &entsql.Annotation{
 		Table: "pay_merchant_account",

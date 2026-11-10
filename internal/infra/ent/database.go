@@ -134,6 +134,11 @@ func (db *Database) PayApplication(ctx context.Context) *PayApplicationClient {
 	return db.loadClient(ctx).PayApplication
 }
 
+// PayBusinessNotice is the client for interacting with the PayBusinessNotice builders.
+func (db *Database) PayBusinessNotice(ctx context.Context) *PayBusinessNoticeClient {
+	return db.loadClient(ctx).PayBusinessNotice
+}
+
 // PayMerchantAccount is the client for interacting with the PayMerchantAccount builders.
 func (db *Database) PayMerchantAccount(ctx context.Context) *PayMerchantAccountClient {
 	return db.loadClient(ctx).PayMerchantAccount

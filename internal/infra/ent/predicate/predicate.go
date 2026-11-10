@@ -39,6 +39,9 @@ type Param func(*sql.Selector)
 // PayApplication is the predicate function for payapplication builders.
 type PayApplication func(*sql.Selector)
 
+// PayBusinessNotice is the predicate function for paybusinessnotice builders.
+type PayBusinessNotice func(*sql.Selector)
+
 // PayMerchantAccount is the predicate function for paymerchantaccount builders.
 type PayMerchantAccount func(*sql.Selector)
 

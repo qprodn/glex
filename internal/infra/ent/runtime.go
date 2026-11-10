@@ -14,6 +14,7 @@ import (
 	"glex/internal/infra/ent/operlog"
 	"glex/internal/infra/ent/param"
 	"glex/internal/infra/ent/payapplication"
+	"glex/internal/infra/ent/paybusinessnotice"
 	"glex/internal/infra/ent/paymerchantaccount"
 	"glex/internal/infra/ent/paynotifylog"
 	"glex/internal/infra/ent/paypayment"
@@ -663,6 +664,41 @@ func init() {
 	payapplication.DefaultRemark = payapplicationDescRemark.Default.(string)
 	// payapplication.RemarkValidator is a validator for the "remark" field. It is called by the builders before save.
 	payapplication.RemarkValidator = payapplicationDescRemark.Validators[0].(func(string) error)
+	paybusinessnoticeMixin := schema.PayBusinessNotice{}.Mixin()
+	paybusinessnoticeMixinFields0 := paybusinessnoticeMixin[0].Fields()
+	_ = paybusinessnoticeMixinFields0
+	paybusinessnoticeFields := schema.PayBusinessNotice{}.Fields()
+	_ = paybusinessnoticeFields
+	// paybusinessnoticeDescCreateBy is the schema descriptor for create_by field.
+	paybusinessnoticeDescCreateBy := paybusinessnoticeMixinFields0[0].Descriptor()
+	// paybusinessnotice.DefaultCreateBy holds the default value on creation for the create_by field.
+	paybusinessnotice.DefaultCreateBy = paybusinessnoticeDescCreateBy.Default.(int64)
+	// paybusinessnoticeDescUpdateBy is the schema descriptor for update_by field.
+	paybusinessnoticeDescUpdateBy := paybusinessnoticeMixinFields0[1].Descriptor()
+	// paybusinessnotice.DefaultUpdateBy holds the default value on creation for the update_by field.
+	paybusinessnotice.DefaultUpdateBy = paybusinessnoticeDescUpdateBy.Default.(int64)
+	// paybusinessnoticeDescCreatedAt is the schema descriptor for created_at field.
+	paybusinessnoticeDescCreatedAt := paybusinessnoticeMixinFields0[2].Descriptor()
+	// paybusinessnotice.DefaultCreatedAt holds the default value on creation for the created_at field.
+	paybusinessnotice.DefaultCreatedAt = paybusinessnoticeDescCreatedAt.Default.(func() time.Time)
+	// paybusinessnoticeDescUpdatedAt is the schema descriptor for updated_at field.
+	paybusinessnoticeDescUpdatedAt := paybusinessnoticeMixinFields0[3].Descriptor()
+	// paybusinessnotice.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	paybusinessnotice.DefaultUpdatedAt = paybusinessnoticeDescUpdatedAt.Default.(func() time.Time)
+	// paybusinessnotice.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	paybusinessnotice.UpdateDefaultUpdatedAt = paybusinessnoticeDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// paybusinessnoticeDescBizNo is the schema descriptor for biz_no field.
+	paybusinessnoticeDescBizNo := paybusinessnoticeFields[5].Descriptor()
+	// paybusinessnotice.BizNoValidator is a validator for the "biz_no" field. It is called by the builders before save.
+	paybusinessnotice.BizNoValidator = paybusinessnoticeDescBizNo.Validators[0].(func(string) error)
+	// paybusinessnoticeDescNotifyURL is the schema descriptor for notify_url field.
+	paybusinessnoticeDescNotifyURL := paybusinessnoticeFields[6].Descriptor()
+	// paybusinessnotice.NotifyURLValidator is a validator for the "notify_url" field. It is called by the builders before save.
+	paybusinessnotice.NotifyURLValidator = paybusinessnoticeDescNotifyURL.Validators[0].(func(string) error)
+	// paybusinessnoticeDescAttemptCount is the schema descriptor for attempt_count field.
+	paybusinessnoticeDescAttemptCount := paybusinessnoticeFields[8].Descriptor()
+	// paybusinessnotice.DefaultAttemptCount holds the default value on creation for the attempt_count field.
+	paybusinessnotice.DefaultAttemptCount = paybusinessnoticeDescAttemptCount.Default.(int)
 	paymerchantaccountMixin := schema.PayMerchantAccount{}.Mixin()
 	paymerchantaccountMixinFields0 := paymerchantaccountMixin[0].Fields()
 	_ = paymerchantaccountMixinFields0

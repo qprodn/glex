@@ -22,6 +22,7 @@ import (
 	"glex/internal/infra/ent/operlog"
 	"glex/internal/infra/ent/param"
 	"glex/internal/infra/ent/payapplication"
+	"glex/internal/infra/ent/paybusinessnotice"
 	"glex/internal/infra/ent/paymerchantaccount"
 	"glex/internal/infra/ent/paynotifylog"
 	"glex/internal/infra/ent/paypayment"
@@ -72,6 +73,8 @@ type Client struct {
 	Param *ParamClient
 	// PayApplication is the client for interacting with the PayApplication builders.
 	PayApplication *PayApplicationClient
+	// PayBusinessNotice is the client for interacting with the PayBusinessNotice builders.
+	PayBusinessNotice *PayBusinessNoticeClient
 	// PayMerchantAccount is the client for interacting with the PayMerchantAccount builders.
 	PayMerchantAccount *PayMerchantAccountClient
 	// PayNotifyLog is the client for interacting with the PayNotifyLog builders.
@@ -122,6 +125,7 @@ func (c *Client) init() {
 	c.OperLog = NewOperLogClient(c.config)
 	c.Param = NewParamClient(c.config)
 	c.PayApplication = NewPayApplicationClient(c.config)
+	c.PayBusinessNotice = NewPayBusinessNoticeClient(c.config)
 	c.PayMerchantAccount = NewPayMerchantAccountClient(c.config)
 	c.PayNotifyLog = NewPayNotifyLogClient(c.config)
 	c.PayPayment = NewPayPaymentClient(c.config)
@@ -239,6 +243,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		OperLog:               NewOperLogClient(cfg),
 		Param:                 NewParamClient(cfg),
 		PayApplication:        NewPayApplicationClient(cfg),
+		PayBusinessNotice:     NewPayBusinessNoticeClient(cfg),
 		PayMerchantAccount:    NewPayMerchantAccountClient(cfg),
 		PayNotifyLog:          NewPayNotifyLogClient(cfg),
 		PayPayment:            NewPayPaymentClient(cfg),
@@ -283,6 +288,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		OperLog:               NewOperLogClient(cfg),
 		Param:                 NewParamClient(cfg),
 		PayApplication:        NewPayApplicationClient(cfg),
+		PayBusinessNotice:     NewPayBusinessNoticeClient(cfg),
 		PayMerchantAccount:    NewPayMerchantAccountClient(cfg),
 		PayNotifyLog:          NewPayNotifyLogClient(cfg),
 		PayPayment:            NewPayPaymentClient(cfg),
@@ -327,10 +333,10 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Dept, c.DictData, c.DictType, c.File, c.Job, c.JobLog, c.LoginLog, c.Menu,
-		c.OperLog, c.Param, c.PayApplication, c.PayMerchantAccount, c.PayNotifyLog,
-		c.PayPayment, c.PayRefund, c.Post, c.Role, c.RoleMenu, c.User, c.UserPost,
-		c.UserRole, c.WechatAdoptedTemplate, c.WechatApp, c.WechatDispatch,
-		c.WechatPlatform,
+		c.OperLog, c.Param, c.PayApplication, c.PayBusinessNotice,
+		c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment, c.PayRefund, c.Post,
+		c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole, c.WechatAdoptedTemplate,
+		c.WechatApp, c.WechatDispatch, c.WechatPlatform,
 	} {
 		n.Use(hooks...)
 	}
@@ -341,10 +347,10 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Dept, c.DictData, c.DictType, c.File, c.Job, c.JobLog, c.LoginLog, c.Menu,
-		c.OperLog, c.Param, c.PayApplication, c.PayMerchantAccount, c.PayNotifyLog,
-		c.PayPayment, c.PayRefund, c.Post, c.Role, c.RoleMenu, c.User, c.UserPost,
-		c.UserRole, c.WechatAdoptedTemplate, c.WechatApp, c.WechatDispatch,
-		c.WechatPlatform,
+		c.OperLog, c.Param, c.PayApplication, c.PayBusinessNotice,
+		c.PayMerchantAccount, c.PayNotifyLog, c.PayPayment, c.PayRefund, c.Post,
+		c.Role, c.RoleMenu, c.User, c.UserPost, c.UserRole, c.WechatAdoptedTemplate,
+		c.WechatApp, c.WechatDispatch, c.WechatPlatform,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -375,6 +381,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Param.mutate(ctx, m)
 	case *PayApplicationMutation:
 		return c.PayApplication.mutate(ctx, m)
+	case *PayBusinessNoticeMutation:
+		return c.PayBusinessNotice.mutate(ctx, m)
 	case *PayMerchantAccountMutation:
 		return c.PayMerchantAccount.mutate(ctx, m)
 	case *PayNotifyLogMutation:
@@ -1884,6 +1892,139 @@ func (c *PayApplicationClient) mutate(ctx context.Context, m *PayApplicationMuta
 		return (&PayApplicationDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown PayApplication mutation op: %q", m.Op())
+	}
+}
+
+// PayBusinessNoticeClient is a client for the PayBusinessNotice schema.
+type PayBusinessNoticeClient struct {
+	config
+}
+
+// NewPayBusinessNoticeClient returns a client for the PayBusinessNotice from the given config.
+func NewPayBusinessNoticeClient(c config) *PayBusinessNoticeClient {
+	return &PayBusinessNoticeClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `paybusinessnotice.Hooks(f(g(h())))`.
+func (c *PayBusinessNoticeClient) Use(hooks ...Hook) {
+	c.hooks.PayBusinessNotice = append(c.hooks.PayBusinessNotice, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `paybusinessnotice.Intercept(f(g(h())))`.
+func (c *PayBusinessNoticeClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PayBusinessNotice = append(c.inters.PayBusinessNotice, interceptors...)
+}
+
+// Create returns a builder for creating a PayBusinessNotice entity.
+func (c *PayBusinessNoticeClient) Create() *PayBusinessNoticeCreate {
+	mutation := newPayBusinessNoticeMutation(c.config, OpCreate)
+	return &PayBusinessNoticeCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PayBusinessNotice entities.
+func (c *PayBusinessNoticeClient) CreateBulk(builders ...*PayBusinessNoticeCreate) *PayBusinessNoticeCreateBulk {
+	return &PayBusinessNoticeCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PayBusinessNoticeClient) MapCreateBulk(slice any, setFunc func(*PayBusinessNoticeCreate, int)) *PayBusinessNoticeCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PayBusinessNoticeCreateBulk{err: fmt.Errorf("calling to PayBusinessNoticeClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PayBusinessNoticeCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PayBusinessNoticeCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PayBusinessNotice.
+func (c *PayBusinessNoticeClient) Update() *PayBusinessNoticeUpdate {
+	mutation := newPayBusinessNoticeMutation(c.config, OpUpdate)
+	return &PayBusinessNoticeUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PayBusinessNoticeClient) UpdateOne(_m *PayBusinessNotice) *PayBusinessNoticeUpdateOne {
+	mutation := newPayBusinessNoticeMutation(c.config, OpUpdateOne, withPayBusinessNotice(_m))
+	return &PayBusinessNoticeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PayBusinessNoticeClient) UpdateOneID(id int64) *PayBusinessNoticeUpdateOne {
+	mutation := newPayBusinessNoticeMutation(c.config, OpUpdateOne, withPayBusinessNoticeID(id))
+	return &PayBusinessNoticeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PayBusinessNotice.
+func (c *PayBusinessNoticeClient) Delete() *PayBusinessNoticeDelete {
+	mutation := newPayBusinessNoticeMutation(c.config, OpDelete)
+	return &PayBusinessNoticeDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PayBusinessNoticeClient) DeleteOne(_m *PayBusinessNotice) *PayBusinessNoticeDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PayBusinessNoticeClient) DeleteOneID(id int64) *PayBusinessNoticeDeleteOne {
+	builder := c.Delete().Where(paybusinessnotice.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PayBusinessNoticeDeleteOne{builder}
+}
+
+// Query returns a query builder for PayBusinessNotice.
+func (c *PayBusinessNoticeClient) Query() *PayBusinessNoticeQuery {
+	return &PayBusinessNoticeQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePayBusinessNotice},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PayBusinessNotice entity by its id.
+func (c *PayBusinessNoticeClient) Get(ctx context.Context, id int64) (*PayBusinessNotice, error) {
+	return c.Query().Where(paybusinessnotice.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PayBusinessNoticeClient) GetX(ctx context.Context, id int64) *PayBusinessNotice {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PayBusinessNoticeClient) Hooks() []Hook {
+	return c.hooks.PayBusinessNotice
+}
+
+// Interceptors returns the client interceptors.
+func (c *PayBusinessNoticeClient) Interceptors() []Interceptor {
+	return c.inters.PayBusinessNotice
+}
+
+func (c *PayBusinessNoticeClient) mutate(ctx context.Context, m *PayBusinessNoticeMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PayBusinessNoticeCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PayBusinessNoticeUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PayBusinessNoticeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PayBusinessNoticeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PayBusinessNotice mutation op: %q", m.Op())
 	}
 }
 
@@ -3929,15 +4070,16 @@ func (c *WechatPlatformClient) mutate(ctx context.Context, m *WechatPlatformMuta
 type (
 	hooks struct {
 		Dept, DictData, DictType, File, Job, JobLog, LoginLog, Menu, OperLog, Param,
-		PayApplication, PayMerchantAccount, PayNotifyLog, PayPayment, PayRefund, Post,
-		Role, RoleMenu, User, UserPost, UserRole, WechatAdoptedTemplate, WechatApp,
-		WechatDispatch, WechatPlatform []ent.Hook
+		PayApplication, PayBusinessNotice, PayMerchantAccount, PayNotifyLog,
+		PayPayment, PayRefund, Post, Role, RoleMenu, User, UserPost, UserRole,
+		WechatAdoptedTemplate, WechatApp, WechatDispatch, WechatPlatform []ent.Hook
 	}
 	inters struct {
 		Dept, DictData, DictType, File, Job, JobLog, LoginLog, Menu, OperLog, Param,
-		PayApplication, PayMerchantAccount, PayNotifyLog, PayPayment, PayRefund, Post,
-		Role, RoleMenu, User, UserPost, UserRole, WechatAdoptedTemplate, WechatApp,
-		WechatDispatch, WechatPlatform []ent.Interceptor
+		PayApplication, PayBusinessNotice, PayMerchantAccount, PayNotifyLog,
+		PayPayment, PayRefund, Post, Role, RoleMenu, User, UserPost, UserRole,
+		WechatAdoptedTemplate, WechatApp, WechatDispatch,
+		WechatPlatform []ent.Interceptor
 	}
 )
 

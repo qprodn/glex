@@ -344,6 +344,18 @@ func (r *goldNotifyRepo) MarkProcessed(ctx context.Context, id int64) error { re
 
 func (r *goldNotifyRepo) NextID() int64 { return 900 }
 
+// goldNoticeRepo satisfies intake. The gold payment's copied result address
+// is empty, so intake does not insert a notice on this path.
+type goldNoticeRepo struct{}
+
+func (goldNoticeRepo) Insert(context.Context, *payentity.BusinessNotice) (bool, error) {
+	return true, nil
+}
+
+func (goldNoticeRepo) NextID() int64 { return 1 }
+
+var _ payrepo.BusinessNoticeRepo = goldNoticeRepo{}
+
 // ---- fixtures ----
 
 const goldMasterKey = "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="
@@ -409,7 +421,7 @@ func newGoldFixture(t *testing.T) *goldFixture {
 	merchantSvc := payservice.NewMerchantService(merchantRepo, &goldCatalog{}, cipher, registry, slog.New(slog.DiscardHandler))
 	paymentSvc := payservice.NewPaymentService(payments, goldApplicationRepo{}, merchantRepo, registry, slog.New(slog.DiscardHandler))
 	refundSvc := payservice.NewRefundService(nil, payments, merchantRepo, registry, slog.New(slog.DiscardHandler))
-	intake := payservice.NewIntake(merchantSvc, paymentSvc, refundSvc, notifyRepo, goldPublisher{}, slog.New(slog.DiscardHandler))
+	intake := payservice.NewIntake(merchantSvc, paymentSvc, refundSvc, notifyRepo, goldNoticeRepo{}, goldPublisher{}, slog.New(slog.DiscardHandler))
 
 	app := pay.NewPayApplication(
 		merchantSvc,
