@@ -257,6 +257,8 @@ type payFixture struct {
 	payments      *fakePaymentRepo
 	apps          *fakePayApplicationRepo
 	merchants     *fakeMerchantRepo
+	notices       *memNotices
+	completed     *memPublisher
 	applicationID int64
 	merchantID    int64
 }
@@ -298,9 +300,12 @@ func newPayFixture(t *testing.T, gw *scriptGateway) payFixture {
 	if err != nil {
 		t.Fatalf("create application fixture: %v", err)
 	}
-	svc := NewPaymentService(repo, apps, merchantRepo, &scriptGateways{gw: gw}, slog.New(slog.DiscardHandler))
+	notices := &memNotices{}
+	completed := &memPublisher{}
+	svc := NewPaymentService(repo, apps, merchantRepo, &scriptGateways{gw: gw}, notices, completed, slog.New(slog.DiscardHandler))
 	return payFixture{
 		svc: svc, payments: repo, apps: apps, merchants: merchantRepo,
+		notices: notices, completed: completed,
 		applicationID: app.ID, merchantID: m.ID,
 	}
 }
@@ -936,6 +941,211 @@ func TestSweepExpiredPagesPastPoisonedHead(t *testing.T) {
 	}
 }
 
+func TestGetExpiredPendingPaidRecordsNoticeWithoutPaymentCompleted(t *testing.T) {
+	paidAt := time.Date(2026, 9, 14, 10, 0, 0, 0, time.UTC)
+	gw := &scriptGateway{
+		queryState: ChannelPaymentState{
+			State:          payentity.PaymentPaid,
+			ChannelTradeNo: "wx-txn-77",
+			PayerID:        "openid-77",
+			PaidAt:         paidAt,
+			Amount:         100,
+		},
+	}
+	fix := newPayFixture(t, gw)
+	p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+	if err != nil {
+		t.Fatalf("initiate: %v", err)
+	}
+	fix.payments.p[p.ID].ExpireTime = time.Now().Add(-time.Hour)
+	before := time.Now()
+	out, err := fix.svc.Get(context.Background(), p.ID)
+	after := time.Now()
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if out.Status != payentity.PaymentPaid || out.ChannelTradeNo != "wx-txn-77" {
+		t.Fatalf("settled payment = %+v, want paid", out)
+	}
+	if len(fix.completed.sent) != 0 {
+		t.Fatalf("published %d Payment Completed events, want 0", len(fix.completed.sent))
+	}
+	if len(fix.notices.rows) != 1 {
+		t.Fatalf("notices = %d, want 1", len(fix.notices.rows))
+	}
+	notice := fix.notices.rows[0]
+	if notice.Kind != payentity.NoticeKindPayment || notice.Status != payentity.NoticeWaiting ||
+		notice.ApplicationID != fix.applicationID || notice.PaymentID != p.ID || notice.RefundID != 0 ||
+		notice.BizNo != "ORDER-1" || notice.NotifyURL != "https://shop.example/paid" ||
+		notice.AttemptCount != 0 || notice.NextAttemptAt.Before(before) || notice.NextAttemptAt.After(after) {
+		t.Fatalf("notice = %+v, want one waiting payment notice for ORDER-1", notice)
+	}
+}
+
+func TestGetByBizNoExpiredPendingPaidRecordsNoticeWithoutPaymentCompleted(t *testing.T) {
+	gw := &scriptGateway{
+		queryState: ChannelPaymentState{
+			State:          payentity.PaymentPaid,
+			ChannelTradeNo: "wx-txn-biz",
+			PaidAt:         time.Date(2026, 9, 14, 11, 0, 0, 0, time.UTC),
+			Amount:         100,
+		},
+	}
+	fix := newPayFixture(t, gw)
+	p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+	if err != nil {
+		t.Fatalf("initiate: %v", err)
+	}
+	fix.payments.p[p.ID].ExpireTime = time.Now().Add(-time.Hour)
+	before := time.Now()
+	out, err := fix.svc.GetByBizNo(context.Background(), GetByBizNoRequest{
+		ApplicationID: fix.applicationID, BizNo: "ORDER-1",
+	})
+	after := time.Now()
+	if err != nil {
+		t.Fatalf("get by biz no: %v", err)
+	}
+	if out.Status != payentity.PaymentPaid || out.ID != p.ID {
+		t.Fatalf("settled payment = %+v, want paid %d", out, p.ID)
+	}
+	if len(fix.completed.sent) != 0 {
+		t.Fatalf("published %d Payment Completed events, want 0", len(fix.completed.sent))
+	}
+	if len(fix.notices.rows) != 1 {
+		t.Fatalf("notices = %d, want 1", len(fix.notices.rows))
+	}
+	notice := fix.notices.rows[0]
+	if notice.Kind != payentity.NoticeKindPayment || notice.Status != payentity.NoticeWaiting ||
+		notice.ApplicationID != fix.applicationID || notice.PaymentID != p.ID || notice.RefundID != 0 ||
+		notice.BizNo != "ORDER-1" || notice.NotifyURL != "https://shop.example/paid" ||
+		notice.AttemptCount != 0 || notice.NextAttemptAt.Before(before) || notice.NextAttemptAt.After(after) {
+		t.Fatalf("notice = %+v, want one waiting payment notice for ORDER-1", notice)
+	}
+}
+
+func TestQueryPendingPaidRecordsNoticeWithoutPaymentCompleted(t *testing.T) {
+	gw := &scriptGateway{
+		queryState: ChannelPaymentState{
+			State:          payentity.PaymentPaid,
+			ChannelTradeNo: "wx-txn-query",
+			PaidAt:         time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC),
+			Amount:         100,
+		},
+	}
+	fix := newPayFixture(t, gw)
+	p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+	if err != nil {
+		t.Fatalf("initiate: %v", err)
+	}
+	if !p.ExpireTime.After(time.Now()) {
+		t.Fatal("fixture payment is already expired; query must settle a live pending payment")
+	}
+	before := time.Now()
+	out, err := fix.svc.Query(context.Background(), p.ID)
+	after := time.Now()
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if out.Status != payentity.PaymentPaid || out.ChannelTradeNo != "wx-txn-query" {
+		t.Fatalf("settled payment = %+v, want paid", out)
+	}
+	if len(fix.completed.sent) != 0 {
+		t.Fatalf("published %d Payment Completed events, want 0", len(fix.completed.sent))
+	}
+	if len(fix.notices.rows) != 1 {
+		t.Fatalf("notices = %d, want 1", len(fix.notices.rows))
+	}
+	notice := fix.notices.rows[0]
+	if notice.Kind != payentity.NoticeKindPayment || notice.Status != payentity.NoticeWaiting ||
+		notice.ApplicationID != fix.applicationID || notice.PaymentID != p.ID || notice.RefundID != 0 ||
+		notice.BizNo != "ORDER-1" || notice.NotifyURL != "https://shop.example/paid" ||
+		notice.AttemptCount != 0 || notice.NextAttemptAt.Before(before) || notice.NextAttemptAt.After(after) {
+		t.Fatalf("notice = %+v, want one waiting payment notice for ORDER-1", notice)
+	}
+}
+
+func TestSweepExpiredPaidRecordsNoticeWithoutPaymentCompleted(t *testing.T) {
+	gw := &scriptGateway{
+		queryState: ChannelPaymentState{
+			State:          payentity.PaymentPaid,
+			ChannelTradeNo: "wx-txn-sweep",
+			PaidAt:         time.Date(2026, 9, 14, 13, 0, 0, 0, time.UTC),
+			Amount:         100,
+		},
+	}
+	fix := newPayFixture(t, gw)
+	p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+	if err != nil {
+		t.Fatalf("initiate: %v", err)
+	}
+	fix.payments.p[p.ID].ExpireTime = time.Now().Add(-time.Hour)
+	before := time.Now()
+	settled, err := fix.svc.SweepExpired(context.Background(), 50)
+	after := time.Now()
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if settled != 1 {
+		t.Fatalf("settled = %d, want 1", settled)
+	}
+	stored := fix.payments.p[p.ID]
+	if stored.Status != payentity.PaymentPaid || stored.ChannelTradeNo != "wx-txn-sweep" {
+		t.Fatalf("swept payment = %+v, want paid", stored)
+	}
+	if len(fix.completed.sent) != 0 {
+		t.Fatalf("published %d Payment Completed events, want 0", len(fix.completed.sent))
+	}
+	if len(fix.notices.rows) != 1 {
+		t.Fatalf("notices = %d, want 1", len(fix.notices.rows))
+	}
+	notice := fix.notices.rows[0]
+	if notice.Kind != payentity.NoticeKindPayment || notice.Status != payentity.NoticeWaiting ||
+		notice.ApplicationID != fix.applicationID || notice.PaymentID != p.ID || notice.RefundID != 0 ||
+		notice.BizNo != "ORDER-1" || notice.NotifyURL != "https://shop.example/paid" ||
+		notice.AttemptCount != 0 || notice.NextAttemptAt.Before(before) || notice.NextAttemptAt.After(after) {
+		t.Fatalf("notice = %+v, want one waiting payment notice for ORDER-1", notice)
+	}
+}
+
+func TestCloseAlreadyPaidRecordsNoticeWithoutPaymentCompleted(t *testing.T) {
+	gw := &scriptGateway{
+		closeErr: ErrChannelAlreadyPaid,
+		queryState: ChannelPaymentState{
+			State:          payentity.PaymentPaid,
+			ChannelTradeNo: "wx-txn-flip",
+			PaidAt:         time.Date(2026, 9, 14, 14, 0, 0, 0, time.UTC),
+			Amount:         100,
+		},
+	}
+	fix := newPayFixture(t, gw)
+	p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+	if err != nil {
+		t.Fatalf("initiate: %v", err)
+	}
+	before := time.Now()
+	out, err := fix.svc.Close(context.Background(), ClosePaymentRequest{ID: p.ID, ActorID: 7})
+	after := time.Now()
+	if err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if out.Status != payentity.PaymentPaid || out.ChannelTradeNo != "wx-txn-flip" {
+		t.Fatalf("flipped payment = %+v, want paid", out)
+	}
+	if len(fix.completed.sent) != 0 {
+		t.Fatalf("published %d Payment Completed events, want 0", len(fix.completed.sent))
+	}
+	if len(fix.notices.rows) != 1 {
+		t.Fatalf("notices = %d, want 1", len(fix.notices.rows))
+	}
+	notice := fix.notices.rows[0]
+	if notice.Kind != payentity.NoticeKindPayment || notice.Status != payentity.NoticeWaiting ||
+		notice.ApplicationID != fix.applicationID || notice.PaymentID != p.ID || notice.RefundID != 0 ||
+		notice.BizNo != "ORDER-1" || notice.NotifyURL != "https://shop.example/paid" ||
+		notice.AttemptCount != 0 || notice.NextAttemptAt.Before(before) || notice.NextAttemptAt.After(after) {
+		t.Fatalf("notice = %+v, want one waiting payment notice for ORDER-1", notice)
+	}
+}
+
 func TestSweepExpiredStopsOnDeadContext(t *testing.T) {
 	gw := &scriptGateway{queryState: ChannelPaymentState{State: payentity.PaymentPending}}
 	svc, repo, applicationID := newTestPaymentService(t, gw)
@@ -945,5 +1155,388 @@ func TestSweepExpiredStopsOnDeadContext(t *testing.T) {
 	cancel()
 	if _, err := svc.SweepExpired(ctx, 50); !errors.Is(err, context.Canceled) {
 		t.Fatalf("err = %v, want context.Canceled surfaced, not masked as success", err)
+	}
+}
+
+func assertNoPaymentCompleted(t *testing.T, fix payFixture) {
+	t.Helper()
+	if len(fix.completed.sent) != 0 {
+		t.Fatalf("published %d Payment Completed events, want 0", len(fix.completed.sent))
+	}
+}
+
+func assertOneWaitingPaymentNotice(t *testing.T, fix payFixture, paymentID int64, bizNo string, before, after time.Time) {
+	t.Helper()
+	assertNoPaymentCompleted(t, fix)
+	if len(fix.notices.rows) != 1 {
+		t.Fatalf("notices = %d, want 1", len(fix.notices.rows))
+	}
+	notice := fix.notices.rows[0]
+	if notice.Kind != payentity.NoticeKindPayment || notice.Status != payentity.NoticeWaiting ||
+		notice.ApplicationID != fix.applicationID || notice.PaymentID != paymentID || notice.RefundID != 0 ||
+		notice.BizNo != bizNo || notice.NotifyURL != "https://shop.example/paid" ||
+		notice.AttemptCount != 0 || notice.NextAttemptAt.Before(before) || notice.NextAttemptAt.After(after) {
+		t.Fatalf("notice = %+v, want one waiting payment notice for %s", notice, bizNo)
+	}
+}
+
+func paidChannelState(tradeNo string) ChannelPaymentState {
+	return ChannelPaymentState{
+		State:          payentity.PaymentPaid,
+		ChannelTradeNo: tradeNo,
+		PaidAt:         time.Date(2026, 9, 14, 15, 0, 0, 0, time.UTC),
+		Amount:         100,
+	}
+}
+
+func TestEmptyCopiedAddressRecordsNoNoticeAfterApplicationAddressIsFilled(t *testing.T) {
+	fix := newPayFixture(t, &scriptGateway{queryState: paidChannelState("wx-txn-empty")})
+	fix.apps.m[fix.applicationID].OrderNotifyURL = ""
+	p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+	if err != nil {
+		t.Fatalf("initiate: %v", err)
+	}
+	if p.NotifyURL != "" {
+		t.Fatalf("copied address = %q, want empty", p.NotifyURL)
+	}
+	fix.apps.m[fix.applicationID].OrderNotifyURL = "https://shop.example/later"
+	out, err := fix.svc.Query(context.Background(), p.ID)
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if out.Status != payentity.PaymentPaid || out.NotifyURL != "" {
+		t.Fatalf("payment = %+v, want paid with the empty copied address", out)
+	}
+	if len(fix.notices.rows) != 0 {
+		t.Fatalf("notices = %+v, want none when the copied address is empty", fix.notices.rows)
+	}
+	assertNoPaymentCompleted(t, fix)
+}
+
+func TestPaidNoticeInsertFailureDoesNotFailSettlement(t *testing.T) {
+	fix := newPayFixture(t, &scriptGateway{queryState: paidChannelState("wx-txn-degraded")})
+	p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+	if err != nil {
+		t.Fatalf("initiate: %v", err)
+	}
+	fix.notices.err = errors.New("store down")
+	out, err := fix.svc.Query(context.Background(), p.ID)
+	if err != nil {
+		t.Fatalf("query: %v, want the paid settlement kept", err)
+	}
+	if out.Status != payentity.PaymentPaid {
+		t.Fatalf("status = %v, want paid", out.Status)
+	}
+	if fix.notices.inserts != 1 || len(fix.notices.rows) != 0 {
+		t.Fatalf("inserts = %d rows = %d, want one failed insert and no row", fix.notices.inserts, len(fix.notices.rows))
+	}
+	assertNoPaymentCompleted(t, fix)
+}
+
+func TestDuplicatePaidNoticeInsertIsNotAnError(t *testing.T) {
+	fix := newPayFixture(t, &scriptGateway{queryState: paidChannelState("wx-txn-dup")})
+	p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+	if err != nil {
+		t.Fatalf("initiate: %v", err)
+	}
+	fix.notices.rows = append(fix.notices.rows, &payentity.BusinessNotice{
+		ID: 1, ApplicationID: fix.applicationID, Kind: payentity.NoticeKindPayment,
+		PaymentID: p.ID, BizNo: "ORDER-1", NotifyURL: "https://already.example/paid",
+		Status: payentity.NoticeWaiting,
+	})
+	out, err := fix.svc.Query(context.Background(), p.ID)
+	if err != nil {
+		t.Fatalf("query: %v, want duplicate notice insert ignored", err)
+	}
+	if out.Status != payentity.PaymentPaid {
+		t.Fatalf("status = %v, want paid", out.Status)
+	}
+	if fix.notices.inserts != 1 || len(fix.notices.rows) != 1 || fix.notices.rows[0].NotifyURL != "https://already.example/paid" {
+		t.Fatalf("notices = %+v inserts = %d, want the original notice kept", fix.notices.rows, fix.notices.inserts)
+	}
+	assertNoPaymentCompleted(t, fix)
+}
+
+func TestQueryAgainDoesNotRecordASecondNotice(t *testing.T) {
+	fix := newPayFixture(t, &scriptGateway{queryState: paidChannelState("wx-txn-once")})
+	p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+	if err != nil {
+		t.Fatalf("initiate: %v", err)
+	}
+	if _, err := fix.svc.Query(context.Background(), p.ID); err != nil {
+		t.Fatalf("first query: %v", err)
+	}
+	if _, err := fix.svc.Query(context.Background(), p.ID); err != nil {
+		t.Fatalf("second query: %v", err)
+	}
+	if len(fix.notices.rows) != 1 || fix.notices.inserts != 1 {
+		t.Fatalf("notices = %d inserts = %d, want one notice from the first paid transition", len(fix.notices.rows), fix.notices.inserts)
+	}
+	assertNoPaymentCompleted(t, fix)
+}
+
+func TestApplyChannelStatePaidDoesNotRecordNotice(t *testing.T) {
+	fix := newPayFixture(t, &scriptGateway{})
+	p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+	if err != nil {
+		t.Fatalf("initiate: %v", err)
+	}
+	advanced, err := fix.svc.ApplyChannelState(context.Background(), ApplyChannelStateRequest{
+		PaymentNo: p.ID,
+		State:     paidChannelState("wx-txn-apply"),
+	})
+	if err != nil || !advanced {
+		t.Fatalf("advanced = %v, err = %v", advanced, err)
+	}
+	stored, _ := fix.payments.FindByID(context.Background(), p.ID)
+	if stored.Status != payentity.PaymentPaid {
+		t.Fatalf("status = %v, want paid", stored.Status)
+	}
+	if len(fix.notices.rows) != 0 || fix.notices.inserts != 0 {
+		t.Fatalf("notices = %d inserts = %d, want ApplyChannelState to leave the notice to its caller", len(fix.notices.rows), fix.notices.inserts)
+	}
+	assertNoPaymentCompleted(t, fix)
+}
+
+func TestGetLivePendingDoesNotRecordNotice(t *testing.T) {
+	var hits int
+	fix := newPayFixture(t, &scriptGateway{queryState: paidChannelState("wx-txn-live"), resolveHits: &hits})
+	p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+	if err != nil {
+		t.Fatalf("initiate: %v", err)
+	}
+	out, err := fix.svc.Get(context.Background(), p.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if out.Status != payentity.PaymentPending || hits != 0 {
+		t.Fatalf("payment = %+v, channel hits = %d, want a live pending row and no channel call", out, hits)
+	}
+	if len(fix.notices.rows) != 0 {
+		t.Fatalf("notices = %d, want 0", len(fix.notices.rows))
+	}
+	assertNoPaymentCompleted(t, fix)
+}
+
+func TestGetExpiredPaidBetweenQueryAndCloseRecordsNotice(t *testing.T) {
+	paid := paidChannelState("wx-txn-late")
+	fix := newPayFixture(t, &scriptGateway{
+		queryState:     ChannelPaymentState{State: payentity.PaymentPending},
+		closeErr:       ErrChannelAlreadyPaid,
+		paidAfterClose: &paid,
+	})
+	p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+	if err != nil {
+		t.Fatalf("initiate: %v", err)
+	}
+	fix.payments.p[p.ID].ExpireTime = time.Now().Add(-time.Minute)
+	before := time.Now()
+	out, err := fix.svc.Get(context.Background(), p.ID)
+	after := time.Now()
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if out.Status != payentity.PaymentPaid || out.ChannelTradeNo != "wx-txn-late" {
+		t.Fatalf("settled payment = %+v, want paid", out)
+	}
+	assertOneWaitingPaymentNotice(t, fix, p.ID, "ORDER-1", before, after)
+}
+
+func TestSweepExpiredPaidRecordsOneNoticeEach(t *testing.T) {
+	fix := newPayFixture(t, &scriptGateway{queryState: paidChannelState("wx-txn-batch")})
+	inA := initiateInput(fix.applicationID, 7)
+	inA.BizNo = "ORDER-A"
+	inB := initiateInput(fix.applicationID, 7)
+	inB.BizNo = "ORDER-B"
+	a, err := fix.svc.Initiate(context.Background(), inA)
+	if err != nil {
+		t.Fatalf("initiate a: %v", err)
+	}
+	b, err := fix.svc.Initiate(context.Background(), inB)
+	if err != nil {
+		t.Fatalf("initiate b: %v", err)
+	}
+	fix.payments.p[a.ID].ExpireTime = time.Now().Add(-time.Hour)
+	fix.payments.p[b.ID].ExpireTime = time.Now().Add(-time.Minute)
+	settled, err := fix.svc.SweepExpired(context.Background(), 50)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if settled != 2 || len(fix.notices.rows) != 2 {
+		t.Fatalf("settled = %d notices = %d, want 2 and 2", settled, len(fix.notices.rows))
+	}
+	got := map[int64]string{}
+	for _, notice := range fix.notices.rows {
+		if notice.Kind != payentity.NoticeKindPayment || notice.Status != payentity.NoticeWaiting ||
+			notice.NotifyURL != "https://shop.example/paid" || notice.AttemptCount != 0 || notice.RefundID != 0 {
+			t.Fatalf("notice = %+v", notice)
+		}
+		got[notice.PaymentID] = notice.BizNo
+	}
+	if got[a.ID] != "ORDER-A" || got[b.ID] != "ORDER-B" {
+		t.Fatalf("notices = %+v, want one each for ORDER-A and ORDER-B", fix.notices.rows)
+	}
+	assertNoPaymentCompleted(t, fix)
+}
+
+func TestSettlementOtherThanPaidRecordsNoNotice(t *testing.T) {
+	t.Run("read expires", func(t *testing.T) {
+		fix := newPayFixture(t, &scriptGateway{queryState: ChannelPaymentState{State: payentity.PaymentPending}})
+		p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+		if err != nil {
+			t.Fatalf("initiate: %v", err)
+		}
+		fix.payments.p[p.ID].ExpireTime = time.Now().Add(-time.Minute)
+		out, err := fix.svc.Get(context.Background(), p.ID)
+		if err != nil || out.Status != payentity.PaymentExpired {
+			t.Fatalf("get = (%+v, %v), want expired", out, err)
+		}
+		if len(fix.notices.rows) != 0 {
+			t.Fatalf("notices = %d, want 0", len(fix.notices.rows))
+		}
+		assertNoPaymentCompleted(t, fix)
+	})
+	for _, state := range []payentity.PaymentStatus{payentity.PaymentFailed, payentity.PaymentClosed, payentity.PaymentExpired} {
+		t.Run(fmt.Sprintf("query %d", state), func(t *testing.T) {
+			fix := newPayFixture(t, &scriptGateway{queryState: ChannelPaymentState{State: state, FailReason: "declined"}})
+			p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+			if err != nil {
+				t.Fatalf("initiate: %v", err)
+			}
+			out, err := fix.svc.Query(context.Background(), p.ID)
+			if err != nil || out.Status != state {
+				t.Fatalf("query = (%+v, %v), want status %d", out, err, state)
+			}
+			if len(fix.notices.rows) != 0 {
+				t.Fatalf("notices = %d, want 0", len(fix.notices.rows))
+			}
+			assertNoPaymentCompleted(t, fix)
+		})
+	}
+	t.Run("sweep expires", func(t *testing.T) {
+		fix := newPayFixture(t, &scriptGateway{queryState: ChannelPaymentState{State: payentity.PaymentPending}})
+		p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+		if err != nil {
+			t.Fatalf("initiate: %v", err)
+		}
+		fix.payments.p[p.ID].ExpireTime = time.Now().Add(-time.Hour)
+		settled, err := fix.svc.SweepExpired(context.Background(), 50)
+		if err != nil || settled != 1 || fix.payments.p[p.ID].Status != payentity.PaymentExpired {
+			t.Fatalf("sweep = (%d, %v) status = %v, want one expired row", settled, err, fix.payments.p[p.ID].Status)
+		}
+		if len(fix.notices.rows) != 0 {
+			t.Fatalf("notices = %d, want 0", len(fix.notices.rows))
+		}
+		assertNoPaymentCompleted(t, fix)
+	})
+	t.Run("close succeeds", func(t *testing.T) {
+		fix := newPayFixture(t, &scriptGateway{})
+		p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+		if err != nil {
+			t.Fatalf("initiate: %v", err)
+		}
+		out, err := fix.svc.Close(context.Background(), ClosePaymentRequest{ID: p.ID, ActorID: 7})
+		if err != nil || out.Status != payentity.PaymentClosed {
+			t.Fatalf("close = (%+v, %v), want closed", out, err)
+		}
+		if len(fix.notices.rows) != 0 {
+			t.Fatalf("notices = %d, want 0", len(fix.notices.rows))
+		}
+		assertNoPaymentCompleted(t, fix)
+	})
+	t.Run("close channel error", func(t *testing.T) {
+		fix := newPayFixture(t, &scriptGateway{closeErr: errors.New("channel down")})
+		p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+		if err != nil {
+			t.Fatalf("initiate: %v", err)
+		}
+		out, err := fix.svc.Close(context.Background(), ClosePaymentRequest{ID: p.ID, ActorID: 7})
+		if out != nil || !errors.Is(err, pay.ErrChannelError) {
+			t.Fatalf("close = (%+v, %v), want channel error", out, err)
+		}
+		if fix.payments.p[p.ID].Status != payentity.PaymentPending || len(fix.notices.rows) != 0 {
+			t.Fatalf("payment status = %v notices = %d, want pending and no notice", fix.payments.p[p.ID].Status, len(fix.notices.rows))
+		}
+		assertNoPaymentCompleted(t, fix)
+	})
+}
+
+func TestStoppedApplicationOrMerchantStillSettlesPaidNotice(t *testing.T) {
+	stops := []struct {
+		name string
+		stop func(t *testing.T, fix payFixture)
+	}{
+		{name: "disabled application", stop: func(t *testing.T, fix payFixture) {
+			fix.apps.m[fix.applicationID].Status = payentity.ApplicationDisabled
+		}},
+		{name: "withdrawn application", stop: func(t *testing.T, fix payFixture) {
+			if err := fix.apps.Delete(context.Background(), payrepo.DeletePayApplicationRequest{ID: fix.applicationID, ActorID: 7}); err != nil {
+				t.Fatalf("withdraw application: %v", err)
+			}
+		}},
+		{name: "disabled merchant", stop: func(t *testing.T, fix payFixture) {
+			fix.merchants.m[fix.merchantID].Status = payentity.MerchantDisabled
+		}},
+		{name: "withdrawn merchant", stop: func(t *testing.T, fix payFixture) {
+			fix.merchants.deleted[fix.merchantID] = true
+		}},
+	}
+	paths := []struct {
+		name   string
+		expire bool
+		settle func(t *testing.T, fix payFixture, id int64)
+	}{
+		{name: "read", expire: true, settle: func(t *testing.T, fix payFixture, id int64) {
+			out, err := fix.svc.Get(context.Background(), id)
+			if err != nil || out.Status != payentity.PaymentPaid {
+				t.Fatalf("get = (%+v, %v), want paid", out, err)
+			}
+		}},
+		{name: "lookup", expire: true, settle: func(t *testing.T, fix payFixture, id int64) {
+			out, err := fix.svc.GetByBizNo(context.Background(), GetByBizNoRequest{ApplicationID: fix.applicationID, BizNo: "ORDER-1"})
+			if err != nil || out.Status != payentity.PaymentPaid || out.ID != id {
+				t.Fatalf("lookup = (%+v, %v), want paid %d", out, err, id)
+			}
+		}},
+		{name: "query", settle: func(t *testing.T, fix payFixture, id int64) {
+			out, err := fix.svc.Query(context.Background(), id)
+			if err != nil || out.Status != payentity.PaymentPaid {
+				t.Fatalf("query = (%+v, %v), want paid", out, err)
+			}
+		}},
+		{name: "sweep", expire: true, settle: func(t *testing.T, fix payFixture, id int64) {
+			settled, err := fix.svc.SweepExpired(context.Background(), 50)
+			if err != nil || settled != 1 || fix.payments.p[id].Status != payentity.PaymentPaid {
+				t.Fatalf("sweep = (%d, %v) status = %v, want one paid row", settled, err, fix.payments.p[id].Status)
+			}
+		}},
+		{name: "close", settle: func(t *testing.T, fix payFixture, id int64) {
+			out, err := fix.svc.Close(context.Background(), ClosePaymentRequest{ID: id, ActorID: 7})
+			if err != nil || out.Status != payentity.PaymentPaid {
+				t.Fatalf("close = (%+v, %v), want paid", out, err)
+			}
+		}},
+	}
+	for _, st := range stops {
+		for _, path := range paths {
+			t.Run(st.name+" "+path.name, func(t *testing.T) {
+				fix := newPayFixture(t, &scriptGateway{
+					closeErr:   ErrChannelAlreadyPaid,
+					queryState: paidChannelState("wx-txn-stop"),
+				})
+				created, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
+				if err != nil {
+					t.Fatalf("initiate: %v", err)
+				}
+				if path.expire {
+					fix.payments.p[created.ID].ExpireTime = time.Now().Add(-time.Hour)
+				}
+				st.stop(t, fix)
+				before := time.Now()
+				path.settle(t, fix, created.ID)
+				after := time.Now()
+				assertOneWaitingPaymentNotice(t, fix, created.ID, "ORDER-1", before, after)
+			})
+		}
 	}
 }
