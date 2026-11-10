@@ -421,7 +421,7 @@ func newGoldFixture(t *testing.T) *goldFixture {
 
 	merchantSvc := payservice.NewMerchantService(merchantRepo, &goldCatalog{}, cipher, registry, slog.New(slog.DiscardHandler))
 	paymentSvc := payservice.NewPaymentService(payments, goldApplicationRepo{}, merchantRepo, registry, goldNoticeRepo{}, goldPublisher{}, slog.New(slog.DiscardHandler))
-	refundSvc := payservice.NewRefundService(nil, payments, goldApplicationRepo{}, merchantRepo, registry, slog.New(slog.DiscardHandler))
+	refundSvc := payservice.NewRefundService(nil, payments, goldApplicationRepo{}, merchantRepo, registry, goldNoticeRepo{}, slog.New(slog.DiscardHandler))
 	intake := payservice.NewIntake(merchantSvc, paymentSvc, refundSvc, notifyRepo, goldNoticeRepo{}, goldPublisher{}, slog.New(slog.DiscardHandler))
 
 	app := pay.NewPayApplication(

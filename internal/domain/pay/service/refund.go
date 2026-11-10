@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
@@ -73,6 +74,7 @@ type refundImpl struct {
 	apps      payrepo.PayApplicationRepo
 	merchants payrepo.MerchantAccountRepo
 	gateways  GatewayRegistry
+	notices   payrepo.BusinessNoticeRepo
 	logger    *slog.Logger
 }
 
@@ -83,6 +85,7 @@ func NewRefundService(
 	apps payrepo.PayApplicationRepo,
 	merchants payrepo.MerchantAccountRepo,
 	gateways GatewayRegistry,
+	notices payrepo.BusinessNoticeRepo,
 	logger *slog.Logger,
 ) Refund {
 	return &refundImpl{
@@ -91,6 +94,7 @@ func NewRefundService(
 		apps:      apps,
 		merchants: merchants,
 		gateways:  gateways,
+		notices:   notices,
 		logger:    logger.With(slog.String("component", "domain.pay.refund.svc")),
 	}
 }
@@ -303,6 +307,9 @@ func (s *refundImpl) ApplyRefundState(ctx context.Context, req ApplyRefundStateR
 			logx.Propagate(ctx, s.logger, "pay.svc.refund.apply_state", err)
 			return false, err
 		}
+		if advanced {
+			s.recordRefundNotice(ctx, rf)
+		}
 		return advanced, nil
 	case payentity.RefundFailed:
 		advanced, err := s.refunds.MarkFailed(ctx, payrepo.MarkRefundFailedRequest{ID: refundNo, Reason: state.FailReason})
@@ -310,9 +317,59 @@ func (s *refundImpl) ApplyRefundState(ctx context.Context, req ApplyRefundStateR
 			logx.Propagate(ctx, s.logger, "pay.svc.refund.apply_state", err)
 			return false, err
 		}
+		if advanced {
+			rf, findErr := s.refunds.FindByID(ctx, refundNo)
+			if findErr != nil {
+				s.logger.Warn("refund notice skipped; refund row unreadable after settle",
+					slog.String("operation", "pay.svc.refund.record_notice"),
+					slog.Int64("refund_id", refundNo),
+					slog.Any("error", findErr))
+			} else {
+				s.recordRefundNotice(ctx, rf)
+			}
+		}
 		return advanced, nil
 	default: // Pending — nothing to advance
 		return false, nil
+	}
+}
+
+// recordRefundNotice stores one unsigned Business Notification for a
+// Refund that just reached a terminal state. The address is the one
+// copied onto the Refund at creation. Insert failure is Warn-only: the
+// refund transition is already durable.
+func (s *refundImpl) recordRefundNotice(ctx context.Context, rf *payentity.Refund) {
+	if rf.NotifyURL == "" {
+		return
+	}
+	applicationID := int64(0)
+	p, err := s.payments.FindByID(ctx, rf.PaymentID)
+	if err != nil {
+		s.logger.Warn("refund notice could not read the payment",
+			slog.String("operation", "pay.svc.refund.record_notice"),
+			slog.Int64("refund_id", rf.ID),
+			slog.Int64("payment_id", rf.PaymentID),
+			slog.Any("error", err))
+	} else {
+		applicationID = p.ApplicationID
+	}
+	notice := &payentity.BusinessNotice{
+		ID:            s.notices.NextID(),
+		ApplicationID: applicationID,
+		Kind:          payentity.NoticeKindRefund,
+		PaymentID:     rf.PaymentID,
+		RefundID:      rf.ID,
+		NotifyURL:     rf.NotifyURL,
+		Status:        payentity.NoticeWaiting,
+		AttemptCount:  0,
+		NextAttemptAt: time.Now(),
+	}
+	if _, err := s.notices.Insert(ctx, notice); err != nil {
+		s.logger.Warn("refund business notice insert degraded",
+			slog.String("operation", "pay.svc.refund.record_notice"),
+			slog.Int64("refund_id", rf.ID),
+			slog.Int64("payment_id", rf.PaymentID),
+			slog.Any("error", err))
 	}
 }
 

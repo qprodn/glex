@@ -152,6 +152,7 @@ type refundFixture struct {
 	payments      *fakePaymentRepo
 	apps          *fakePayApplicationRepo
 	merchants     *fakeMerchantRepo
+	notices       *memNotices
 	applicationID int64
 	merchantID    int64
 	paymentID     int64
@@ -204,9 +205,10 @@ func newRefundFixture(t *testing.T, gw ChannelGateway) refundFixture {
 	if _, err := payments.Create(context.Background(), paid); err != nil {
 		t.Fatalf("payment fixture: %v", err)
 	}
-	svc := NewRefundService(refunds, payments, apps, merchantRepo, &scriptGateways{gw: gw}, slog.New(slog.DiscardHandler))
+	notices := &memNotices{}
+	svc := NewRefundService(refunds, payments, apps, merchantRepo, &scriptGateways{gw: gw}, notices, slog.New(slog.DiscardHandler))
 	return refundFixture{
-		svc: svc, refunds: refunds, payments: payments, apps: apps, merchants: merchantRepo,
+		svc: svc, refunds: refunds, payments: payments, apps: apps, merchants: merchantRepo, notices: notices,
 		applicationID: app.ID, merchantID: m.ID, paymentID: 701,
 	}
 }
@@ -422,6 +424,346 @@ func TestRefundPendingReservesCap(t *testing.T) {
 // The concurrent two-refunds-one-cap race is enforced by the payment-
 // scoped lock at the application seam — its test lives in
 // internal/application/pay (refund_test.go), where the locker is real.
+
+// TestRefundFirstRefundedRecordsOneNotice pins the first transition to
+// refunded: one unsigned Business Notification names that Refund and its
+// Payment. The address on the notice is the one copied onto the Refund.
+func TestRefundFirstRefundedRecordsOneNotice(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	fix := newRefundFixture(t, gw)
+	rf, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, Reason: "部分退款", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	before := time.Now()
+	advanced, err := fix.svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{
+		RefundNo: rf.ID,
+		State:    ChannelRefundState{State: payentity.RefundSuccess, ChannelRefundNo: "ali-rf-1"},
+	})
+	after := time.Now()
+	if err != nil || !advanced {
+		t.Fatalf("apply = (%v, %v), want the first refunded transition", advanced, err)
+	}
+	if len(fix.notices.rows) != 1 {
+		t.Fatalf("notices = %d, want 1", len(fix.notices.rows))
+	}
+	notice := fix.notices.rows[0]
+	if notice.Kind != payentity.NoticeKindRefund || notice.Status != payentity.NoticeWaiting ||
+		notice.RefundID != rf.ID || notice.PaymentID != fix.paymentID || notice.ApplicationID != fix.applicationID ||
+		notice.BizNo != "" || notice.NotifyURL != "https://shop.example/refunded" ||
+		notice.AttemptCount != 0 || notice.NextAttemptAt.Before(before) || notice.NextAttemptAt.After(after) {
+		t.Fatalf("notice = %+v, want one waiting refund notice for refund %d payment %d", notice, rf.ID, fix.paymentID)
+	}
+}
+
+// TestRefundFirstFailedRecordsOneNotice pins the first transition to
+// failed: the same unsigned Business Notification, still naming the
+// Refund and the Payment.
+func TestRefundFirstFailedRecordsOneNotice(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	fix := newRefundFixture(t, gw)
+	rf, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, Reason: "部分退款", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	before := time.Now()
+	advanced, err := fix.svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{
+		RefundNo: rf.ID,
+		State:    ChannelRefundState{State: payentity.RefundFailed, FailReason: "insufficient balance"},
+	})
+	after := time.Now()
+	if err != nil || !advanced {
+		t.Fatalf("apply = (%v, %v), want the first failed transition", advanced, err)
+	}
+	stored, err := fix.refunds.FindByID(context.Background(), rf.ID)
+	if err != nil {
+		t.Fatalf("read refund: %v", err)
+	}
+	if stored.Status != payentity.RefundFailed {
+		t.Fatalf("refund status = %v, want failed", stored.Status)
+	}
+	p, err := fix.payments.FindByID(context.Background(), fix.paymentID)
+	if err != nil {
+		t.Fatalf("read payment: %v", err)
+	}
+	if p.RefundedAmount != 0 {
+		t.Fatalf("refunded_amount = %d, want 0", p.RefundedAmount)
+	}
+	if len(fix.notices.rows) != 1 {
+		t.Fatalf("notices = %d, want 1", len(fix.notices.rows))
+	}
+	notice := fix.notices.rows[0]
+	if notice.Kind != payentity.NoticeKindRefund || notice.Status != payentity.NoticeWaiting ||
+		notice.RefundID != rf.ID || notice.PaymentID != fix.paymentID || notice.ApplicationID != fix.applicationID ||
+		notice.BizNo != "" || notice.NotifyURL != "https://shop.example/refunded" ||
+		notice.AttemptCount != 0 || notice.NextAttemptAt.Before(before) || notice.NextAttemptAt.After(after) {
+		t.Fatalf("notice = %+v, want one waiting refund notice for refund %d payment %d", notice, rf.ID, fix.paymentID)
+	}
+}
+
+// TestRefundEmptyCopiedAddressRecordsNoNotice pins the empty copy: a
+// Refund created while the refund result address was empty gets no
+// Business Notification. Filling that address on the Pay Application
+// afterwards still does not.
+func TestRefundEmptyCopiedAddressRecordsNoNotice(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	fix := newRefundFixture(t, gw)
+	fix.apps.m[fix.applicationID].RefundNotifyURL = ""
+	refunded, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, Reason: "部分退款", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create refunded: %v", err)
+	}
+	failed, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 10, Reason: "部分退款", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	if refunded.NotifyURL != "" || failed.NotifyURL != "" {
+		t.Fatalf("copied addresses = %q, %q, want empty", refunded.NotifyURL, failed.NotifyURL)
+	}
+	fix.apps.m[fix.applicationID].RefundNotifyURL = "https://shop.example/later"
+	advanced, err := fix.svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{
+		RefundNo: refunded.ID,
+		State:    ChannelRefundState{State: payentity.RefundSuccess, ChannelRefundNo: "ali-rf-empty"},
+	})
+	if err != nil || !advanced {
+		t.Fatalf("apply refunded = (%v, %v), want the terminal transition", advanced, err)
+	}
+	advanced, err = fix.svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{
+		RefundNo: failed.ID,
+		State:    ChannelRefundState{State: payentity.RefundFailed, FailReason: "insufficient balance"},
+	})
+	if err != nil || !advanced {
+		t.Fatalf("apply failed = (%v, %v), want the terminal transition", advanced, err)
+	}
+	if len(fix.notices.rows) != 0 {
+		t.Fatalf("notices = %+v, want none when the copied address is empty", fix.notices.rows)
+	}
+}
+
+// TestRefundSecondTransitionRecordsNoSecondNotice pins the one-notice
+// rule: a repeat of the same terminal state does not record again.
+func TestRefundSecondTransitionRecordsNoSecondNotice(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	fix := newRefundFixture(t, gw)
+	refunded, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, Reason: "部分退款", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create refunded: %v", err)
+	}
+	failed, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 10, Reason: "部分退款", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	success := ChannelRefundState{State: payentity.RefundSuccess, ChannelRefundNo: "ali-rf-1"}
+	for i := 0; i < 2; i++ {
+		advanced, err := fix.svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{RefundNo: refunded.ID, State: success})
+		if err != nil {
+			t.Fatalf("apply success %d: %v", i, err)
+		}
+		if i == 0 && !advanced {
+			t.Fatal("first success did not advance")
+		}
+		if i == 1 && advanced {
+			t.Fatal("second success advanced again")
+		}
+	}
+	failure := ChannelRefundState{State: payentity.RefundFailed, FailReason: "insufficient balance"}
+	for i := 0; i < 2; i++ {
+		advanced, err := fix.svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{RefundNo: failed.ID, State: failure})
+		if err != nil {
+			t.Fatalf("apply failed %d: %v", i, err)
+		}
+		if i == 0 && !advanced {
+			t.Fatal("first failure did not advance")
+		}
+		if i == 1 && advanced {
+			t.Fatal("second failure advanced again")
+		}
+	}
+	if len(fix.notices.rows) != 2 {
+		t.Fatalf("notices = %d, want one per refund", len(fix.notices.rows))
+	}
+	seen := map[int64]bool{}
+	for _, notice := range fix.notices.rows {
+		if notice.Kind != payentity.NoticeKindRefund || notice.PaymentID != fix.paymentID {
+			t.Fatalf("notice = %+v, want a refund notice for payment %d", notice, fix.paymentID)
+		}
+		if seen[notice.RefundID] {
+			t.Fatalf("refund %d recorded a second notice", notice.RefundID)
+		}
+		seen[notice.RefundID] = true
+	}
+	if !seen[refunded.ID] || !seen[failed.ID] {
+		t.Fatalf("notices named %v, want refunds %d and %d", seen, refunded.ID, failed.ID)
+	}
+}
+
+// TestRefundSyncResultRecordsOneNotice pins the synchronous channel
+// answer: PrepayRefund settles through the same transition, so a
+// refunded or failed answer records one notice, and a still-pending
+// answer records none.
+func TestRefundSyncResultRecordsOneNotice(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{
+		State: payentity.RefundSuccess, ChannelRefundNo: "ali-rf-sync", RefundedAt: time.Now(),
+	}}
+	fix := newRefundFixture(t, gw)
+	refunded, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, Reason: "x", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create refunded: %v", err)
+	}
+	out, err := fix.svc.PrepayRefund(context.Background(), PrepayRefundRequest{ID: refunded.ID, NotifyBaseURL: "https://pay.example.com"})
+	if err != nil {
+		t.Fatalf("prepay refunded: %v", err)
+	}
+	if out.Status != payentity.RefundSuccess {
+		t.Fatalf("refund status = %v, want refunded", out.Status)
+	}
+	gw.refundState = ChannelRefundState{State: payentity.RefundFailed, FailReason: "insufficient balance"}
+	failed, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 10, Reason: "x", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	out, err = fix.svc.PrepayRefund(context.Background(), PrepayRefundRequest{ID: failed.ID, NotifyBaseURL: "https://pay.example.com"})
+	if err != nil {
+		t.Fatalf("prepay failed: %v", err)
+	}
+	if out.Status != payentity.RefundFailed {
+		t.Fatalf("refund status = %v, want failed", out.Status)
+	}
+	gw.refundState = ChannelRefundState{State: payentity.RefundPending}
+	pending, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 10, Reason: "x", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create pending: %v", err)
+	}
+	out, err = fix.svc.PrepayRefund(context.Background(), PrepayRefundRequest{ID: pending.ID, NotifyBaseURL: "https://pay.example.com"})
+	if err != nil {
+		t.Fatalf("prepay pending: %v", err)
+	}
+	if out.Status != payentity.RefundPending {
+		t.Fatalf("refund status = %v, want pending", out.Status)
+	}
+	if len(fix.notices.rows) != 2 {
+		t.Fatalf("notices = %d, want one for refunded and one for failed", len(fix.notices.rows))
+	}
+	seen := map[int64]bool{}
+	for _, notice := range fix.notices.rows {
+		if notice.Kind != payentity.NoticeKindRefund || notice.PaymentID != fix.paymentID || notice.BizNo != "" ||
+			notice.NotifyURL != "https://shop.example/refunded" || notice.Status != payentity.NoticeWaiting {
+			t.Fatalf("notice = %+v, want a waiting refund notice for payment %d", notice, fix.paymentID)
+		}
+		seen[notice.RefundID] = true
+	}
+	if !seen[refunded.ID] || !seen[failed.ID] || seen[pending.ID] {
+		t.Fatalf("notices named %v, want refunds %d and %d only", seen, refunded.ID, failed.ID)
+	}
+}
+
+// TestRefundQueryRecordsOneNotice pins the lost-callback settlement
+// path: Query applies the channel's answer through the same transition.
+func TestRefundQueryRecordsOneNotice(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{
+		State: payentity.RefundSuccess, ChannelRefundNo: "ali-rf-query",
+	}}
+	fix := newRefundFixture(t, gw)
+	refunded, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, Reason: "x", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create refunded: %v", err)
+	}
+	out, err := fix.svc.Query(context.Background(), refunded.ID)
+	if err != nil {
+		t.Fatalf("query refunded: %v", err)
+	}
+	if out.Status != payentity.RefundSuccess {
+		t.Fatalf("refund status = %v, want refunded", out.Status)
+	}
+	gw.refundState = ChannelRefundState{State: payentity.RefundFailed, FailReason: "insufficient balance"}
+	failed, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 10, Reason: "x", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	out, err = fix.svc.Query(context.Background(), failed.ID)
+	if err != nil {
+		t.Fatalf("query failed: %v", err)
+	}
+	if out.Status != payentity.RefundFailed {
+		t.Fatalf("refund status = %v, want failed", out.Status)
+	}
+	if len(fix.notices.rows) != 2 {
+		t.Fatalf("notices = %d, want one per queried refund", len(fix.notices.rows))
+	}
+	seen := map[int64]bool{}
+	for _, notice := range fix.notices.rows {
+		if notice.Kind != payentity.NoticeKindRefund || notice.PaymentID != fix.paymentID || notice.RefundID == 0 {
+			t.Fatalf("notice = %+v, want a refund notice for payment %d", notice, fix.paymentID)
+		}
+		seen[notice.RefundID] = true
+	}
+	if !seen[refunded.ID] || !seen[failed.ID] {
+		t.Fatalf("notices named %v, want refunds %d and %d", seen, refunded.ID, failed.ID)
+	}
+}
+
+// TestRefundNoticeInsertFailureKeepsTheTransition pins a failed insert:
+// the Refund still reaches refunded, and the error is not returned.
+func TestRefundNoticeInsertFailureKeepsTheTransition(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	fix := newRefundFixture(t, gw)
+	rf, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, Reason: "x", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	fix.notices.err = errors.New("store down")
+	advanced, err := fix.svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{
+		RefundNo: rf.ID,
+		State:    ChannelRefundState{State: payentity.RefundSuccess, ChannelRefundNo: "ali-rf-1"},
+	})
+	if err != nil || !advanced {
+		t.Fatalf("apply = (%v, %v), want the refunded transition kept", advanced, err)
+	}
+	stored, err := fix.refunds.FindByID(context.Background(), rf.ID)
+	if err != nil {
+		t.Fatalf("read refund: %v", err)
+	}
+	if stored.Status != payentity.RefundSuccess {
+		t.Fatalf("refund status = %v, want refunded", stored.Status)
+	}
+	p, err := fix.payments.FindByID(context.Background(), fix.paymentID)
+	if err != nil {
+		t.Fatalf("read payment: %v", err)
+	}
+	if p.RefundedAmount != 40 {
+		t.Fatalf("refunded_amount = %d, want 40", p.RefundedAmount)
+	}
+	if len(fix.notices.rows) != 0 {
+		t.Fatalf("notices = %d, want the failed insert kept nothing", len(fix.notices.rows))
+	}
+}
+
+// TestRefundDuplicateNoticeInsertKeepsTheTransition pins the unique pair:
+// ok false from the notice insert is not an error, and the Refund stays
+// refunded.
+func TestRefundDuplicateNoticeInsertKeepsTheTransition(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	fix := newRefundFixture(t, gw)
+	rf, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, Reason: "x", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	fix.notices.refuse = true
+	advanced, err := fix.svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{
+		RefundNo: rf.ID,
+		State:    ChannelRefundState{State: payentity.RefundSuccess, ChannelRefundNo: "ali-rf-1"},
+	})
+	if err != nil || !advanced {
+		t.Fatalf("apply = (%v, %v), want the refunded transition kept", advanced, err)
+	}
+	stored, err := fix.refunds.FindByID(context.Background(), rf.ID)
+	if err != nil {
+		t.Fatalf("read refund: %v", err)
+	}
+	if stored.Status != payentity.RefundSuccess {
+		t.Fatalf("refund status = %v, want refunded", stored.Status)
+	}
+}
 
 func TestRefundSyncChannelSettlesImmediately(t *testing.T) {
 	gw := &scriptRefundGateway{refundState: ChannelRefundState{

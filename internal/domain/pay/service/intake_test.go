@@ -589,6 +589,8 @@ type memNotices struct {
 	rows    []*payentity.BusinessNotice
 	inserts int
 	err     error
+	// refuse is the unique-pair answer: ok false, no error, no row.
+	refuse bool
 }
 
 func (m *memNotices) NextID() int64 {
@@ -600,6 +602,9 @@ func (m *memNotices) Insert(_ context.Context, n *payentity.BusinessNotice) (boo
 	m.inserts++
 	if m.err != nil {
 		return false, m.err
+	}
+	if m.refuse {
+		return false, nil
 	}
 	for _, row := range m.rows {
 		if row.Kind == n.Kind && n.Kind == payentity.NoticeKindPayment && n.PaymentID != 0 && row.PaymentID == n.PaymentID {
