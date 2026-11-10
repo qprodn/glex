@@ -94,6 +94,7 @@ type scriptRefundGateway struct {
 	refundState ChannelRefundState
 	refundErr   error
 	queries     *syncState
+	lastRefund  RefundRequest
 }
 
 type syncState struct {
@@ -116,6 +117,7 @@ func (g *scriptRefundGateway) Close(ctx context.Context, req CloseRequest) error
 }
 
 func (g *scriptRefundGateway) Refund(ctx context.Context, req RefundRequest) (ChannelRefundState, error) {
+	g.lastRefund = req
 	if g.queries != nil {
 		g.queries.mu.Lock()
 		g.queries.invoked++
@@ -141,10 +143,22 @@ func (g *scriptRefundGateway) Probe(ctx context.Context, m *payentity.MerchantAc
 
 func (g *scriptRefundGateway) AckSuccess() string { return "" }
 
-// newTestRefundService builds the refund service over a PAID fixture
-// payment of 100 fen on merchant/registry fixtures from the payment
-// tests.
-func newTestRefundService(t *testing.T, gw ChannelGateway) (Refund, *fakeRefundRepo, *fakePaymentRepo, int64) {
+// refundFixture is the in-memory refund service plus the rows a test
+// reaches through the repository ports. The Pay Application is enabled
+// and its refund result address is the literal the copy test expects.
+type refundFixture struct {
+	svc           Refund
+	refunds       *fakeRefundRepo
+	payments      *fakePaymentRepo
+	apps          *fakePayApplicationRepo
+	merchants     *fakeMerchantRepo
+	applicationID int64
+	merchantID    int64
+	paymentID     int64
+}
+
+// newRefundFixture builds the refund service over a PAID payment of 100 fen.
+func newRefundFixture(t *testing.T, gw ChannelGateway) refundFixture {
 	t.Helper()
 	payments := newFakePaymentRepo()
 	payments.nextID = 700
@@ -173,11 +187,160 @@ func newTestRefundService(t *testing.T, gw ChannelGateway) (Refund, *fakeRefundR
 		t.Fatalf("merchant fixture: %v", err)
 	}
 	paid.MerchantID = m.ID
+	apps := newFakePayApplicationRepo()
+	app, err := apps.Create(context.Background(), &payentity.PayApplication{
+		ID:              apps.NextID(),
+		Name:            "收银台",
+		MerchantID:      m.ID,
+		Status:          payentity.ApplicationEnabled,
+		RefundNotifyURL: "https://shop.example/refunded",
+		CreateBy:        7,
+		UpdateBy:        7,
+	})
+	if err != nil {
+		t.Fatalf("application fixture: %v", err)
+	}
+	paid.ApplicationID = app.ID
 	if _, err := payments.Create(context.Background(), paid); err != nil {
 		t.Fatalf("payment fixture: %v", err)
 	}
-	svc := NewRefundService(refunds, payments, merchantRepo, &scriptGateways{gw: gw}, slog.New(slog.DiscardHandler))
-	return svc, refunds, payments, 701
+	svc := NewRefundService(refunds, payments, apps, merchantRepo, &scriptGateways{gw: gw}, slog.New(slog.DiscardHandler))
+	return refundFixture{
+		svc: svc, refunds: refunds, payments: payments, apps: apps, merchants: merchantRepo,
+		applicationID: app.ID, merchantID: m.ID, paymentID: 701,
+	}
+}
+
+// newTestRefundService builds the refund service over a PAID fixture
+// payment of 100 fen on merchant/registry fixtures from the payment
+// tests.
+func newTestRefundService(t *testing.T, gw ChannelGateway) (Refund, *fakeRefundRepo, *fakePaymentRepo, int64) {
+	t.Helper()
+	fix := newRefundFixture(t, gw)
+	return fix.svc, fix.refunds, fix.payments, fix.paymentID
+}
+
+// TestRefundCopiesPayApplicationRefundResultAddress pins the copy at
+// creation: the Refund stores the Pay Application's refund result address.
+// The literal is the address on the fixture's Pay Application.
+func TestRefundCopiesPayApplicationRefundResultAddress(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	svc, _, _, paymentID := newTestRefundService(t, gw)
+	rf, err := svc.Create(context.Background(), CreateRefundRequest{PaymentID: paymentID, Amount: 40, Reason: "部分退款", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if rf.NotifyURL != "https://shop.example/refunded" {
+		t.Fatalf("notify url = %q, want https://shop.example/refunded", rf.NotifyURL)
+	}
+}
+
+// TestRefundCopiesEmptyRefundResultAddress pins the empty address: an
+// empty refund result address on the Pay Application is stored empty.
+func TestRefundCopiesEmptyRefundResultAddress(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	fix := newRefundFixture(t, gw)
+	fix.apps.m[fix.applicationID].RefundNotifyURL = ""
+	rf, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, Reason: "部分退款", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if rf.NotifyURL != "" {
+		t.Fatalf("notify url = %q, want empty", rf.NotifyURL)
+	}
+}
+
+// TestRefundPrepayUsesMerchantCallbackURL pins the channel request: the
+// gateway refund call carries the Merchant Account notify address built
+// from the deployment base, while the Refund keeps the copied result address.
+func TestRefundPrepayUsesMerchantCallbackURL(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	fix := newRefundFixture(t, gw)
+	rf, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, Reason: "部分退款", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if _, err := fix.svc.PrepayRefund(context.Background(), PrepayRefundRequest{ID: rf.ID, NotifyBaseURL: "https://pay.example.com"}); err != nil {
+		t.Fatalf("prepay: %v", err)
+	}
+	want := fmt.Sprintf("https://pay.example.com/pay/notify/alipay/%d", fix.merchantID)
+	if gw.lastRefund.NotifyURL != want {
+		t.Fatalf("channel callback = %q, want %q", gw.lastRefund.NotifyURL, want)
+	}
+	stored, err := fix.refunds.FindByID(context.Background(), rf.ID)
+	if err != nil {
+		t.Fatalf("read refund: %v", err)
+	}
+	if stored.NotifyURL != "https://shop.example/refunded" {
+		t.Fatalf("refund result address = %q, want https://shop.example/refunded", stored.NotifyURL)
+	}
+}
+
+func TestRefundCreateRefusesDisabledApplication(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	fix := newRefundFixture(t, gw)
+	fix.apps.m[fix.applicationID].Status = payentity.ApplicationDisabled
+	_, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, ActorID: 7})
+	if !errors.Is(err, pay.ErrApplicationInvalid) {
+		t.Fatalf("err = %v, want ErrApplicationInvalid", err)
+	}
+	if len(fix.refunds.r) != 0 {
+		t.Fatalf("refund rows = %d, want 0", len(fix.refunds.r))
+	}
+}
+
+func TestRefundCreateRefusesWithdrawnApplication(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	fix := newRefundFixture(t, gw)
+	if err := fix.apps.Delete(context.Background(), payrepo.DeletePayApplicationRequest{ID: fix.applicationID, ActorID: 7}); err != nil {
+		t.Fatalf("withdraw: %v", err)
+	}
+	_, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, ActorID: 7})
+	if !errors.Is(err, pay.ErrApplicationNotFound) {
+		t.Fatalf("err = %v, want ErrApplicationNotFound", err)
+	}
+	if len(fix.refunds.r) != 0 {
+		t.Fatalf("refund rows = %d, want 0", len(fix.refunds.r))
+	}
+}
+
+func TestRefundCreateRefusesMissingApplication(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	fix := newRefundFixture(t, gw)
+	fix.payments.p[fix.paymentID].ApplicationID = 999999
+	_, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, ActorID: 7})
+	if !errors.Is(err, pay.ErrApplicationNotFound) {
+		t.Fatalf("err = %v, want ErrApplicationNotFound", err)
+	}
+	if len(fix.refunds.r) != 0 {
+		t.Fatalf("refund rows = %d, want 0", len(fix.refunds.r))
+	}
+}
+
+func TestRefundCreateRefusesDisabledMerchant(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	fix := newRefundFixture(t, gw)
+	fix.merchants.m[fix.merchantID].Status = payentity.MerchantDisabled
+	_, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, ActorID: 7})
+	if !errors.Is(err, pay.ErrMerchantInvalid) {
+		t.Fatalf("err = %v, want ErrMerchantInvalid", err)
+	}
+	if len(fix.refunds.r) != 0 {
+		t.Fatalf("refund rows = %d, want 0", len(fix.refunds.r))
+	}
+}
+
+func TestRefundCreateRefusesWithdrawnMerchant(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	fix := newRefundFixture(t, gw)
+	fix.merchants.deleted[fix.merchantID] = true
+	_, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, ActorID: 7})
+	if !errors.Is(err, pay.ErrMerchantNotFound) {
+		t.Fatalf("err = %v, want ErrMerchantNotFound", err)
+	}
+	if len(fix.refunds.r) != 0 {
+		t.Fatalf("refund rows = %d, want 0", len(fix.refunds.r))
+	}
 }
 
 func TestRefundMultiplePartialRefundsAccumulate(t *testing.T) {

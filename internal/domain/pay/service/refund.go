@@ -46,9 +46,12 @@ type ApplyRefundStateRequest struct {
 type Refund interface {
 	Get(ctx context.Context, id int64) (*payentity.Refund, error)
 	List(ctx context.Context, q listq.Query) ([]*payentity.Refund, error)
-	// Create validates the cap and records the PENDING refund. The channel
-	// call happens in PrepayRefund afterwards so a synchronous channel
-	// answer settles the row immediately (design §5).
+	// Create validates the cap and records the PENDING refund, copying the
+	// Pay Application's refund result address. A missing or withdrawn Pay
+	// Application or Merchant Account is not found. A disabled Pay
+	// Application or Merchant Account is refused. The channel call happens
+	// in PrepayRefund afterwards so a synchronous channel answer settles
+	// the row immediately (design §5).
 	Create(ctx context.Context, req CreateRefundRequest) (*payentity.Refund, error)
 	// PrepayRefund asks the channel to move the money for one freshly
 	// recorded refund. WeChat answers PENDING (the callback settles);
@@ -67,6 +70,7 @@ type Refund interface {
 type refundImpl struct {
 	refunds   payrepo.RefundRepo
 	payments  payrepo.PaymentRepo
+	apps      payrepo.PayApplicationRepo
 	merchants payrepo.MerchantAccountRepo
 	gateways  GatewayRegistry
 	logger    *slog.Logger
@@ -76,6 +80,7 @@ type refundImpl struct {
 func NewRefundService(
 	refunds payrepo.RefundRepo,
 	payments payrepo.PaymentRepo,
+	apps payrepo.PayApplicationRepo,
 	merchants payrepo.MerchantAccountRepo,
 	gateways GatewayRegistry,
 	logger *slog.Logger,
@@ -83,6 +88,7 @@ func NewRefundService(
 	return &refundImpl{
 		refunds:   refunds,
 		payments:  payments,
+		apps:      apps,
 		merchants: merchants,
 		gateways:  gateways,
 		logger:    logger.With(slog.String("component", "domain.pay.refund.svc")),
@@ -125,6 +131,26 @@ func (s *refundImpl) Create(ctx context.Context, req CreateRefundRequest) (*paye
 		logx.Propagate(ctx, s.logger, "pay.svc.refund.create", err)
 		return nil, err
 	}
+	app, err := s.apps.FindByID(ctx, p.ApplicationID)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "pay.svc.refund.create", err)
+		return nil, err
+	}
+	if app.Status != payentity.ApplicationEnabled {
+		err = pay.ErrApplicationInvalid
+		logx.Propagate(ctx, s.logger, "pay.svc.refund.create", err)
+		return nil, err
+	}
+	m, err := s.merchants.FindByID(ctx, app.MerchantID)
+	if err != nil {
+		logx.Propagate(ctx, s.logger, "pay.svc.refund.create", err)
+		return nil, err
+	}
+	if m.Status != payentity.MerchantEnabled {
+		err = pay.ErrMerchantInvalid
+		logx.Propagate(ctx, s.logger, "pay.svc.refund.create", err)
+		return nil, err
+	}
 	// The cap, under the caller's payment-scoped lock: settled + in-
 	// flight + this ≤ paid. PENDING refunds reserve their amount — two
 	// serialized async refunds of the same remainder must not both pass.
@@ -143,6 +169,7 @@ func (s *refundImpl) Create(ctx context.Context, req CreateRefundRequest) (*paye
 		PaymentID:  p.ID,
 		MerchantID: p.MerchantID,
 		Channel:    p.Channel,
+		NotifyURL:  app.RefundNotifyURL,
 		Amount:     req.Amount,
 		Reason:     req.Reason,
 		Status:     payentity.RefundPending,

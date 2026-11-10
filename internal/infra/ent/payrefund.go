@@ -33,6 +33,8 @@ type PayRefund struct {
 	MerchantID int64 `json:"merchant_id,omitempty"`
 	// Channel holds the value of the "channel" field.
 	Channel int16 `json:"channel,omitempty"`
+	// NotifyURL holds the value of the "notify_url" field.
+	NotifyURL string `json:"notify_url,omitempty"`
 	// Amount holds the value of the "amount" field.
 	Amount int64 `json:"amount,omitempty"`
 	// Reason holds the value of the "reason" field.
@@ -55,7 +57,7 @@ func (*PayRefund) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case payrefund.FieldID, payrefund.FieldCreateBy, payrefund.FieldUpdateBy, payrefund.FieldPaymentID, payrefund.FieldMerchantID, payrefund.FieldChannel, payrefund.FieldAmount, payrefund.FieldStatus:
 			values[i] = new(sql.NullInt64)
-		case payrefund.FieldReason, payrefund.FieldChannelRefundNo, payrefund.FieldFailReason:
+		case payrefund.FieldNotifyURL, payrefund.FieldReason, payrefund.FieldChannelRefundNo, payrefund.FieldFailReason:
 			values[i] = new(sql.NullString)
 		case payrefund.FieldCreatedAt, payrefund.FieldUpdatedAt, payrefund.FieldDeletedAt, payrefund.FieldRefundedAt:
 			values[i] = new(sql.NullTime)
@@ -128,6 +130,12 @@ func (_m *PayRefund) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field channel", values[i])
 			} else if value.Valid {
 				_m.Channel = int16(value.Int64)
+			}
+		case payrefund.FieldNotifyURL:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field notify_url", values[i])
+			} else if value.Valid {
+				_m.NotifyURL = value.String
 			}
 		case payrefund.FieldAmount:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -227,6 +235,9 @@ func (_m *PayRefund) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("channel=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Channel))
+	builder.WriteString(", ")
+	builder.WriteString("notify_url=")
+	builder.WriteString(_m.NotifyURL)
 	builder.WriteString(", ")
 	builder.WriteString("amount=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Amount))

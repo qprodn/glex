@@ -26,6 +26,7 @@ func toBizRefund(po *ent.PayRefund) *payentity.Refund {
 		PaymentID:       po.PaymentID,
 		MerchantID:      po.MerchantID,
 		Channel:         payentity.Channel(po.Channel),
+		NotifyURL:       po.NotifyURL,
 		Amount:          po.Amount,
 		Reason:          po.Reason,
 		Status:          payentity.RefundStatus(po.Status),
@@ -125,6 +126,7 @@ func (r *refundRepo) Create(ctx context.Context, rf *payentity.Refund) (*payenti
 		SetPaymentID(rf.PaymentID).
 		SetMerchantID(rf.MerchantID).
 		SetChannel(int16(rf.Channel)).
+		SetNotifyURL(rf.NotifyURL).
 		SetAmount(rf.Amount).
 		SetReason(rf.Reason).
 		SetStatus(int16(rf.Status)).

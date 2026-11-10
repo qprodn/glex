@@ -29,6 +29,8 @@ const (
 	FieldMerchantID = "merchant_id"
 	// FieldChannel holds the string denoting the channel field in the database.
 	FieldChannel = "channel"
+	// FieldNotifyURL holds the string denoting the notify_url field in the database.
+	FieldNotifyURL = "notify_url"
 	// FieldAmount holds the string denoting the amount field in the database.
 	FieldAmount = "amount"
 	// FieldReason holds the string denoting the reason field in the database.
@@ -56,6 +58,7 @@ var Columns = []string{
 	FieldPaymentID,
 	FieldMerchantID,
 	FieldChannel,
+	FieldNotifyURL,
 	FieldAmount,
 	FieldReason,
 	FieldStatus,
@@ -85,6 +88,10 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// DefaultNotifyURL holds the default value on creation for the "notify_url" field.
+	DefaultNotifyURL string
+	// NotifyURLValidator is a validator for the "notify_url" field. It is called by the builders before save.
+	NotifyURLValidator func(string) error
 	// DefaultReason holds the default value on creation for the "reason" field.
 	DefaultReason string
 	// ReasonValidator is a validator for the "reason" field. It is called by the builders before save.
@@ -143,6 +150,11 @@ func ByMerchantID(opts ...sql.OrderTermOption) OrderOption {
 // ByChannel orders the results by the channel field.
 func ByChannel(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldChannel, opts...).ToFunc()
+}
+
+// ByNotifyURL orders the results by the notify_url field.
+func ByNotifyURL(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldNotifyURL, opts...).ToFunc()
 }
 
 // ByAmount orders the results by the amount field.

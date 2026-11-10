@@ -110,6 +110,20 @@ func (_c *PayRefundCreate) SetChannel(v int16) *PayRefundCreate {
 	return _c
 }
 
+// SetNotifyURL sets the "notify_url" field.
+func (_c *PayRefundCreate) SetNotifyURL(v string) *PayRefundCreate {
+	_c.mutation.SetNotifyURL(v)
+	return _c
+}
+
+// SetNillableNotifyURL sets the "notify_url" field if the given value is not nil.
+func (_c *PayRefundCreate) SetNillableNotifyURL(v *string) *PayRefundCreate {
+	if v != nil {
+		_c.SetNotifyURL(*v)
+	}
+	return _c
+}
+
 // SetAmount sets the "amount" field.
 func (_c *PayRefundCreate) SetAmount(v int64) *PayRefundCreate {
 	_c.mutation.SetAmount(v)
@@ -243,6 +257,10 @@ func (_c *PayRefundCreate) defaults() {
 		v := payrefund.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := _c.mutation.NotifyURL(); !ok {
+		v := payrefund.DefaultNotifyURL
+		_c.mutation.SetNotifyURL(v)
+	}
 	if _, ok := _c.mutation.Reason(); !ok {
 		v := payrefund.DefaultReason
 		_c.mutation.SetReason(v)
@@ -269,6 +287,14 @@ func (_c *PayRefundCreate) check() error {
 	}
 	if _, ok := _c.mutation.Channel(); !ok {
 		return &ValidationError{Name: "channel", err: errors.New(`ent: missing required field "PayRefund.channel"`)}
+	}
+	if _, ok := _c.mutation.NotifyURL(); !ok {
+		return &ValidationError{Name: "notify_url", err: errors.New(`ent: missing required field "PayRefund.notify_url"`)}
+	}
+	if v, ok := _c.mutation.NotifyURL(); ok {
+		if err := payrefund.NotifyURLValidator(v); err != nil {
+			return &ValidationError{Name: "notify_url", err: fmt.Errorf(`ent: validator failed for field "PayRefund.notify_url": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.Amount(); !ok {
 		return &ValidationError{Name: "amount", err: errors.New(`ent: missing required field "PayRefund.amount"`)}
@@ -358,6 +384,10 @@ func (_c *PayRefundCreate) createSpec() (*PayRefund, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Channel(); ok {
 		_spec.SetField(payrefund.FieldChannel, field.TypeInt16, value)
 		_node.Channel = value
+	}
+	if value, ok := _c.mutation.NotifyURL(); ok {
+		_spec.SetField(payrefund.FieldNotifyURL, field.TypeString, value)
+		_node.NotifyURL = value
 	}
 	if value, ok := _c.mutation.Amount(); ok {
 		_spec.SetField(payrefund.FieldAmount, field.TypeInt64, value)
@@ -564,6 +594,18 @@ func (u *PayRefundUpsert) UpdateChannel() *PayRefundUpsert {
 // AddChannel adds v to the "channel" field.
 func (u *PayRefundUpsert) AddChannel(v int16) *PayRefundUpsert {
 	u.Add(payrefund.FieldChannel, v)
+	return u
+}
+
+// SetNotifyURL sets the "notify_url" field.
+func (u *PayRefundUpsert) SetNotifyURL(v string) *PayRefundUpsert {
+	u.Set(payrefund.FieldNotifyURL, v)
+	return u
+}
+
+// UpdateNotifyURL sets the "notify_url" field to the value that was provided on create.
+func (u *PayRefundUpsert) UpdateNotifyURL() *PayRefundUpsert {
+	u.SetExcluded(payrefund.FieldNotifyURL)
 	return u
 }
 
@@ -871,6 +913,20 @@ func (u *PayRefundUpsertOne) AddChannel(v int16) *PayRefundUpsertOne {
 func (u *PayRefundUpsertOne) UpdateChannel() *PayRefundUpsertOne {
 	return u.Update(func(s *PayRefundUpsert) {
 		s.UpdateChannel()
+	})
+}
+
+// SetNotifyURL sets the "notify_url" field.
+func (u *PayRefundUpsertOne) SetNotifyURL(v string) *PayRefundUpsertOne {
+	return u.Update(func(s *PayRefundUpsert) {
+		s.SetNotifyURL(v)
+	})
+}
+
+// UpdateNotifyURL sets the "notify_url" field to the value that was provided on create.
+func (u *PayRefundUpsertOne) UpdateNotifyURL() *PayRefundUpsertOne {
+	return u.Update(func(s *PayRefundUpsert) {
+		s.UpdateNotifyURL()
 	})
 }
 
@@ -1361,6 +1417,20 @@ func (u *PayRefundUpsertBulk) AddChannel(v int16) *PayRefundUpsertBulk {
 func (u *PayRefundUpsertBulk) UpdateChannel() *PayRefundUpsertBulk {
 	return u.Update(func(s *PayRefundUpsert) {
 		s.UpdateChannel()
+	})
+}
+
+// SetNotifyURL sets the "notify_url" field.
+func (u *PayRefundUpsertBulk) SetNotifyURL(v string) *PayRefundUpsertBulk {
+	return u.Update(func(s *PayRefundUpsert) {
+		s.SetNotifyURL(v)
+	})
+}
+
+// UpdateNotifyURL sets the "notify_url" field to the value that was provided on create.
+func (u *PayRefundUpsertBulk) UpdateNotifyURL() *PayRefundUpsertBulk {
+	return u.Update(func(s *PayRefundUpsert) {
+		s.UpdateNotifyURL()
 	})
 }
 
