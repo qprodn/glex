@@ -588,6 +588,8 @@ type memNotices struct {
 	next int64
 	rows []*payentity.BusinessNotice
 	err  error
+	// refuse is the unique-pair answer: ok false, no error, no row.
+	refuse bool
 }
 
 func (m *memNotices) NextID() int64 {
@@ -598,6 +600,9 @@ func (m *memNotices) NextID() int64 {
 func (m *memNotices) Insert(_ context.Context, n *payentity.BusinessNotice) (bool, error) {
 	if m.err != nil {
 		return false, m.err
+	}
+	if m.refuse {
+		return false, nil
 	}
 	cp := *n
 	m.rows = append(m.rows, &cp)
