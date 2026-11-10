@@ -64,4 +64,7 @@ enum ErrorReason {
   // The display name is already taken by a Pay Application that is not
   // withdrawn (HTTP 409).
   APPLICATION_DUPLICATE = 17;
+  // This Pay Application already has a Payment for the Business Order
+  // Number, and the amount or Pay Method differs (HTTP 409).
+  PAYMENT_CONFLICT = 18;
 }

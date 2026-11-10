@@ -27,14 +27,19 @@ func (PayPayment) Mixin() []ent.Mixin {
 func (PayPayment) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int64("id").Unique().Immutable(),
-		// Bare cross-module-style reference — the Merchant Account id; no FK.
+		// Pay Application that started this Payment. No foreign key.
+		field.Int64("application_id"),
+		// Bare reference — the Merchant Account id snapshotted at initiation; no FK.
 		field.Int64("merchant_id"),
 		// Snapshot of the Merchant Account's channel at initiation; a later
 		// merchant withdrawal never re-points an existing payment.
 		field.Int16("channel"),
-		// Business Order Number: opaque caller reference, indexed, never
-		// unique among Payments (a re-initiation closes the old pending row
-		// and inserts a new one).
+		// Payment result address copied from the Pay Application at creation.
+		// Empty stays empty.
+		field.String("notify_url").MaxLen(512).Default(""),
+		// Business Order Number: opaque caller reference. Unique together
+		// with application_id among rows that are not withdrawn, including
+		// terminal Payments. Not unique per Merchant Account.
 		field.String("biz_no").MaxLen(64),
 		field.String("subject").MaxLen(256),
 		// Minor units (fen for CNY) — `amount` is always minor units
@@ -74,13 +79,18 @@ func (PayPayment) Annotations() []entschema.Annotation {
 	}
 }
 
-// Indexes serves the settlement paths: initiation looks up a merchant's
-// pending rows per Business Order Number; the console filters by status and
+// Indexes serves the settlement paths: initiation looks up one Pay
+// Application's Business Order Number; the console filters by status and
 // time; notifications and queries resolve by the channel's trade number;
-// the expire sweep scans pending rows past expiry (ADR 0023). None of them
-// is unique — re-initiation keeps history.
+// the expire sweep scans pending rows past expiry (ADR 0023).
+// (application_id, biz_no) is unique among rows that are not withdrawn.
+// (merchant_id, biz_no) is not — two Pay Applications on one Merchant
+// Account may share a Business Order Number.
 func (PayPayment) Indexes() []ent.Index {
 	return []ent.Index{
+		index.Fields("application_id", "biz_no").
+			Unique().
+			Annotations(entsql.IndexWhere("deleted_at IS NULL")),
 		index.Fields("merchant_id", "biz_no").
 			Annotations(entsql.IndexWhere("deleted_at IS NULL")),
 		index.Fields("status"),

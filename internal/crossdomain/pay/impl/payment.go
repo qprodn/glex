@@ -15,9 +15,8 @@ import (
 
 // paymentCreator satisfies the crossdomain creation contract by sharing
 // the back office's application use case — the prepay lock, the
-// close-old-pending transaction batch, and the channel prepay all live
-// there, so an in-process caller gets exactly the initiation the console
-// gets (design §8).
+// initiate transaction, and the channel prepay all live there, so an
+// in-process caller gets exactly the initiation the console gets.
 type paymentCreator struct {
 	app *pay.PayApplication
 }
@@ -30,7 +29,7 @@ func NewPaymentCreator(app *pay.PayApplication) paycontract.PaymentCreator {
 
 func (c *paymentCreator) CreatePayment(ctx context.Context, req *model.PaymentRequest) (*model.Payment, error) {
 	out, err := c.app.CreatePayment(ctx, &payv1.CreatePaymentRequest{
-		MerchantId:    req.MerchantID,
+		ApplicationId: req.ApplicationID,
 		BizNo:         req.BizNo,
 		Subject:       req.Subject,
 		Amount:        req.Amount,
@@ -42,6 +41,7 @@ func (c *paymentCreator) CreatePayment(ctx context.Context, req *model.PaymentRe
 	}
 	return &model.Payment{
 		PaymentNo:      out.GetPaymentId(),
+		ApplicationID:  out.GetApplicationId(),
 		MerchantID:     out.GetMerchantId(),
 		Channel:        int(out.GetChannel()),
 		BizNo:          out.GetBizNo(),
@@ -69,7 +69,7 @@ type paymentReader struct {
 // contract needs — the interface the impl depends on.
 type payservicePayment interface {
 	Get(ctx context.Context, id int64) (*payentity.Payment, error)
-	GetByBizNo(ctx context.Context, req *payservice.GetByBizNoRequest) (*payentity.Payment, error)
+	GetByBizNo(ctx context.Context, req payservice.GetByBizNoRequest) (*payentity.Payment, error)
 }
 
 // NewPaymentReader adapts the payment domain service to the crossdomain
@@ -94,9 +94,9 @@ func (r *paymentReader) GetPayment(ctx context.Context, paymentNo string) (*mode
 }
 
 func (r *paymentReader) GetByBizNo(ctx context.Context, req *model.GetByBizNoRequest) (*model.Payment, error) {
-	p, err := r.payments.GetByBizNo(ctx, &payservice.GetByBizNoRequest{
-		MerchantID: req.MerchantID,
-		BizNo:      req.BizNo,
+	p, err := r.payments.GetByBizNo(ctx, payservice.GetByBizNoRequest{
+		ApplicationID: req.ApplicationID,
+		BizNo:         req.BizNo,
 	})
 	if err != nil {
 		return nil, err
@@ -108,6 +108,7 @@ func (r *paymentReader) GetByBizNo(ctx context.Context, req *model.GetByBizNoReq
 func paymentToModel(p *payentity.Payment) *model.Payment {
 	out := &model.Payment{
 		PaymentNo:      p.ID,
+		ApplicationID:  p.ApplicationID,
 		MerchantID:     p.MerchantID,
 		Channel:        int(p.Channel),
 		BizNo:          p.BizNo,

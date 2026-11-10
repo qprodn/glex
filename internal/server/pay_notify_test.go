@@ -240,6 +240,12 @@ func (r *goldMerchantRepo) Delete(ctx context.Context, req payrepo.DeleteMerchan
 
 func (r *goldMerchantRepo) NextID() int64 { return 777 }
 
+// goldApplicationRepo is unused by channel-notification intake. The
+// payment service requires the port; intake never starts a Payment.
+type goldApplicationRepo struct {
+	payrepo.PayApplicationRepo
+}
+
 type goldPaymentRepo struct {
 	p map[int64]*payentity.Payment
 }
@@ -252,7 +258,7 @@ func (r *goldPaymentRepo) FindByID(ctx context.Context, id int64) (*payentity.Pa
 	return nil, paydomain.ErrPaymentNotFound
 }
 
-func (r *goldPaymentRepo) FindLatestByBizNo(ctx context.Context, req payrepo.FindLatestByBizNoRequest) (*payentity.Payment, error) {
+func (r *goldPaymentRepo) FindByBizNo(ctx context.Context, req payrepo.FindByBizNoRequest) (*payentity.Payment, error) {
 	return nil, paydomain.ErrPaymentNotFound
 }
 
@@ -268,10 +274,6 @@ func (r *goldPaymentRepo) Create(ctx context.Context, p *payentity.Payment) (*pa
 	cp := *p
 	r.p[p.ID] = &cp
 	return &cp, nil
-}
-
-func (r *goldPaymentRepo) ClosePendingByBizNo(ctx context.Context, req payrepo.ClosePendingByBizNoRequest) (int, error) {
-	return 0, nil
 }
 
 func (r *goldPaymentRepo) SetChannelPayload(ctx context.Context, req payrepo.SetChannelPayloadRequest) error {
@@ -405,7 +407,7 @@ func newGoldFixture(t *testing.T) *goldFixture {
 	registry.Register(&goldFactory{base: base})
 
 	merchantSvc := payservice.NewMerchantService(merchantRepo, &goldCatalog{}, cipher, registry, slog.New(slog.DiscardHandler))
-	paymentSvc := payservice.NewPaymentService(payments, merchantRepo, registry, slog.New(slog.DiscardHandler))
+	paymentSvc := payservice.NewPaymentService(payments, goldApplicationRepo{}, merchantRepo, registry, slog.New(slog.DiscardHandler))
 	refundSvc := payservice.NewRefundService(nil, payments, merchantRepo, registry, slog.New(slog.DiscardHandler))
 	intake := payservice.NewIntake(merchantSvc, paymentSvc, refundSvc, notifyRepo, goldPublisher{}, slog.New(slog.DiscardHandler))
 

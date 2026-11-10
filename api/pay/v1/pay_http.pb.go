@@ -60,11 +60,11 @@ type PayServiceHTTPServer interface {
 	// Merchant Account that is enabled and not withdrawn. Either result
 	// address may be empty. There is no app key and no secret.
 	CreatePayApplication(context.Context, *CreatePayApplicationRequest) (*PayApplication, error)
-	// CreatePayment CreatePayment initiates one Native Payment: it closes the Merchant
-	// Account's still-pending Payments for the Business Order Number, then
-	// prepays at the Channel and returns the Payment carrying the QR payload
-	// in channel_payload. A concurrent duplicate submit is rejected
-	// (LOCK_BUSY / HTTP 409).
+	// CreatePayment CreatePayment starts a Payment for one Pay Application. The same Pay
+	// Application, Business Order Number, amount, and Pay Method returns the
+	// existing Payment, and prepays it when it is still pending and has no
+	// channel payload. A different amount or Pay Method is refused. A
+	// concurrent duplicate submit is rejected (LOCK_BUSY / HTTP 409).
 	CreatePayment(context.Context, *CreatePaymentRequest) (*Payment, error)
 	// CreateRefund CreateRefund refunds part of a paid Payment under the payment-scoped
 	// lock: refunded + amount ≤ paid, or REFUND_EXCEED_LIMIT. WeChat refunds
@@ -643,11 +643,11 @@ type PayServiceHTTPClient interface {
 	// Merchant Account that is enabled and not withdrawn. Either result
 	// address may be empty. There is no app key and no secret.
 	CreatePayApplication(ctx context.Context, req *CreatePayApplicationRequest, opts ...http.CallOption) (rsp *PayApplication, err error)
-	// CreatePayment CreatePayment initiates one Native Payment: it closes the Merchant
-	// Account's still-pending Payments for the Business Order Number, then
-	// prepays at the Channel and returns the Payment carrying the QR payload
-	// in channel_payload. A concurrent duplicate submit is rejected
-	// (LOCK_BUSY / HTTP 409).
+	// CreatePayment CreatePayment starts a Payment for one Pay Application. The same Pay
+	// Application, Business Order Number, amount, and Pay Method returns the
+	// existing Payment, and prepays it when it is still pending and has no
+	// channel payload. A different amount or Pay Method is refused. A
+	// concurrent duplicate submit is rejected (LOCK_BUSY / HTTP 409).
 	CreatePayment(ctx context.Context, req *CreatePaymentRequest, opts ...http.CallOption) (rsp *Payment, err error)
 	// CreateRefund CreateRefund refunds part of a paid Payment under the payment-scoped
 	// lock: refunded + amount ≤ paid, or REFUND_EXCEED_LIMIT. WeChat refunds
@@ -807,11 +807,11 @@ func (c *PayServiceHTTPClientImpl) CreatePayApplication(ctx context.Context, in 
 	return &out, nil
 }
 
-// CreatePayment CreatePayment initiates one Native Payment: it closes the Merchant
-// Account's still-pending Payments for the Business Order Number, then
-// prepays at the Channel and returns the Payment carrying the QR payload
-// in channel_payload. A concurrent duplicate submit is rejected
-// (LOCK_BUSY / HTTP 409).
+// CreatePayment CreatePayment starts a Payment for one Pay Application. The same Pay
+// Application, Business Order Number, amount, and Pay Method returns the
+// existing Payment, and prepays it when it is still pending and has no
+// channel payload. A different amount or Pay Method is refused. A
+// concurrent duplicate submit is rejected (LOCK_BUSY / HTTP 409).
 func (c *PayServiceHTTPClientImpl) CreatePayment(ctx context.Context, in *CreatePaymentRequest, opts ...http.CallOption) (*Payment, error) {
 	var out Payment
 	pattern := "/pay/payment"

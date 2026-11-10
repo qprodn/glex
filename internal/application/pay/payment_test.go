@@ -15,10 +15,9 @@ import (
 	kratoserrors "github.com/go-kratos/kratos/v3/errors"
 )
 
-// The application-level payment tests: the prepay lock's fail-fast
-// duplicate rejection (LOCK_BUSY / HTTP 409 is the agreed duplicate-submit
-// behavior, ADR 0003) and the transaction boundary around close-old +
-// insert.
+// The application-level payment tests cover the prepay lock key and its
+// fail-fast duplicate rejection (LOCK_BUSY / HTTP 409, ADR 0003). The
+// return-or-refuse rule is asserted on the domain service, not here.
 
 type fakeLocker struct {
 	failBusy bool
@@ -52,7 +51,7 @@ type fakePaymentSvc struct {
 
 func (f *fakePaymentSvc) Initiate(ctx context.Context, req payservice.CreatePaymentRequest) (*payentity.Payment, error) {
 	f.initiated++
-	p := &payentity.Payment{ID: 900, MerchantID: req.MerchantID, BizNo: req.BizNo, Status: payentity.PaymentPending}
+	p := &payentity.Payment{ID: 900, ApplicationID: req.ApplicationID, BizNo: req.BizNo, Status: payentity.PaymentPending}
 	f.pending = p
 	return p, nil
 }
@@ -84,15 +83,14 @@ func TestCreatePaymentLocksAndPrepays(t *testing.T) {
 	svc := &fakePaymentSvc{}
 	app := newTestPayApplication(locker, svc)
 	if _, err := app.CreatePayment(context.Background(), &payv1.CreatePaymentRequest{
-		MerchantId: 42,
-		BizNo:      "ORDER-1",
-		Subject:    "测试",
-		Amount:     100,
+		ApplicationId: 77,
+		BizNo:         "ORDER-1",
+		Subject:       "测试",
+		Amount:        100,
 	}); err != nil {
 		t.Fatalf("create payment: %v", err)
 	}
-	// The lock key names the merchant + business order pair (design §7).
-	if len(locker.keys) != 1 || locker.keys[0] != "pay:prepay:42:ORDER-1" {
+	if len(locker.keys) != 1 || locker.keys[0] != "pay:prepay:77:ORDER-1" {
 		t.Fatalf("lock keys = %v", locker.keys)
 	}
 	if svc.initiated != 1 || svc.prepaid != 1 {
@@ -104,10 +102,10 @@ func TestCreatePaymentDuplicateSubmitIs409(t *testing.T) {
 	locker := &fakeLocker{failBusy: true}
 	app := newTestPayApplication(locker, &fakePaymentSvc{})
 	_, err := app.CreatePayment(context.Background(), &payv1.CreatePaymentRequest{
-		MerchantId: 42,
-		BizNo:      "ORDER-1",
-		Subject:    "测试",
-		Amount:     100,
+		ApplicationId: 77,
+		BizNo:         "ORDER-1",
+		Subject:       "测试",
+		Amount:        100,
 	})
 	if err == nil {
 		t.Fatal("duplicate submit accepted")
@@ -125,7 +123,7 @@ func TestCreatePaymentInvalidAmountNeverLocks(t *testing.T) {
 	locker := &fakeLocker{}
 	app := newTestPayApplication(locker, &fakePaymentSvc{})
 	if _, err := app.CreatePayment(context.Background(), &payv1.CreatePaymentRequest{
-		MerchantId: 0,
+		ApplicationId: 0,
 	}); err != nil {
 		t.Fatalf("unexpected error from the fake path: %v", err)
 	}

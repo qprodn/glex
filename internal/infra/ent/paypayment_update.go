@@ -108,6 +108,27 @@ func (_u *PayPaymentUpdate) ClearDeletedAt() *PayPaymentUpdate {
 	return _u
 }
 
+// SetApplicationID sets the "application_id" field.
+func (_u *PayPaymentUpdate) SetApplicationID(v int64) *PayPaymentUpdate {
+	_u.mutation.ResetApplicationID()
+	_u.mutation.SetApplicationID(v)
+	return _u
+}
+
+// SetNillableApplicationID sets the "application_id" field if the given value is not nil.
+func (_u *PayPaymentUpdate) SetNillableApplicationID(v *int64) *PayPaymentUpdate {
+	if v != nil {
+		_u.SetApplicationID(*v)
+	}
+	return _u
+}
+
+// AddApplicationID adds value to the "application_id" field.
+func (_u *PayPaymentUpdate) AddApplicationID(v int64) *PayPaymentUpdate {
+	_u.mutation.AddApplicationID(v)
+	return _u
+}
+
 // SetMerchantID sets the "merchant_id" field.
 func (_u *PayPaymentUpdate) SetMerchantID(v int64) *PayPaymentUpdate {
 	_u.mutation.ResetMerchantID()
@@ -147,6 +168,20 @@ func (_u *PayPaymentUpdate) SetNillableChannel(v *int16) *PayPaymentUpdate {
 // AddChannel adds value to the "channel" field.
 func (_u *PayPaymentUpdate) AddChannel(v int16) *PayPaymentUpdate {
 	_u.mutation.AddChannel(v)
+	return _u
+}
+
+// SetNotifyURL sets the "notify_url" field.
+func (_u *PayPaymentUpdate) SetNotifyURL(v string) *PayPaymentUpdate {
+	_u.mutation.SetNotifyURL(v)
+	return _u
+}
+
+// SetNillableNotifyURL sets the "notify_url" field if the given value is not nil.
+func (_u *PayPaymentUpdate) SetNillableNotifyURL(v *string) *PayPaymentUpdate {
+	if v != nil {
+		_u.SetNotifyURL(*v)
+	}
 	return _u
 }
 
@@ -433,6 +468,11 @@ func (_u *PayPaymentUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *PayPaymentUpdate) check() error {
+	if v, ok := _u.mutation.NotifyURL(); ok {
+		if err := paypayment.NotifyURLValidator(v); err != nil {
+			return &ValidationError{Name: "notify_url", err: fmt.Errorf(`ent: validator failed for field "PayPayment.notify_url": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.BizNo(); ok {
 		if err := paypayment.BizNoValidator(v); err != nil {
 			return &ValidationError{Name: "biz_no", err: fmt.Errorf(`ent: validator failed for field "PayPayment.biz_no": %w`, err)}
@@ -505,6 +545,12 @@ func (_u *PayPaymentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	if _u.mutation.DeletedAtCleared() {
 		_spec.ClearField(paypayment.FieldDeletedAt, field.TypeTime)
 	}
+	if value, ok := _u.mutation.ApplicationID(); ok {
+		_spec.SetField(paypayment.FieldApplicationID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedApplicationID(); ok {
+		_spec.AddField(paypayment.FieldApplicationID, field.TypeInt64, value)
+	}
 	if value, ok := _u.mutation.MerchantID(); ok {
 		_spec.SetField(paypayment.FieldMerchantID, field.TypeInt64, value)
 	}
@@ -516,6 +562,9 @@ func (_u *PayPaymentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	}
 	if value, ok := _u.mutation.AddedChannel(); ok {
 		_spec.AddField(paypayment.FieldChannel, field.TypeInt16, value)
+	}
+	if value, ok := _u.mutation.NotifyURL(); ok {
+		_spec.SetField(paypayment.FieldNotifyURL, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.BizNo(); ok {
 		_spec.SetField(paypayment.FieldBizNo, field.TypeString, value)
@@ -683,6 +732,27 @@ func (_u *PayPaymentUpdateOne) ClearDeletedAt() *PayPaymentUpdateOne {
 	return _u
 }
 
+// SetApplicationID sets the "application_id" field.
+func (_u *PayPaymentUpdateOne) SetApplicationID(v int64) *PayPaymentUpdateOne {
+	_u.mutation.ResetApplicationID()
+	_u.mutation.SetApplicationID(v)
+	return _u
+}
+
+// SetNillableApplicationID sets the "application_id" field if the given value is not nil.
+func (_u *PayPaymentUpdateOne) SetNillableApplicationID(v *int64) *PayPaymentUpdateOne {
+	if v != nil {
+		_u.SetApplicationID(*v)
+	}
+	return _u
+}
+
+// AddApplicationID adds value to the "application_id" field.
+func (_u *PayPaymentUpdateOne) AddApplicationID(v int64) *PayPaymentUpdateOne {
+	_u.mutation.AddApplicationID(v)
+	return _u
+}
+
 // SetMerchantID sets the "merchant_id" field.
 func (_u *PayPaymentUpdateOne) SetMerchantID(v int64) *PayPaymentUpdateOne {
 	_u.mutation.ResetMerchantID()
@@ -722,6 +792,20 @@ func (_u *PayPaymentUpdateOne) SetNillableChannel(v *int16) *PayPaymentUpdateOne
 // AddChannel adds value to the "channel" field.
 func (_u *PayPaymentUpdateOne) AddChannel(v int16) *PayPaymentUpdateOne {
 	_u.mutation.AddChannel(v)
+	return _u
+}
+
+// SetNotifyURL sets the "notify_url" field.
+func (_u *PayPaymentUpdateOne) SetNotifyURL(v string) *PayPaymentUpdateOne {
+	_u.mutation.SetNotifyURL(v)
+	return _u
+}
+
+// SetNillableNotifyURL sets the "notify_url" field if the given value is not nil.
+func (_u *PayPaymentUpdateOne) SetNillableNotifyURL(v *string) *PayPaymentUpdateOne {
+	if v != nil {
+		_u.SetNotifyURL(*v)
+	}
 	return _u
 }
 
@@ -1021,6 +1105,11 @@ func (_u *PayPaymentUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *PayPaymentUpdateOne) check() error {
+	if v, ok := _u.mutation.NotifyURL(); ok {
+		if err := paypayment.NotifyURLValidator(v); err != nil {
+			return &ValidationError{Name: "notify_url", err: fmt.Errorf(`ent: validator failed for field "PayPayment.notify_url": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.BizNo(); ok {
 		if err := paypayment.BizNoValidator(v); err != nil {
 			return &ValidationError{Name: "biz_no", err: fmt.Errorf(`ent: validator failed for field "PayPayment.biz_no": %w`, err)}
@@ -1110,6 +1199,12 @@ func (_u *PayPaymentUpdateOne) sqlSave(ctx context.Context) (_node *PayPayment, 
 	if _u.mutation.DeletedAtCleared() {
 		_spec.ClearField(paypayment.FieldDeletedAt, field.TypeTime)
 	}
+	if value, ok := _u.mutation.ApplicationID(); ok {
+		_spec.SetField(paypayment.FieldApplicationID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedApplicationID(); ok {
+		_spec.AddField(paypayment.FieldApplicationID, field.TypeInt64, value)
+	}
 	if value, ok := _u.mutation.MerchantID(); ok {
 		_spec.SetField(paypayment.FieldMerchantID, field.TypeInt64, value)
 	}
@@ -1121,6 +1216,9 @@ func (_u *PayPaymentUpdateOne) sqlSave(ctx context.Context) (_node *PayPayment, 
 	}
 	if value, ok := _u.mutation.AddedChannel(); ok {
 		_spec.AddField(paypayment.FieldChannel, field.TypeInt16, value)
+	}
+	if value, ok := _u.mutation.NotifyURL(); ok {
+		_spec.SetField(paypayment.FieldNotifyURL, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.BizNo(); ok {
 		_spec.SetField(paypayment.FieldBizNo, field.TypeString, value)

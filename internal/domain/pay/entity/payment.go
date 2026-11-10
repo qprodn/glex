@@ -42,11 +42,16 @@ func (s PaymentStatus) Terminal() bool {
 // Payment is one attempt to collect a stated amount into one Merchant
 // Account through one Pay Method. The ID doubles as the Payment number and
 // the Channel's merchant order number (out_trade_no). Amount is int64 minor
-// units, always (ADR 0019).
+// units, always (ADR 0019). ApplicationID is the Pay Application the
+// caller named; MerchantID and Channel are a snapshot of that
+// application's Merchant Account. NotifyURL is the payment result
+// address copied at creation.
 type Payment struct {
 	ID             int64
+	ApplicationID  int64
 	MerchantID     int64
 	Channel        Channel
+	NotifyURL      string
 	BizNo          string
 	Subject        string
 	Amount         int64
@@ -67,9 +72,10 @@ type Payment struct {
 }
 
 // Initiation is the create-time value object: what an initiator states
-// before any Channel is contacted.
+// before any Channel is contacted. The caller names a Pay Application,
+// not a Merchant Account.
 type Initiation struct {
-	MerchantID    int64
+	ApplicationID int64
 	BizNo         string
 	Subject       string
 	Amount        int64
@@ -78,20 +84,19 @@ type Initiation struct {
 	ExpireMinutes int32
 }
 
-// Validate enforces the initiation invariants: opaque-but-present
-// references, positive amount, CNY for the MVP channels, a supported pay
-// method.
+// Validate enforces the initiation invariants: a Pay Application id,
+// opaque-but-present references, positive amount, and CNY for the MVP
+// channels. Whether the Pay Method can start a new Payment is decided by
+// the caller after it has looked for an existing Payment — a repeat whose
+// method differs is a conflict, not a malformed request.
 func (i *Initiation) Validate() error {
-	if i == nil || i.MerchantID <= 0 || i.BizNo == "" || len(i.BizNo) > 64 ||
+	if i == nil || i.ApplicationID <= 0 || i.BizNo == "" || len(i.BizNo) > 64 ||
 		i.Subject == "" || len(i.Subject) > 256 || i.Amount <= 0 {
 		return pay.ErrPaymentInvalid
 	}
 	if i.Currency != "CNY" {
 		// The MVP channels settle CNY only; other currencies wait for the
 		// channels that speak them (ADR 0019).
-		return pay.ErrPaymentInvalid
-	}
-	if !i.PayMethod.Supported() {
 		return pay.ErrPaymentInvalid
 	}
 	return nil

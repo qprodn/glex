@@ -2432,11 +2432,11 @@ paths:
             tags:
                 - PayService
             description: |-
-                CreatePayment initiates one Native Payment: it closes the Merchant
-                 Account's still-pending Payments for the Business Order Number, then
-                 prepays at the Channel and returns the Payment carrying the QR payload
-                 in channel_payload. A concurrent duplicate submit is rejected
-                 (LOCK_BUSY / HTTP 409).
+                CreatePayment starts a Payment for one Pay Application. The same Pay
+                 Application, Business Order Number, amount, and Pay Method returns the
+                 existing Payment, and prepays it when it is still pending and has no
+                 channel payload. A different amount or Pay Method is refused. A
+                 concurrent duplicate submit is rejected (LOCK_BUSY / HTTP 409).
             operationId: PayService_CreatePayment
             requestBody:
                 content:
@@ -4455,17 +4455,18 @@ components:
                     description: Optional. Refund result address, ≤ 512 chars. Empty is allowed.
         pay.v1.CreatePaymentRequest:
             required:
-                - merchantId
+                - applicationId
                 - bizNo
                 - subject
                 - amount
             type: object
             properties:
-                merchantId:
+                applicationId:
                     type: string
                     description: |-
-                        Required. The Merchant Account to collect into; must exist and be
-                         enabled, and its Channel must have a registered adapter.
+                        Required. The Pay Application to collect for. It and its Merchant
+                         Account must exist, be enabled, and not be withdrawn. The Channel is
+                         the one on that Merchant Account.
                 bizNo:
                     type: string
                     description: Required. Business Order Number — opaque caller reference, ≤ 64 chars.
@@ -4624,7 +4625,7 @@ components:
             properties:
                 paymentId:
                     type: string
-                    description: Snowflake ID — the Payment number.
+                    description: Snowflake ID — the Payment number and the Channel's out_trade_no.
                 merchantId:
                     type: string
                 channel:
@@ -4633,7 +4634,9 @@ components:
                     format: int32
                 bizNo:
                     type: string
-                    description: Business Order Number — the caller's opaque reference, not unique.
+                    description: |-
+                        Business Order Number — unique per Pay Application, including a
+                         closed, expired, or failed Payment.
                 subject:
                     type: string
                 amount:
@@ -4686,6 +4689,14 @@ components:
                 updatedAt:
                     type: string
                     format: date-time
+                applicationId:
+                    type: string
+                    description: Pay Application this Payment was started for.
+                notifyUrl:
+                    type: string
+                    description: |-
+                        Payment result address copied from the Pay Application at creation.
+                         Empty stays empty.
             description: |-
                 Payment is one attempt to collect a stated amount into one Merchant
                  Account through one Pay Method (支付单). The payment_id doubles as the

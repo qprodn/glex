@@ -23,10 +23,14 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
 	FieldDeletedAt = "deleted_at"
+	// FieldApplicationID holds the string denoting the application_id field in the database.
+	FieldApplicationID = "application_id"
 	// FieldMerchantID holds the string denoting the merchant_id field in the database.
 	FieldMerchantID = "merchant_id"
 	// FieldChannel holds the string denoting the channel field in the database.
 	FieldChannel = "channel"
+	// FieldNotifyURL holds the string denoting the notify_url field in the database.
+	FieldNotifyURL = "notify_url"
 	// FieldBizNo holds the string denoting the biz_no field in the database.
 	FieldBizNo = "biz_no"
 	// FieldSubject holds the string denoting the subject field in the database.
@@ -65,8 +69,10 @@ var Columns = []string{
 	FieldCreatedAt,
 	FieldUpdatedAt,
 	FieldDeletedAt,
+	FieldApplicationID,
 	FieldMerchantID,
 	FieldChannel,
+	FieldNotifyURL,
 	FieldBizNo,
 	FieldSubject,
 	FieldAmount,
@@ -103,6 +109,10 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// DefaultNotifyURL holds the default value on creation for the "notify_url" field.
+	DefaultNotifyURL string
+	// NotifyURLValidator is a validator for the "notify_url" field. It is called by the builders before save.
+	NotifyURLValidator func(string) error
 	// BizNoValidator is a validator for the "biz_no" field. It is called by the builders before save.
 	BizNoValidator func(string) error
 	// SubjectValidator is a validator for the "subject" field. It is called by the builders before save.
@@ -158,6 +168,11 @@ func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
 }
 
+// ByApplicationID orders the results by the application_id field.
+func ByApplicationID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldApplicationID, opts...).ToFunc()
+}
+
 // ByMerchantID orders the results by the merchant_id field.
 func ByMerchantID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMerchantID, opts...).ToFunc()
@@ -166,6 +181,11 @@ func ByMerchantID(opts ...sql.OrderTermOption) OrderOption {
 // ByChannel orders the results by the channel field.
 func ByChannel(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldChannel, opts...).ToFunc()
+}
+
+// ByNotifyURL orders the results by the notify_url field.
+func ByNotifyURL(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldNotifyURL, opts...).ToFunc()
 }
 
 // ByBizNo orders the results by the biz_no field.

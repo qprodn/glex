@@ -97,11 +97,11 @@ type PayServiceClient interface {
 	// GetChannelSchemas returns every Channel's config schema — the source
 	// the merchant form renders from.
 	GetChannelSchemas(ctx context.Context, in *GetChannelSchemasRequest, opts ...grpc.CallOption) (*GetChannelSchemasResponse, error)
-	// CreatePayment initiates one Native Payment: it closes the Merchant
-	// Account's still-pending Payments for the Business Order Number, then
-	// prepays at the Channel and returns the Payment carrying the QR payload
-	// in channel_payload. A concurrent duplicate submit is rejected
-	// (LOCK_BUSY / HTTP 409).
+	// CreatePayment starts a Payment for one Pay Application. The same Pay
+	// Application, Business Order Number, amount, and Pay Method returns the
+	// existing Payment, and prepays it when it is still pending and has no
+	// channel payload. A different amount or Pay Method is refused. A
+	// concurrent duplicate submit is rejected (LOCK_BUSY / HTTP 409).
 	CreatePayment(ctx context.Context, in *CreatePaymentRequest, opts ...grpc.CallOption) (*Payment, error)
 	// GetPayment retrieves one Payment. A PENDING payment past its expiry
 	// settles first (channel-confirmed PAID wins, else EXPIRED).
@@ -420,11 +420,11 @@ type PayServiceServer interface {
 	// GetChannelSchemas returns every Channel's config schema — the source
 	// the merchant form renders from.
 	GetChannelSchemas(context.Context, *GetChannelSchemasRequest) (*GetChannelSchemasResponse, error)
-	// CreatePayment initiates one Native Payment: it closes the Merchant
-	// Account's still-pending Payments for the Business Order Number, then
-	// prepays at the Channel and returns the Payment carrying the QR payload
-	// in channel_payload. A concurrent duplicate submit is rejected
-	// (LOCK_BUSY / HTTP 409).
+	// CreatePayment starts a Payment for one Pay Application. The same Pay
+	// Application, Business Order Number, amount, and Pay Method returns the
+	// existing Payment, and prepays it when it is still pending and has no
+	// channel payload. A different amount or Pay Method is refused. A
+	// concurrent duplicate submit is rejected (LOCK_BUSY / HTTP 409).
 	CreatePayment(context.Context, *CreatePaymentRequest) (*Payment, error)
 	// GetPayment retrieves one Payment. A PENDING payment past its expiry
 	// settles first (channel-confirmed PAID wins, else EXPIRED).

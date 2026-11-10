@@ -92,6 +92,12 @@ func (_c *PayPaymentCreate) SetNillableDeletedAt(v *time.Time) *PayPaymentCreate
 	return _c
 }
 
+// SetApplicationID sets the "application_id" field.
+func (_c *PayPaymentCreate) SetApplicationID(v int64) *PayPaymentCreate {
+	_c.mutation.SetApplicationID(v)
+	return _c
+}
+
 // SetMerchantID sets the "merchant_id" field.
 func (_c *PayPaymentCreate) SetMerchantID(v int64) *PayPaymentCreate {
 	_c.mutation.SetMerchantID(v)
@@ -101,6 +107,20 @@ func (_c *PayPaymentCreate) SetMerchantID(v int64) *PayPaymentCreate {
 // SetChannel sets the "channel" field.
 func (_c *PayPaymentCreate) SetChannel(v int16) *PayPaymentCreate {
 	_c.mutation.SetChannel(v)
+	return _c
+}
+
+// SetNotifyURL sets the "notify_url" field.
+func (_c *PayPaymentCreate) SetNotifyURL(v string) *PayPaymentCreate {
+	_c.mutation.SetNotifyURL(v)
+	return _c
+}
+
+// SetNillableNotifyURL sets the "notify_url" field if the given value is not nil.
+func (_c *PayPaymentCreate) SetNillableNotifyURL(v *string) *PayPaymentCreate {
+	if v != nil {
+		_c.SetNotifyURL(*v)
+	}
 	return _c
 }
 
@@ -311,6 +331,10 @@ func (_c *PayPaymentCreate) defaults() {
 		v := paypayment.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := _c.mutation.NotifyURL(); !ok {
+		v := paypayment.DefaultNotifyURL
+		_c.mutation.SetNotifyURL(v)
+	}
 	if _, ok := _c.mutation.Currency(); !ok {
 		v := paypayment.DefaultCurrency
 		_c.mutation.SetCurrency(v)
@@ -337,11 +361,22 @@ func (_c *PayPaymentCreate) check() error {
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "PayPayment.updated_at"`)}
 	}
+	if _, ok := _c.mutation.ApplicationID(); !ok {
+		return &ValidationError{Name: "application_id", err: errors.New(`ent: missing required field "PayPayment.application_id"`)}
+	}
 	if _, ok := _c.mutation.MerchantID(); !ok {
 		return &ValidationError{Name: "merchant_id", err: errors.New(`ent: missing required field "PayPayment.merchant_id"`)}
 	}
 	if _, ok := _c.mutation.Channel(); !ok {
 		return &ValidationError{Name: "channel", err: errors.New(`ent: missing required field "PayPayment.channel"`)}
+	}
+	if _, ok := _c.mutation.NotifyURL(); !ok {
+		return &ValidationError{Name: "notify_url", err: errors.New(`ent: missing required field "PayPayment.notify_url"`)}
+	}
+	if v, ok := _c.mutation.NotifyURL(); ok {
+		if err := paypayment.NotifyURLValidator(v); err != nil {
+			return &ValidationError{Name: "notify_url", err: fmt.Errorf(`ent: validator failed for field "PayPayment.notify_url": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.BizNo(); !ok {
 		return &ValidationError{Name: "biz_no", err: errors.New(`ent: missing required field "PayPayment.biz_no"`)}
@@ -450,6 +485,10 @@ func (_c *PayPaymentCreate) createSpec() (*PayPayment, *sqlgraph.CreateSpec) {
 		_spec.SetField(paypayment.FieldDeletedAt, field.TypeTime, value)
 		_node.DeletedAt = &value
 	}
+	if value, ok := _c.mutation.ApplicationID(); ok {
+		_spec.SetField(paypayment.FieldApplicationID, field.TypeInt64, value)
+		_node.ApplicationID = value
+	}
 	if value, ok := _c.mutation.MerchantID(); ok {
 		_spec.SetField(paypayment.FieldMerchantID, field.TypeInt64, value)
 		_node.MerchantID = value
@@ -457,6 +496,10 @@ func (_c *PayPaymentCreate) createSpec() (*PayPayment, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Channel(); ok {
 		_spec.SetField(paypayment.FieldChannel, field.TypeInt16, value)
 		_node.Channel = value
+	}
+	if value, ok := _c.mutation.NotifyURL(); ok {
+		_spec.SetField(paypayment.FieldNotifyURL, field.TypeString, value)
+		_node.NotifyURL = value
 	}
 	if value, ok := _c.mutation.BizNo(); ok {
 		_spec.SetField(paypayment.FieldBizNo, field.TypeString, value)
@@ -640,6 +683,24 @@ func (u *PayPaymentUpsert) ClearDeletedAt() *PayPaymentUpsert {
 	return u
 }
 
+// SetApplicationID sets the "application_id" field.
+func (u *PayPaymentUpsert) SetApplicationID(v int64) *PayPaymentUpsert {
+	u.Set(paypayment.FieldApplicationID, v)
+	return u
+}
+
+// UpdateApplicationID sets the "application_id" field to the value that was provided on create.
+func (u *PayPaymentUpsert) UpdateApplicationID() *PayPaymentUpsert {
+	u.SetExcluded(paypayment.FieldApplicationID)
+	return u
+}
+
+// AddApplicationID adds v to the "application_id" field.
+func (u *PayPaymentUpsert) AddApplicationID(v int64) *PayPaymentUpsert {
+	u.Add(paypayment.FieldApplicationID, v)
+	return u
+}
+
 // SetMerchantID sets the "merchant_id" field.
 func (u *PayPaymentUpsert) SetMerchantID(v int64) *PayPaymentUpsert {
 	u.Set(paypayment.FieldMerchantID, v)
@@ -673,6 +734,18 @@ func (u *PayPaymentUpsert) UpdateChannel() *PayPaymentUpsert {
 // AddChannel adds v to the "channel" field.
 func (u *PayPaymentUpsert) AddChannel(v int16) *PayPaymentUpsert {
 	u.Add(paypayment.FieldChannel, v)
+	return u
+}
+
+// SetNotifyURL sets the "notify_url" field.
+func (u *PayPaymentUpsert) SetNotifyURL(v string) *PayPaymentUpsert {
+	u.Set(paypayment.FieldNotifyURL, v)
+	return u
+}
+
+// UpdateNotifyURL sets the "notify_url" field to the value that was provided on create.
+func (u *PayPaymentUpsert) UpdateNotifyURL() *PayPaymentUpsert {
+	u.SetExcluded(paypayment.FieldNotifyURL)
 	return u
 }
 
@@ -1028,6 +1101,27 @@ func (u *PayPaymentUpsertOne) ClearDeletedAt() *PayPaymentUpsertOne {
 	})
 }
 
+// SetApplicationID sets the "application_id" field.
+func (u *PayPaymentUpsertOne) SetApplicationID(v int64) *PayPaymentUpsertOne {
+	return u.Update(func(s *PayPaymentUpsert) {
+		s.SetApplicationID(v)
+	})
+}
+
+// AddApplicationID adds v to the "application_id" field.
+func (u *PayPaymentUpsertOne) AddApplicationID(v int64) *PayPaymentUpsertOne {
+	return u.Update(func(s *PayPaymentUpsert) {
+		s.AddApplicationID(v)
+	})
+}
+
+// UpdateApplicationID sets the "application_id" field to the value that was provided on create.
+func (u *PayPaymentUpsertOne) UpdateApplicationID() *PayPaymentUpsertOne {
+	return u.Update(func(s *PayPaymentUpsert) {
+		s.UpdateApplicationID()
+	})
+}
+
 // SetMerchantID sets the "merchant_id" field.
 func (u *PayPaymentUpsertOne) SetMerchantID(v int64) *PayPaymentUpsertOne {
 	return u.Update(func(s *PayPaymentUpsert) {
@@ -1067,6 +1161,20 @@ func (u *PayPaymentUpsertOne) AddChannel(v int16) *PayPaymentUpsertOne {
 func (u *PayPaymentUpsertOne) UpdateChannel() *PayPaymentUpsertOne {
 	return u.Update(func(s *PayPaymentUpsert) {
 		s.UpdateChannel()
+	})
+}
+
+// SetNotifyURL sets the "notify_url" field.
+func (u *PayPaymentUpsertOne) SetNotifyURL(v string) *PayPaymentUpsertOne {
+	return u.Update(func(s *PayPaymentUpsert) {
+		s.SetNotifyURL(v)
+	})
+}
+
+// UpdateNotifyURL sets the "notify_url" field to the value that was provided on create.
+func (u *PayPaymentUpsertOne) UpdateNotifyURL() *PayPaymentUpsertOne {
+	return u.Update(func(s *PayPaymentUpsert) {
+		s.UpdateNotifyURL()
 	})
 }
 
@@ -1623,6 +1731,27 @@ func (u *PayPaymentUpsertBulk) ClearDeletedAt() *PayPaymentUpsertBulk {
 	})
 }
 
+// SetApplicationID sets the "application_id" field.
+func (u *PayPaymentUpsertBulk) SetApplicationID(v int64) *PayPaymentUpsertBulk {
+	return u.Update(func(s *PayPaymentUpsert) {
+		s.SetApplicationID(v)
+	})
+}
+
+// AddApplicationID adds v to the "application_id" field.
+func (u *PayPaymentUpsertBulk) AddApplicationID(v int64) *PayPaymentUpsertBulk {
+	return u.Update(func(s *PayPaymentUpsert) {
+		s.AddApplicationID(v)
+	})
+}
+
+// UpdateApplicationID sets the "application_id" field to the value that was provided on create.
+func (u *PayPaymentUpsertBulk) UpdateApplicationID() *PayPaymentUpsertBulk {
+	return u.Update(func(s *PayPaymentUpsert) {
+		s.UpdateApplicationID()
+	})
+}
+
 // SetMerchantID sets the "merchant_id" field.
 func (u *PayPaymentUpsertBulk) SetMerchantID(v int64) *PayPaymentUpsertBulk {
 	return u.Update(func(s *PayPaymentUpsert) {
@@ -1662,6 +1791,20 @@ func (u *PayPaymentUpsertBulk) AddChannel(v int16) *PayPaymentUpsertBulk {
 func (u *PayPaymentUpsertBulk) UpdateChannel() *PayPaymentUpsertBulk {
 	return u.Update(func(s *PayPaymentUpsert) {
 		s.UpdateChannel()
+	})
+}
+
+// SetNotifyURL sets the "notify_url" field.
+func (u *PayPaymentUpsertBulk) SetNotifyURL(v string) *PayPaymentUpsertBulk {
+	return u.Update(func(s *PayPaymentUpsert) {
+		s.SetNotifyURL(v)
+	})
+}
+
+// UpdateNotifyURL sets the "notify_url" field to the value that was provided on create.
+func (u *PayPaymentUpsertBulk) UpdateNotifyURL() *PayPaymentUpsertBulk {
+	return u.Update(func(s *PayPaymentUpsert) {
+		s.UpdateNotifyURL()
 	})
 }
 

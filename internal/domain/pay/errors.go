@@ -35,9 +35,12 @@ var (
 	// soft-deleted).
 	ErrPaymentNotFound = errors.NotFound("PAYMENT_NOT_FOUND", "payment not found")
 	// ErrPaymentInvalid: a Payment parameter is invalid — non-positive
-	// amount, unsupported currency (MVP: CNY), unsupported pay method,
-	// blank biz_no or subject.
+	// amount, unsupported currency (MVP: CNY), unsupported pay method on
+	// a new Payment, blank biz_no or subject, or a missing Pay Application id.
 	ErrPaymentInvalid = errors.BadRequest("PAYMENT_INVALID", "payment parameters are invalid")
+	// ErrPaymentConflict: this Pay Application already has a Payment for
+	// the Business Order Number, and the amount or Pay Method differs.
+	ErrPaymentConflict = errors.Conflict("PAYMENT_CONFLICT", "payment amount or pay method differs from the existing payment")
 	// ErrPaymentNotPaid: the Payment is not in the state the operation
 	// needs — refunding an unpaid Payment.
 	ErrPaymentNotPaid = errors.Conflict("PAYMENT_NOT_PAID", "payment is not paid")

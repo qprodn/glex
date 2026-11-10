@@ -23,7 +23,7 @@ import (
 type PaymentCreator interface {
 	// CreatePayment initiates one Native payment and returns it carrying
 	// the QR payload. A concurrent duplicate submit for the same
-	// (merchant, business order number) is rejected with LOCK_BUSY.
+	// (Pay Application, Business Order Number) is rejected with LOCK_BUSY.
 	CreatePayment(ctx context.Context, req *model.PaymentRequest) (*model.Payment, error)
 }
 
@@ -34,7 +34,7 @@ type PaymentReader interface {
 	// GetPayment resolves one payment by its number, settling it first
 	// when PENDING and expired.
 	GetPayment(ctx context.Context, paymentNo string) (*model.Payment, error)
-	// GetByBizNo resolves a merchant's newest payment for a Business
-	// Order Number, with the same settlement-on-read.
+	// GetByBizNo resolves one Pay Application's Payment for a Business
+	// Order Number, with the same settlement-on-read. At most one Payment.
 	GetByBizNo(ctx context.Context, req *model.GetByBizNoRequest) (*model.Payment, error)
 }

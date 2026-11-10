@@ -8,11 +8,11 @@ import (
 	"glex/pkg/listq"
 )
 
-// FindLatestByBizNoRequest names one merchant's Business Order Number —
-// the pair a newest-active-Payment lookup resolves.
-type FindLatestByBizNoRequest struct {
-	MerchantID int64
-	BizNo      string
+// FindByBizNoRequest names one Pay Application's Business Order Number.
+// The pair identifies at most one Payment that is not withdrawn.
+type FindByBizNoRequest struct {
+	ApplicationID int64
+	BizNo         string
 }
 
 // ListPendingExpiredRequest is one expire-sweep scan (ADR 0023): the expiry
@@ -21,15 +21,6 @@ type ListPendingExpiredRequest struct {
 	Before  time.Time
 	AfterID int64
 	Limit   int
-}
-
-// ClosePendingByBizNoRequest names the merchant + Business Order Number
-// pair whose still-Pending Payments one re-initiation closes, plus the
-// actor stamped into the audit fields.
-type ClosePendingByBizNoRequest struct {
-	MerchantID int64
-	BizNo      string
-	ActorID    int64
 }
 
 // SetChannelPayloadRequest stores one Payment's Channel prepay payload.
@@ -74,10 +65,9 @@ type MarkPaymentFailedRequest struct {
 type PaymentRepo interface {
 	// FindByID resolves one active Payment.
 	FindByID(ctx context.Context, id int64) (*entity.Payment, error)
-	// FindLatestByBizNo resolves a merchant's newest active Payment for
-	// one Business Order Number — what a business caller reading a
-	// payment's outcome wants. NotFound when none exists.
-	FindLatestByBizNo(ctx context.Context, req FindLatestByBizNoRequest) (*entity.Payment, error)
+	// FindByBizNo resolves the Pay Application's Payment for one Business
+	// Order Number. NotFound when none exists. At most one row matches.
+	FindByBizNo(ctx context.Context, req FindByBizNoRequest) (*entity.Payment, error)
 	// ListPendingExpired returns up to req.Limit still-Pending Payments
 	// whose expiry has passed before req.Before, id ascending from
 	// req.AfterID (0 = from the oldest) — the expire-sweep's candidate set
@@ -89,10 +79,6 @@ type PaymentRepo interface {
 	// Create inserts the row; the caller mints the ID (NextID) and owns
 	// any transaction.
 	Create(ctx context.Context, p *entity.Payment) (*entity.Payment, error)
-	// ClosePendingByBizNo closes every still-Pending Payment of one
-	// merchant's Business Order Number (the re-initiation rule) and
-	// returns how many rows it closed.
-	ClosePendingByBizNo(ctx context.Context, req ClosePendingByBizNoRequest) (int, error)
 	// SetChannelPayload stores the Channel prepay payload (code_url and
 	// kin) so the QR can be re-rendered without a fresh prepay.
 	SetChannelPayload(ctx context.Context, req SetChannelPayloadRequest) error
@@ -107,8 +93,7 @@ type PaymentRepo interface {
 	BackfillPaidInfo(ctx context.Context, req BackfillPaidInfoRequest) (bool, error)
 	// MarkFailed CASes Pending → Failed with the reason.
 	MarkFailed(ctx context.Context, req MarkPaymentFailedRequest) (bool, error)
-	// MarkClosed CASes Pending → Closed (manual close or auto close on
-	// re-initiation).
+	// MarkClosed CASes Pending → Closed (manual close).
 	MarkClosed(ctx context.Context, id int64) (bool, error)
 	// MarkExpired CASes Pending → Expired (lazy expiry on settlement paths).
 	MarkExpired(ctx context.Context, id int64) (bool, error)

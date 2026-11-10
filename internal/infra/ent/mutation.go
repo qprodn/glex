@@ -15484,10 +15484,13 @@ type PayPaymentMutation struct {
 	created_at         *time.Time
 	updated_at         *time.Time
 	deleted_at         *time.Time
+	application_id     *int64
+	addapplication_id  *int64
 	merchant_id        *int64
 	addmerchant_id     *int64
 	channel            *int16
 	addchannel         *int16
+	notify_url         *string
 	biz_no             *string
 	subject            *string
 	amount             *int64
@@ -15876,6 +15879,62 @@ func (m *PayPaymentMutation) ResetDeletedAt() {
 	delete(m.clearedFields, paypayment.FieldDeletedAt)
 }
 
+// SetApplicationID sets the "application_id" field.
+func (m *PayPaymentMutation) SetApplicationID(i int64) {
+	m.application_id = &i
+	m.addapplication_id = nil
+}
+
+// ApplicationID returns the value of the "application_id" field in the mutation.
+func (m *PayPaymentMutation) ApplicationID() (r int64, exists bool) {
+	v := m.application_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldApplicationID returns the old "application_id" field's value of the PayPayment entity.
+// If the PayPayment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PayPaymentMutation) OldApplicationID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldApplicationID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldApplicationID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldApplicationID: %w", err)
+	}
+	return oldValue.ApplicationID, nil
+}
+
+// AddApplicationID adds i to the "application_id" field.
+func (m *PayPaymentMutation) AddApplicationID(i int64) {
+	if m.addapplication_id != nil {
+		*m.addapplication_id += i
+	} else {
+		m.addapplication_id = &i
+	}
+}
+
+// AddedApplicationID returns the value that was added to the "application_id" field in this mutation.
+func (m *PayPaymentMutation) AddedApplicationID() (r int64, exists bool) {
+	v := m.addapplication_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetApplicationID resets all changes to the "application_id" field.
+func (m *PayPaymentMutation) ResetApplicationID() {
+	m.application_id = nil
+	m.addapplication_id = nil
+}
+
 // SetMerchantID sets the "merchant_id" field.
 func (m *PayPaymentMutation) SetMerchantID(i int64) {
 	m.merchant_id = &i
@@ -15986,6 +16045,42 @@ func (m *PayPaymentMutation) AddedChannel() (r int16, exists bool) {
 func (m *PayPaymentMutation) ResetChannel() {
 	m.channel = nil
 	m.addchannel = nil
+}
+
+// SetNotifyURL sets the "notify_url" field.
+func (m *PayPaymentMutation) SetNotifyURL(s string) {
+	m.notify_url = &s
+}
+
+// NotifyURL returns the value of the "notify_url" field in the mutation.
+func (m *PayPaymentMutation) NotifyURL() (r string, exists bool) {
+	v := m.notify_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNotifyURL returns the old "notify_url" field's value of the PayPayment entity.
+// If the PayPayment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PayPaymentMutation) OldNotifyURL(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNotifyURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNotifyURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNotifyURL: %w", err)
+	}
+	return oldValue.NotifyURL, nil
+}
+
+// ResetNotifyURL resets all changes to the "notify_url" field.
+func (m *PayPaymentMutation) ResetNotifyURL() {
+	m.notify_url = nil
 }
 
 // SetBizNo sets the "biz_no" field.
@@ -16635,7 +16730,7 @@ func (m *PayPaymentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PayPaymentMutation) Fields() []string {
-	fields := make([]string, 0, 20)
+	fields := make([]string, 0, 22)
 	if m.create_by != nil {
 		fields = append(fields, paypayment.FieldCreateBy)
 	}
@@ -16651,11 +16746,17 @@ func (m *PayPaymentMutation) Fields() []string {
 	if m.deleted_at != nil {
 		fields = append(fields, paypayment.FieldDeletedAt)
 	}
+	if m.application_id != nil {
+		fields = append(fields, paypayment.FieldApplicationID)
+	}
 	if m.merchant_id != nil {
 		fields = append(fields, paypayment.FieldMerchantID)
 	}
 	if m.channel != nil {
 		fields = append(fields, paypayment.FieldChannel)
+	}
+	if m.notify_url != nil {
+		fields = append(fields, paypayment.FieldNotifyURL)
 	}
 	if m.biz_no != nil {
 		fields = append(fields, paypayment.FieldBizNo)
@@ -16714,10 +16815,14 @@ func (m *PayPaymentMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case paypayment.FieldDeletedAt:
 		return m.DeletedAt()
+	case paypayment.FieldApplicationID:
+		return m.ApplicationID()
 	case paypayment.FieldMerchantID:
 		return m.MerchantID()
 	case paypayment.FieldChannel:
 		return m.Channel()
+	case paypayment.FieldNotifyURL:
+		return m.NotifyURL()
 	case paypayment.FieldBizNo:
 		return m.BizNo()
 	case paypayment.FieldSubject:
@@ -16763,10 +16868,14 @@ func (m *PayPaymentMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldUpdatedAt(ctx)
 	case paypayment.FieldDeletedAt:
 		return m.OldDeletedAt(ctx)
+	case paypayment.FieldApplicationID:
+		return m.OldApplicationID(ctx)
 	case paypayment.FieldMerchantID:
 		return m.OldMerchantID(ctx)
 	case paypayment.FieldChannel:
 		return m.OldChannel(ctx)
+	case paypayment.FieldNotifyURL:
+		return m.OldNotifyURL(ctx)
 	case paypayment.FieldBizNo:
 		return m.OldBizNo(ctx)
 	case paypayment.FieldSubject:
@@ -16837,6 +16946,13 @@ func (m *PayPaymentMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDeletedAt(v)
 		return nil
+	case paypayment.FieldApplicationID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetApplicationID(v)
+		return nil
 	case paypayment.FieldMerchantID:
 		v, ok := value.(int64)
 		if !ok {
@@ -16850,6 +16966,13 @@ func (m *PayPaymentMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetChannel(v)
+		return nil
+	case paypayment.FieldNotifyURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNotifyURL(v)
 		return nil
 	case paypayment.FieldBizNo:
 		v, ok := value.(string)
@@ -16956,6 +17079,9 @@ func (m *PayPaymentMutation) AddedFields() []string {
 	if m.addupdate_by != nil {
 		fields = append(fields, paypayment.FieldUpdateBy)
 	}
+	if m.addapplication_id != nil {
+		fields = append(fields, paypayment.FieldApplicationID)
+	}
 	if m.addmerchant_id != nil {
 		fields = append(fields, paypayment.FieldMerchantID)
 	}
@@ -16986,6 +17112,8 @@ func (m *PayPaymentMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedCreateBy()
 	case paypayment.FieldUpdateBy:
 		return m.AddedUpdateBy()
+	case paypayment.FieldApplicationID:
+		return m.AddedApplicationID()
 	case paypayment.FieldMerchantID:
 		return m.AddedMerchantID()
 	case paypayment.FieldChannel:
@@ -17020,6 +17148,13 @@ func (m *PayPaymentMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddUpdateBy(v)
+		return nil
+	case paypayment.FieldApplicationID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddApplicationID(v)
 		return nil
 	case paypayment.FieldMerchantID:
 		v, ok := value.(int64)
@@ -17156,11 +17291,17 @@ func (m *PayPaymentMutation) ResetField(name string) error {
 	case paypayment.FieldDeletedAt:
 		m.ResetDeletedAt()
 		return nil
+	case paypayment.FieldApplicationID:
+		m.ResetApplicationID()
+		return nil
 	case paypayment.FieldMerchantID:
 		m.ResetMerchantID()
 		return nil
 	case paypayment.FieldChannel:
 		m.ResetChannel()
+		return nil
+	case paypayment.FieldNotifyURL:
+		m.ResetNotifyURL()
 		return nil
 	case paypayment.FieldBizNo:
 		m.ResetBizNo()

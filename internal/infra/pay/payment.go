@@ -21,8 +21,10 @@ import (
 func toBizPayment(po *ent.PayPayment) *payentity.Payment {
 	return &payentity.Payment{
 		ID:             po.ID,
+		ApplicationID:  po.ApplicationID,
 		MerchantID:     po.MerchantID,
 		Channel:        payentity.Channel(po.Channel),
+		NotifyURL:      po.NotifyURL,
 		BizNo:          po.BizNo,
 		Subject:        po.Subject,
 		Amount:         po.Amount,
@@ -78,23 +80,21 @@ func (r *paymentRepo) FindByID(ctx context.Context, id int64) (*payentity.Paymen
 	return toBizPayment(po), nil
 }
 
-// FindLatestByBizNo resolves the newest active Payment for one merchant's
-// Business Order Number — re-initiation keeps history, and the live row
-// is the newest one.
-func (r *paymentRepo) FindLatestByBizNo(ctx context.Context, req payrepo.FindLatestByBizNoRequest) (*payentity.Payment, error) {
+// FindByBizNo resolves the Pay Application's Payment for one Business
+// Order Number. The partial unique index guarantees at most one row.
+func (r *paymentRepo) FindByBizNo(ctx context.Context, req payrepo.FindByBizNoRequest) (*payentity.Payment, error) {
 	po, err := r.data.DB.PayPayment(ctx).Query().
 		Where(
-			entpayment.MerchantIDEQ(req.MerchantID),
+			entpayment.ApplicationIDEQ(req.ApplicationID),
 			entpayment.BizNoEQ(req.BizNo),
 			entpayment.DeletedAtIsNil(),
 		).
-		Order(ent.Desc(entpayment.FieldID)).
-		First(ctx)
+		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return nil, pay.ErrPaymentNotFound
 		}
-		return nil, r.storeError(ctx, "pay.payment.find_latest_by_biz_no", err)
+		return nil, r.storeError(ctx, "pay.payment.find_by_biz_no", err)
 	}
 	return toBizPayment(po), nil
 }
@@ -147,8 +147,10 @@ func (r *paymentRepo) List(ctx context.Context, q listq.Query) ([]*payentity.Pay
 func (r *paymentRepo) Create(ctx context.Context, p *payentity.Payment) (*payentity.Payment, error) {
 	po, err := r.data.DB.PayPayment(ctx).Create().
 		SetID(p.ID).
+		SetApplicationID(p.ApplicationID).
 		SetMerchantID(p.MerchantID).
 		SetChannel(int16(p.Channel)).
+		SetNotifyURL(p.NotifyURL).
 		SetBizNo(p.BizNo).
 		SetSubject(p.Subject).
 		SetAmount(p.Amount).
@@ -160,30 +162,12 @@ func (r *paymentRepo) Create(ctx context.Context, p *payentity.Payment) (*payent
 		SetUpdateBy(p.UpdateBy).
 		Save(ctx)
 	if err != nil {
+		if ent.IsConstraintError(err) {
+			return nil, pay.ErrPaymentConflict
+		}
 		return nil, r.storeError(ctx, "pay.payment.create", err)
 	}
 	return toBizPayment(po), nil
-}
-
-// ClosePendingByBizNo closes every still-Pending Payment of one merchant's
-// Business Order Number in one statement — the re-initiation rule's bulk
-// half. The count is informational; a concurrent notification losing the
-// race is a CAS no-op, not an error.
-func (r *paymentRepo) ClosePendingByBizNo(ctx context.Context, req payrepo.ClosePendingByBizNoRequest) (int, error) {
-	n, err := r.data.DB.PayPayment(ctx).Update().
-		Where(
-			entpayment.MerchantIDEQ(req.MerchantID),
-			entpayment.BizNoEQ(req.BizNo),
-			entpayment.StatusEQ(int16(payentity.PaymentPending)),
-			entpayment.DeletedAtIsNil(),
-		).
-		SetStatus(int16(payentity.PaymentClosed)).
-		SetUpdateBy(req.ActorID).
-		Save(ctx)
-	if err != nil {
-		return 0, r.storeError(ctx, "pay.payment.close_pending_by_biz_no", err)
-	}
-	return n, nil
 }
 
 func (r *paymentRepo) SetChannelPayload(ctx context.Context, req payrepo.SetChannelPayloadRequest) error {

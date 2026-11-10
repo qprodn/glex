@@ -27,10 +27,14 @@ type PayPayment struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// DeletedAt holds the value of the "deleted_at" field.
 	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+	// ApplicationID holds the value of the "application_id" field.
+	ApplicationID int64 `json:"application_id,omitempty"`
 	// MerchantID holds the value of the "merchant_id" field.
 	MerchantID int64 `json:"merchant_id,omitempty"`
 	// Channel holds the value of the "channel" field.
 	Channel int16 `json:"channel,omitempty"`
+	// NotifyURL holds the value of the "notify_url" field.
+	NotifyURL string `json:"notify_url,omitempty"`
 	// BizNo holds the value of the "biz_no" field.
 	BizNo string `json:"biz_no,omitempty"`
 	// Subject holds the value of the "subject" field.
@@ -65,9 +69,9 @@ func (*PayPayment) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case paypayment.FieldID, paypayment.FieldCreateBy, paypayment.FieldUpdateBy, paypayment.FieldMerchantID, paypayment.FieldChannel, paypayment.FieldAmount, paypayment.FieldPayMethod, paypayment.FieldStatus, paypayment.FieldRefundedAmount:
+		case paypayment.FieldID, paypayment.FieldCreateBy, paypayment.FieldUpdateBy, paypayment.FieldApplicationID, paypayment.FieldMerchantID, paypayment.FieldChannel, paypayment.FieldAmount, paypayment.FieldPayMethod, paypayment.FieldStatus, paypayment.FieldRefundedAmount:
 			values[i] = new(sql.NullInt64)
-		case paypayment.FieldBizNo, paypayment.FieldSubject, paypayment.FieldCurrency, paypayment.FieldChannelTradeNo, paypayment.FieldChannelPayload, paypayment.FieldPayerID, paypayment.FieldFailReason:
+		case paypayment.FieldNotifyURL, paypayment.FieldBizNo, paypayment.FieldSubject, paypayment.FieldCurrency, paypayment.FieldChannelTradeNo, paypayment.FieldChannelPayload, paypayment.FieldPayerID, paypayment.FieldFailReason:
 			values[i] = new(sql.NullString)
 		case paypayment.FieldCreatedAt, paypayment.FieldUpdatedAt, paypayment.FieldDeletedAt, paypayment.FieldExpireTime, paypayment.FieldPaidAt:
 			values[i] = new(sql.NullTime)
@@ -123,6 +127,12 @@ func (_m *PayPayment) assignValues(columns []string, values []any) error {
 				_m.DeletedAt = new(time.Time)
 				*_m.DeletedAt = value.Time
 			}
+		case paypayment.FieldApplicationID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field application_id", values[i])
+			} else if value.Valid {
+				_m.ApplicationID = value.Int64
+			}
 		case paypayment.FieldMerchantID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field merchant_id", values[i])
@@ -134,6 +144,12 @@ func (_m *PayPayment) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field channel", values[i])
 			} else if value.Valid {
 				_m.Channel = int16(value.Int64)
+			}
+		case paypayment.FieldNotifyURL:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field notify_url", values[i])
+			} else if value.Valid {
+				_m.NotifyURL = value.String
 			}
 		case paypayment.FieldBizNo:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -267,11 +283,17 @@ func (_m *PayPayment) String() string {
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")
+	builder.WriteString("application_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ApplicationID))
+	builder.WriteString(", ")
 	builder.WriteString("merchant_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.MerchantID))
 	builder.WriteString(", ")
 	builder.WriteString("channel=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Channel))
+	builder.WriteString(", ")
+	builder.WriteString("notify_url=")
+	builder.WriteString(_m.NotifyURL)
 	builder.WriteString(", ")
 	builder.WriteString("biz_no=")
 	builder.WriteString(_m.BizNo)

@@ -1,5 +1,5 @@
 import { services, asServiceError } from "@/services";
-import type { MerchantAccount } from "@/services/pay/v1";
+import type { PayApplication } from "@/services/pay/v1";
 import { yuanToFen, PAYMENT_STATUS } from "@/utils/money";
 import { ModalForm, ProFormDigit, ProFormSelect, ProFormText } from "@ant-design/pro-components";
 import { useIntl } from "@umijs/max";
@@ -7,7 +7,7 @@ import { App, Button, Modal, QRCode, Typography } from "antd";
 import React, { useEffect, useRef, useState } from "react";
 
 /**
- * 发起支付 (ticket 09): picks an enabled merchant, states the business
+ * 发起支付: picks an enabled Pay Application, states the business
  * order number / subject / amount, then renders the channel's QR payload
  * and polls the payment until it leaves PENDING — via callback or via the
  * poll's own server-side settlement. The typed yuan converts to minor
@@ -20,14 +20,14 @@ const CreatePaymentModal: React.FC<{
 }> = ({ open, onClose, onPaid }) => {
   const intl = useIntl();
   const { message } = App.useApp();
-  const [merchants, setMerchants] = useState<MerchantAccount[]>([]);
+  const [applications, setApplications] = useState<PayApplication[]>([]);
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   useEffect(() => {
     if (!open) return;
     services.pay
-      .ListMerchantAccounts({ pageSize: 100, pageToken: undefined, filter: "status=0", orderBy: undefined })
-      .then((set) => setMerchants(set.merchants ?? []))
+      .ListPayApplications({ pageSize: 100, pageToken: undefined, filter: "status=0", orderBy: undefined })
+      .then((set) => setApplications(set.applications ?? []))
       .catch(async (e) => { message.error(asServiceError(e)?.message ?? String(e)); });
   }, [open]);
 
@@ -68,7 +68,7 @@ const CreatePaymentModal: React.FC<{
 
   return (
     <ModalForm<{
-      merchantId: number;
+      applicationId: number;
       bizNo: string;
       subject: string;
       amountYuan: string;
@@ -81,7 +81,7 @@ const CreatePaymentModal: React.FC<{
       onFinish={async (values) => {
         try {
           const p = await services.pay.CreatePayment({
-            merchantId: Number(values.merchantId),
+            applicationId: Number(values.applicationId),
             bizNo: values.bizNo,
             subject: values.subject,
             amount: yuanToFen(values.amountYuan),
@@ -102,10 +102,10 @@ const CreatePaymentModal: React.FC<{
       }}
     >
       <ProFormSelect
-        name="merchantId"
-        label={intl.formatMessage({ id: "pages.pay.merchant.name", defaultMessage: "收款商户" })}
+        name="applicationId"
+        label={intl.formatMessage({ id: "pages.pay.payment.application", defaultMessage: "支付应用" })}
         rules={[{ required: true }]}
-        options={merchants.map((m) => ({ value: Number(m.merchantId), label: m.name }))}
+        options={applications.map((a) => ({ value: Number(a.applicationId), label: a.name }))}
       />
       <ProFormText
         name="bizNo"

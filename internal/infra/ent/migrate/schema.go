@@ -456,8 +456,10 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "application_id", Type: field.TypeInt64},
 		{Name: "merchant_id", Type: field.TypeInt64},
 		{Name: "channel", Type: field.TypeInt16},
+		{Name: "notify_url", Type: field.TypeString, Size: 512, Default: ""},
 		{Name: "biz_no", Type: field.TypeString, Size: 64},
 		{Name: "subject", Type: field.TypeString, Size: 256},
 		{Name: "amount", Type: field.TypeInt64},
@@ -479,9 +481,17 @@ var (
 		PrimaryKey: []*schema.Column{PayPaymentColumns[0]},
 		Indexes: []*schema.Index{
 			{
+				Name:    "paypayment_application_id_biz_no",
+				Unique:  true,
+				Columns: []*schema.Column{PayPaymentColumns[6], PayPaymentColumns[10]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
+			{
 				Name:    "paypayment_merchant_id_biz_no",
 				Unique:  false,
-				Columns: []*schema.Column{PayPaymentColumns[6], PayPaymentColumns[8]},
+				Columns: []*schema.Column{PayPaymentColumns[7], PayPaymentColumns[10]},
 				Annotation: &entsql.IndexAnnotation{
 					Where: "deleted_at IS NULL",
 				},
@@ -489,7 +499,7 @@ var (
 			{
 				Name:    "paypayment_status",
 				Unique:  false,
-				Columns: []*schema.Column{PayPaymentColumns[13]},
+				Columns: []*schema.Column{PayPaymentColumns[15]},
 			},
 			{
 				Name:    "paypayment_created_at",
@@ -499,12 +509,12 @@ var (
 			{
 				Name:    "paypayment_channel_trade_no",
 				Unique:  false,
-				Columns: []*schema.Column{PayPaymentColumns[14]},
+				Columns: []*schema.Column{PayPaymentColumns[16]},
 			},
 			{
 				Name:    "paypayment_expire_time",
 				Unique:  false,
-				Columns: []*schema.Column{PayPaymentColumns[19]},
+				Columns: []*schema.Column{PayPaymentColumns[21]},
 				Annotation: &entsql.IndexAnnotation{
 					Where: "deleted_at IS NULL AND status = 1",
 				},

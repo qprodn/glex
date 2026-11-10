@@ -137,12 +137,13 @@ message ProbeResult {
 // Account through one Pay Method (支付单). The payment_id doubles as the
 // Channel's merchant order number. Amounts are int64 minor units (ADR 0019).
 message Payment {
-  // Snowflake ID — the Payment number.
+  // Snowflake ID — the Payment number and the Channel's out_trade_no.
   int64 payment_id = 1;
   int64 merchant_id = 2;
   // Channel snapshot from the Merchant Account at initiation.
   int32 channel = 3;
-  // Business Order Number — the caller's opaque reference, not unique.
+  // Business Order Number — unique per Pay Application, including a
+  // closed, expired, or failed Payment.
   string biz_no = 4;
   string subject = 5;
   // Minor units (fen for CNY). Always > 0.
@@ -172,6 +173,11 @@ message Payment {
   int64 update_by = 18;
   google.protobuf.Timestamp created_at = 19;
   google.protobuf.Timestamp updated_at = 20;
+  // Pay Application this Payment was started for.
+  int64 application_id = 21;
+  // Payment result address copied from the Pay Application at creation.
+  // Empty stays empty.
+  string notify_url = 22;
 }
 
 // PaymentSet is a page of Payments.
@@ -329,11 +335,11 @@ service PayService {
 
   // ---- Payments (perms pay:payment:*) ----
 
-  // CreatePayment initiates one Native Payment: it closes the Merchant
-  // Account's still-pending Payments for the Business Order Number, then
-  // prepays at the Channel and returns the Payment carrying the QR payload
-  // in channel_payload. A concurrent duplicate submit is rejected
-  // (LOCK_BUSY / HTTP 409).
+  // CreatePayment starts a Payment for one Pay Application. The same Pay
+  // Application, Business Order Number, amount, and Pay Method returns the
+  // existing Payment, and prepays it when it is still pending and has no
+  // channel payload. A different amount or Pay Method is refused. A
+  // concurrent duplicate submit is rejected (LOCK_BUSY / HTTP 409).
   rpc CreatePayment(CreatePaymentRequest) returns (Payment) {
     option (google.api.http) = {
       post: "/pay/payment"
@@ -527,9 +533,10 @@ message WithdrawPayApplicationRequest {
 }
 
 message CreatePaymentRequest {
-  // Required. The Merchant Account to collect into; must exist and be
-  // enabled, and its Channel must have a registered adapter.
-  int64 merchant_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. The Pay Application to collect for. It and its Merchant
+  // Account must exist, be enabled, and not be withdrawn. The Channel is
+  // the one on that Merchant Account.
+  int64 application_id = 1 [(google.api.field_behavior) = REQUIRED];
   // Required. Business Order Number — opaque caller reference, ≤ 64 chars.
   string biz_no = 2 [(google.api.field_behavior) = REQUIRED];
   // Required. Display subject, ≤ 256 chars.

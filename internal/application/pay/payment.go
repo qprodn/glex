@@ -20,7 +20,9 @@ import (
 func convertPayment(p *payentity.Payment) *payv1.Payment {
 	out := &payv1.Payment{
 		PaymentId:      p.ID,
+		ApplicationId:  p.ApplicationID,
 		MerchantId:     p.MerchantID,
+		NotifyUrl:      p.NotifyURL,
 		Channel:        int32(p.Channel),
 		BizNo:          p.BizNo,
 		Subject:        p.Subject,
@@ -45,13 +47,14 @@ func convertPayment(p *payentity.Payment) *payv1.Payment {
 	return out
 }
 
-// CreatePayment initiates one Native payment: the prepay lock absorbs
-// concurrent duplicate submits (LOCK_BUSY / HTTP 409), the close-old +
-// insert batch runs in one transaction, and the channel prepay — which
-// must never ride inside that transaction — follows before the response.
+// CreatePayment starts one Native payment for a Pay Application. The
+// prepay lock is the Pay Application plus the Business Order Number
+// (LOCK_BUSY / HTTP 409 on a concurrent duplicate). Initiate — return the
+// existing Payment or insert the new one — runs in one transaction, and
+// the channel prepay follows outside that transaction.
 func (s *PayApplication) CreatePayment(ctx context.Context, req *payv1.CreatePaymentRequest) (*payv1.Payment, error) {
 	in := payservice.CreatePaymentRequest{
-		MerchantID:    req.GetMerchantId(),
+		ApplicationID: req.GetApplicationId(),
 		BizNo:         req.GetBizNo(),
 		Subject:       req.GetSubject(),
 		Amount:        req.GetAmount(),
@@ -60,11 +63,11 @@ func (s *PayApplication) CreatePayment(ctx context.Context, req *payv1.CreatePay
 		ActorID:       s.actor(ctx),
 	}
 	if in.PayMethod == 0 {
-		// Native is the MVP default (design §4).
+		// Native is the MVP default.
 		in.PayMethod = payentity.PayMethodNative
 	}
 	var out *payentity.Payment
-	err := s.locker.WithLock(ctx, fmt.Sprintf("pay:prepay:%d:%s", in.MerchantID, in.BizNo), func(ctx context.Context) error {
+	err := s.locker.WithLock(ctx, fmt.Sprintf("pay:prepay:%d:%s", in.ApplicationID, in.BizNo), func(ctx context.Context) error {
 		if err := s.tx.InTx(ctx, func(ctx context.Context) error {
 			var err error
 			out, err = s.payments.Initiate(ctx, in)

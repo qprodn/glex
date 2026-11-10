@@ -80,6 +80,9 @@ const (
 	// The display name is already taken by a Pay Application that is not
 	// withdrawn (HTTP 409).
 	ErrorReason_APPLICATION_DUPLICATE ErrorReason = 17
+	// This Pay Application already has a Payment for the Business Order
+	// Number, and the amount or Pay Method differs (HTTP 409).
+	ErrorReason_PAYMENT_CONFLICT ErrorReason = 18
 )
 
 // Enum value maps for ErrorReason.
@@ -103,6 +106,7 @@ var (
 		15: "APPLICATION_NOT_FOUND",
 		16: "APPLICATION_INVALID",
 		17: "APPLICATION_DUPLICATE",
+		18: "PAYMENT_CONFLICT",
 	}
 	ErrorReason_value = map[string]int32{
 		"ERROR_REASON_UNSPECIFIED": 0,
@@ -123,6 +127,7 @@ var (
 		"APPLICATION_NOT_FOUND":    15,
 		"APPLICATION_INVALID":      16,
 		"APPLICATION_DUPLICATE":    17,
+		"PAYMENT_CONFLICT":         18,
 	}
 )
 
@@ -157,7 +162,7 @@ var File_pay_v1_error_reason_proto protoreflect.FileDescriptor
 
 const file_pay_v1_error_reason_proto_rawDesc = "" +
 	"\n" +
-	"\x19pay/v1/error_reason.proto\x12\x06pay.v1*\xc5\x03\n" +
+	"\x19pay/v1/error_reason.proto\x12\x06pay.v1*\xdb\x03\n" +
 	"\vErrorReason\x12\x1c\n" +
 	"\x18ERROR_REASON_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12MERCHANT_NOT_FOUND\x10\x01\x12\x14\n" +
@@ -177,7 +182,8 @@ const file_pay_v1_error_reason_proto_rawDesc = "" +
 	"\x15PAY_STORE_UNAVAILABLE\x10\x0e\x12\x19\n" +
 	"\x15APPLICATION_NOT_FOUND\x10\x0f\x12\x17\n" +
 	"\x13APPLICATION_INVALID\x10\x10\x12\x19\n" +
-	"\x15APPLICATION_DUPLICATE\x10\x11B\"\n" +
+	"\x15APPLICATION_DUPLICATE\x10\x11\x12\x14\n" +
+	"\x10PAYMENT_CONFLICT\x10\x12B\"\n" +
 	"\n" +
 	"api.pay.v1P\x01Z\x12glex/api/pay/v1;v1b\x06proto3"
 

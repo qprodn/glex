@@ -79,6 +79,11 @@ func DeletedAt(v time.Time) predicate.PayPayment {
 	return predicate.PayPayment(sql.FieldEQ(FieldDeletedAt, v))
 }
 
+// ApplicationID applies equality check predicate on the "application_id" field. It's identical to ApplicationIDEQ.
+func ApplicationID(v int64) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldEQ(FieldApplicationID, v))
+}
+
 // MerchantID applies equality check predicate on the "merchant_id" field. It's identical to MerchantIDEQ.
 func MerchantID(v int64) predicate.PayPayment {
 	return predicate.PayPayment(sql.FieldEQ(FieldMerchantID, v))
@@ -87,6 +92,11 @@ func MerchantID(v int64) predicate.PayPayment {
 // Channel applies equality check predicate on the "channel" field. It's identical to ChannelEQ.
 func Channel(v int16) predicate.PayPayment {
 	return predicate.PayPayment(sql.FieldEQ(FieldChannel, v))
+}
+
+// NotifyURL applies equality check predicate on the "notify_url" field. It's identical to NotifyURLEQ.
+func NotifyURL(v string) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldEQ(FieldNotifyURL, v))
 }
 
 // BizNo applies equality check predicate on the "biz_no" field. It's identical to BizNoEQ.
@@ -384,6 +394,46 @@ func DeletedAtNotNil() predicate.PayPayment {
 	return predicate.PayPayment(sql.FieldNotNull(FieldDeletedAt))
 }
 
+// ApplicationIDEQ applies the EQ predicate on the "application_id" field.
+func ApplicationIDEQ(v int64) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldEQ(FieldApplicationID, v))
+}
+
+// ApplicationIDNEQ applies the NEQ predicate on the "application_id" field.
+func ApplicationIDNEQ(v int64) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldNEQ(FieldApplicationID, v))
+}
+
+// ApplicationIDIn applies the In predicate on the "application_id" field.
+func ApplicationIDIn(vs ...int64) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldIn(FieldApplicationID, vs...))
+}
+
+// ApplicationIDNotIn applies the NotIn predicate on the "application_id" field.
+func ApplicationIDNotIn(vs ...int64) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldNotIn(FieldApplicationID, vs...))
+}
+
+// ApplicationIDGT applies the GT predicate on the "application_id" field.
+func ApplicationIDGT(v int64) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldGT(FieldApplicationID, v))
+}
+
+// ApplicationIDGTE applies the GTE predicate on the "application_id" field.
+func ApplicationIDGTE(v int64) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldGTE(FieldApplicationID, v))
+}
+
+// ApplicationIDLT applies the LT predicate on the "application_id" field.
+func ApplicationIDLT(v int64) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldLT(FieldApplicationID, v))
+}
+
+// ApplicationIDLTE applies the LTE predicate on the "application_id" field.
+func ApplicationIDLTE(v int64) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldLTE(FieldApplicationID, v))
+}
+
 // MerchantIDEQ applies the EQ predicate on the "merchant_id" field.
 func MerchantIDEQ(v int64) predicate.PayPayment {
 	return predicate.PayPayment(sql.FieldEQ(FieldMerchantID, v))
@@ -462,6 +512,71 @@ func ChannelLT(v int16) predicate.PayPayment {
 // ChannelLTE applies the LTE predicate on the "channel" field.
 func ChannelLTE(v int16) predicate.PayPayment {
 	return predicate.PayPayment(sql.FieldLTE(FieldChannel, v))
+}
+
+// NotifyURLEQ applies the EQ predicate on the "notify_url" field.
+func NotifyURLEQ(v string) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldEQ(FieldNotifyURL, v))
+}
+
+// NotifyURLNEQ applies the NEQ predicate on the "notify_url" field.
+func NotifyURLNEQ(v string) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldNEQ(FieldNotifyURL, v))
+}
+
+// NotifyURLIn applies the In predicate on the "notify_url" field.
+func NotifyURLIn(vs ...string) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldIn(FieldNotifyURL, vs...))
+}
+
+// NotifyURLNotIn applies the NotIn predicate on the "notify_url" field.
+func NotifyURLNotIn(vs ...string) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldNotIn(FieldNotifyURL, vs...))
+}
+
+// NotifyURLGT applies the GT predicate on the "notify_url" field.
+func NotifyURLGT(v string) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldGT(FieldNotifyURL, v))
+}
+
+// NotifyURLGTE applies the GTE predicate on the "notify_url" field.
+func NotifyURLGTE(v string) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldGTE(FieldNotifyURL, v))
+}
+
+// NotifyURLLT applies the LT predicate on the "notify_url" field.
+func NotifyURLLT(v string) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldLT(FieldNotifyURL, v))
+}
+
+// NotifyURLLTE applies the LTE predicate on the "notify_url" field.
+func NotifyURLLTE(v string) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldLTE(FieldNotifyURL, v))
+}
+
+// NotifyURLContains applies the Contains predicate on the "notify_url" field.
+func NotifyURLContains(v string) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldContains(FieldNotifyURL, v))
+}
+
+// NotifyURLHasPrefix applies the HasPrefix predicate on the "notify_url" field.
+func NotifyURLHasPrefix(v string) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldHasPrefix(FieldNotifyURL, v))
+}
+
+// NotifyURLHasSuffix applies the HasSuffix predicate on the "notify_url" field.
+func NotifyURLHasSuffix(v string) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldHasSuffix(FieldNotifyURL, v))
+}
+
+// NotifyURLEqualFold applies the EqualFold predicate on the "notify_url" field.
+func NotifyURLEqualFold(v string) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldEqualFold(FieldNotifyURL, v))
+}
+
+// NotifyURLContainsFold applies the ContainsFold predicate on the "notify_url" field.
+func NotifyURLContainsFold(v string) predicate.PayPayment {
+	return predicate.PayPayment(sql.FieldContainsFold(FieldNotifyURL, v))
 }
 
 // BizNoEQ applies the EQ predicate on the "biz_no" field.

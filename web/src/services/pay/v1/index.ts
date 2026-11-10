@@ -58,7 +58,10 @@ export type ErrorReason =
   | "APPLICATION_INVALID"
   // The display name is already taken by a Pay Application that is not
   // withdrawn (HTTP 409).
-  | "APPLICATION_DUPLICATE";
+  | "APPLICATION_DUPLICATE"
+  // This Pay Application already has a Payment for the Business Order
+  // Number, and the amount or Pay Method differs (HTTP 409).
+  | "PAYMENT_CONFLICT";
 // MerchantAccount is one Channel Merchant Account (商户账号): the platform's
 // own collecting account at one Channel. The credential config is never
 // served — every response carries only config_masked, the write-time masked
@@ -190,12 +193,13 @@ export type ProbeResult = {
 // Account through one Pay Method (支付单). The payment_id doubles as the
 // Channel's merchant order number. Amounts are int64 minor units (ADR 0019).
 export type Payment = {
-  // Snowflake ID — the Payment number.
+  // Snowflake ID — the Payment number and the Channel's out_trade_no.
   paymentId: number | undefined;
   merchantId: number | undefined;
   // Channel snapshot from the Merchant Account at initiation.
   channel: number | undefined;
-  // Business Order Number — the caller's opaque reference, not unique.
+  // Business Order Number — unique per Pay Application, including a
+  // closed, expired, or failed Payment.
   bizNo: string | undefined;
   subject: string | undefined;
   // Minor units (fen for CNY). Always > 0.
@@ -225,6 +229,11 @@ export type Payment = {
   updateBy: number | undefined;
   createdAt: wellKnownTimestamp | undefined;
   updatedAt: wellKnownTimestamp | undefined;
+  // Pay Application this Payment was started for.
+  applicationId: number | undefined;
+  // Payment result address copied from the Pay Application at creation.
+  // Empty stays empty.
+  notifyUrl: string | undefined;
 };
 
 // PaymentSet is a page of Payments.
@@ -423,11 +432,12 @@ export type WithdrawPayApplicationRequest = {
 };
 
 export type CreatePaymentRequest = {
-  // Required. The Merchant Account to collect into; must exist and be
-  // enabled, and its Channel must have a registered adapter.
+  // Required. The Pay Application to collect for. It and its Merchant
+  // Account must exist, be enabled, and not be withdrawn. The Channel is
+  // the one on that Merchant Account.
   //
   // Behaviors: REQUIRED
-  merchantId: number | undefined;
+  applicationId: number | undefined;
   // Required. Business Order Number — opaque caller reference, ≤ 64 chars.
   //
   // Behaviors: REQUIRED
@@ -577,11 +587,11 @@ export interface PayService {
   // GetChannelSchemas returns every Channel's config schema — the source
   // the merchant form renders from.
   GetChannelSchemas(request: GetChannelSchemasRequest): Promise<GetChannelSchemasResponse>;
-  // CreatePayment initiates one Native Payment: it closes the Merchant
-  // Account's still-pending Payments for the Business Order Number, then
-  // prepays at the Channel and returns the Payment carrying the QR payload
-  // in channel_payload. A concurrent duplicate submit is rejected
-  // (LOCK_BUSY / HTTP 409).
+  // CreatePayment starts a Payment for one Pay Application. The same Pay
+  // Application, Business Order Number, amount, and Pay Method returns the
+  // existing Payment, and prepays it when it is still pending and has no
+  // channel payload. A different amount or Pay Method is refused. A
+  // concurrent duplicate submit is rejected (LOCK_BUSY / HTTP 409).
   CreatePayment(request: CreatePaymentRequest): Promise<Payment>;
   // GetPayment retrieves one Payment. A PENDING payment past its expiry
   // settles first (channel-confirmed PAID wins, else EXPIRED).

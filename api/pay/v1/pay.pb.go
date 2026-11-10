@@ -777,12 +777,13 @@ func (x *ProbeResult) GetLatencyMs() int64 {
 // Channel's merchant order number. Amounts are int64 minor units (ADR 0019).
 type Payment struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Snowflake ID — the Payment number.
+	// Snowflake ID — the Payment number and the Channel's out_trade_no.
 	PaymentId  int64 `protobuf:"varint,1,opt,name=payment_id,json=paymentId,proto3" json:"payment_id,omitempty"`
 	MerchantId int64 `protobuf:"varint,2,opt,name=merchant_id,json=merchantId,proto3" json:"merchant_id,omitempty"`
 	// Channel snapshot from the Merchant Account at initiation.
 	Channel int32 `protobuf:"varint,3,opt,name=channel,proto3" json:"channel,omitempty"`
-	// Business Order Number — the caller's opaque reference, not unique.
+	// Business Order Number — unique per Pay Application, including a
+	// closed, expired, or failed Payment.
 	BizNo   string `protobuf:"bytes,4,opt,name=biz_no,json=bizNo,proto3" json:"biz_no,omitempty"`
 	Subject string `protobuf:"bytes,5,opt,name=subject,proto3" json:"subject,omitempty"`
 	// Minor units (fen for CNY). Always > 0.
@@ -808,10 +809,15 @@ type Payment struct {
 	ExpireTime *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
 	PaidAt     *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=paid_at,json=paidAt,proto3" json:"paid_at,omitempty"`
 	// Audit: who created/updated. Filled from the authenticated identity.
-	CreateBy      int64                  `protobuf:"varint,17,opt,name=create_by,json=createBy,proto3" json:"create_by,omitempty"`
-	UpdateBy      int64                  `protobuf:"varint,18,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,19,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,20,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	CreateBy  int64                  `protobuf:"varint,17,opt,name=create_by,json=createBy,proto3" json:"create_by,omitempty"`
+	UpdateBy  int64                  `protobuf:"varint,18,opt,name=update_by,json=updateBy,proto3" json:"update_by,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,19,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,20,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// Pay Application this Payment was started for.
+	ApplicationId int64 `protobuf:"varint,21,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
+	// Payment result address copied from the Pay Application at creation.
+	// Empty stays empty.
+	NotifyUrl     string `protobuf:"bytes,22,opt,name=notify_url,json=notifyUrl,proto3" json:"notify_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -984,6 +990,20 @@ func (x *Payment) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *Payment) GetApplicationId() int64 {
+	if x != nil {
+		return x.ApplicationId
+	}
+	return 0
+}
+
+func (x *Payment) GetNotifyUrl() string {
+	if x != nil {
+		return x.NotifyUrl
+	}
+	return ""
 }
 
 // PaymentSet is a page of Payments.
@@ -2063,9 +2083,10 @@ func (x *WithdrawPayApplicationRequest) GetApplicationId() int64 {
 
 type CreatePaymentRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Required. The Merchant Account to collect into; must exist and be
-	// enabled, and its Channel must have a registered adapter.
-	MerchantId int64 `protobuf:"varint,1,opt,name=merchant_id,json=merchantId,proto3" json:"merchant_id,omitempty"`
+	// Required. The Pay Application to collect for. It and its Merchant
+	// Account must exist, be enabled, and not be withdrawn. The Channel is
+	// the one on that Merchant Account.
+	ApplicationId int64 `protobuf:"varint,1,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
 	// Required. Business Order Number — opaque caller reference, ≤ 64 chars.
 	BizNo string `protobuf:"bytes,2,opt,name=biz_no,json=bizNo,proto3" json:"biz_no,omitempty"`
 	// Required. Display subject, ≤ 256 chars.
@@ -2111,9 +2132,9 @@ func (*CreatePaymentRequest) Descriptor() ([]byte, []int) {
 	return file_pay_v1_pay_proto_rawDescGZIP(), []int{27}
 }
 
-func (x *CreatePaymentRequest) GetMerchantId() int64 {
+func (x *CreatePaymentRequest) GetApplicationId() int64 {
 	if x != nil {
-		return x.MerchantId
+		return x.ApplicationId
 	}
 	return 0
 }
@@ -2671,7 +2692,7 @@ const file_pay_v1_pay_proto_rawDesc = "" +
 	"\x02ok\x18\x01 \x01(\bR\x02ok\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1d\n" +
 	"\n" +
-	"latency_ms\x18\x03 \x01(\x03R\tlatencyMs\"\xd9\x05\n" +
+	"latency_ms\x18\x03 \x01(\x03R\tlatencyMs\"\x9f\x06\n" +
 	"\aPayment\x12\x1d\n" +
 	"\n" +
 	"payment_id\x18\x01 \x01(\x03R\tpaymentId\x12\x1f\n" +
@@ -2700,7 +2721,10 @@ const file_pay_v1_pay_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"a\n" +
+	"updated_at\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12%\n" +
+	"\x0eapplication_id\x18\x15 \x01(\x03R\rapplicationId\x12\x1d\n" +
+	"\n" +
+	"notify_url\x18\x16 \x01(\tR\tnotifyUrl\"a\n" +
 	"\n" +
 	"PaymentSet\x12+\n" +
 	"\bpayments\x18\x01 \x03(\v2\x0f.pay.v1.PaymentR\bpayments\x12&\n" +
@@ -2790,10 +2814,9 @@ const file_pay_v1_pay_proto_rawDesc = "" +
 	"\x0eapplication_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\rapplicationId\x12\x1b\n" +
 	"\x06status\x18\x02 \x01(\x05B\x03\xe0A\x02R\x06status\"K\n" +
 	"\x1dWithdrawPayApplicationRequest\x12*\n" +
-	"\x0eapplication_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\rapplicationId\"\xda\x01\n" +
-	"\x14CreatePaymentRequest\x12$\n" +
-	"\vmerchant_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\n" +
-	"merchantId\x12\x1a\n" +
+	"\x0eapplication_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\rapplicationId\"\xe0\x01\n" +
+	"\x14CreatePaymentRequest\x12*\n" +
+	"\x0eapplication_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\rapplicationId\x12\x1a\n" +
 	"\x06biz_no\x18\x02 \x01(\tB\x03\xe0A\x02R\x05bizNo\x12\x1d\n" +
 	"\asubject\x18\x03 \x01(\tB\x03\xe0A\x02R\asubject\x12\x1b\n" +
 	"\x06amount\x18\x04 \x01(\x03B\x03\xe0A\x02R\x06amount\x12\x1d\n" +

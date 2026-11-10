@@ -766,42 +766,48 @@ func init() {
 	paypayment.DefaultUpdatedAt = paypaymentDescUpdatedAt.Default.(func() time.Time)
 	// paypayment.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	paypayment.UpdateDefaultUpdatedAt = paypaymentDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// paypaymentDescNotifyURL is the schema descriptor for notify_url field.
+	paypaymentDescNotifyURL := paypaymentFields[4].Descriptor()
+	// paypayment.DefaultNotifyURL holds the default value on creation for the notify_url field.
+	paypayment.DefaultNotifyURL = paypaymentDescNotifyURL.Default.(string)
+	// paypayment.NotifyURLValidator is a validator for the "notify_url" field. It is called by the builders before save.
+	paypayment.NotifyURLValidator = paypaymentDescNotifyURL.Validators[0].(func(string) error)
 	// paypaymentDescBizNo is the schema descriptor for biz_no field.
-	paypaymentDescBizNo := paypaymentFields[3].Descriptor()
+	paypaymentDescBizNo := paypaymentFields[5].Descriptor()
 	// paypayment.BizNoValidator is a validator for the "biz_no" field. It is called by the builders before save.
 	paypayment.BizNoValidator = paypaymentDescBizNo.Validators[0].(func(string) error)
 	// paypaymentDescSubject is the schema descriptor for subject field.
-	paypaymentDescSubject := paypaymentFields[4].Descriptor()
+	paypaymentDescSubject := paypaymentFields[6].Descriptor()
 	// paypayment.SubjectValidator is a validator for the "subject" field. It is called by the builders before save.
 	paypayment.SubjectValidator = paypaymentDescSubject.Validators[0].(func(string) error)
 	// paypaymentDescCurrency is the schema descriptor for currency field.
-	paypaymentDescCurrency := paypaymentFields[6].Descriptor()
+	paypaymentDescCurrency := paypaymentFields[8].Descriptor()
 	// paypayment.DefaultCurrency holds the default value on creation for the currency field.
 	paypayment.DefaultCurrency = paypaymentDescCurrency.Default.(string)
 	// paypayment.CurrencyValidator is a validator for the "currency" field. It is called by the builders before save.
 	paypayment.CurrencyValidator = paypaymentDescCurrency.Validators[0].(func(string) error)
 	// paypaymentDescPayMethod is the schema descriptor for pay_method field.
-	paypaymentDescPayMethod := paypaymentFields[7].Descriptor()
+	paypaymentDescPayMethod := paypaymentFields[9].Descriptor()
 	// paypayment.DefaultPayMethod holds the default value on creation for the pay_method field.
 	paypayment.DefaultPayMethod = paypaymentDescPayMethod.Default.(int16)
 	// paypaymentDescStatus is the schema descriptor for status field.
-	paypaymentDescStatus := paypaymentFields[8].Descriptor()
+	paypaymentDescStatus := paypaymentFields[10].Descriptor()
 	// paypayment.DefaultStatus holds the default value on creation for the status field.
 	paypayment.DefaultStatus = paypaymentDescStatus.Default.(int16)
 	// paypaymentDescChannelTradeNo is the schema descriptor for channel_trade_no field.
-	paypaymentDescChannelTradeNo := paypaymentFields[9].Descriptor()
+	paypaymentDescChannelTradeNo := paypaymentFields[11].Descriptor()
 	// paypayment.ChannelTradeNoValidator is a validator for the "channel_trade_no" field. It is called by the builders before save.
 	paypayment.ChannelTradeNoValidator = paypaymentDescChannelTradeNo.Validators[0].(func(string) error)
 	// paypaymentDescPayerID is the schema descriptor for payer_id field.
-	paypaymentDescPayerID := paypaymentFields[11].Descriptor()
+	paypaymentDescPayerID := paypaymentFields[13].Descriptor()
 	// paypayment.PayerIDValidator is a validator for the "payer_id" field. It is called by the builders before save.
 	paypayment.PayerIDValidator = paypaymentDescPayerID.Validators[0].(func(string) error)
 	// paypaymentDescRefundedAmount is the schema descriptor for refunded_amount field.
-	paypaymentDescRefundedAmount := paypaymentFields[12].Descriptor()
+	paypaymentDescRefundedAmount := paypaymentFields[14].Descriptor()
 	// paypayment.DefaultRefundedAmount holds the default value on creation for the refunded_amount field.
 	paypayment.DefaultRefundedAmount = paypaymentDescRefundedAmount.Default.(int64)
 	// paypaymentDescFailReason is the schema descriptor for fail_reason field.
-	paypaymentDescFailReason := paypaymentFields[13].Descriptor()
+	paypaymentDescFailReason := paypaymentFields[15].Descriptor()
 	// paypayment.FailReasonValidator is a validator for the "fail_reason" field. It is called by the builders before save.
 	paypayment.FailReasonValidator = paypaymentDescFailReason.Validators[0].(func(string) error)
 	payrefundMixin := schema.PayRefund{}.Mixin()

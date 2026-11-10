@@ -9,8 +9,9 @@ import "time"
 type Payment struct {
 	// PaymentNo is the payment's number — also the channel's
 	// out_trade_no.
-	PaymentNo  int64
-	MerchantID int64
+	PaymentNo     int64
+	ApplicationID int64
+	MerchantID    int64
 	// Channel: 1 WeChat Pay, 2 Alipay (entity.Channel's codes).
 	Channel int
 	BizNo   string
@@ -33,20 +34,22 @@ type Payment struct {
 	UpdatedAt      time.Time
 }
 
-// PaymentRequest is what an in-process initiation states.
+// PaymentRequest is what an in-process initiation states. It names a
+// Pay Application, not a Merchant Account.
 type PaymentRequest struct {
-	MerchantID int64
-	BizNo      string
-	Subject    string
+	ApplicationID int64
+	BizNo         string
+	Subject       string
 	// Amount is int64 minor units (fen), > 0 (ADR 0019).
 	Amount        int64
 	PayMethod     int
 	ExpireMinutes int32
 }
 
-// GetByBizNoRequest names one merchant's Business Order Number — the pair
-// an outcome read resolves (ADR 0025: the pair rides one request struct).
+// GetByBizNoRequest names one Pay Application's Business Order Number.
+// The pair resolves at most one Payment (ADR 0025: the pair rides one
+// request struct).
 type GetByBizNoRequest struct {
-	MerchantID int64
-	BizNo      string
+	ApplicationID int64
+	BizNo         string
 }
