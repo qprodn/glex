@@ -18,5 +18,6 @@ func (s *PayApplication) HandleChannelNotification(
 		logx.Propagate(ctx, s.logger, "pay.notify.intake", err)
 		return nil, err
 	}
+	s.kickDelivery(ctx)
 	return out, nil
 }

@@ -438,6 +438,13 @@ values (1000000000000000500, '支付单过期扫描', 'pay.expire-sweep', '* * *
         '收敛已过期的 PENDING 支付单（主动过期，ADR 0023）', 0, 0)
 on conflict do nothing;
 
+-- 业务通知投递。@every 10s 是 ParseStandard 描述符，周期不粗于 15 秒；
+-- 过期扫描仍是分钟级。与 payinfra.NoticeDeliverCron 保持一致。
+insert into job (id, name, handler, cron, args, enabled, timeout_seconds, remark, create_by, update_by)
+values (1000000000000000501, '业务通知投递', 'pay.notice-deliver', '@every 10s', '', true, 120,
+        '投递已到期的业务通知（自动重试）', 0, 0)
+on conflict do nothing;
+
 -- ---------------------------------------------------------------------------
 -- 参数管理（菜单 + 按钮，docs/modules/param.md）
 -- perms 与 auth_routes.go 一一对应；icon 走 @ant-design/icons 运行时解析

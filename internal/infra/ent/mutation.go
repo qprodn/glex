@@ -19,6 +19,7 @@ import (
 	"glex/internal/infra/ent/param"
 	"glex/internal/infra/ent/payapplication"
 	"glex/internal/infra/ent/paybusinessnotice"
+	"glex/internal/infra/ent/paybusinessnoticeattempt"
 	"glex/internal/infra/ent/paymerchantaccount"
 	"glex/internal/infra/ent/paynotifylog"
 	"glex/internal/infra/ent/paypayment"
@@ -50,32 +51,33 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeDept                  = "Dept"
-	TypeDictData              = "DictData"
-	TypeDictType              = "DictType"
-	TypeFile                  = "File"
-	TypeJob                   = "Job"
-	TypeJobLog                = "JobLog"
-	TypeLoginLog              = "LoginLog"
-	TypeMenu                  = "Menu"
-	TypeOperLog               = "OperLog"
-	TypeParam                 = "Param"
-	TypePayApplication        = "PayApplication"
-	TypePayBusinessNotice     = "PayBusinessNotice"
-	TypePayMerchantAccount    = "PayMerchantAccount"
-	TypePayNotifyLog          = "PayNotifyLog"
-	TypePayPayment            = "PayPayment"
-	TypePayRefund             = "PayRefund"
-	TypePost                  = "Post"
-	TypeRole                  = "Role"
-	TypeRoleMenu              = "RoleMenu"
-	TypeUser                  = "User"
-	TypeUserPost              = "UserPost"
-	TypeUserRole              = "UserRole"
-	TypeWechatAdoptedTemplate = "WechatAdoptedTemplate"
-	TypeWechatApp             = "WechatApp"
-	TypeWechatDispatch        = "WechatDispatch"
-	TypeWechatPlatform        = "WechatPlatform"
+	TypeDept                     = "Dept"
+	TypeDictData                 = "DictData"
+	TypeDictType                 = "DictType"
+	TypeFile                     = "File"
+	TypeJob                      = "Job"
+	TypeJobLog                   = "JobLog"
+	TypeLoginLog                 = "LoginLog"
+	TypeMenu                     = "Menu"
+	TypeOperLog                  = "OperLog"
+	TypeParam                    = "Param"
+	TypePayApplication           = "PayApplication"
+	TypePayBusinessNotice        = "PayBusinessNotice"
+	TypePayBusinessNoticeAttempt = "PayBusinessNoticeAttempt"
+	TypePayMerchantAccount       = "PayMerchantAccount"
+	TypePayNotifyLog             = "PayNotifyLog"
+	TypePayPayment               = "PayPayment"
+	TypePayRefund                = "PayRefund"
+	TypePost                     = "Post"
+	TypeRole                     = "Role"
+	TypeRoleMenu                 = "RoleMenu"
+	TypeUser                     = "User"
+	TypeUserPost                 = "UserPost"
+	TypeUserRole                 = "UserRole"
+	TypeWechatAdoptedTemplate    = "WechatAdoptedTemplate"
+	TypeWechatApp                = "WechatApp"
+	TypeWechatDispatch           = "WechatDispatch"
+	TypeWechatPlatform           = "WechatPlatform"
 )
 
 // DeptMutation represents an operation that mutates the Dept nodes in the graph.
@@ -14326,6 +14328,1041 @@ func (m *PayBusinessNoticeMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *PayBusinessNoticeMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown PayBusinessNotice edge %s", name)
+}
+
+// PayBusinessNoticeAttemptMutation represents an operation that mutates the PayBusinessNoticeAttempt nodes in the graph.
+type PayBusinessNoticeAttemptMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int64
+	create_by      *int64
+	addcreate_by   *int64
+	update_by      *int64
+	addupdate_by   *int64
+	created_at     *time.Time
+	updated_at     *time.Time
+	deleted_at     *time.Time
+	notice_id      *int64
+	addnotice_id   *int64
+	manual         *bool
+	http_status    *int
+	addhttp_status *int
+	error          *string
+	accepted       *bool
+	clearedFields  map[string]struct{}
+	done           bool
+	oldValue       func(context.Context) (*PayBusinessNoticeAttempt, error)
+	predicates     []predicate.PayBusinessNoticeAttempt
+}
+
+var _ ent.Mutation = (*PayBusinessNoticeAttemptMutation)(nil)
+
+// paybusinessnoticeattemptOption allows management of the mutation configuration using functional options.
+type paybusinessnoticeattemptOption func(*PayBusinessNoticeAttemptMutation)
+
+// newPayBusinessNoticeAttemptMutation creates new mutation for the PayBusinessNoticeAttempt entity.
+func newPayBusinessNoticeAttemptMutation(c config, op Op, opts ...paybusinessnoticeattemptOption) *PayBusinessNoticeAttemptMutation {
+	m := &PayBusinessNoticeAttemptMutation{
+		config:        c,
+		op:            op,
+		typ:           TypePayBusinessNoticeAttempt,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withPayBusinessNoticeAttemptID sets the ID field of the mutation.
+func withPayBusinessNoticeAttemptID(id int64) paybusinessnoticeattemptOption {
+	return func(m *PayBusinessNoticeAttemptMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *PayBusinessNoticeAttempt
+		)
+		m.oldValue = func(ctx context.Context) (*PayBusinessNoticeAttempt, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().PayBusinessNoticeAttempt.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withPayBusinessNoticeAttempt sets the old PayBusinessNoticeAttempt of the mutation.
+func withPayBusinessNoticeAttempt(node *PayBusinessNoticeAttempt) paybusinessnoticeattemptOption {
+	return func(m *PayBusinessNoticeAttemptMutation) {
+		m.oldValue = func(context.Context) (*PayBusinessNoticeAttempt, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m PayBusinessNoticeAttemptMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m PayBusinessNoticeAttemptMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of PayBusinessNoticeAttempt entities.
+func (m *PayBusinessNoticeAttemptMutation) SetID(id int64) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *PayBusinessNoticeAttemptMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *PayBusinessNoticeAttemptMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().PayBusinessNoticeAttempt.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreateBy sets the "create_by" field.
+func (m *PayBusinessNoticeAttemptMutation) SetCreateBy(i int64) {
+	m.create_by = &i
+	m.addcreate_by = nil
+}
+
+// CreateBy returns the value of the "create_by" field in the mutation.
+func (m *PayBusinessNoticeAttemptMutation) CreateBy() (r int64, exists bool) {
+	v := m.create_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreateBy returns the old "create_by" field's value of the PayBusinessNoticeAttempt entity.
+// If the PayBusinessNoticeAttempt object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PayBusinessNoticeAttemptMutation) OldCreateBy(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreateBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreateBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreateBy: %w", err)
+	}
+	return oldValue.CreateBy, nil
+}
+
+// AddCreateBy adds i to the "create_by" field.
+func (m *PayBusinessNoticeAttemptMutation) AddCreateBy(i int64) {
+	if m.addcreate_by != nil {
+		*m.addcreate_by += i
+	} else {
+		m.addcreate_by = &i
+	}
+}
+
+// AddedCreateBy returns the value that was added to the "create_by" field in this mutation.
+func (m *PayBusinessNoticeAttemptMutation) AddedCreateBy() (r int64, exists bool) {
+	v := m.addcreate_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearCreateBy clears the value of the "create_by" field.
+func (m *PayBusinessNoticeAttemptMutation) ClearCreateBy() {
+	m.create_by = nil
+	m.addcreate_by = nil
+	m.clearedFields[paybusinessnoticeattempt.FieldCreateBy] = struct{}{}
+}
+
+// CreateByCleared returns if the "create_by" field was cleared in this mutation.
+func (m *PayBusinessNoticeAttemptMutation) CreateByCleared() bool {
+	_, ok := m.clearedFields[paybusinessnoticeattempt.FieldCreateBy]
+	return ok
+}
+
+// ResetCreateBy resets all changes to the "create_by" field.
+func (m *PayBusinessNoticeAttemptMutation) ResetCreateBy() {
+	m.create_by = nil
+	m.addcreate_by = nil
+	delete(m.clearedFields, paybusinessnoticeattempt.FieldCreateBy)
+}
+
+// SetUpdateBy sets the "update_by" field.
+func (m *PayBusinessNoticeAttemptMutation) SetUpdateBy(i int64) {
+	m.update_by = &i
+	m.addupdate_by = nil
+}
+
+// UpdateBy returns the value of the "update_by" field in the mutation.
+func (m *PayBusinessNoticeAttemptMutation) UpdateBy() (r int64, exists bool) {
+	v := m.update_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdateBy returns the old "update_by" field's value of the PayBusinessNoticeAttempt entity.
+// If the PayBusinessNoticeAttempt object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PayBusinessNoticeAttemptMutation) OldUpdateBy(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdateBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdateBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdateBy: %w", err)
+	}
+	return oldValue.UpdateBy, nil
+}
+
+// AddUpdateBy adds i to the "update_by" field.
+func (m *PayBusinessNoticeAttemptMutation) AddUpdateBy(i int64) {
+	if m.addupdate_by != nil {
+		*m.addupdate_by += i
+	} else {
+		m.addupdate_by = &i
+	}
+}
+
+// AddedUpdateBy returns the value that was added to the "update_by" field in this mutation.
+func (m *PayBusinessNoticeAttemptMutation) AddedUpdateBy() (r int64, exists bool) {
+	v := m.addupdate_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearUpdateBy clears the value of the "update_by" field.
+func (m *PayBusinessNoticeAttemptMutation) ClearUpdateBy() {
+	m.update_by = nil
+	m.addupdate_by = nil
+	m.clearedFields[paybusinessnoticeattempt.FieldUpdateBy] = struct{}{}
+}
+
+// UpdateByCleared returns if the "update_by" field was cleared in this mutation.
+func (m *PayBusinessNoticeAttemptMutation) UpdateByCleared() bool {
+	_, ok := m.clearedFields[paybusinessnoticeattempt.FieldUpdateBy]
+	return ok
+}
+
+// ResetUpdateBy resets all changes to the "update_by" field.
+func (m *PayBusinessNoticeAttemptMutation) ResetUpdateBy() {
+	m.update_by = nil
+	m.addupdate_by = nil
+	delete(m.clearedFields, paybusinessnoticeattempt.FieldUpdateBy)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *PayBusinessNoticeAttemptMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *PayBusinessNoticeAttemptMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the PayBusinessNoticeAttempt entity.
+// If the PayBusinessNoticeAttempt object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PayBusinessNoticeAttemptMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *PayBusinessNoticeAttemptMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *PayBusinessNoticeAttemptMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *PayBusinessNoticeAttemptMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the PayBusinessNoticeAttempt entity.
+// If the PayBusinessNoticeAttempt object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PayBusinessNoticeAttemptMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *PayBusinessNoticeAttemptMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *PayBusinessNoticeAttemptMutation) SetDeletedAt(t time.Time) {
+	m.deleted_at = &t
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *PayBusinessNoticeAttemptMutation) DeletedAt() (r time.Time, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the PayBusinessNoticeAttempt entity.
+// If the PayBusinessNoticeAttempt object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PayBusinessNoticeAttemptMutation) OldDeletedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (m *PayBusinessNoticeAttemptMutation) ClearDeletedAt() {
+	m.deleted_at = nil
+	m.clearedFields[paybusinessnoticeattempt.FieldDeletedAt] = struct{}{}
+}
+
+// DeletedAtCleared returns if the "deleted_at" field was cleared in this mutation.
+func (m *PayBusinessNoticeAttemptMutation) DeletedAtCleared() bool {
+	_, ok := m.clearedFields[paybusinessnoticeattempt.FieldDeletedAt]
+	return ok
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *PayBusinessNoticeAttemptMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	delete(m.clearedFields, paybusinessnoticeattempt.FieldDeletedAt)
+}
+
+// SetNoticeID sets the "notice_id" field.
+func (m *PayBusinessNoticeAttemptMutation) SetNoticeID(i int64) {
+	m.notice_id = &i
+	m.addnotice_id = nil
+}
+
+// NoticeID returns the value of the "notice_id" field in the mutation.
+func (m *PayBusinessNoticeAttemptMutation) NoticeID() (r int64, exists bool) {
+	v := m.notice_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNoticeID returns the old "notice_id" field's value of the PayBusinessNoticeAttempt entity.
+// If the PayBusinessNoticeAttempt object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PayBusinessNoticeAttemptMutation) OldNoticeID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNoticeID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNoticeID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNoticeID: %w", err)
+	}
+	return oldValue.NoticeID, nil
+}
+
+// AddNoticeID adds i to the "notice_id" field.
+func (m *PayBusinessNoticeAttemptMutation) AddNoticeID(i int64) {
+	if m.addnotice_id != nil {
+		*m.addnotice_id += i
+	} else {
+		m.addnotice_id = &i
+	}
+}
+
+// AddedNoticeID returns the value that was added to the "notice_id" field in this mutation.
+func (m *PayBusinessNoticeAttemptMutation) AddedNoticeID() (r int64, exists bool) {
+	v := m.addnotice_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetNoticeID resets all changes to the "notice_id" field.
+func (m *PayBusinessNoticeAttemptMutation) ResetNoticeID() {
+	m.notice_id = nil
+	m.addnotice_id = nil
+}
+
+// SetManual sets the "manual" field.
+func (m *PayBusinessNoticeAttemptMutation) SetManual(b bool) {
+	m.manual = &b
+}
+
+// Manual returns the value of the "manual" field in the mutation.
+func (m *PayBusinessNoticeAttemptMutation) Manual() (r bool, exists bool) {
+	v := m.manual
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldManual returns the old "manual" field's value of the PayBusinessNoticeAttempt entity.
+// If the PayBusinessNoticeAttempt object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PayBusinessNoticeAttemptMutation) OldManual(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldManual is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldManual requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldManual: %w", err)
+	}
+	return oldValue.Manual, nil
+}
+
+// ResetManual resets all changes to the "manual" field.
+func (m *PayBusinessNoticeAttemptMutation) ResetManual() {
+	m.manual = nil
+}
+
+// SetHTTPStatus sets the "http_status" field.
+func (m *PayBusinessNoticeAttemptMutation) SetHTTPStatus(i int) {
+	m.http_status = &i
+	m.addhttp_status = nil
+}
+
+// HTTPStatus returns the value of the "http_status" field in the mutation.
+func (m *PayBusinessNoticeAttemptMutation) HTTPStatus() (r int, exists bool) {
+	v := m.http_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldHTTPStatus returns the old "http_status" field's value of the PayBusinessNoticeAttempt entity.
+// If the PayBusinessNoticeAttempt object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PayBusinessNoticeAttemptMutation) OldHTTPStatus(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldHTTPStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldHTTPStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldHTTPStatus: %w", err)
+	}
+	return oldValue.HTTPStatus, nil
+}
+
+// AddHTTPStatus adds i to the "http_status" field.
+func (m *PayBusinessNoticeAttemptMutation) AddHTTPStatus(i int) {
+	if m.addhttp_status != nil {
+		*m.addhttp_status += i
+	} else {
+		m.addhttp_status = &i
+	}
+}
+
+// AddedHTTPStatus returns the value that was added to the "http_status" field in this mutation.
+func (m *PayBusinessNoticeAttemptMutation) AddedHTTPStatus() (r int, exists bool) {
+	v := m.addhttp_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearHTTPStatus clears the value of the "http_status" field.
+func (m *PayBusinessNoticeAttemptMutation) ClearHTTPStatus() {
+	m.http_status = nil
+	m.addhttp_status = nil
+	m.clearedFields[paybusinessnoticeattempt.FieldHTTPStatus] = struct{}{}
+}
+
+// HTTPStatusCleared returns if the "http_status" field was cleared in this mutation.
+func (m *PayBusinessNoticeAttemptMutation) HTTPStatusCleared() bool {
+	_, ok := m.clearedFields[paybusinessnoticeattempt.FieldHTTPStatus]
+	return ok
+}
+
+// ResetHTTPStatus resets all changes to the "http_status" field.
+func (m *PayBusinessNoticeAttemptMutation) ResetHTTPStatus() {
+	m.http_status = nil
+	m.addhttp_status = nil
+	delete(m.clearedFields, paybusinessnoticeattempt.FieldHTTPStatus)
+}
+
+// SetError sets the "error" field.
+func (m *PayBusinessNoticeAttemptMutation) SetError(s string) {
+	m.error = &s
+}
+
+// Error returns the value of the "error" field in the mutation.
+func (m *PayBusinessNoticeAttemptMutation) Error() (r string, exists bool) {
+	v := m.error
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldError returns the old "error" field's value of the PayBusinessNoticeAttempt entity.
+// If the PayBusinessNoticeAttempt object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PayBusinessNoticeAttemptMutation) OldError(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldError is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldError requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldError: %w", err)
+	}
+	return oldValue.Error, nil
+}
+
+// ResetError resets all changes to the "error" field.
+func (m *PayBusinessNoticeAttemptMutation) ResetError() {
+	m.error = nil
+}
+
+// SetAccepted sets the "accepted" field.
+func (m *PayBusinessNoticeAttemptMutation) SetAccepted(b bool) {
+	m.accepted = &b
+}
+
+// Accepted returns the value of the "accepted" field in the mutation.
+func (m *PayBusinessNoticeAttemptMutation) Accepted() (r bool, exists bool) {
+	v := m.accepted
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAccepted returns the old "accepted" field's value of the PayBusinessNoticeAttempt entity.
+// If the PayBusinessNoticeAttempt object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PayBusinessNoticeAttemptMutation) OldAccepted(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAccepted is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAccepted requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAccepted: %w", err)
+	}
+	return oldValue.Accepted, nil
+}
+
+// ResetAccepted resets all changes to the "accepted" field.
+func (m *PayBusinessNoticeAttemptMutation) ResetAccepted() {
+	m.accepted = nil
+}
+
+// Where appends a list predicates to the PayBusinessNoticeAttemptMutation builder.
+func (m *PayBusinessNoticeAttemptMutation) Where(ps ...predicate.PayBusinessNoticeAttempt) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the PayBusinessNoticeAttemptMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *PayBusinessNoticeAttemptMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.PayBusinessNoticeAttempt, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *PayBusinessNoticeAttemptMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *PayBusinessNoticeAttemptMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (PayBusinessNoticeAttempt).
+func (m *PayBusinessNoticeAttemptMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *PayBusinessNoticeAttemptMutation) Fields() []string {
+	fields := make([]string, 0, 10)
+	if m.create_by != nil {
+		fields = append(fields, paybusinessnoticeattempt.FieldCreateBy)
+	}
+	if m.update_by != nil {
+		fields = append(fields, paybusinessnoticeattempt.FieldUpdateBy)
+	}
+	if m.created_at != nil {
+		fields = append(fields, paybusinessnoticeattempt.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, paybusinessnoticeattempt.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, paybusinessnoticeattempt.FieldDeletedAt)
+	}
+	if m.notice_id != nil {
+		fields = append(fields, paybusinessnoticeattempt.FieldNoticeID)
+	}
+	if m.manual != nil {
+		fields = append(fields, paybusinessnoticeattempt.FieldManual)
+	}
+	if m.http_status != nil {
+		fields = append(fields, paybusinessnoticeattempt.FieldHTTPStatus)
+	}
+	if m.error != nil {
+		fields = append(fields, paybusinessnoticeattempt.FieldError)
+	}
+	if m.accepted != nil {
+		fields = append(fields, paybusinessnoticeattempt.FieldAccepted)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *PayBusinessNoticeAttemptMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case paybusinessnoticeattempt.FieldCreateBy:
+		return m.CreateBy()
+	case paybusinessnoticeattempt.FieldUpdateBy:
+		return m.UpdateBy()
+	case paybusinessnoticeattempt.FieldCreatedAt:
+		return m.CreatedAt()
+	case paybusinessnoticeattempt.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case paybusinessnoticeattempt.FieldDeletedAt:
+		return m.DeletedAt()
+	case paybusinessnoticeattempt.FieldNoticeID:
+		return m.NoticeID()
+	case paybusinessnoticeattempt.FieldManual:
+		return m.Manual()
+	case paybusinessnoticeattempt.FieldHTTPStatus:
+		return m.HTTPStatus()
+	case paybusinessnoticeattempt.FieldError:
+		return m.Error()
+	case paybusinessnoticeattempt.FieldAccepted:
+		return m.Accepted()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *PayBusinessNoticeAttemptMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case paybusinessnoticeattempt.FieldCreateBy:
+		return m.OldCreateBy(ctx)
+	case paybusinessnoticeattempt.FieldUpdateBy:
+		return m.OldUpdateBy(ctx)
+	case paybusinessnoticeattempt.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case paybusinessnoticeattempt.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case paybusinessnoticeattempt.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case paybusinessnoticeattempt.FieldNoticeID:
+		return m.OldNoticeID(ctx)
+	case paybusinessnoticeattempt.FieldManual:
+		return m.OldManual(ctx)
+	case paybusinessnoticeattempt.FieldHTTPStatus:
+		return m.OldHTTPStatus(ctx)
+	case paybusinessnoticeattempt.FieldError:
+		return m.OldError(ctx)
+	case paybusinessnoticeattempt.FieldAccepted:
+		return m.OldAccepted(ctx)
+	}
+	return nil, fmt.Errorf("unknown PayBusinessNoticeAttempt field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PayBusinessNoticeAttemptMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case paybusinessnoticeattempt.FieldCreateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreateBy(v)
+		return nil
+	case paybusinessnoticeattempt.FieldUpdateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdateBy(v)
+		return nil
+	case paybusinessnoticeattempt.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case paybusinessnoticeattempt.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case paybusinessnoticeattempt.FieldDeletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case paybusinessnoticeattempt.FieldNoticeID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNoticeID(v)
+		return nil
+	case paybusinessnoticeattempt.FieldManual:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetManual(v)
+		return nil
+	case paybusinessnoticeattempt.FieldHTTPStatus:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetHTTPStatus(v)
+		return nil
+	case paybusinessnoticeattempt.FieldError:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetError(v)
+		return nil
+	case paybusinessnoticeattempt.FieldAccepted:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAccepted(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PayBusinessNoticeAttempt field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *PayBusinessNoticeAttemptMutation) AddedFields() []string {
+	var fields []string
+	if m.addcreate_by != nil {
+		fields = append(fields, paybusinessnoticeattempt.FieldCreateBy)
+	}
+	if m.addupdate_by != nil {
+		fields = append(fields, paybusinessnoticeattempt.FieldUpdateBy)
+	}
+	if m.addnotice_id != nil {
+		fields = append(fields, paybusinessnoticeattempt.FieldNoticeID)
+	}
+	if m.addhttp_status != nil {
+		fields = append(fields, paybusinessnoticeattempt.FieldHTTPStatus)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *PayBusinessNoticeAttemptMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case paybusinessnoticeattempt.FieldCreateBy:
+		return m.AddedCreateBy()
+	case paybusinessnoticeattempt.FieldUpdateBy:
+		return m.AddedUpdateBy()
+	case paybusinessnoticeattempt.FieldNoticeID:
+		return m.AddedNoticeID()
+	case paybusinessnoticeattempt.FieldHTTPStatus:
+		return m.AddedHTTPStatus()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PayBusinessNoticeAttemptMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case paybusinessnoticeattempt.FieldCreateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCreateBy(v)
+		return nil
+	case paybusinessnoticeattempt.FieldUpdateBy:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddUpdateBy(v)
+		return nil
+	case paybusinessnoticeattempt.FieldNoticeID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddNoticeID(v)
+		return nil
+	case paybusinessnoticeattempt.FieldHTTPStatus:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddHTTPStatus(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PayBusinessNoticeAttempt numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *PayBusinessNoticeAttemptMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(paybusinessnoticeattempt.FieldCreateBy) {
+		fields = append(fields, paybusinessnoticeattempt.FieldCreateBy)
+	}
+	if m.FieldCleared(paybusinessnoticeattempt.FieldUpdateBy) {
+		fields = append(fields, paybusinessnoticeattempt.FieldUpdateBy)
+	}
+	if m.FieldCleared(paybusinessnoticeattempt.FieldDeletedAt) {
+		fields = append(fields, paybusinessnoticeattempt.FieldDeletedAt)
+	}
+	if m.FieldCleared(paybusinessnoticeattempt.FieldHTTPStatus) {
+		fields = append(fields, paybusinessnoticeattempt.FieldHTTPStatus)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *PayBusinessNoticeAttemptMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *PayBusinessNoticeAttemptMutation) ClearField(name string) error {
+	switch name {
+	case paybusinessnoticeattempt.FieldCreateBy:
+		m.ClearCreateBy()
+		return nil
+	case paybusinessnoticeattempt.FieldUpdateBy:
+		m.ClearUpdateBy()
+		return nil
+	case paybusinessnoticeattempt.FieldDeletedAt:
+		m.ClearDeletedAt()
+		return nil
+	case paybusinessnoticeattempt.FieldHTTPStatus:
+		m.ClearHTTPStatus()
+		return nil
+	}
+	return fmt.Errorf("unknown PayBusinessNoticeAttempt nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *PayBusinessNoticeAttemptMutation) ResetField(name string) error {
+	switch name {
+	case paybusinessnoticeattempt.FieldCreateBy:
+		m.ResetCreateBy()
+		return nil
+	case paybusinessnoticeattempt.FieldUpdateBy:
+		m.ResetUpdateBy()
+		return nil
+	case paybusinessnoticeattempt.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case paybusinessnoticeattempt.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case paybusinessnoticeattempt.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case paybusinessnoticeattempt.FieldNoticeID:
+		m.ResetNoticeID()
+		return nil
+	case paybusinessnoticeattempt.FieldManual:
+		m.ResetManual()
+		return nil
+	case paybusinessnoticeattempt.FieldHTTPStatus:
+		m.ResetHTTPStatus()
+		return nil
+	case paybusinessnoticeattempt.FieldError:
+		m.ResetError()
+		return nil
+	case paybusinessnoticeattempt.FieldAccepted:
+		m.ResetAccepted()
+		return nil
+	}
+	return fmt.Errorf("unknown PayBusinessNoticeAttempt field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *PayBusinessNoticeAttemptMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *PayBusinessNoticeAttemptMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *PayBusinessNoticeAttemptMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *PayBusinessNoticeAttemptMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *PayBusinessNoticeAttemptMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *PayBusinessNoticeAttemptMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *PayBusinessNoticeAttemptMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown PayBusinessNoticeAttempt unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *PayBusinessNoticeAttemptMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown PayBusinessNoticeAttempt edge %s", name)
 }
 
 // PayMerchantAccountMutation represents an operation that mutates the PayMerchantAccount nodes in the graph.

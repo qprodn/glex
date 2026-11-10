@@ -415,6 +415,44 @@ var (
 					Where: "deleted_at IS NULL AND kind = 2",
 				},
 			},
+			{
+				Name:    "paybusinessnotice_next_attempt_at",
+				Unique:  false,
+				Columns: []*schema.Column{PayBusinessNoticeColumns[14]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL AND status = 1",
+				},
+			},
+		},
+	}
+	// PayBusinessNoticeAttemptColumns holds the columns for the "pay_business_notice_attempt" table.
+	PayBusinessNoticeAttemptColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "create_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "update_by", Type: field.TypeInt64, Nullable: true, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "notice_id", Type: field.TypeInt64},
+		{Name: "manual", Type: field.TypeBool},
+		{Name: "http_status", Type: field.TypeInt, Nullable: true},
+		{Name: "error", Type: field.TypeString, Size: 512, Default: ""},
+		{Name: "accepted", Type: field.TypeBool},
+	}
+	// PayBusinessNoticeAttemptTable holds the schema information for the "pay_business_notice_attempt" table.
+	PayBusinessNoticeAttemptTable = &schema.Table{
+		Name:       "pay_business_notice_attempt",
+		Columns:    PayBusinessNoticeAttemptColumns,
+		PrimaryKey: []*schema.Column{PayBusinessNoticeAttemptColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "paybusinessnoticeattempt_notice_id",
+				Unique:  false,
+				Columns: []*schema.Column{PayBusinessNoticeAttemptColumns[6]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
 		},
 	}
 	// PayMerchantAccountColumns holds the columns for the "pay_merchant_account" table.
@@ -964,6 +1002,7 @@ var (
 		SysConfigTable,
 		PayApplicationTable,
 		PayBusinessNoticeTable,
+		PayBusinessNoticeAttemptTable,
 		PayMerchantAccountTable,
 		PayNotifyLogTable,
 		PayPaymentTable,
@@ -1017,6 +1056,9 @@ func init() {
 	}
 	PayBusinessNoticeTable.Annotation = &entsql.Annotation{
 		Table: "pay_business_notice",
+	}
+	PayBusinessNoticeAttemptTable.Annotation = &entsql.Annotation{
+		Table: "pay_business_notice_attempt",
 	}
 	PayMerchantAccountTable.Annotation = &entsql.Annotation{
 		Table: "pay_merchant_account",

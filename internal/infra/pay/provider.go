@@ -13,7 +13,7 @@ import (
 // Pay Application, Payment, Refund, notify-log, and business-notice repos,
 // the credential cipher, the channel adapter registry with its two port
 // bindings, the module's eventbus subscription list (ADR 0022), and its
-// job executor — the expire sweep (ADR 0023).
+// job executor — the expire sweep (ADR 0023) and business-notice delivery.
 var Module = fx.Module("pay-infra",
 	fx.Provide(
 		NewCipher,
@@ -30,5 +30,7 @@ var Module = fx.Module("pay-infra",
 		fx.Annotate(newConfigCipher, fx.As(new(payservice.ConfigCipher))),
 		fx.Annotate(NewEchoSubscription, fx.ResultTags(`group:"eventbus-subscriptions"`)),
 		fx.Annotate(NewExpireSweepExecutor, fx.ResultTags(`group:"job-executors"`)),
+		fx.Annotate(NewNoticeDeliverExecutor, fx.ResultTags(`group:"job-executors"`)),
+		NewNoticePoster,
 	),
 )

@@ -97,6 +97,7 @@ func (s *PayApplication) GetPayment(ctx context.Context, req *payv1.GetPaymentRe
 		logx.Propagate(ctx, s.logger, "pay.get_payment", err)
 		return nil, err
 	}
+	s.kickDelivery(ctx)
 	return convertPayment(p), nil
 }
 
@@ -142,6 +143,7 @@ func (s *PayApplication) QueryPayment(ctx context.Context, req *payv1.QueryPayme
 		logx.Propagate(ctx, s.logger, "pay.query_payment", err)
 		return nil, err
 	}
+	s.kickDelivery(ctx)
 	return convertPayment(p), nil
 }
 
@@ -156,5 +158,6 @@ func (s *PayApplication) ClosePayment(ctx context.Context, req *payv1.ClosePayme
 		logx.Propagate(ctx, s.logger, "pay.close_payment", err)
 		return nil, err
 	}
+	s.kickDelivery(ctx)
 	return convertPayment(p), nil
 }

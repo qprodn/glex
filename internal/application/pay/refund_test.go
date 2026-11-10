@@ -77,6 +77,7 @@ func TestCreateRefundConcurrentCapRaceExactlyOneWins(t *testing.T) {
 		&fakePaymentSvc{},
 		refunds,
 		nil,
+		nil,
 		&fakeTx{},
 		locker,
 		&conf.Pay{},

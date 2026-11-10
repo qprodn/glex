@@ -604,6 +604,18 @@ func (m *memNotices) Insert(_ context.Context, n *payentity.BusinessNotice) (boo
 	return true, nil
 }
 
+func (m *memNotices) ListDue(context.Context, payrepo.ListDueNoticesRequest) ([]*payentity.BusinessNotice, error) {
+	return nil, nil
+}
+
+func (m *memNotices) ClaimDueNotice(context.Context, payrepo.ClaimDueNoticeRequest) (bool, error) {
+	return false, nil
+}
+
+func (m *memNotices) RecordAutomaticAttempt(context.Context, payrepo.RecordAutomaticAttemptRequest) error {
+	return nil
+}
+
 var _ payrepo.BusinessNoticeRepo = (*memNotices)(nil)
 
 type memPublisher struct {

@@ -66,6 +66,7 @@ func (s *PayApplication) CreateRefund(ctx context.Context, req *payv1.CreateRefu
 		logx.Propagate(ctx, s.logger, "pay.create_refund", err)
 		return nil, err
 	}
+	s.kickDelivery(ctx)
 	return convertRefund(out), nil
 }
 
@@ -119,5 +120,6 @@ func (s *PayApplication) QueryRefund(ctx context.Context, req *payv1.QueryRefund
 		logx.Propagate(ctx, s.logger, "pay.query_refund", err)
 		return nil, err
 	}
+	s.kickDelivery(ctx)
 	return convertRefund(rf), nil
 }

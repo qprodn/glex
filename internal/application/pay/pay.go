@@ -22,6 +22,7 @@ type PayApplication struct {
 	payments     payservice.Payment
 	refunds      payservice.Refund
 	intake       payservice.Intake
+	delivery     payservice.Delivery
 	tx           Transaction
 	locker       lock.Locker
 	payConfig    *conf.Pay
@@ -35,6 +36,7 @@ func NewPayApplication(
 	payments payservice.Payment,
 	refunds payservice.Refund,
 	intake payservice.Intake,
+	delivery payservice.Delivery,
 	tx Transaction,
 	locker lock.Locker,
 	payConfig *conf.Pay,
@@ -46,6 +48,7 @@ func NewPayApplication(
 		payments:     payments,
 		refunds:      refunds,
 		intake:       intake,
+		delivery:     delivery,
 		tx:           tx,
 		locker:       locker,
 		payConfig:    payConfig,

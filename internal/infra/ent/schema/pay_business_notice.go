@@ -67,5 +67,8 @@ func (PayBusinessNotice) Indexes() []ent.Index {
 		index.Fields("kind", "refund_id").
 			Unique().
 			Annotations(entsql.IndexWhere("deleted_at IS NULL AND kind = 2")),
+		// The delivery scan reads waiting rows whose next attempt is due.
+		index.Fields("next_attempt_at").
+			Annotations(entsql.IndexWhere("deleted_at IS NULL AND status = 1")),
 	}
 }

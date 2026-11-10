@@ -38,6 +38,8 @@ type Tx struct {
 	PayApplication *PayApplicationClient
 	// PayBusinessNotice is the client for interacting with the PayBusinessNotice builders.
 	PayBusinessNotice *PayBusinessNoticeClient
+	// PayBusinessNoticeAttempt is the client for interacting with the PayBusinessNoticeAttempt builders.
+	PayBusinessNoticeAttempt *PayBusinessNoticeAttemptClient
 	// PayMerchantAccount is the client for interacting with the PayMerchantAccount builders.
 	PayMerchantAccount *PayMerchantAccountClient
 	// PayNotifyLog is the client for interacting with the PayNotifyLog builders.
@@ -209,6 +211,7 @@ func (tx *Tx) init() {
 	tx.Param = NewParamClient(tx.config)
 	tx.PayApplication = NewPayApplicationClient(tx.config)
 	tx.PayBusinessNotice = NewPayBusinessNoticeClient(tx.config)
+	tx.PayBusinessNoticeAttempt = NewPayBusinessNoticeAttemptClient(tx.config)
 	tx.PayMerchantAccount = NewPayMerchantAccountClient(tx.config)
 	tx.PayNotifyLog = NewPayNotifyLogClient(tx.config)
 	tx.PayPayment = NewPayPaymentClient(tx.config)

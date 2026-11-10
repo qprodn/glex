@@ -355,6 +355,18 @@ func (goldNoticeRepo) Insert(context.Context, *payentity.BusinessNotice) (bool, 
 
 func (goldNoticeRepo) NextID() int64 { return 1 }
 
+func (goldNoticeRepo) ListDue(context.Context, payrepo.ListDueNoticesRequest) ([]*payentity.BusinessNotice, error) {
+	return nil, nil
+}
+
+func (goldNoticeRepo) ClaimDueNotice(context.Context, payrepo.ClaimDueNoticeRequest) (bool, error) {
+	return false, nil
+}
+
+func (goldNoticeRepo) RecordAutomaticAttempt(context.Context, payrepo.RecordAutomaticAttemptRequest) error {
+	return nil
+}
+
 var _ payrepo.BusinessNoticeRepo = goldNoticeRepo{}
 
 // ---- fixtures ----
@@ -430,6 +442,7 @@ func newGoldFixture(t *testing.T) *goldFixture {
 		paymentSvc,
 		refundSvc,
 		intake,
+		nil,
 		nil, nil,
 		&conf.Pay{NotifyBaseUrl: "https://pay.example.com"},
 		slog.New(slog.DiscardHandler),

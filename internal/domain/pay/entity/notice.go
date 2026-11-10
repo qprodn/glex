@@ -43,3 +43,17 @@ type BusinessNotice struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
+
+// BusinessNoticeAttempt is one delivery try for a Business Notification.
+// Automatic attempts set Manual false. HTTPStatus is nil when no response
+// arrived. Accepted means the response status was HTTP 2xx. The response
+// body is not part of the record.
+type BusinessNoticeAttempt struct {
+	ID         int64
+	NoticeID   int64
+	Manual     bool
+	HTTPStatus *int
+	Error      string
+	Accepted   bool
+	CreatedAt  time.Time
+}

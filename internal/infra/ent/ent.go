@@ -18,6 +18,7 @@ import (
 	"glex/internal/infra/ent/param"
 	"glex/internal/infra/ent/payapplication"
 	"glex/internal/infra/ent/paybusinessnotice"
+	"glex/internal/infra/ent/paybusinessnoticeattempt"
 	"glex/internal/infra/ent/paymerchantaccount"
 	"glex/internal/infra/ent/paynotifylog"
 	"glex/internal/infra/ent/paypayment"
@@ -98,32 +99,33 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			dept.Table:                  dept.ValidColumn,
-			dictdata.Table:              dictdata.ValidColumn,
-			dicttype.Table:              dicttype.ValidColumn,
-			file.Table:                  file.ValidColumn,
-			job.Table:                   job.ValidColumn,
-			joblog.Table:                joblog.ValidColumn,
-			loginlog.Table:              loginlog.ValidColumn,
-			menu.Table:                  menu.ValidColumn,
-			operlog.Table:               operlog.ValidColumn,
-			param.Table:                 param.ValidColumn,
-			payapplication.Table:        payapplication.ValidColumn,
-			paybusinessnotice.Table:     paybusinessnotice.ValidColumn,
-			paymerchantaccount.Table:    paymerchantaccount.ValidColumn,
-			paynotifylog.Table:          paynotifylog.ValidColumn,
-			paypayment.Table:            paypayment.ValidColumn,
-			payrefund.Table:             payrefund.ValidColumn,
-			post.Table:                  post.ValidColumn,
-			role.Table:                  role.ValidColumn,
-			rolemenu.Table:              rolemenu.ValidColumn,
-			user.Table:                  user.ValidColumn,
-			userpost.Table:              userpost.ValidColumn,
-			userrole.Table:              userrole.ValidColumn,
-			wechatadoptedtemplate.Table: wechatadoptedtemplate.ValidColumn,
-			wechatapp.Table:             wechatapp.ValidColumn,
-			wechatdispatch.Table:        wechatdispatch.ValidColumn,
-			wechatplatform.Table:        wechatplatform.ValidColumn,
+			dept.Table:                     dept.ValidColumn,
+			dictdata.Table:                 dictdata.ValidColumn,
+			dicttype.Table:                 dicttype.ValidColumn,
+			file.Table:                     file.ValidColumn,
+			job.Table:                      job.ValidColumn,
+			joblog.Table:                   joblog.ValidColumn,
+			loginlog.Table:                 loginlog.ValidColumn,
+			menu.Table:                     menu.ValidColumn,
+			operlog.Table:                  operlog.ValidColumn,
+			param.Table:                    param.ValidColumn,
+			payapplication.Table:           payapplication.ValidColumn,
+			paybusinessnotice.Table:        paybusinessnotice.ValidColumn,
+			paybusinessnoticeattempt.Table: paybusinessnoticeattempt.ValidColumn,
+			paymerchantaccount.Table:       paymerchantaccount.ValidColumn,
+			paynotifylog.Table:             paynotifylog.ValidColumn,
+			paypayment.Table:               paypayment.ValidColumn,
+			payrefund.Table:                payrefund.ValidColumn,
+			post.Table:                     post.ValidColumn,
+			role.Table:                     role.ValidColumn,
+			rolemenu.Table:                 rolemenu.ValidColumn,
+			user.Table:                     user.ValidColumn,
+			userpost.Table:                 userpost.ValidColumn,
+			userrole.Table:                 userrole.ValidColumn,
+			wechatadoptedtemplate.Table:    wechatadoptedtemplate.ValidColumn,
+			wechatapp.Table:                wechatapp.ValidColumn,
+			wechatdispatch.Table:           wechatdispatch.ValidColumn,
+			wechatplatform.Table:           wechatplatform.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)
