@@ -241,7 +241,8 @@ func (r *goldMerchantRepo) Delete(ctx context.Context, req payrepo.DeleteMerchan
 func (r *goldMerchantRepo) NextID() int64 { return 777 }
 
 // goldApplicationRepo is unused by channel-notification intake. The
-// payment service requires the port; intake never starts a Payment.
+// payment and refund services require the port; intake never starts a
+// Payment or a Refund.
 type goldApplicationRepo struct {
 	payrepo.PayApplicationRepo
 }
@@ -408,7 +409,7 @@ func newGoldFixture(t *testing.T) *goldFixture {
 
 	merchantSvc := payservice.NewMerchantService(merchantRepo, &goldCatalog{}, cipher, registry, slog.New(slog.DiscardHandler))
 	paymentSvc := payservice.NewPaymentService(payments, goldApplicationRepo{}, merchantRepo, registry, slog.New(slog.DiscardHandler))
-	refundSvc := payservice.NewRefundService(nil, payments, merchantRepo, registry, slog.New(slog.DiscardHandler))
+	refundSvc := payservice.NewRefundService(nil, payments, goldApplicationRepo{}, merchantRepo, registry, slog.New(slog.DiscardHandler))
 	intake := payservice.NewIntake(merchantSvc, paymentSvc, refundSvc, notifyRepo, goldPublisher{}, slog.New(slog.DiscardHandler))
 
 	app := pay.NewPayApplication(

@@ -833,22 +833,28 @@ func init() {
 	payrefund.DefaultUpdatedAt = payrefundDescUpdatedAt.Default.(func() time.Time)
 	// payrefund.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	payrefund.UpdateDefaultUpdatedAt = payrefundDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// payrefundDescNotifyURL is the schema descriptor for notify_url field.
+	payrefundDescNotifyURL := payrefundFields[4].Descriptor()
+	// payrefund.DefaultNotifyURL holds the default value on creation for the notify_url field.
+	payrefund.DefaultNotifyURL = payrefundDescNotifyURL.Default.(string)
+	// payrefund.NotifyURLValidator is a validator for the "notify_url" field. It is called by the builders before save.
+	payrefund.NotifyURLValidator = payrefundDescNotifyURL.Validators[0].(func(string) error)
 	// payrefundDescReason is the schema descriptor for reason field.
-	payrefundDescReason := payrefundFields[5].Descriptor()
+	payrefundDescReason := payrefundFields[6].Descriptor()
 	// payrefund.DefaultReason holds the default value on creation for the reason field.
 	payrefund.DefaultReason = payrefundDescReason.Default.(string)
 	// payrefund.ReasonValidator is a validator for the "reason" field. It is called by the builders before save.
 	payrefund.ReasonValidator = payrefundDescReason.Validators[0].(func(string) error)
 	// payrefundDescStatus is the schema descriptor for status field.
-	payrefundDescStatus := payrefundFields[6].Descriptor()
+	payrefundDescStatus := payrefundFields[7].Descriptor()
 	// payrefund.DefaultStatus holds the default value on creation for the status field.
 	payrefund.DefaultStatus = payrefundDescStatus.Default.(int16)
 	// payrefundDescChannelRefundNo is the schema descriptor for channel_refund_no field.
-	payrefundDescChannelRefundNo := payrefundFields[7].Descriptor()
+	payrefundDescChannelRefundNo := payrefundFields[8].Descriptor()
 	// payrefund.ChannelRefundNoValidator is a validator for the "channel_refund_no" field. It is called by the builders before save.
 	payrefund.ChannelRefundNoValidator = payrefundDescChannelRefundNo.Validators[0].(func(string) error)
 	// payrefundDescFailReason is the schema descriptor for fail_reason field.
-	payrefundDescFailReason := payrefundFields[8].Descriptor()
+	payrefundDescFailReason := payrefundFields[9].Descriptor()
 	// payrefund.FailReasonValidator is a validator for the "fail_reason" field. It is called by the builders before save.
 	payrefund.FailReasonValidator = payrefundDescFailReason.Validators[0].(func(string) error)
 	postMixin := schema.Post{}.Mixin()

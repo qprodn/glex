@@ -21,12 +21,14 @@ func (s RefundStatus) Terminal() bool {
 // Refund is one request to return part or all of a paid Payment's amount.
 // The ID doubles as the Refund number and the Channel's merchant refund
 // number (out_refund_no). Together all refunds of a Payment never exceed
-// what was paid.
+// what was paid. NotifyURL is the refund result address copied from the
+// Pay Application at creation. Empty stays empty.
 type Refund struct {
 	ID              int64
 	PaymentID       int64
 	MerchantID      int64
 	Channel         Channel
+	NotifyURL       string
 	Amount          int64
 	Reason          string
 	Status          RefundStatus

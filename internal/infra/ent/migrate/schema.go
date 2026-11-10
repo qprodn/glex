@@ -532,6 +532,7 @@ var (
 		{Name: "payment_id", Type: field.TypeInt64},
 		{Name: "merchant_id", Type: field.TypeInt64},
 		{Name: "channel", Type: field.TypeInt16},
+		{Name: "notify_url", Type: field.TypeString, Size: 512, Default: ""},
 		{Name: "amount", Type: field.TypeInt64},
 		{Name: "reason", Type: field.TypeString, Size: 256, Default: ""},
 		{Name: "status", Type: field.TypeInt16, Default: 1},

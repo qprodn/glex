@@ -171,6 +171,20 @@ func (_u *PayRefundUpdate) AddChannel(v int16) *PayRefundUpdate {
 	return _u
 }
 
+// SetNotifyURL sets the "notify_url" field.
+func (_u *PayRefundUpdate) SetNotifyURL(v string) *PayRefundUpdate {
+	_u.mutation.SetNotifyURL(v)
+	return _u
+}
+
+// SetNillableNotifyURL sets the "notify_url" field if the given value is not nil.
+func (_u *PayRefundUpdate) SetNillableNotifyURL(v *string) *PayRefundUpdate {
+	if v != nil {
+		_u.SetNotifyURL(*v)
+	}
+	return _u
+}
+
 // SetAmount sets the "amount" field.
 func (_u *PayRefundUpdate) SetAmount(v int64) *PayRefundUpdate {
 	_u.mutation.ResetAmount()
@@ -330,6 +344,11 @@ func (_u *PayRefundUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *PayRefundUpdate) check() error {
+	if v, ok := _u.mutation.NotifyURL(); ok {
+		if err := payrefund.NotifyURLValidator(v); err != nil {
+			return &ValidationError{Name: "notify_url", err: fmt.Errorf(`ent: validator failed for field "PayRefund.notify_url": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Reason(); ok {
 		if err := payrefund.ReasonValidator(v); err != nil {
 			return &ValidationError{Name: "reason", err: fmt.Errorf(`ent: validator failed for field "PayRefund.reason": %w`, err)}
@@ -404,6 +423,9 @@ func (_u *PayRefundUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedChannel(); ok {
 		_spec.AddField(payrefund.FieldChannel, field.TypeInt16, value)
+	}
+	if value, ok := _u.mutation.NotifyURL(); ok {
+		_spec.SetField(payrefund.FieldNotifyURL, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Amount(); ok {
 		_spec.SetField(payrefund.FieldAmount, field.TypeInt64, value)
@@ -601,6 +623,20 @@ func (_u *PayRefundUpdateOne) AddChannel(v int16) *PayRefundUpdateOne {
 	return _u
 }
 
+// SetNotifyURL sets the "notify_url" field.
+func (_u *PayRefundUpdateOne) SetNotifyURL(v string) *PayRefundUpdateOne {
+	_u.mutation.SetNotifyURL(v)
+	return _u
+}
+
+// SetNillableNotifyURL sets the "notify_url" field if the given value is not nil.
+func (_u *PayRefundUpdateOne) SetNillableNotifyURL(v *string) *PayRefundUpdateOne {
+	if v != nil {
+		_u.SetNotifyURL(*v)
+	}
+	return _u
+}
+
 // SetAmount sets the "amount" field.
 func (_u *PayRefundUpdateOne) SetAmount(v int64) *PayRefundUpdateOne {
 	_u.mutation.ResetAmount()
@@ -773,6 +809,11 @@ func (_u *PayRefundUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *PayRefundUpdateOne) check() error {
+	if v, ok := _u.mutation.NotifyURL(); ok {
+		if err := payrefund.NotifyURLValidator(v); err != nil {
+			return &ValidationError{Name: "notify_url", err: fmt.Errorf(`ent: validator failed for field "PayRefund.notify_url": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Reason(); ok {
 		if err := payrefund.ReasonValidator(v); err != nil {
 			return &ValidationError{Name: "reason", err: fmt.Errorf(`ent: validator failed for field "PayRefund.reason": %w`, err)}
@@ -864,6 +905,9 @@ func (_u *PayRefundUpdateOne) sqlSave(ctx context.Context) (_node *PayRefund, er
 	}
 	if value, ok := _u.mutation.AddedChannel(); ok {
 		_spec.AddField(payrefund.FieldChannel, field.TypeInt16, value)
+	}
+	if value, ok := _u.mutation.NotifyURL(); ok {
+		_spec.SetField(payrefund.FieldNotifyURL, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Amount(); ok {
 		_spec.SetField(payrefund.FieldAmount, field.TypeInt64, value)

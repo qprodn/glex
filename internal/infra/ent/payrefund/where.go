@@ -94,6 +94,11 @@ func Channel(v int16) predicate.PayRefund {
 	return predicate.PayRefund(sql.FieldEQ(FieldChannel, v))
 }
 
+// NotifyURL applies equality check predicate on the "notify_url" field. It's identical to NotifyURLEQ.
+func NotifyURL(v string) predicate.PayRefund {
+	return predicate.PayRefund(sql.FieldEQ(FieldNotifyURL, v))
+}
+
 // Amount applies equality check predicate on the "amount" field. It's identical to AmountEQ.
 func Amount(v int64) predicate.PayRefund {
 	return predicate.PayRefund(sql.FieldEQ(FieldAmount, v))
@@ -472,6 +477,71 @@ func ChannelLT(v int16) predicate.PayRefund {
 // ChannelLTE applies the LTE predicate on the "channel" field.
 func ChannelLTE(v int16) predicate.PayRefund {
 	return predicate.PayRefund(sql.FieldLTE(FieldChannel, v))
+}
+
+// NotifyURLEQ applies the EQ predicate on the "notify_url" field.
+func NotifyURLEQ(v string) predicate.PayRefund {
+	return predicate.PayRefund(sql.FieldEQ(FieldNotifyURL, v))
+}
+
+// NotifyURLNEQ applies the NEQ predicate on the "notify_url" field.
+func NotifyURLNEQ(v string) predicate.PayRefund {
+	return predicate.PayRefund(sql.FieldNEQ(FieldNotifyURL, v))
+}
+
+// NotifyURLIn applies the In predicate on the "notify_url" field.
+func NotifyURLIn(vs ...string) predicate.PayRefund {
+	return predicate.PayRefund(sql.FieldIn(FieldNotifyURL, vs...))
+}
+
+// NotifyURLNotIn applies the NotIn predicate on the "notify_url" field.
+func NotifyURLNotIn(vs ...string) predicate.PayRefund {
+	return predicate.PayRefund(sql.FieldNotIn(FieldNotifyURL, vs...))
+}
+
+// NotifyURLGT applies the GT predicate on the "notify_url" field.
+func NotifyURLGT(v string) predicate.PayRefund {
+	return predicate.PayRefund(sql.FieldGT(FieldNotifyURL, v))
+}
+
+// NotifyURLGTE applies the GTE predicate on the "notify_url" field.
+func NotifyURLGTE(v string) predicate.PayRefund {
+	return predicate.PayRefund(sql.FieldGTE(FieldNotifyURL, v))
+}
+
+// NotifyURLLT applies the LT predicate on the "notify_url" field.
+func NotifyURLLT(v string) predicate.PayRefund {
+	return predicate.PayRefund(sql.FieldLT(FieldNotifyURL, v))
+}
+
+// NotifyURLLTE applies the LTE predicate on the "notify_url" field.
+func NotifyURLLTE(v string) predicate.PayRefund {
+	return predicate.PayRefund(sql.FieldLTE(FieldNotifyURL, v))
+}
+
+// NotifyURLContains applies the Contains predicate on the "notify_url" field.
+func NotifyURLContains(v string) predicate.PayRefund {
+	return predicate.PayRefund(sql.FieldContains(FieldNotifyURL, v))
+}
+
+// NotifyURLHasPrefix applies the HasPrefix predicate on the "notify_url" field.
+func NotifyURLHasPrefix(v string) predicate.PayRefund {
+	return predicate.PayRefund(sql.FieldHasPrefix(FieldNotifyURL, v))
+}
+
+// NotifyURLHasSuffix applies the HasSuffix predicate on the "notify_url" field.
+func NotifyURLHasSuffix(v string) predicate.PayRefund {
+	return predicate.PayRefund(sql.FieldHasSuffix(FieldNotifyURL, v))
+}
+
+// NotifyURLEqualFold applies the EqualFold predicate on the "notify_url" field.
+func NotifyURLEqualFold(v string) predicate.PayRefund {
+	return predicate.PayRefund(sql.FieldEqualFold(FieldNotifyURL, v))
+}
+
+// NotifyURLContainsFold applies the ContainsFold predicate on the "notify_url" field.
+func NotifyURLContainsFold(v string) predicate.PayRefund {
+	return predicate.PayRefund(sql.FieldContainsFold(FieldNotifyURL, v))
 }
 
 // AmountEQ applies the EQ predicate on the "amount" field.

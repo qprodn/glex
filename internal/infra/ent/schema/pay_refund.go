@@ -31,6 +31,9 @@ func (PayRefund) Fields() []ent.Field {
 		// resolved on the channel the money arrived on.
 		field.Int64("merchant_id"),
 		field.Int16("channel"),
+		// Refund result address copied from the Pay Application at creation.
+		// Empty stays empty.
+		field.String("notify_url").MaxLen(512).Default(""),
 		// This refund's amount in minor units (ADR 0019).
 		field.Int64("amount"),
 		field.String("reason").MaxLen(256).Default(""),
