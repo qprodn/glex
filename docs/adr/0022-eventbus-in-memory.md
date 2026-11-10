@@ -71,6 +71,9 @@ v1 carries no new deployment or ops surface for events.
   in channel-notification handling; subscribers treat it as a prompt to look
   at the Payment — the Payment's own state stays the single money truth.
   One example subscriber consumes it end to end, including the drop path.
+  Amended 2026-11-10 by ADR 0030: that scope stays. A read, an active query,
+  the expiry sweep, and close may settle a Payment as paid and still publish
+  nothing here. The event also names the Pay Application.
 
 Considered and rejected: watermill (unifies an MQ zoo we do not have —
 abstraction tax for a single in-process backend); river/asynq (job-queue

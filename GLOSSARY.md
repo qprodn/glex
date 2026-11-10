@@ -21,8 +21,9 @@ from RuoYi-Vue-Plus's `sys_user`, `sys_dept`, `sys_post`, `sys_menu`,
 `sys_role`, `sys_user_role`, `sys_user_post`, `sys_dict_type`,
 `sys_dict_data`, `sys_config`, `sys_oper_log`, and `sys_logininfor`; the file module
 continues that lineage with its own `sys_file` (RuoYi's `sys_oss`, renamed).
-Three further modules, **pay** (payment — the Channel Merchant Accounts the back
-office configures and the payments and refunds collected through them),
+Three further modules, **pay** (payment — the Pay Applications the back office
+binds to Merchant Accounts, and the payments and refunds collected through
+them),
 **job** (scheduled tasks — the Scheduled Jobs the back office configures and
 the Job Executors they fire), and **wechat** (the WeChat Platforms and the
 WeChat Apps connected through one of them or held directly), are designed natively
@@ -259,11 +260,24 @@ _Avoid_: Pay Method (a different concept), gateway, provider, 第三方支付
 The platform's own collecting account at one Channel — the WeChat Pay mchid
 with its keys and certificates, the Alipay app, the Stripe account —
 configured from the back office with its credential material held encrypted
-(ADR 0018). A payment is collected into exactly one Merchant Account;
-several may be configured per Channel and are picked explicitly when a
-payment is initiated.
+(ADR 0018). A Payment is collected into exactly one Merchant Account.
+Several may be configured per Channel. A Pay Application binds exactly one
+of them when the Pay Application is created, and each of its Payments uses
+that Merchant Account. Several Pay Applications may bind the same Merchant
+Account.
 _Avoid_: 商户 (unqualified), sub-merchant / 子商户 (service-provider mode, out of
-scope), tenant, vendor.
+scope), tenant, vendor, Pay Application.
+
+**Pay Application** (支付应用):
+The caller's identity in the pay module, named by its own number and by a
+display name. The display name may change, and among Pay Applications not
+withdrawn it identifies at most one. The number does not change. It is bound
+at creation to exactly one Merchant Account, and that binding does not change.
+It may be disabled or withdrawn; either stops new Payments and Refunds,
+while Payments already started still settle. It carries the result
+addresses for Business Notifications, and an address may be empty. A
+Business Order Number identifies at most one of its Payments.
+_Avoid_: 应用 (unqualified), WeChat App, 支付宝应用, app_id, appKey, Merchant Account.
 
 **Pay Method** (支付方式):
 The form a payment takes on the paying side — Native (QR code), JSAPI /
@@ -274,18 +288,20 @@ _Avoid_: Channel (a different concept), 支付类型, trade type (WeChat wire
 jargon).
 
 **Payment** (支付单):
-One attempt to collect a stated amount into one Merchant Account through one
-Pay Method, identified by its own number — which also serves as the
-Channel's merchant order number for it. A Payment ends in exactly one
-terminal state: paid, failed, closed, or expired. Initiating again for the
-same Business Order Number closes that Merchant Account's still-pending
-Payments first.
+One attempt to collect a stated amount into the Merchant Account of one
+Pay Application, through one Pay Method, identified by its own number —
+which also serves as the Channel's merchant order number for it. A Payment
+ends in exactly one terminal state: paid, failed, closed, or expired.
+Initiating again for the same Pay Application and Business Order Number
+returns that Payment when the amount and Pay Method are the same, and is
+refused when either differs. The subject and expiry stay as first recorded.
+A closed, expired, or failed Payment still holds the number.
 _Avoid_: 订单 (the caller's business order), transaction, trade, 支付记录.
 
 **Business Order Number** (业务单号):
 The caller-supplied identifier tying a Payment to the business thing being
-paid for. To pay it is opaque reference material — indexed for lookup,
-never interpreted, and not unique among Payments.
+paid for. Within one Pay Application it identifies at most one Payment.
+To the pay module it is opaque reference material.
 _Avoid_: 支付单号 (the Payment's own number), out_trade_no, order id.
 
 **Refund** (退款单):
@@ -302,7 +318,7 @@ the signature is the authentication (ADR 0020). Each is recorded write-once
 with its raw body as the evidence stream. A redelivery keeps that one row
 and applies no second state change, though a state change that did not
 finish can finish on a later delivery.
-_Avoid_: webhook, 异步通知 (unqualified), callback.
+_Avoid_: webhook, 异步通知 (unqualified), callback, Business Notification.
 
 **Connectivity Test** (连通性测试):
 A cheap authenticated Channel call made on demand to prove a Merchant
@@ -311,15 +327,34 @@ _Avoid_: 验证支付, test pay, ping.
 
 **Payment Completed** (支付完成事件):
 The Domain Event asserting a Payment has reached its paid terminal state,
-published by the pay module's Channel Notification intake once the state
-change is durable (the query-settle and close-flip paths settle silently
-for now — absence of the event is not absence of payment). Subscribers
-treat it as a prompt to look at the Payment, never as proof for moving
-money — the Payment's own state stays the single money truth. It is the
-first fact on the pay module's Topic and the anchor use case of the
-eventbus (ADR 0022).
+published only by the Channel Notification intake, and only when that intake
+is what first moves the Payment to paid. It names the Pay Application and
+the Payment. A read, an active query, the expiry sweep, and close can settle
+a Payment as paid without this event. Absence of
+the event is not absence of payment. Subscribers treat it as a prompt to look
+at the Payment, never as proof for moving money — the Payment's own state
+stays the single money truth. It is the first fact on the pay module's Topic
+and the anchor use case of the eventbus (ADR 0022).
 _Avoid_: 支付成功通知 (a Channel Notification is the Channel telling us;
-this is us telling subscribers), callback, webhook.
+this is us telling subscribers), Business Notification, callback, webhook.
+
+**Business Notification** (业务通知):
+The pay module's notice that a Payment has been paid, or that a Refund has
+ended refunded or failed, whichever path first made that so. A Payment
+notice is sent even when that path does not publish Payment Completed. It
+names the Business Order Number and the Payment, or the Refund and the
+Payment. Automatic delivery uses the result address the Pay Application
+carried when that record was created, and does not restart after it is
+exhausted. An empty address at creation means that notice is not sent,
+including when the address is filled in only later. Each delivery leaves a
+record, and a record whose deliveries are exhausted stays visible in the
+back office. An operator may deliver that exhausted notice again to the
+address the Pay Application carries now, and may repeat that while it stays
+exhausted; an empty current address refuses the delivery, and a delivery the
+caller accepts ends the exhausted state. It carries no signature. The caller
+confirms it by reading that Payment or Refund in this service; the record
+remains the money truth.
+_Avoid_: 回调 (unqualified), Channel Notification, Payment Completed, webhook.
 
 ### wechat
 
