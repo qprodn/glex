@@ -111,6 +111,11 @@ type paymentImpl struct {
 	apps      payrepo.PayApplicationRepo
 	merchants payrepo.MerchantAccountRepo
 	gateways  GatewayRegistry
+	notices   payrepo.BusinessNoticeRepo
+	// completed is the Payment Completed port. Read, lookup, query, the
+	// expiry sweep, and close do not publish; intake is the only publisher.
+	// The port is held so those paths stay observable as silent.
+	completed CompletedPublisher
 	logger    *slog.Logger
 }
 
@@ -120,6 +125,8 @@ func NewPaymentService(
 	apps payrepo.PayApplicationRepo,
 	merchants payrepo.MerchantAccountRepo,
 	gateways GatewayRegistry,
+	notices payrepo.BusinessNoticeRepo,
+	completed CompletedPublisher,
 	logger *slog.Logger,
 ) Payment {
 	return &paymentImpl{
@@ -127,6 +134,8 @@ func NewPaymentService(
 		apps:      apps,
 		merchants: merchants,
 		gateways:  gateways,
+		notices:   notices,
+		completed: completed,
 		logger:    logger.With(slog.String("component", "domain.pay.payment.svc")),
 	}
 }
@@ -164,19 +173,52 @@ func (s *paymentImpl) Get(ctx context.Context, id int64) (*payentity.Payment, er
 	// path; the settlement is best-effort — a channel failure degrades to
 	// the stored row, never fails the read (write-on-read by design).
 	if p.Status == payentity.PaymentPending && time.Now().After(p.ExpireTime) {
-		if _, err := s.settle(ctx, p); err != nil {
+		advanced, settleErr := s.settle(ctx, p)
+		if settleErr != nil {
 			s.logger.Warn("settle on read failed; serving stored state",
 				slog.String("operation", "pay.svc.payment.get"),
 				slog.Int64("payment_id", p.ID),
-				slog.Any("error", err))
+				slog.Any("error", settleErr))
 		}
 		p, err = s.payments.FindByID(ctx, id)
 		if err != nil {
 			logx.Propagate(ctx, s.logger, "pay.svc.payment.get", err)
 			return nil, err
 		}
+		if settleErr == nil && advanced && p.Status == payentity.PaymentPaid {
+			s.recordPaidNotice(ctx, p)
+		}
 	}
 	return p, nil
+}
+
+// recordPaidNotice stores the payment Business Notification when this
+// service, not Channel Notification intake, is what first moved the
+// Payment to paid. The address is the copy on the Payment. An empty copy
+// records nothing, and this path does not read the Pay Application again.
+// Insert failure is Warn and does not fail the settlement. A duplicate
+// insert (ok false) is not an error. Payment Completed is not published.
+func (s *paymentImpl) recordPaidNotice(ctx context.Context, p *payentity.Payment) {
+	if p.NotifyURL == "" {
+		return
+	}
+	notice := &payentity.BusinessNotice{
+		ID:            s.notices.NextID(),
+		ApplicationID: p.ApplicationID,
+		Kind:          payentity.NoticeKindPayment,
+		PaymentID:     p.ID,
+		BizNo:         p.BizNo,
+		NotifyURL:     p.NotifyURL,
+		Status:        payentity.NoticeWaiting,
+		AttemptCount:  0,
+		NextAttemptAt: time.Now(),
+	}
+	if _, err := s.notices.Insert(ctx, notice); err != nil {
+		s.logger.Warn("paid business notice insert degraded",
+			slog.String("operation", "pay.svc.payment.record_paid_notice"),
+			slog.Int64("payment_id", p.ID),
+			slog.Any("error", err))
+	}
 }
 
 func (s *paymentImpl) GetByBizNo(ctx context.Context, req GetByBizNoRequest) (*payentity.Payment, error) {
@@ -186,16 +228,20 @@ func (s *paymentImpl) GetByBizNo(ctx context.Context, req GetByBizNoRequest) (*p
 		return nil, err
 	}
 	if p.Status == payentity.PaymentPending && time.Now().After(p.ExpireTime) {
-		if _, err := s.settle(ctx, p); err != nil {
+		advanced, settleErr := s.settle(ctx, p)
+		if settleErr != nil {
 			s.logger.Warn("settle on read failed; serving stored state",
 				slog.String("operation", "pay.svc.payment.get_by_biz_no"),
 				slog.Int64("payment_id", p.ID),
-				slog.Any("error", err))
+				slog.Any("error", settleErr))
 		}
 		p, err = s.payments.FindByID(ctx, p.ID)
 		if err != nil {
 			logx.Propagate(ctx, s.logger, "pay.svc.payment.get_by_biz_no", err)
 			return nil, err
+		}
+		if settleErr == nil && advanced && p.Status == payentity.PaymentPaid {
+			s.recordPaidNotice(ctx, p)
 		}
 	}
 	return p, nil
@@ -349,7 +395,8 @@ func (s *paymentImpl) Query(ctx context.Context, id int64) (*payentity.Payment, 
 		return nil, err
 	}
 	if p.Status == payentity.PaymentPending {
-		if _, err := s.settle(ctx, p); err != nil {
+		advanced, err := s.settle(ctx, p)
+		if err != nil {
 			logx.Propagate(ctx, s.logger, "pay.svc.payment.query", err)
 			return nil, err
 		}
@@ -357,6 +404,9 @@ func (s *paymentImpl) Query(ctx context.Context, id int64) (*payentity.Payment, 
 		if err != nil {
 			logx.Propagate(ctx, s.logger, "pay.svc.payment.query", err)
 			return nil, err
+		}
+		if advanced && p.Status == payentity.PaymentPaid {
+			s.recordPaidNotice(ctx, p)
 		}
 	}
 	return p, nil
@@ -396,7 +446,8 @@ func (s *paymentImpl) SweepExpired(ctx context.Context, limit int) (int, error) 
 				logx.Propagate(ctx, s.logger, "pay.svc.payment.sweep_expired", err)
 				return settled, err
 			}
-			if _, err := s.settle(ctx, p); err != nil {
+			advanced, err := s.settle(ctx, p)
+			if err != nil {
 				// Degraded, not propagated: the sweep continues and the
 				// lazy paths still heal this row on its next read (ADR
 				// 0007's handling site; a Warn, because the sweep's own
@@ -408,6 +459,20 @@ func (s *paymentImpl) SweepExpired(ctx context.Context, limit int) (int, error) 
 				continue
 			}
 			settled++
+			if !advanced {
+				continue
+			}
+			fresh, err := s.payments.FindByID(ctx, p.ID)
+			if err != nil {
+				s.logger.Warn("expire sweep settled a payment but could not record its notice",
+					slog.String("operation", "pay.svc.payment.sweep_expired"),
+					slog.Int64("payment_id", p.ID),
+					slog.Any("error", err))
+				continue
+			}
+			if fresh.Status == payentity.PaymentPaid {
+				s.recordPaidNotice(ctx, fresh)
+			}
 		}
 	}
 	return settled, nil
@@ -444,11 +509,20 @@ func (s *paymentImpl) Close(ctx context.Context, req ClosePaymentRequest) (*paye
 			logx.Propagate(ctx, s.logger, "pay.svc.payment.close", err)
 			return nil, err
 		}
-		if _, err := s.ApplyChannelState(ctx, ApplyChannelStateRequest{PaymentNo: p.ID, State: state}); err != nil {
+		advanced, err := s.ApplyChannelState(ctx, ApplyChannelStateRequest{PaymentNo: p.ID, State: state})
+		if err != nil {
 			logx.Propagate(ctx, s.logger, "pay.svc.payment.close", err)
 			return nil, err
 		}
-		return s.payments.FindByID(ctx, id)
+		paid, err := s.payments.FindByID(ctx, id)
+		if err != nil {
+			logx.Propagate(ctx, s.logger, "pay.svc.payment.close", err)
+			return nil, err
+		}
+		if advanced && paid.Status == payentity.PaymentPaid {
+			s.recordPaidNotice(ctx, paid)
+		}
+		return paid, nil
 	}
 	if _, err := s.payments.MarkClosed(ctx, p.ID); err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.payment.close", err)

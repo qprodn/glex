@@ -585,9 +585,12 @@ func (m *memNotifyLog) MarkProcessed(_ context.Context, id int64) error {
 var _ payrepo.NotifyLogRepo = (*memNotifyLog)(nil)
 
 type memNotices struct {
-	next int64
-	rows []*payentity.BusinessNotice
-	err  error
+	next    int64
+	rows    []*payentity.BusinessNotice
+	inserts int
+	err     error
+	// refuse is the unique-pair answer: ok false, no error, no row.
+	refuse bool
 }
 
 func (m *memNotices) NextID() int64 {
@@ -596,8 +599,20 @@ func (m *memNotices) NextID() int64 {
 }
 
 func (m *memNotices) Insert(_ context.Context, n *payentity.BusinessNotice) (bool, error) {
+	m.inserts++
 	if m.err != nil {
 		return false, m.err
+	}
+	if m.refuse {
+		return false, nil
+	}
+	for _, row := range m.rows {
+		if row.Kind == n.Kind && n.Kind == payentity.NoticeKindPayment && n.PaymentID != 0 && row.PaymentID == n.PaymentID {
+			return false, nil
+		}
+		if row.Kind == n.Kind && n.Kind == payentity.NoticeKindRefund && n.RefundID != 0 && row.RefundID == n.RefundID {
+			return false, nil
+		}
 	}
 	cp := *n
 	m.rows = append(m.rows, &cp)
