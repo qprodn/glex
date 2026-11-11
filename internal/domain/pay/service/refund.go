@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"log/slog"
-	"time"
 
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
@@ -75,6 +74,7 @@ type refundImpl struct {
 	merchants payrepo.MerchantAccountRepo
 	gateways  GatewayRegistry
 	notices   payrepo.BusinessNoticeRepo
+	tx        Transaction
 	logger    *slog.Logger
 }
 
@@ -86,6 +86,7 @@ func NewRefundService(
 	merchants payrepo.MerchantAccountRepo,
 	gateways GatewayRegistry,
 	notices payrepo.BusinessNoticeRepo,
+	tx Transaction,
 	logger *slog.Logger,
 ) Refund {
 	return &refundImpl{
@@ -95,6 +96,7 @@ func NewRefundService(
 		merchants: merchants,
 		gateways:  gateways,
 		notices:   notices,
+		tx:        tx,
 		logger:    logger.With(slog.String("component", "domain.pay.refund.svc")),
 	}
 }
@@ -270,9 +272,10 @@ func (s *refundImpl) Query(ctx context.Context, id int64) (*payentity.Refund, er
 }
 
 // ApplyRefundState advances one refund per channel-asserted truth. The
-// settle and the payment's refunded-sum advance are one atomic repo write
-// — the sum moves exactly once with the status, and a duplicate delivery
-// loses the CAS and never double-counts.
+// settle, the payment's refunded-sum advance, and the due notice commit
+// together. The sum moves exactly once with the status, and a duplicate
+// delivery loses the CAS and never double-counts. An insert that cannot
+// commit leaves the refund pending.
 func (s *refundImpl) ApplyRefundState(ctx context.Context, req ApplyRefundStateRequest) (bool, error) {
 	refundNo, state := req.RefundNo, req.State
 	switch state.State {
@@ -294,39 +297,47 @@ func (s *refundImpl) ApplyRefundState(ctx context.Context, req ApplyRefundStateR
 				slog.Int64("asserted_amount", state.RefundAmount))
 			return false, nil
 		}
-		// The settle and the refunded-sum advance are one atomic unit in
-		// the repo — the sum moves exactly once with the status.
-		advanced, err := s.refunds.MarkSuccess(ctx, payrepo.MarkRefundSuccessRequest{
-			ID:              refundNo,
-			PaymentID:       rf.PaymentID,
-			Amount:          rf.Amount,
-			ChannelRefundNo: state.ChannelRefundNo,
-			RefundedAt:      state.RefundedAt,
+		// The settle, the refunded-sum advance, and the due notice commit
+		// together. An insert that cannot commit rolls the money change
+		// back. The repo's own transaction joins this one.
+		var advanced bool
+		err = s.tx.InTx(ctx, func(ctx context.Context) error {
+			ok, markErr := s.refunds.MarkSuccess(ctx, payrepo.MarkRefundSuccessRequest{
+				ID:              refundNo,
+				PaymentID:       rf.PaymentID,
+				Amount:          rf.Amount,
+				ChannelRefundNo: state.ChannelRefundNo,
+				RefundedAt:      state.RefundedAt,
+			})
+			if markErr != nil || !ok {
+				return markErr
+			}
+			advanced = true
+			return s.insertRefundNotice(ctx, rf)
 		})
 		if err != nil {
 			logx.Propagate(ctx, s.logger, "pay.svc.refund.apply_state", err)
 			return false, err
 		}
-		if advanced {
-			s.recordRefundNotice(ctx, rf)
-		}
 		return advanced, nil
 	case payentity.RefundFailed:
-		advanced, err := s.refunds.MarkFailed(ctx, payrepo.MarkRefundFailedRequest{ID: refundNo, Reason: state.FailReason})
+		rf, err := s.refunds.FindByID(ctx, refundNo)
 		if err != nil {
 			logx.Propagate(ctx, s.logger, "pay.svc.refund.apply_state", err)
 			return false, err
 		}
-		if advanced {
-			rf, findErr := s.refunds.FindByID(ctx, refundNo)
-			if findErr != nil {
-				s.logger.Warn("refund notice skipped; refund row unreadable after settle",
-					slog.String("operation", "pay.svc.refund.record_notice"),
-					slog.Int64("refund_id", refundNo),
-					slog.Any("error", findErr))
-			} else {
-				s.recordRefundNotice(ctx, rf)
+		var advanced bool
+		err = s.tx.InTx(ctx, func(ctx context.Context) error {
+			ok, markErr := s.refunds.MarkFailed(ctx, payrepo.MarkRefundFailedRequest{ID: refundNo, Reason: state.FailReason})
+			if markErr != nil || !ok {
+				return markErr
 			}
+			advanced = true
+			return s.insertRefundNotice(ctx, rf)
+		})
+		if err != nil {
+			logx.Propagate(ctx, s.logger, "pay.svc.refund.apply_state", err)
+			return false, err
 		}
 		return advanced, nil
 	default: // Pending — nothing to advance
@@ -334,13 +345,14 @@ func (s *refundImpl) ApplyRefundState(ctx context.Context, req ApplyRefundStateR
 	}
 }
 
-// recordRefundNotice stores one unsigned Business Notification for a
-// Refund that just reached a terminal state. The address is the one
-// copied onto the Refund at creation. Insert failure is Warn-only: the
-// refund transition is already durable.
-func (s *refundImpl) recordRefundNotice(ctx context.Context, rf *payentity.Refund) {
+// insertRefundNotice stores the refund Business Notification. The address
+// is the copy on the Refund. An empty copy stores nothing. A missing
+// payment degrades the Pay Application id to 0 and still attempts the
+// insert: the notice, not the lookup, is what must commit with the money
+// change. The insert error is returned for the caller's transaction.
+func (s *refundImpl) insertRefundNotice(ctx context.Context, rf *payentity.Refund) error {
 	if rf.NotifyURL == "" {
-		return
+		return nil
 	}
 	applicationID := int64(0)
 	p, err := s.payments.FindByID(ctx, rf.PaymentID)
@@ -353,24 +365,13 @@ func (s *refundImpl) recordRefundNotice(ctx context.Context, rf *payentity.Refun
 	} else {
 		applicationID = p.ApplicationID
 	}
-	notice := &payentity.BusinessNotice{
-		ID:            s.notices.NextID(),
+	return insertDueNotice(ctx, s.notices, &payentity.BusinessNotice{
 		ApplicationID: applicationID,
 		Kind:          payentity.NoticeKindRefund,
 		PaymentID:     rf.PaymentID,
 		RefundID:      rf.ID,
 		NotifyURL:     rf.NotifyURL,
-		Status:        payentity.NoticeWaiting,
-		AttemptCount:  0,
-		NextAttemptAt: time.Now(),
-	}
-	if _, err := s.notices.Insert(ctx, notice); err != nil {
-		s.logger.Warn("refund business notice insert degraded",
-			slog.String("operation", "pay.svc.refund.record_notice"),
-			slog.Int64("refund_id", rf.ID),
-			slog.Int64("payment_id", rf.PaymentID),
-			slog.Any("error", err))
-	}
+	})
 }
 
 func (s *refundImpl) resolve(ctx context.Context, merchantID int64) (*ResolvedGateway, error) {

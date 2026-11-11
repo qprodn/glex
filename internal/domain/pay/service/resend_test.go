@@ -319,6 +319,7 @@ func TestListExhaustedNoticesKeepsSuccessfulAttemptsOffTheQueue(t *testing.T) {
 	poster := &scriptPoster{status: 200}
 	svc := NewNoticeDesk(store, resendApps("https://caller.example/paid-now", "https://caller.example/refund-now"), poster, slog.New(slog.DiscardHandler))
 
+	var got []*ExhaustedNotice
 	got, err := svc.ListExhausted(context.Background(), listq.Query{Limit: 50})
 	if err != nil {
 		t.Fatalf("list: %v", err)

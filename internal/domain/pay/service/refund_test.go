@@ -206,7 +206,7 @@ func newRefundFixture(t *testing.T, gw ChannelGateway) refundFixture {
 		t.Fatalf("payment fixture: %v", err)
 	}
 	notices := &memNotices{}
-	svc := NewRefundService(refunds, payments, apps, merchantRepo, &scriptGateways{gw: gw}, notices, slog.New(slog.DiscardHandler))
+	svc := NewRefundService(refunds, payments, apps, merchantRepo, &scriptGateways{gw: gw}, notices, memoryTx{payments: payments, refunds: refunds, notices: notices}, slog.New(slog.DiscardHandler))
 	return refundFixture{
 		svc: svc, refunds: refunds, payments: payments, apps: apps, merchants: merchantRepo, notices: notices,
 		applicationID: app.ID, merchantID: m.ID, paymentID: 701,
@@ -702,9 +702,9 @@ func TestRefundQueryRecordsOneNotice(t *testing.T) {
 	}
 }
 
-// TestRefundNoticeInsertFailureKeepsTheTransition pins a failed insert:
-// the Refund still reaches refunded, and the error is not returned.
-func TestRefundNoticeInsertFailureKeepsTheTransition(t *testing.T) {
+// TestRefundNoticeInsertFailureLeavesTheRefundPending pins a failed insert:
+// the refund stays pending and the payment's refunded sum does not move.
+func TestRefundNoticeInsertFailureLeavesTheRefundPending(t *testing.T) {
 	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
 	fix := newRefundFixture(t, gw)
 	rf, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, Reason: "x", ActorID: 7})
@@ -712,29 +712,54 @@ func TestRefundNoticeInsertFailureKeepsTheTransition(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 	fix.notices.err = errors.New("store down")
-	advanced, err := fix.svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{
+	if _, err := fix.svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{
 		RefundNo: rf.ID,
 		State:    ChannelRefundState{State: payentity.RefundSuccess, ChannelRefundNo: "ali-rf-1"},
-	})
-	if err != nil || !advanced {
-		t.Fatalf("apply = (%v, %v), want the refunded transition kept", advanced, err)
+	}); err == nil {
+		t.Fatal("apply succeeded, want the refunded transition withheld when the notice cannot commit")
 	}
 	stored, err := fix.refunds.FindByID(context.Background(), rf.ID)
 	if err != nil {
 		t.Fatalf("read refund: %v", err)
 	}
-	if stored.Status != payentity.RefundSuccess {
-		t.Fatalf("refund status = %v, want refunded", stored.Status)
+	if stored.Status != payentity.RefundPending || stored.ChannelRefundNo != "" {
+		t.Fatalf("refund = %+v, want still pending", stored)
 	}
 	p, err := fix.payments.FindByID(context.Background(), fix.paymentID)
 	if err != nil {
 		t.Fatalf("read payment: %v", err)
 	}
-	if p.RefundedAmount != 40 {
-		t.Fatalf("refunded_amount = %d, want 40", p.RefundedAmount)
+	if p.RefundedAmount != 0 {
+		t.Fatalf("refunded_amount = %d, want 0", p.RefundedAmount)
 	}
 	if len(fix.notices.rows) != 0 {
-		t.Fatalf("notices = %d, want the failed insert kept nothing", len(fix.notices.rows))
+		t.Fatalf("notices = %d, want no due row without the refunded payment", len(fix.notices.rows))
+	}
+}
+
+func TestFailedRefundNoticeInsertFailureLeavesTheRefundPending(t *testing.T) {
+	gw := &scriptRefundGateway{refundState: ChannelRefundState{State: payentity.RefundPending}}
+	fix := newRefundFixture(t, gw)
+	rf, err := fix.svc.Create(context.Background(), CreateRefundRequest{PaymentID: fix.paymentID, Amount: 40, Reason: "x", ActorID: 7})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	fix.notices.err = errors.New("store down")
+	if _, err := fix.svc.ApplyRefundState(context.Background(), ApplyRefundStateRequest{
+		RefundNo: rf.ID,
+		State:    ChannelRefundState{State: payentity.RefundFailed, FailReason: "channel rejected"},
+	}); err == nil {
+		t.Fatal("apply succeeded, want the failed transition withheld when the notice cannot commit")
+	}
+	stored, err := fix.refunds.FindByID(context.Background(), rf.ID)
+	if err != nil {
+		t.Fatalf("read refund: %v", err)
+	}
+	if stored.Status != payentity.RefundPending || stored.FailReason != "" {
+		t.Fatalf("refund = %+v, want still pending", stored)
+	}
+	if len(fix.notices.rows) != 0 {
+		t.Fatalf("notices = %d, want no due row without the failed refund", len(fix.notices.rows))
 	}
 }
 

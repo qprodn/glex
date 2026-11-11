@@ -19,7 +19,7 @@ type NoticeDesk interface {
 	// ListExhausted returns the work queue: exhausted notices, each with
 	// its latest attempt. Accepted notices and notices still waiting are
 	// absent. Their attempt rows stay stored.
-	ListExhausted(ctx context.Context, q listq.Query) ([]*payrepo.ExhaustedBusinessNotice, error)
+	ListExhausted(ctx context.Context, q listq.Query) ([]*ExhaustedNotice, error)
 	Resend(ctx context.Context, req ResendNoticeRequest) (*ResendNoticeResult, error)
 }
 
@@ -30,6 +30,14 @@ type ResendNoticeRequest struct {
 	Now time.Time
 	// ActorID stamps the attempt's audit fields (0 = the system itself).
 	ActorID int64
+}
+
+// ExhaustedNotice is one exhausted Business Notification and the latest
+// attempt recorded for it. Last is nil when the notice has no attempt row.
+// The repository keeps its own pair; this is the domain value callers see.
+type ExhaustedNotice struct {
+	Notice *payentity.BusinessNotice
+	Last   *payentity.BusinessNoticeAttempt
 }
 
 // ResendNoticeResult is the notice after the attempt and the attempt itself.
@@ -64,13 +72,17 @@ func NewNoticeDesk(
 }
 
 // ListExhausted returns exhausted notices with the latest attempt on each.
-func (s *noticeDeskImpl) ListExhausted(ctx context.Context, q listq.Query) ([]*payrepo.ExhaustedBusinessNotice, error) {
+func (s *noticeDeskImpl) ListExhausted(ctx context.Context, q listq.Query) ([]*ExhaustedNotice, error) {
 	rows, err := s.notices.ListExhausted(ctx, q)
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.notice.list_exhausted", err)
 		return nil, err
 	}
-	return rows, nil
+	out := make([]*ExhaustedNotice, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, &ExhaustedNotice{Notice: row.Notice, Last: row.Last})
+	}
+	return out, nil
 }
 
 // Resend delivers one exhausted notice to the Pay Application's current

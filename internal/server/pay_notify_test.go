@@ -345,6 +345,14 @@ func (r *goldNotifyRepo) MarkProcessed(ctx context.Context, id int64) error { re
 
 func (r *goldNotifyRepo) NextID() int64 { return 900 }
 
+// goldTx runs the callback immediately. The gold payment's copied result
+// address is empty, so the paid transition inserts no notice.
+type goldTx struct{}
+
+func (goldTx) InTx(ctx context.Context, fn func(context.Context) error) error {
+	return fn(ctx)
+}
+
 // goldNoticeRepo satisfies intake. The gold payment's copied result address
 // is empty, so intake does not insert a notice on this path.
 type goldNoticeRepo struct{}
@@ -444,9 +452,9 @@ func newGoldFixture(t *testing.T) *goldFixture {
 	registry.Register(&goldFactory{base: base})
 
 	merchantSvc := payservice.NewMerchantService(merchantRepo, &goldCatalog{}, cipher, registry, slog.New(slog.DiscardHandler))
-	paymentSvc := payservice.NewPaymentService(payments, goldApplicationRepo{}, merchantRepo, registry, goldNoticeRepo{}, goldPublisher{}, slog.New(slog.DiscardHandler))
-	refundSvc := payservice.NewRefundService(nil, payments, goldApplicationRepo{}, merchantRepo, registry, goldNoticeRepo{}, slog.New(slog.DiscardHandler))
-	intake := payservice.NewIntake(merchantSvc, paymentSvc, refundSvc, notifyRepo, goldNoticeRepo{}, goldPublisher{}, slog.New(slog.DiscardHandler))
+	paymentSvc := payservice.NewPaymentService(payments, goldApplicationRepo{}, merchantRepo, registry, goldNoticeRepo{}, goldPublisher{}, goldTx{}, slog.New(slog.DiscardHandler))
+	refundSvc := payservice.NewRefundService(nil, payments, goldApplicationRepo{}, merchantRepo, registry, goldNoticeRepo{}, goldTx{}, slog.New(slog.DiscardHandler))
+	intake := payservice.NewIntake(merchantSvc, paymentSvc, refundSvc, notifyRepo, goldPublisher{}, slog.New(slog.DiscardHandler))
 
 	app := pay.NewPayApplication(
 		merchantSvc,

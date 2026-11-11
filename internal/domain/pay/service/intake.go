@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
-	"time"
 
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
@@ -53,7 +52,6 @@ type intakeImpl struct {
 	payments  Payment
 	refunds   Refund
 	logs      payrepo.NotifyLogRepo
-	notices   payrepo.BusinessNoticeRepo
 	publisher CompletedPublisher
 	logger    *slog.Logger
 }
@@ -64,7 +62,6 @@ func NewIntake(
 	payments Payment,
 	refunds Refund,
 	logs payrepo.NotifyLogRepo,
-	notices payrepo.BusinessNoticeRepo,
 	publisher CompletedPublisher,
 	logger *slog.Logger,
 ) Intake {
@@ -73,7 +70,6 @@ func NewIntake(
 		payments:  payments,
 		refunds:   refunds,
 		logs:      logs,
-		notices:   notices,
 		publisher: publisher,
 		logger:    logger.With(slog.String("component", "domain.pay.notify.svc")),
 	}
@@ -148,9 +144,10 @@ func (s *intakeImpl) Accept(ctx context.Context, req *ChannelNotificationRequest
 
 // advancePayment runs the payment advance. Payment Completed is published
 // only when this compare-and-swap is what moves the Payment from pending
-// to paid. That same transition records one Business Notification when the
-// result address copied onto the Payment is non-empty. Both are best-effort:
-// a failure there does not undo the paid row and does not withhold the ACK.
+// to paid. That same transition records the one Business Notification
+// inside the compare-and-swap's transaction. Publishing stays outside it.
+// A repeat whose compare-and-swap does not advance publishes nothing and
+// records nothing again.
 func (s *intakeImpl) advancePayment(
 	ctx context.Context,
 	p *payentity.Payment,
@@ -172,36 +169,8 @@ func (s *intakeImpl) advancePayment(
 	}
 	if advanced && notif.PaymentState == payentity.PaymentPaid {
 		s.publishPaymentCompleted(ctx, p, notif)
-		s.recordPaidNotice(ctx, p)
 	}
 	return advanced, nil
-}
-
-// recordPaidNotice stores the payment Business Notification. The address is
-// the one copied onto the Payment at creation; an empty address records
-// nothing, and this path does not read the Pay Application again. Insert
-// failure is Warn-only, same as a lost Payment Completed publish.
-func (s *intakeImpl) recordPaidNotice(ctx context.Context, p *payentity.Payment) {
-	if p.NotifyURL == "" {
-		return
-	}
-	notice := &payentity.BusinessNotice{
-		ID:            s.notices.NextID(),
-		ApplicationID: p.ApplicationID,
-		Kind:          payentity.NoticeKindPayment,
-		PaymentID:     p.ID,
-		BizNo:         p.BizNo,
-		NotifyURL:     p.NotifyURL,
-		Status:        payentity.NoticeWaiting,
-		AttemptCount:  0,
-		NextAttemptAt: time.Now(),
-	}
-	if _, err := s.notices.Insert(ctx, notice); err != nil {
-		s.logger.Warn("paid business notice insert degraded",
-			slog.String("operation", "pay.svc.notify.record_paid_notice"),
-			slog.Int64("payment_id", p.ID),
-			slog.Any("error", err))
-	}
 }
 
 // publishPaymentCompleted announces the completed payment. Publishing is
@@ -244,7 +213,7 @@ func (s *intakeImpl) advance(ctx context.Context, notif *payentity.ChannelNotifi
 				slog.String("target_no", notif.TargetNo))
 			return false, nil
 		}
-		p, err := s.payments.Get(ctx, targetNo)
+		p, err := s.payments.Load(ctx, targetNo)
 		if err != nil {
 			if errors.Is(err, pay.ErrPaymentNotFound) {
 				s.logger.Warn("payment notification names an unmatchable target",

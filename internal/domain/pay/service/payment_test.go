@@ -171,6 +171,89 @@ func (f *fakePaymentRepo) addRefunded(id, amount int64) {
 
 func (f *fakePaymentRepo) NextID() int64 { f.nextID++; return f.nextID }
 
+// memoryTx is the in-memory stand-in for the database transaction. Writes
+// inside InTx stay only when fn returns nil; an error restores the payment,
+// refund, and notice rows taken on entry. Channel HTTP is not part of it.
+type memoryTx struct {
+	payments *fakePaymentRepo
+	refunds  *fakeRefundRepo
+	notices  *memNotices
+}
+
+func (m memoryTx) InTx(ctx context.Context, fn func(context.Context) error) error {
+	paySnap := snapshotPayments(m.payments)
+	refundSnap := snapshotRefunds(m.refunds)
+	noticeRows, inserts, next := snapshotNotices(m.notices)
+	err := fn(ctx)
+	if err != nil {
+		restorePayments(m.payments, paySnap)
+		restoreRefunds(m.refunds, refundSnap)
+		restoreNotices(m.notices, noticeRows, inserts, next)
+		return err
+	}
+	return nil
+}
+
+func snapshotPayments(f *fakePaymentRepo) map[int64]payentity.Payment {
+	if f == nil {
+		return nil
+	}
+	out := make(map[int64]payentity.Payment, len(f.p))
+	for id, p := range f.p {
+		out[id] = *p
+	}
+	return out
+}
+
+func restorePayments(f *fakePaymentRepo, snap map[int64]payentity.Payment) {
+	if f == nil {
+		return
+	}
+	f.p = make(map[int64]*payentity.Payment, len(snap))
+	for id, p := range snap {
+		cp := p
+		f.p[id] = &cp
+	}
+}
+
+func snapshotRefunds(f *fakeRefundRepo) map[int64]payentity.Refund {
+	if f == nil {
+		return nil
+	}
+	out := make(map[int64]payentity.Refund, len(f.r))
+	for id, rf := range f.r {
+		out[id] = *rf
+	}
+	return out
+}
+
+func restoreRefunds(f *fakeRefundRepo, snap map[int64]payentity.Refund) {
+	if f == nil {
+		return
+	}
+	f.r = make(map[int64]*payentity.Refund, len(snap))
+	for id, rf := range snap {
+		cp := rf
+		f.r[id] = &cp
+	}
+}
+
+func snapshotNotices(m *memNotices) ([]*payentity.BusinessNotice, int, int64) {
+	if m == nil {
+		return nil, 0, 0
+	}
+	return append([]*payentity.BusinessNotice(nil), m.rows...), m.inserts, m.next
+}
+
+func restoreNotices(m *memNotices, rows []*payentity.BusinessNotice, inserts int, next int64) {
+	if m == nil {
+		return
+	}
+	m.rows = rows
+	m.inserts = inserts
+	m.next = next
+}
+
 // scriptGateway is the contract-test gateway: every behavior the payment
 // tests need, nothing more.
 type scriptGateway struct {
@@ -302,7 +385,7 @@ func newPayFixture(t *testing.T, gw *scriptGateway) payFixture {
 	}
 	notices := &memNotices{}
 	completed := &memPublisher{}
-	svc := NewPaymentService(repo, apps, merchantRepo, &scriptGateways{gw: gw}, notices, completed, slog.New(slog.DiscardHandler))
+	svc := NewPaymentService(repo, apps, merchantRepo, &scriptGateways{gw: gw}, notices, completed, memoryTx{payments: repo, notices: notices}, slog.New(slog.DiscardHandler))
 	return payFixture{
 		svc: svc, payments: repo, apps: apps, merchants: merchantRepo,
 		notices: notices, completed: completed,
@@ -1213,22 +1296,22 @@ func TestEmptyCopiedAddressRecordsNoNoticeAfterApplicationAddressIsFilled(t *tes
 	assertNoPaymentCompleted(t, fix)
 }
 
-func TestPaidNoticeInsertFailureDoesNotFailSettlement(t *testing.T) {
+func TestPaidNoticeInsertFailureLeavesThePaymentPending(t *testing.T) {
 	fix := newPayFixture(t, &scriptGateway{queryState: paidChannelState("wx-txn-degraded")})
 	p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
 	if err != nil {
 		t.Fatalf("initiate: %v", err)
 	}
 	fix.notices.err = errors.New("store down")
-	out, err := fix.svc.Query(context.Background(), p.ID)
-	if err != nil {
-		t.Fatalf("query: %v, want the paid settlement kept", err)
+	if _, err := fix.svc.Query(context.Background(), p.ID); err == nil {
+		t.Fatal("query succeeded, want the paid transition withheld when the notice cannot commit")
 	}
-	if out.Status != payentity.PaymentPaid {
-		t.Fatalf("status = %v, want paid", out.Status)
+	stored := fix.payments.p[p.ID]
+	if stored.Status != payentity.PaymentPending || stored.ChannelTradeNo != "" {
+		t.Fatalf("payment = %+v, want still pending with no captured trade", stored)
 	}
-	if fix.notices.inserts != 1 || len(fix.notices.rows) != 0 {
-		t.Fatalf("inserts = %d rows = %d, want one failed insert and no row", fix.notices.inserts, len(fix.notices.rows))
+	if len(fix.notices.rows) != 0 {
+		t.Fatalf("notices = %+v, want no due row without the paid payment", fix.notices.rows)
 	}
 	assertNoPaymentCompleted(t, fix)
 }
@@ -1275,27 +1358,26 @@ func TestQueryAgainDoesNotRecordASecondNotice(t *testing.T) {
 	assertNoPaymentCompleted(t, fix)
 }
 
-func TestApplyChannelStatePaidDoesNotRecordNotice(t *testing.T) {
+func TestApplyChannelStatePaidRecordsTheDueNoticeWithoutPaymentCompleted(t *testing.T) {
 	fix := newPayFixture(t, &scriptGateway{})
 	p, err := fix.svc.Initiate(context.Background(), initiateInput(fix.applicationID, 7))
 	if err != nil {
 		t.Fatalf("initiate: %v", err)
 	}
+	before := time.Now()
 	advanced, err := fix.svc.ApplyChannelState(context.Background(), ApplyChannelStateRequest{
 		PaymentNo: p.ID,
 		State:     paidChannelState("wx-txn-apply"),
 	})
+	after := time.Now()
 	if err != nil || !advanced {
 		t.Fatalf("advanced = %v, err = %v", advanced, err)
 	}
 	stored, _ := fix.payments.FindByID(context.Background(), p.ID)
-	if stored.Status != payentity.PaymentPaid {
-		t.Fatalf("status = %v, want paid", stored.Status)
+	if stored.Status != payentity.PaymentPaid || stored.ChannelTradeNo != "wx-txn-apply" {
+		t.Fatalf("status = %+v, want paid", stored)
 	}
-	if len(fix.notices.rows) != 0 || fix.notices.inserts != 0 {
-		t.Fatalf("notices = %d inserts = %d, want ApplyChannelState to leave the notice to its caller", len(fix.notices.rows), fix.notices.inserts)
-	}
-	assertNoPaymentCompleted(t, fix)
+	assertOneWaitingPaymentNotice(t, fix, p.ID, "ORDER-1", before, after)
 }
 
 func TestGetLivePendingDoesNotRecordNotice(t *testing.T) {
