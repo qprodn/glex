@@ -3,6 +3,9 @@ package service
 import (
 	"context"
 	"log/slog"
+	"net"
+	"net/url"
+	"strings"
 
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
@@ -24,13 +27,19 @@ type CreateApplicationRequest struct {
 }
 
 // UpdateApplicationRequest is what a Pay Application edit states: the
-// display name and both result addresses. The number and the Merchant
-// Account binding are not fields of this request.
+// display name, and any result address the caller is replacing. A nil
+// address leaves the stored value unchanged. A non-nil address, including
+// empty, replaces it. The number and the Merchant Account binding are not
+// fields of this request.
 type UpdateApplicationRequest struct {
-	ID              int64
-	Name            string
-	OrderNotifyURL  string
-	RefundNotifyURL string
+	ID   int64
+	Name string
+	// OrderNotifyURL is nil when the caller is not changing the payment
+	// result address.
+	OrderNotifyURL *string
+	// RefundNotifyURL is nil when the caller is not changing the refund
+	// result address.
+	RefundNotifyURL *string
 	// ActorID stamps update_by (0 = the system itself, ADR 0002).
 	ActorID int64
 }
@@ -55,8 +64,8 @@ type Application interface {
 	// Create binds a new Pay Application to exactly one Merchant Account
 	// and records it enabled.
 	Create(ctx context.Context, req CreateApplicationRequest) (*payentity.PayApplication, error)
-	// Update changes the display name and either result address. The number
-	// and the Merchant Account binding stay as recorded.
+	// Update changes the display name and any result address present on the
+	// request. The number and the Merchant Account binding stay as recorded.
 	Update(ctx context.Context, req UpdateApplicationRequest) (*payentity.PayApplication, error)
 	// ChangeStatus enables or disables a Pay Application.
 	ChangeStatus(ctx context.Context, req ChangeApplicationStatusRequest) (*payentity.PayApplication, error)
@@ -89,6 +98,13 @@ func NewApplicationService(
 
 const maxNotifyURLLen = 512
 
+// sharedAddressSpace is RFC 6598 carrier-grade NAT. net.IP.IsPrivate does
+// not cover it, and a result address must not dial into it.
+var sharedAddressSpace = net.IPNet{
+	IP:   net.IPv4(100, 64, 0, 0),
+	Mask: net.CIDRMask(10, 32),
+}
+
 func validateApplicationName(name string) error {
 	if name == "" || len(name) > 64 {
 		return pay.ErrApplicationInvalid
@@ -96,8 +112,45 @@ func validateApplicationName(name string) error {
 	return nil
 }
 
-func validateNotifyURL(url string) error {
-	if len(url) > maxNotifyURLLen {
+// DisallowedNotifyIP reports an address a Business Notification must not
+// dial: loopback, private, shared, link-local, multicast, or unspecified.
+func DisallowedNotifyIP(ip net.IP) bool {
+	if ip == nil {
+		return true
+	}
+	if v4 := ip.To4(); v4 != nil && sharedAddressSpace.Contains(v4) {
+		return true
+	}
+	return ip.IsLoopback() ||
+		ip.IsPrivate() ||
+		ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() ||
+		ip.IsMulticast() ||
+		ip.IsUnspecified()
+}
+
+// validateNotifyURL accepts an empty address (no notice) or an absolute
+// http(s) URL whose host is a name or a public IP. Loopback, private, and
+// link-local hosts are refused. A hostname is checked again when it is dialed.
+func validateNotifyURL(raw string) error {
+	if raw == "" {
+		return nil
+	}
+	if len(raw) > maxNotifyURLLen || strings.ContainsAny(raw, " \t\r\n") {
+		return pay.ErrApplicationInvalid
+	}
+	u, err := url.Parse(raw)
+	if err != nil || !u.IsAbs() || u.Host == "" || u.User != nil {
+		return pay.ErrApplicationInvalid
+	}
+	if !strings.EqualFold(u.Scheme, "http") && !strings.EqualFold(u.Scheme, "https") {
+		return pay.ErrApplicationInvalid
+	}
+	host := u.Hostname()
+	if host == "" || strings.EqualFold(host, "localhost") {
+		return pay.ErrApplicationInvalid
+	}
+	if ip := net.ParseIP(host); ip != nil && DisallowedNotifyIP(ip) {
 		return pay.ErrApplicationInvalid
 	}
 	return nil
@@ -147,9 +200,21 @@ func (s *applicationImpl) Create(ctx context.Context, req CreateApplicationReque
 }
 
 func (s *applicationImpl) Update(ctx context.Context, req UpdateApplicationRequest) (*payentity.PayApplication, error) {
-	if err := validateApplicationFields(req.Name, req.OrderNotifyURL, req.RefundNotifyURL); err != nil {
+	if err := validateApplicationName(req.Name); err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.application.update", err)
 		return nil, err
+	}
+	if req.OrderNotifyURL != nil {
+		if err := validateNotifyURL(*req.OrderNotifyURL); err != nil {
+			logx.Propagate(ctx, s.logger, "pay.svc.application.update", err)
+			return nil, err
+		}
+	}
+	if req.RefundNotifyURL != nil {
+		if err := validateNotifyURL(*req.RefundNotifyURL); err != nil {
+			logx.Propagate(ctx, s.logger, "pay.svc.application.update", err)
+			return nil, err
+		}
 	}
 	app, err := s.apps.FindByID(ctx, req.ID)
 	if err != nil {
@@ -157,8 +222,12 @@ func (s *applicationImpl) Update(ctx context.Context, req UpdateApplicationReque
 		return nil, err
 	}
 	app.Name = req.Name
-	app.OrderNotifyURL = req.OrderNotifyURL
-	app.RefundNotifyURL = req.RefundNotifyURL
+	if req.OrderNotifyURL != nil {
+		app.OrderNotifyURL = *req.OrderNotifyURL
+	}
+	if req.RefundNotifyURL != nil {
+		app.RefundNotifyURL = *req.RefundNotifyURL
+	}
 	updated, err := s.apps.Update(ctx, payrepo.UpdatePayApplicationRequest{App: app, ActorID: req.ActorID})
 	if err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.application.update", err)
@@ -170,6 +239,10 @@ func (s *applicationImpl) Update(ctx context.Context, req UpdateApplicationReque
 func (s *applicationImpl) ChangeStatus(ctx context.Context, req ChangeApplicationStatusRequest) (*payentity.PayApplication, error) {
 	if req.Status != payentity.ApplicationEnabled && req.Status != payentity.ApplicationDisabled {
 		err := pay.ErrApplicationInvalid
+		logx.Propagate(ctx, s.logger, "pay.svc.application.change_status", err)
+		return nil, err
+	}
+	if _, err := s.apps.FindByID(ctx, req.ID); err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.application.change_status", err)
 		return nil, err
 	}

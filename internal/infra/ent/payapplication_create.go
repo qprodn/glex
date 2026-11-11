@@ -146,20 +146,6 @@ func (_c *PayApplicationCreate) SetNillableRefundNotifyURL(v *string) *PayApplic
 	return _c
 }
 
-// SetRemark sets the "remark" field.
-func (_c *PayApplicationCreate) SetRemark(v string) *PayApplicationCreate {
-	_c.mutation.SetRemark(v)
-	return _c
-}
-
-// SetNillableRemark sets the "remark" field if the given value is not nil.
-func (_c *PayApplicationCreate) SetNillableRemark(v *string) *PayApplicationCreate {
-	if v != nil {
-		_c.SetRemark(*v)
-	}
-	return _c
-}
-
 // SetID sets the "id" field.
 func (_c *PayApplicationCreate) SetID(v int64) *PayApplicationCreate {
 	_c.mutation.SetID(v)
@@ -229,10 +215,6 @@ func (_c *PayApplicationCreate) defaults() {
 		v := payapplication.DefaultRefundNotifyURL
 		_c.mutation.SetRefundNotifyURL(v)
 	}
-	if _, ok := _c.mutation.Remark(); !ok {
-		v := payapplication.DefaultRemark
-		_c.mutation.SetRemark(v)
-	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -271,14 +253,6 @@ func (_c *PayApplicationCreate) check() error {
 	if v, ok := _c.mutation.RefundNotifyURL(); ok {
 		if err := payapplication.RefundNotifyURLValidator(v); err != nil {
 			return &ValidationError{Name: "refund_notify_url", err: fmt.Errorf(`ent: validator failed for field "PayApplication.refund_notify_url": %w`, err)}
-		}
-	}
-	if _, ok := _c.mutation.Remark(); !ok {
-		return &ValidationError{Name: "remark", err: errors.New(`ent: missing required field "PayApplication.remark"`)}
-	}
-	if v, ok := _c.mutation.Remark(); ok {
-		if err := payapplication.RemarkValidator(v); err != nil {
-			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "PayApplication.remark": %w`, err)}
 		}
 	}
 	return nil
@@ -353,10 +327,6 @@ func (_c *PayApplicationCreate) createSpec() (*PayApplication, *sqlgraph.CreateS
 	if value, ok := _c.mutation.RefundNotifyURL(); ok {
 		_spec.SetField(payapplication.FieldRefundNotifyURL, field.TypeString, value)
 		_node.RefundNotifyURL = value
-	}
-	if value, ok := _c.mutation.Remark(); ok {
-		_spec.SetField(payapplication.FieldRemark, field.TypeString, value)
-		_node.Remark = value
 	}
 	return _node, _spec
 }
@@ -557,18 +527,6 @@ func (u *PayApplicationUpsert) SetRefundNotifyURL(v string) *PayApplicationUpser
 // UpdateRefundNotifyURL sets the "refund_notify_url" field to the value that was provided on create.
 func (u *PayApplicationUpsert) UpdateRefundNotifyURL() *PayApplicationUpsert {
 	u.SetExcluded(payapplication.FieldRefundNotifyURL)
-	return u
-}
-
-// SetRemark sets the "remark" field.
-func (u *PayApplicationUpsert) SetRemark(v string) *PayApplicationUpsert {
-	u.Set(payapplication.FieldRemark, v)
-	return u
-}
-
-// UpdateRemark sets the "remark" field to the value that was provided on create.
-func (u *PayApplicationUpsert) UpdateRemark() *PayApplicationUpsert {
-	u.SetExcluded(payapplication.FieldRemark)
 	return u
 }
 
@@ -795,20 +753,6 @@ func (u *PayApplicationUpsertOne) SetRefundNotifyURL(v string) *PayApplicationUp
 func (u *PayApplicationUpsertOne) UpdateRefundNotifyURL() *PayApplicationUpsertOne {
 	return u.Update(func(s *PayApplicationUpsert) {
 		s.UpdateRefundNotifyURL()
-	})
-}
-
-// SetRemark sets the "remark" field.
-func (u *PayApplicationUpsertOne) SetRemark(v string) *PayApplicationUpsertOne {
-	return u.Update(func(s *PayApplicationUpsert) {
-		s.SetRemark(v)
-	})
-}
-
-// UpdateRemark sets the "remark" field to the value that was provided on create.
-func (u *PayApplicationUpsertOne) UpdateRemark() *PayApplicationUpsertOne {
-	return u.Update(func(s *PayApplicationUpsert) {
-		s.UpdateRemark()
 	})
 }
 
@@ -1201,20 +1145,6 @@ func (u *PayApplicationUpsertBulk) SetRefundNotifyURL(v string) *PayApplicationU
 func (u *PayApplicationUpsertBulk) UpdateRefundNotifyURL() *PayApplicationUpsertBulk {
 	return u.Update(func(s *PayApplicationUpsert) {
 		s.UpdateRefundNotifyURL()
-	})
-}
-
-// SetRemark sets the "remark" field.
-func (u *PayApplicationUpsertBulk) SetRemark(v string) *PayApplicationUpsertBulk {
-	return u.Update(func(s *PayApplicationUpsert) {
-		s.SetRemark(v)
-	})
-}
-
-// UpdateRemark sets the "remark" field to the value that was provided on create.
-func (u *PayApplicationUpsertBulk) UpdateRemark() *PayApplicationUpsertBulk {
-	return u.Update(func(s *PayApplicationUpsert) {
-		s.UpdateRemark()
 	})
 }
 

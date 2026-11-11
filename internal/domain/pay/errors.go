@@ -64,8 +64,8 @@ var (
 	// (or is withdrawn).
 	ErrApplicationNotFound = errors.NotFound("APPLICATION_NOT_FOUND", "pay application not found")
 	// ErrApplicationInvalid: a Pay Application parameter is invalid — blank
-	// or over-length display name, over-length result address, or a status
-	// other than enabled or disabled.
+	// or over-length display name, a result address that is not an absolute
+	// public http(s) URL, or a status other than enabled or disabled.
 	ErrApplicationInvalid = errors.BadRequest("APPLICATION_INVALID", "pay application parameters are invalid")
 	// ErrApplicationDuplicate: the display name is already taken by a Pay
 	// Application that is not withdrawn.
@@ -79,4 +79,7 @@ var (
 	// ErrBusinessNoticeAddressEmpty: the Pay Application's current result
 	// address of the matching kind is empty, so there is nowhere to send.
 	ErrBusinessNoticeAddressEmpty = errors.BadRequest("BUSINESS_NOTICE_ADDRESS_EMPTY", "pay application result address is empty")
+	// ErrBusinessNoticeInconsistent: a stored notice has a kind other than
+	// payment or refund, or its body cannot be built.
+	ErrBusinessNoticeInconsistent = errors.InternalServer("BUSINESS_NOTICE_INCONSISTENT", "business notice is inconsistent")
 )

@@ -104,11 +104,6 @@ func RefundNotifyURL(v string) predicate.PayApplication {
 	return predicate.PayApplication(sql.FieldEQ(FieldRefundNotifyURL, v))
 }
 
-// Remark applies equality check predicate on the "remark" field. It's identical to RemarkEQ.
-func Remark(v string) predicate.PayApplication {
-	return predicate.PayApplication(sql.FieldEQ(FieldRemark, v))
-}
-
 // CreateByEQ applies the EQ predicate on the "create_by" field.
 func CreateByEQ(v int64) predicate.PayApplication {
 	return predicate.PayApplication(sql.FieldEQ(FieldCreateBy, v))
@@ -612,71 +607,6 @@ func RefundNotifyURLEqualFold(v string) predicate.PayApplication {
 // RefundNotifyURLContainsFold applies the ContainsFold predicate on the "refund_notify_url" field.
 func RefundNotifyURLContainsFold(v string) predicate.PayApplication {
 	return predicate.PayApplication(sql.FieldContainsFold(FieldRefundNotifyURL, v))
-}
-
-// RemarkEQ applies the EQ predicate on the "remark" field.
-func RemarkEQ(v string) predicate.PayApplication {
-	return predicate.PayApplication(sql.FieldEQ(FieldRemark, v))
-}
-
-// RemarkNEQ applies the NEQ predicate on the "remark" field.
-func RemarkNEQ(v string) predicate.PayApplication {
-	return predicate.PayApplication(sql.FieldNEQ(FieldRemark, v))
-}
-
-// RemarkIn applies the In predicate on the "remark" field.
-func RemarkIn(vs ...string) predicate.PayApplication {
-	return predicate.PayApplication(sql.FieldIn(FieldRemark, vs...))
-}
-
-// RemarkNotIn applies the NotIn predicate on the "remark" field.
-func RemarkNotIn(vs ...string) predicate.PayApplication {
-	return predicate.PayApplication(sql.FieldNotIn(FieldRemark, vs...))
-}
-
-// RemarkGT applies the GT predicate on the "remark" field.
-func RemarkGT(v string) predicate.PayApplication {
-	return predicate.PayApplication(sql.FieldGT(FieldRemark, v))
-}
-
-// RemarkGTE applies the GTE predicate on the "remark" field.
-func RemarkGTE(v string) predicate.PayApplication {
-	return predicate.PayApplication(sql.FieldGTE(FieldRemark, v))
-}
-
-// RemarkLT applies the LT predicate on the "remark" field.
-func RemarkLT(v string) predicate.PayApplication {
-	return predicate.PayApplication(sql.FieldLT(FieldRemark, v))
-}
-
-// RemarkLTE applies the LTE predicate on the "remark" field.
-func RemarkLTE(v string) predicate.PayApplication {
-	return predicate.PayApplication(sql.FieldLTE(FieldRemark, v))
-}
-
-// RemarkContains applies the Contains predicate on the "remark" field.
-func RemarkContains(v string) predicate.PayApplication {
-	return predicate.PayApplication(sql.FieldContains(FieldRemark, v))
-}
-
-// RemarkHasPrefix applies the HasPrefix predicate on the "remark" field.
-func RemarkHasPrefix(v string) predicate.PayApplication {
-	return predicate.PayApplication(sql.FieldHasPrefix(FieldRemark, v))
-}
-
-// RemarkHasSuffix applies the HasSuffix predicate on the "remark" field.
-func RemarkHasSuffix(v string) predicate.PayApplication {
-	return predicate.PayApplication(sql.FieldHasSuffix(FieldRemark, v))
-}
-
-// RemarkEqualFold applies the EqualFold predicate on the "remark" field.
-func RemarkEqualFold(v string) predicate.PayApplication {
-	return predicate.PayApplication(sql.FieldEqualFold(FieldRemark, v))
-}
-
-// RemarkContainsFold applies the ContainsFold predicate on the "remark" field.
-func RemarkContainsFold(v string) predicate.PayApplication {
-	return predicate.PayApplication(sql.FieldContainsFold(FieldRemark, v))
 }
 
 // And groups predicates with the AND operator between them.

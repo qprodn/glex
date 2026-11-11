@@ -39,7 +39,6 @@ func (PayApplication) Fields() []ent.Field {
 		field.String("order_notify_url").MaxLen(512).Default(""),
 		// Refund result address. Empty is allowed.
 		field.String("refund_notify_url").MaxLen(512).Default(""),
-		field.String("remark").MaxLen(500).Default(""),
 	}
 }
 

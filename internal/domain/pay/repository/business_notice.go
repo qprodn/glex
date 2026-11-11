@@ -2,11 +2,17 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"glex/internal/domain/pay/entity"
 	"glex/pkg/listq"
 )
+
+// ErrBusinessNoticeClaimLost means the lease was no longer held when the
+// attempt was recorded. The POST may already have happened. Callers log it
+// and do not count a stored attempt.
+var ErrBusinessNoticeClaimLost = errors.New("business notice claim lost")
 
 // BusinessNoticeRepo stores Business Notifications. One Payment has at most
 // one payment notice, and one Refund has at most one refund notice. A
@@ -61,9 +67,12 @@ type ClaimDueNoticeRequest struct {
 
 // RecordAutomaticAttemptRequest is one finished automatic attempt plus the
 // notice fields it leaves behind. A zero NextAttemptAt clears the schedule.
+// ClaimedUntil is the next_attempt_at the claim wrote; the update matches
+// only a waiting row that still holds that lease.
 type RecordAutomaticAttemptRequest struct {
-	Notice  *entity.BusinessNotice
-	Attempt *entity.BusinessNoticeAttempt
+	Notice       *entity.BusinessNotice
+	Attempt      *entity.BusinessNoticeAttempt
+	ClaimedUntil time.Time
 }
 
 // RecordManualAttemptRequest is one finished manual attempt plus the notice

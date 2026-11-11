@@ -35,7 +35,10 @@ const PayApplicationList: React.FC = () => {
             { field: "name", value: String(params.name ?? "") || undefined },
             {
               field: "merchant_id",
-              value: params.merchantId ? Number(params.merchantId) : undefined,
+              value:
+                params.merchantId && Number.isFinite(Number(params.merchantId))
+                  ? Number(params.merchantId)
+                  : undefined,
             },
             {
               field: "status",

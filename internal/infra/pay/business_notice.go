@@ -14,8 +14,8 @@ import (
 	"glex/internal/infra/store"
 	"glex/pkg/listq"
 
-	"entgo.io/ent/dialect/sql"
 	"github.com/go-kratos/aip-go/ents"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type businessNoticeRepo struct {
@@ -60,7 +60,7 @@ func (r *businessNoticeRepo) Insert(ctx context.Context, n *payentity.BusinessNo
 		create.SetNextAttemptAt(n.NextAttemptAt)
 	}
 	if _, err := create.Save(ctx); err != nil {
-		if ent.IsConstraintError(err) {
+		if isUniqueViolation(err) {
 			return false, nil
 		}
 		return false, r.storeError(ctx, "pay.business_notice.insert", err)
@@ -114,7 +114,8 @@ func (r *businessNoticeRepo) ClaimDueNotice(ctx context.Context, req payrepo.Cla
 }
 
 // RecordAutomaticAttempt stores the attempt and the notice progress in one
-// transaction. A lost claim (the notice is no longer waiting) records nothing.
+// transaction. The update matches only the lease ClaimDueNotice wrote. A
+// lost lease records nothing and returns ErrBusinessNoticeClaimLost.
 func (r *businessNoticeRepo) RecordAutomaticAttempt(ctx context.Context, req payrepo.RecordAutomaticAttemptRequest) error {
 	txErr := r.data.DB.InTx(ctx, func(ctx context.Context) error {
 		upd := r.data.DB.PayBusinessNotice(ctx).Update().
@@ -122,6 +123,7 @@ func (r *businessNoticeRepo) RecordAutomaticAttempt(ctx context.Context, req pay
 				entnotice.IDEQ(req.Notice.ID),
 				entnotice.DeletedAtIsNil(),
 				entnotice.StatusEQ(int16(payentity.NoticeWaiting)),
+				entnotice.NextAttemptAtEQ(req.ClaimedUntil),
 			).
 			SetStatus(int16(req.Notice.Status)).
 			SetAttemptCount(req.Notice.AttemptCount).
@@ -132,8 +134,11 @@ func (r *businessNoticeRepo) RecordAutomaticAttempt(ctx context.Context, req pay
 			upd.SetNextAttemptAt(req.Notice.NextAttemptAt)
 		}
 		n, err := upd.Save(ctx)
-		if err != nil || n == 0 {
+		if err != nil {
 			return err
+		}
+		if n == 0 {
+			return payrepo.ErrBusinessNoticeClaimLost
 		}
 		create := r.data.DB.PayBusinessNoticeAttempt(ctx).Create().
 			SetID(req.Attempt.ID).
@@ -152,9 +157,22 @@ func (r *businessNoticeRepo) RecordAutomaticAttempt(ctx context.Context, req pay
 		return create.Exec(ctx)
 	})
 	if txErr != nil {
+		if errors.Is(txErr, payrepo.ErrBusinessNoticeClaimLost) {
+			return payrepo.ErrBusinessNoticeClaimLost
+		}
 		return r.storeError(ctx, "pay.business_notice.record_attempt", txErr)
 	}
 	return nil
+}
+
+// pgUniqueViolation is PostgreSQL SQLSTATE 23505.
+const pgUniqueViolation = "23505"
+
+// isUniqueViolation reports a unique-index failure. Other constraint
+// failures, including a snowflake primary-key collision, stay errors.
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation
 }
 
 // ListExhausted returns exhausted notices with the latest attempt on each.
@@ -199,20 +217,38 @@ func (r *businessNoticeRepo) latestAttempts(ctx context.Context, ids []int64) (m
 	if len(ids) == 0 {
 		return out, nil
 	}
-	rows, err := r.data.DB.PayBusinessNoticeAttempt(ctx).Query().
+	// One row per notice: the attempt id is a snowflake minted when the
+	// attempt is recorded, so the greatest id is the latest try. This stays
+	// bounded as manual resends accumulate.
+	var maxes []struct {
+		NoticeID int64 `sql:"notice_id"`
+		MaxID    int64 `sql:"max_id"`
+	}
+	err := r.data.DB.PayBusinessNoticeAttempt(ctx).Query().
 		Where(
 			entattempt.DeletedAtIsNil(),
 			entattempt.NoticeIDIn(ids...),
 		).
-		Order(entattempt.ByCreatedAt(sql.OrderDesc()), entattempt.ByID(sql.OrderDesc())).
+		GroupBy(entattempt.FieldNoticeID).
+		Aggregate(ent.As(ent.Max(entattempt.FieldID), "max_id")).
+		Scan(ctx, &maxes)
+	if err != nil {
+		return nil, r.storeError(ctx, "pay.business_notice.list_exhausted", err)
+	}
+	if len(maxes) == 0 {
+		return out, nil
+	}
+	maxIDs := make([]int64, len(maxes))
+	for i, row := range maxes {
+		maxIDs[i] = row.MaxID
+	}
+	rows, err := r.data.DB.PayBusinessNoticeAttempt(ctx).Query().
+		Where(entattempt.IDIn(maxIDs...)).
 		All(ctx)
 	if err != nil {
 		return nil, r.storeError(ctx, "pay.business_notice.list_exhausted", err)
 	}
 	for _, row := range rows {
-		if _, ok := out[row.NoticeID]; ok {
-			continue
-		}
 		out[row.NoticeID] = toBizAttempt(row)
 	}
 	return out, nil

@@ -53,8 +53,8 @@ export type ErrorReason =
   // The requested Pay Application does not exist (or is withdrawn).
   | "APPLICATION_NOT_FOUND"
   // A Pay Application parameter is invalid: blank or over-length display
-  // name, over-length result address, or a status other than enabled or
-  // disabled.
+  // name, a result address that is not an absolute public http(s) URL,
+  // or a status other than enabled or disabled.
   | "APPLICATION_INVALID"
   // The display name is already taken by a Pay Application that is not
   // withdrawn (HTTP 409).
@@ -69,7 +69,10 @@ export type ErrorReason =
   | "BUSINESS_NOTICE_NOT_EXHAUSTED"
   // The Pay Application's current result address of the matching kind is
   // empty, so there is nowhere to send.
-  | "BUSINESS_NOTICE_ADDRESS_EMPTY";
+  | "BUSINESS_NOTICE_ADDRESS_EMPTY"
+  // A stored Business Notification has a kind other than payment or
+  // refund, or its body cannot be built (HTTP 500).
+  | "BUSINESS_NOTICE_INCONSISTENT";
 // MerchantAccount is one Channel Merchant Account (商户账号): the platform's
 // own collecting account at one Channel. The credential config is never
 // served — every response carries only config_masked, the write-time masked
@@ -378,8 +381,10 @@ export type CreatePayApplicationRequest = {
   // Behaviors: REQUIRED
   merchantId: number | undefined;
   // Optional. Payment result address, ≤ 512 chars. Empty is allowed.
+  // A non-empty value is an absolute http or https URL with a public host.
   orderNotifyUrl: string | undefined;
   // Optional. Refund result address, ≤ 512 chars. Empty is allowed.
+  // Same address rules as order_notify_url.
   refundNotifyUrl: string | undefined;
 };
 
@@ -415,10 +420,13 @@ export type UpdatePayApplicationRequest = {
   //
   // Behaviors: REQUIRED
   name: string | undefined;
-  // Optional. New payment result address. Empty clears it.
-  orderNotifyUrl: string | undefined;
-  // Optional. New refund result address. Empty clears it.
-  refundNotifyUrl: string | undefined;
+  // Optional. New payment result address. Absent leaves it unchanged.
+  // Present and empty clears it. An absolute http or https URL with a
+  // public host; other values are refused.
+  orderNotifyUrl?: string;
+  // Optional. New refund result address. Absent leaves it unchanged.
+  // Present and empty clears it. Same address rules as order_notify_url.
+  refundNotifyUrl?: string;
 };
 
 export type ChangePayApplicationStatusRequest = {
@@ -618,8 +626,9 @@ export interface PayService {
   ListPayApplications(request: ListPayApplicationsRequest): Promise<PayApplicationSet>;
   // GetPayApplication retrieves one Pay Application that is not withdrawn.
   GetPayApplication(request: GetPayApplicationRequest): Promise<PayApplication>;
-  // UpdatePayApplication changes the display name and either result
-  // address. The number and the Merchant Account binding stay fixed.
+  // UpdatePayApplication changes the display name. A result address that
+  // is absent stays as stored. A present address replaces it, and empty
+  // clears it. The number and the Merchant Account binding stay fixed.
   UpdatePayApplication(request: UpdatePayApplicationRequest): Promise<PayApplication>;
   // ChangePayApplicationStatus enables or disables a Pay Application.
   // Disabling stops new Payments and Refunds; in-flight ones still settle.

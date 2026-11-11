@@ -3,7 +3,9 @@ package payinfra
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
+	"net"
 	"net/http"
 	"time"
 
@@ -14,14 +16,64 @@ import (
 // attempt, the same as a connection failure.
 const noticePostTimeout = 5 * time.Second
 
+// errNotifyTargetDisallowed is a refused dial to a non-public address.
+var errNotifyTargetDisallowed = errors.New("business notice target is not a public address")
+
 type httpNoticePoster struct {
 	client *http.Client
 }
 
 // NewNoticePoster posts unsigned JSON to the address stored on a notice.
-// The response body is discarded.
+// Redirects are not followed. A dial to a loopback, private, or link-local
+// address fails. The response body is discarded.
 func NewNoticePoster() payservice.NoticePoster {
-	return &httpNoticePoster{client: &http.Client{Timeout: noticePostTimeout}}
+	return newHTTPNoticePoster(false)
+}
+
+// newHTTPNoticePoster builds the delivery client. allowPrivate is for tests
+// that post to a local server; production delivery leaves it false.
+func newHTTPNoticePoster(allowPrivate bool) *httpNoticePoster {
+	dialer := &net.Dialer{Timeout: noticePostTimeout}
+	transport := &http.Transport{
+		Proxy: nil,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			if allowPrivate {
+				return dialer.DialContext(ctx, network, addr)
+			}
+			return dialPublic(ctx, dialer, network, addr)
+		},
+	}
+	return &httpNoticePoster{client: &http.Client{
+		Timeout:   noticePostTimeout,
+		Transport: transport,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}}
+}
+
+// dialPublic resolves addr and dials one public address. Any loopback,
+// private, or link-local answer refuses the whole lookup, so a name that
+// mixes public and private addresses is not dialed.
+func dialPublic(ctx context.Context, dialer *net.Dialer, network, addr string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, err
+	}
+	ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+	if len(ips) == 0 {
+		return nil, errNotifyTargetDisallowed
+	}
+	for _, ip := range ips {
+		if payservice.DisallowedNotifyIP(ip.IP) {
+			return nil, errNotifyTargetDisallowed
+		}
+	}
+	// Dial the resolved address. A second lookup of the name could rebind.
+	return dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].String(), port))
 }
 
 // Post implements the delivery HTTP boundary.

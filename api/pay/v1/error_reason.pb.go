@@ -74,8 +74,8 @@ const (
 	// The requested Pay Application does not exist (or is withdrawn).
 	ErrorReason_APPLICATION_NOT_FOUND ErrorReason = 15
 	// A Pay Application parameter is invalid: blank or over-length display
-	// name, over-length result address, or a status other than enabled or
-	// disabled.
+	// name, a result address that is not an absolute public http(s) URL,
+	// or a status other than enabled or disabled.
 	ErrorReason_APPLICATION_INVALID ErrorReason = 16
 	// The display name is already taken by a Pay Application that is not
 	// withdrawn (HTTP 409).
@@ -91,6 +91,9 @@ const (
 	// The Pay Application's current result address of the matching kind is
 	// empty, so there is nowhere to send.
 	ErrorReason_BUSINESS_NOTICE_ADDRESS_EMPTY ErrorReason = 21
+	// A stored Business Notification has a kind other than payment or
+	// refund, or its body cannot be built (HTTP 500).
+	ErrorReason_BUSINESS_NOTICE_INCONSISTENT ErrorReason = 22
 )
 
 // Enum value maps for ErrorReason.
@@ -118,6 +121,7 @@ var (
 		19: "BUSINESS_NOTICE_NOT_FOUND",
 		20: "BUSINESS_NOTICE_NOT_EXHAUSTED",
 		21: "BUSINESS_NOTICE_ADDRESS_EMPTY",
+		22: "BUSINESS_NOTICE_INCONSISTENT",
 	}
 	ErrorReason_value = map[string]int32{
 		"ERROR_REASON_UNSPECIFIED":      0,
@@ -142,6 +146,7 @@ var (
 		"BUSINESS_NOTICE_NOT_FOUND":     19,
 		"BUSINESS_NOTICE_NOT_EXHAUSTED": 20,
 		"BUSINESS_NOTICE_ADDRESS_EMPTY": 21,
+		"BUSINESS_NOTICE_INCONSISTENT":  22,
 	}
 )
 
@@ -176,7 +181,7 @@ var File_pay_v1_error_reason_proto protoreflect.FileDescriptor
 
 const file_pay_v1_error_reason_proto_rawDesc = "" +
 	"\n" +
-	"\x19pay/v1/error_reason.proto\x12\x06pay.v1*\xc0\x04\n" +
+	"\x19pay/v1/error_reason.proto\x12\x06pay.v1*\xe2\x04\n" +
 	"\vErrorReason\x12\x1c\n" +
 	"\x18ERROR_REASON_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12MERCHANT_NOT_FOUND\x10\x01\x12\x14\n" +
@@ -200,7 +205,8 @@ const file_pay_v1_error_reason_proto_rawDesc = "" +
 	"\x10PAYMENT_CONFLICT\x10\x12\x12\x1d\n" +
 	"\x19BUSINESS_NOTICE_NOT_FOUND\x10\x13\x12!\n" +
 	"\x1dBUSINESS_NOTICE_NOT_EXHAUSTED\x10\x14\x12!\n" +
-	"\x1dBUSINESS_NOTICE_ADDRESS_EMPTY\x10\x15B\"\n" +
+	"\x1dBUSINESS_NOTICE_ADDRESS_EMPTY\x10\x15\x12 \n" +
+	"\x1cBUSINESS_NOTICE_INCONSISTENT\x10\x16B\"\n" +
 	"\n" +
 	"api.pay.v1P\x01Z\x12glex/api/pay/v1;v1b\x06proto3"
 

@@ -137,6 +137,27 @@ func TestDeliverDueFailureWaitsFifteenSeconds(t *testing.T) {
 	}
 }
 
+func TestDeliverDueRecordsAttemptAfterCallerCancel(t *testing.T) {
+	now := time.Date(2026, 11, 10, 9, 0, 0, 0, time.UTC)
+	store := &memDeliveryNotices{}
+	store.notices = append(store.notices, waitingPayment(now))
+	ctx, cancel := context.WithCancel(context.Background())
+	poster := &scriptPoster{status: 200, before: cancel}
+	svc := NewDelivery(store, poster, slog.New(slog.DiscardHandler))
+
+	attempted, err := svc.DeliverDue(ctx, DeliverDueRequest{Now: now})
+	if err != nil {
+		t.Fatalf("deliver: %v, want the finished POST recorded", err)
+	}
+	if attempted != 1 || len(store.attempts) != 1 {
+		t.Fatalf("attempted = %d attempts = %d, want the acceptance stored", attempted, len(store.attempts))
+	}
+	notice := store.notice(11)
+	if notice.Status != payentity.NoticeAccepted || notice.AttemptCount != 1 {
+		t.Fatalf("notice = %+v, want accepted", notice)
+	}
+}
+
 func TestDeliverDueConnectionFailureRecordsTheError(t *testing.T) {
 	now := time.Date(2026, 11, 10, 9, 0, 0, 0, time.UTC)
 	store := &memDeliveryNotices{}
@@ -446,6 +467,9 @@ func (m *memDeliveryNotices) RecordAutomaticAttempt(_ context.Context, req payre
 	n := m.notice(req.Notice.ID)
 	if n == nil {
 		return errDeliveryTestMissing
+	}
+	if n.Status != payentity.NoticeWaiting || !n.NextAttemptAt.Equal(req.ClaimedUntil) {
+		return payrepo.ErrBusinessNoticeClaimLost
 	}
 	n.Status = req.Notice.Status
 	n.AttemptCount = req.Notice.AttemptCount

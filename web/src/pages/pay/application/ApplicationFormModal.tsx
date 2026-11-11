@@ -5,6 +5,27 @@ import { useIntl } from "@umijs/max";
 import { App, Form } from "antd";
 import React, { useEffect, useState } from "react";
 
+async function listEnabledMerchants(): Promise<MerchantAccount[]> {
+  const all: MerchantAccount[] = [];
+  let pageToken: string | undefined;
+  const seen = new Set<string>();
+  for (;;) {
+    const set = await services.pay.ListMerchantAccounts({
+      pageSize: 100,
+      pageToken,
+      filter: "status=0",
+      orderBy: undefined,
+    });
+    all.push(...(set.merchants ?? []));
+    const next = set.nextPageToken || undefined;
+    if (!next || seen.has(next)) {
+      return all;
+    }
+    seen.add(next);
+    pageToken = next;
+  }
+}
+
 type ApplicationFormModalProps = {
   open: boolean;
   record?: PayApplication | undefined;
@@ -24,12 +45,8 @@ const ApplicationFormModal: React.FC<ApplicationFormModalProps> = ({ open, recor
 
   useEffect(() => {
     if (!open) return;
-    services.pay
-      .ListMerchantAccounts({
-        pageSize: 100,
-        filter: "status=0",
-      })
-      .then((set) => setMerchants(set.merchants ?? []))
+    listEnabledMerchants()
+      .then(setMerchants)
       .catch(async (e) => message.error(asServiceError(e)?.message ?? String(e)));
   }, [open]);
 
@@ -121,7 +138,16 @@ const ApplicationFormModal: React.FC<ApplicationFormModalProps> = ({ open, recor
           id: "pages.pay.application.orderNotifyUrl",
           defaultMessage: "支付结果地址",
         })}
-        rules={[{ max: 512 }]}
+        rules={[
+          { max: 512 },
+          {
+            type: "url",
+            message: intl.formatMessage({
+              id: "pages.pay.application.notifyUrl.invalid",
+              defaultMessage: "填写带主机名的 http 或 https 地址",
+            }),
+          },
+        ]}
       />
       <ProFormText
         name="refundNotifyUrl"
@@ -129,7 +155,16 @@ const ApplicationFormModal: React.FC<ApplicationFormModalProps> = ({ open, recor
           id: "pages.pay.application.refundNotifyUrl",
           defaultMessage: "退款结果地址",
         })}
-        rules={[{ max: 512 }]}
+        rules={[
+          { max: 512 },
+          {
+            type: "url",
+            message: intl.formatMessage({
+              id: "pages.pay.application.notifyUrl.invalid",
+              defaultMessage: "填写带主机名的 http 或 https 地址",
+            }),
+          },
+        ]}
       />
     </ModalForm>
   );

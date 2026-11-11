@@ -1,5 +1,6 @@
 export default {
   "common.option": "Actions",
+  "common.createTime": "Created At",
   "common.edit": "Edit",
   "common.delete": "Delete",
   "common.cancel": "Cancel",
@@ -212,6 +213,7 @@ export default {
   "pages.pay.application.merchant.hint": "The binding cannot change after creation",
   "pages.pay.application.orderNotifyUrl": "Payment result address",
   "pages.pay.application.refundNotifyUrl": "Refund result address",
+  "pages.pay.application.notifyUrl.invalid": "Use an absolute http or https address with a host",
   "pages.pay.application.disable": "Disable",
   "pages.pay.application.enable": "Enable",
   "pages.pay.application.withdraw.confirm": "Withdrawal leaves the live set and frees the display name. Withdraw?",
@@ -228,6 +230,7 @@ export default {
   "pages.pay.businessNotice.resend.confirm": "Send once to the Pay Application's current result address?",
   "pages.pay.businessNotice.resend.accepted": "Accepted",
   "pages.pay.businessNotice.resend.failed": "Still exhausted. You can send it again",
+  "pages.pay.payment.application": "Pay Application",
   "pages.pay.payment.no": "Payment No.",
   "pages.pay.payment.bizNo": "Business Order No.",
   "pages.pay.payment.subject": "Subject",

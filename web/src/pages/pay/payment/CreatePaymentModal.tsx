@@ -13,6 +13,27 @@ import React, { useEffect, useRef, useState } from "react";
  * poll's own server-side settlement. The typed yuan converts to minor
  * units here at the edge (ADR 0019).
  */
+async function listEnabledApplications(): Promise<PayApplication[]> {
+  const all: PayApplication[] = [];
+  let pageToken: string | undefined;
+  const seen = new Set<string>();
+  for (;;) {
+    const set = await services.pay.ListPayApplications({
+      pageSize: 100,
+      pageToken,
+      filter: "status=0",
+      orderBy: undefined,
+    });
+    all.push(...(set.applications ?? []));
+    const next = set.nextPageToken || undefined;
+    if (!next || seen.has(next)) {
+      return all;
+    }
+    seen.add(next);
+    pageToken = next;
+  }
+}
+
 const CreatePaymentModal: React.FC<{
   open: boolean;
   onClose: (created: boolean, codeUrl?: string, paymentId?: number) => void;
@@ -25,9 +46,8 @@ const CreatePaymentModal: React.FC<{
 
   useEffect(() => {
     if (!open) return;
-    services.pay
-      .ListPayApplications({ pageSize: 100, pageToken: undefined, filter: "status=0", orderBy: undefined })
-      .then((set) => setApplications(set.applications ?? []))
+    listEnabledApplications()
+      .then(setApplications)
       .catch(async (e) => { message.error(asServiceError(e)?.message ?? String(e)); });
   }, [open]);
 

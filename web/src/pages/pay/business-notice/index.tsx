@@ -6,6 +6,7 @@ import { App, Popconfirm, Tag, Typography } from "antd";
 import React, { useRef } from "react";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { ProTable } from "@ant-design/pro-components";
+import { NOTICE_KIND_REFUND, NOTICE_STATUS_ACCEPTED } from "@/utils/money";
 import { createTokenPagedRequest } from "@/utils/pager";
 
 /**
@@ -50,7 +51,7 @@ const ExhaustedNoticeList: React.FC = () => {
     services.pay
       .ResendBusinessNotice({ id: record.id })
       .then((notice) => {
-        if ((notice.status ?? 0) === 2) {
+        if ((notice.status ?? 0) === NOTICE_STATUS_ACCEPTED) {
           message.success(
             intl.formatMessage({ id: "pages.pay.businessNotice.resend.accepted", defaultMessage: "已送达" }),
           );
@@ -82,7 +83,7 @@ const ExhaustedNoticeList: React.FC = () => {
       width: 90,
       search: false,
       render: (_, r) =>
-        r.kind === 2 ? (
+        r.kind === NOTICE_KIND_REFUND ? (
           <Tag>{intl.formatMessage({ id: "pages.pay.businessNotice.kind.refund", defaultMessage: "退款" })}</Tag>
         ) : (
           <Tag color="blue">

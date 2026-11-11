@@ -107,10 +107,11 @@ func (s *deliveryImpl) DeliverDue(ctx context.Context, req DeliverDueRequest) (i
 				slog.Any("error", err))
 			continue
 		}
+		until := automaticClaimUntil(n.AttemptCount, req.Now)
 		ok, err := s.notices.ClaimDueNotice(ctx, payrepo.ClaimDueNoticeRequest{
 			ID:    n.ID,
 			Now:   req.Now,
-			Until: req.Now.Add(automaticRetryGaps[0]),
+			Until: until,
 		})
 		if err != nil {
 			s.logger.Warn("business notice delivery could not claim the notice",
@@ -123,10 +124,9 @@ func (s *deliveryImpl) DeliverDue(ctx context.Context, req DeliverDueRequest) (i
 			continue
 		}
 		result, postErr := s.poster.Post(ctx, NoticePost{URL: n.NotifyURL, Body: body})
-		if err := ctx.Err(); err != nil {
-			logx.Propagate(ctx, s.logger, "pay.svc.notice.deliver", err)
-			return attempted, err
-		}
+		// The POST already finished. Record it even when the scan context
+		// has ended, then let the next loop-head check stop the scan.
+		recordCtx := context.WithoutCancel(ctx)
 		attempt := &payentity.BusinessNoticeAttempt{
 			ID:        s.notices.NextID(),
 			NoticeID:  n.ID,
@@ -150,9 +150,10 @@ func (s *deliveryImpl) DeliverDue(ctx context.Context, req DeliverDueRequest) (i
 			n.Status = payentity.NoticeWaiting
 			n.NextAttemptAt = req.Now.Add(automaticRetryGaps[n.AttemptCount-1])
 		}
-		if err := s.notices.RecordAutomaticAttempt(ctx, payrepo.RecordAutomaticAttemptRequest{
-			Notice:  n,
-			Attempt: attempt,
+		if err := s.notices.RecordAutomaticAttempt(recordCtx, payrepo.RecordAutomaticAttemptRequest{
+			Notice:       n,
+			Attempt:      attempt,
+			ClaimedUntil: until,
 		}); err != nil {
 			s.logger.Warn("business notice delivery could not record the attempt",
 				slog.String("operation", "pay.svc.notice.deliver"),
@@ -163,6 +164,22 @@ func (s *deliveryImpl) DeliverDue(ctx context.Context, req DeliverDueRequest) (i
 		attempted++
 	}
 	return attempted, nil
+}
+
+// automaticClaimUntil is the lease for the attempt about to run. A crash
+// between the claim and the record leaves next_attempt_at on this gap, so
+// a later retry does not collapse a 30m or 60m wait down to 15s. The
+// happy path overwrites next_attempt_at with the same gap when the attempt
+// fails and another try remains.
+func automaticClaimUntil(attemptCount int, now time.Time) time.Time {
+	idx := attemptCount
+	if idx < 0 {
+		idx = 0
+	}
+	if idx >= len(automaticRetryGaps) {
+		idx = len(automaticRetryGaps) - 1
+	}
+	return now.Add(automaticRetryGaps[idx])
 }
 
 func clipAttemptError(s string) string {

@@ -33,8 +33,6 @@ const (
 	FieldOrderNotifyURL = "order_notify_url"
 	// FieldRefundNotifyURL holds the string denoting the refund_notify_url field in the database.
 	FieldRefundNotifyURL = "refund_notify_url"
-	// FieldRemark holds the string denoting the remark field in the database.
-	FieldRemark = "remark"
 	// Table holds the table name of the payapplication in the database.
 	Table = "pay_application"
 )
@@ -52,7 +50,6 @@ var Columns = []string{
 	FieldStatus,
 	FieldOrderNotifyURL,
 	FieldRefundNotifyURL,
-	FieldRemark,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -88,10 +85,6 @@ var (
 	DefaultRefundNotifyURL string
 	// RefundNotifyURLValidator is a validator for the "refund_notify_url" field. It is called by the builders before save.
 	RefundNotifyURLValidator func(string) error
-	// DefaultRemark holds the default value on creation for the "remark" field.
-	DefaultRemark string
-	// RemarkValidator is a validator for the "remark" field. It is called by the builders before save.
-	RemarkValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the PayApplication queries.
@@ -150,9 +143,4 @@ func ByOrderNotifyURL(opts ...sql.OrderTermOption) OrderOption {
 // ByRefundNotifyURL orders the results by the refund_notify_url field.
 func ByRefundNotifyURL(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRefundNotifyURL, opts...).ToFunc()
-}
-
-// ByRemark orders the results by the remark field.
-func ByRemark(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldRemark, opts...).ToFunc()
 }

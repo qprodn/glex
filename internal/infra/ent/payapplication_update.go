@@ -192,20 +192,6 @@ func (_u *PayApplicationUpdate) SetNillableRefundNotifyURL(v *string) *PayApplic
 	return _u
 }
 
-// SetRemark sets the "remark" field.
-func (_u *PayApplicationUpdate) SetRemark(v string) *PayApplicationUpdate {
-	_u.mutation.SetRemark(v)
-	return _u
-}
-
-// SetNillableRemark sets the "remark" field if the given value is not nil.
-func (_u *PayApplicationUpdate) SetNillableRemark(v *string) *PayApplicationUpdate {
-	if v != nil {
-		_u.SetRemark(*v)
-	}
-	return _u
-}
-
 // Mutation returns the PayApplicationMutation object of the builder.
 func (_u *PayApplicationUpdate) Mutation() *PayApplicationMutation {
 	return _u.mutation
@@ -262,11 +248,6 @@ func (_u *PayApplicationUpdate) check() error {
 	if v, ok := _u.mutation.RefundNotifyURL(); ok {
 		if err := payapplication.RefundNotifyURLValidator(v); err != nil {
 			return &ValidationError{Name: "refund_notify_url", err: fmt.Errorf(`ent: validator failed for field "PayApplication.refund_notify_url": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.Remark(); ok {
-		if err := payapplication.RemarkValidator(v); err != nil {
-			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "PayApplication.remark": %w`, err)}
 		}
 	}
 	return nil
@@ -331,9 +312,6 @@ func (_u *PayApplicationUpdate) sqlSave(ctx context.Context) (_node int, err err
 	}
 	if value, ok := _u.mutation.RefundNotifyURL(); ok {
 		_spec.SetField(payapplication.FieldRefundNotifyURL, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.Remark(); ok {
-		_spec.SetField(payapplication.FieldRemark, field.TypeString, value)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -519,20 +497,6 @@ func (_u *PayApplicationUpdateOne) SetNillableRefundNotifyURL(v *string) *PayApp
 	return _u
 }
 
-// SetRemark sets the "remark" field.
-func (_u *PayApplicationUpdateOne) SetRemark(v string) *PayApplicationUpdateOne {
-	_u.mutation.SetRemark(v)
-	return _u
-}
-
-// SetNillableRemark sets the "remark" field if the given value is not nil.
-func (_u *PayApplicationUpdateOne) SetNillableRemark(v *string) *PayApplicationUpdateOne {
-	if v != nil {
-		_u.SetRemark(*v)
-	}
-	return _u
-}
-
 // Mutation returns the PayApplicationMutation object of the builder.
 func (_u *PayApplicationUpdateOne) Mutation() *PayApplicationMutation {
 	return _u.mutation
@@ -602,11 +566,6 @@ func (_u *PayApplicationUpdateOne) check() error {
 	if v, ok := _u.mutation.RefundNotifyURL(); ok {
 		if err := payapplication.RefundNotifyURLValidator(v); err != nil {
 			return &ValidationError{Name: "refund_notify_url", err: fmt.Errorf(`ent: validator failed for field "PayApplication.refund_notify_url": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.Remark(); ok {
-		if err := payapplication.RemarkValidator(v); err != nil {
-			return &ValidationError{Name: "remark", err: fmt.Errorf(`ent: validator failed for field "PayApplication.remark": %w`, err)}
 		}
 	}
 	return nil
@@ -688,9 +647,6 @@ func (_u *PayApplicationUpdateOne) sqlSave(ctx context.Context) (_node *PayAppli
 	}
 	if value, ok := _u.mutation.RefundNotifyURL(); ok {
 		_spec.SetField(payapplication.FieldRefundNotifyURL, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.Remark(); ok {
-		_spec.SetField(payapplication.FieldRemark, field.TypeString, value)
 	}
 	_node = &PayApplication{config: _u.config}
 	_spec.Assign = _node.assignValues

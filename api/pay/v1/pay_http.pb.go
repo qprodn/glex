@@ -121,8 +121,9 @@ type PayServiceHTTPServer interface {
 	// config form; secret fields left blank keep their stored values
 	// (schema semantics, ADR 0021).
 	UpdateMerchantAccount(context.Context, *UpdateMerchantAccountRequest) (*MerchantAccount, error)
-	// UpdatePayApplication UpdatePayApplication changes the display name and either result
-	// address. The number and the Merchant Account binding stay fixed.
+	// UpdatePayApplication UpdatePayApplication changes the display name. A result address that
+	// is absent stays as stored. A present address replaces it, and empty
+	// clears it. The number and the Merchant Account binding stay fixed.
 	UpdatePayApplication(context.Context, *UpdatePayApplicationRequest) (*PayApplication, error)
 	// WithdrawMerchantAccount WithdrawMerchantAccount soft-deletes the Merchant Account. In-flight
 	// Payments are not blocked — their channel is snapshotted; new ones are.
@@ -758,8 +759,9 @@ type PayServiceHTTPClient interface {
 	// config form; secret fields left blank keep their stored values
 	// (schema semantics, ADR 0021).
 	UpdateMerchantAccount(ctx context.Context, req *UpdateMerchantAccountRequest, opts ...http.CallOption) (rsp *MerchantAccount, err error)
-	// UpdatePayApplication UpdatePayApplication changes the display name and either result
-	// address. The number and the Merchant Account binding stay fixed.
+	// UpdatePayApplication UpdatePayApplication changes the display name. A result address that
+	// is absent stays as stored. A present address replaces it, and empty
+	// clears it. The number and the Merchant Account binding stay fixed.
 	UpdatePayApplication(ctx context.Context, req *UpdatePayApplicationRequest, opts ...http.CallOption) (rsp *PayApplication, err error)
 	// WithdrawMerchantAccount WithdrawMerchantAccount soft-deletes the Merchant Account. In-flight
 	// Payments are not blocked — their channel is snapshotted; new ones are.
@@ -1195,8 +1197,9 @@ func (c *PayServiceHTTPClientImpl) UpdateMerchantAccount(ctx context.Context, in
 	return &out, nil
 }
 
-// UpdatePayApplication UpdatePayApplication changes the display name and either result
-// address. The number and the Merchant Account binding stay fixed.
+// UpdatePayApplication UpdatePayApplication changes the display name. A result address that
+// is absent stays as stored. A present address replaces it, and empty
+// clears it. The number and the Merchant Account binding stay fixed.
 func (c *PayServiceHTTPClientImpl) UpdatePayApplication(ctx context.Context, in *UpdatePayApplicationRequest, opts ...http.CallOption) (*PayApplication, error) {
 	var out PayApplication
 	pattern := "/pay/application/{application_id}"

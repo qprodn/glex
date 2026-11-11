@@ -90,14 +90,15 @@ func (s *PayApplication) GetPayApplication(ctx context.Context, req *payv1.GetPa
 	return convertPayApplication(app), nil
 }
 
-// UpdatePayApplication changes the display name and either result address.
+// UpdatePayApplication changes the display name. An absent result address
+// stays as stored. A present address replaces it, and empty clears it.
 // The Merchant Account binding is not a field of this request.
 func (s *PayApplication) UpdatePayApplication(ctx context.Context, req *payv1.UpdatePayApplicationRequest) (*payv1.PayApplication, error) {
 	app, err := s.applications.Update(ctx, payservice.UpdateApplicationRequest{
 		ID:              req.GetApplicationId(),
 		Name:            req.GetName(),
-		OrderNotifyURL:  req.GetOrderNotifyUrl(),
-		RefundNotifyURL: req.GetRefundNotifyUrl(),
+		OrderNotifyURL:  req.OrderNotifyUrl,
+		RefundNotifyURL: req.RefundNotifyUrl,
 		ActorID:         s.actor(ctx),
 	})
 	if err != nil {

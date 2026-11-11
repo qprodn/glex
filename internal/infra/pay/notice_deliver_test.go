@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -69,6 +71,40 @@ func TestNoticeDeliverExecutorRunSummarizes(t *testing.T) {
 	}
 	if fake.ran != 1 || fake.now.IsZero() {
 		t.Fatalf("delivery ran = %d now = %v", fake.ran, fake.now)
+	}
+}
+
+func TestNoticePosterDoesNotFollowRedirects(t *testing.T) {
+	finalHit := false
+	final := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		finalHit = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer final.Close()
+	redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, final.URL, http.StatusFound)
+	}))
+	defer redirect.Close()
+
+	poster := newHTTPNoticePoster(true)
+	got, err := poster.Post(context.Background(), payservice.NoticePost{URL: redirect.URL, Body: []byte(`{}`)})
+	if err != nil {
+		t.Fatalf("post: %v", err)
+	}
+	if got.StatusCode != http.StatusFound || finalHit {
+		t.Fatalf("status = %d followed = %v, want the redirect status and no second request", got.StatusCode, finalHit)
+	}
+}
+
+func TestNoticePosterRefusesLoopback(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	_, err := NewNoticePoster().Post(context.Background(), payservice.NoticePost{URL: srv.URL, Body: []byte(`{}`)})
+	if err == nil {
+		t.Fatal("post to loopback succeeded, want it refused")
 	}
 }
 

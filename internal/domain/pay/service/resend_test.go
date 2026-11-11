@@ -172,6 +172,23 @@ func TestResendRefusesWaitingAndAcceptedNotices(t *testing.T) {
 	}
 }
 
+func TestResendRecordsAttemptAfterCallerCancel(t *testing.T) {
+	now := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC)
+	store := &memDeliveryNotices{}
+	store.notices = append(store.notices, exhaustedNotice(11, payentity.NoticeKindPayment))
+	ctx, cancel := context.WithCancel(context.Background())
+	poster := &scriptPoster{status: 200, before: cancel}
+	svc := NewNoticeDesk(store, resendApps("https://caller.example/paid-now", ""), poster, slog.New(slog.DiscardHandler))
+
+	got, err := svc.Resend(ctx, ResendNoticeRequest{ID: 11, Now: now, ActorID: 7})
+	if err != nil {
+		t.Fatalf("resend: %v, want the finished POST recorded", err)
+	}
+	if got.Notice.Status != payentity.NoticeAccepted || len(store.attempts) != 1 || !store.attempts[0].Manual {
+		t.Fatalf("notice = %+v attempts = %d, want one manual acceptance", got.Notice, len(store.attempts))
+	}
+}
+
 func TestResendFailureLeavesTheNoticeExhausted(t *testing.T) {
 	now := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC)
 	store := &memDeliveryNotices{}

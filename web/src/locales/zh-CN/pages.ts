@@ -1,5 +1,6 @@
 export default {
   "common.option": "操作",
+  "common.createTime": "创建时间",
   "common.edit": "编辑",
   "common.delete": "删除",
   "common.cancel": "取消",
@@ -204,6 +205,7 @@ export default {
   "pages.pay.application.merchant.hint": "创建后不可改绑",
   "pages.pay.application.orderNotifyUrl": "支付结果地址",
   "pages.pay.application.refundNotifyUrl": "退款结果地址",
+  "pages.pay.application.notifyUrl.invalid": "填写带主机名的 http 或 https 地址",
   "pages.pay.application.disable": "停用",
   "pages.pay.application.enable": "启用",
   "pages.pay.application.withdraw.confirm": "撤除后离开在用列表，显示名可以再用。确定撤除？",
@@ -220,6 +222,7 @@ export default {
   "pages.pay.businessNotice.resend.confirm": "按支付应用当前的结果地址再发送一次？",
   "pages.pay.businessNotice.resend.accepted": "已送达",
   "pages.pay.businessNotice.resend.failed": "仍未送达，可以再发",
+  "pages.pay.payment.application": "支付应用",
   "pages.pay.payment.no": "支付单号",
   "pages.pay.payment.bizNo": "业务单号",
   "pages.pay.payment.subject": "主题",

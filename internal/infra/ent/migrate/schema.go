@@ -349,7 +349,6 @@ var (
 		{Name: "status", Type: field.TypeInt16, Default: 0},
 		{Name: "order_notify_url", Type: field.TypeString, Size: 512, Default: ""},
 		{Name: "refund_notify_url", Type: field.TypeString, Size: 512, Default: ""},
-		{Name: "remark", Type: field.TypeString, Size: 500, Default: ""},
 	}
 	// PayApplicationTable holds the schema information for the "pay_application" table.
 	PayApplicationTable = &schema.Table{

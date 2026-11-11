@@ -250,8 +250,9 @@ func TestPayApplicationAddressesStartEmptyAndEitherChanges(t *testing.T) {
 	if created.OrderNotifyURL != "" || created.RefundNotifyURL != "" {
 		t.Fatalf("addresses = %q %q, want both empty", created.OrderNotifyURL, created.RefundNotifyURL)
 	}
+	paid := "https://pay.example/paid"
 	withOrder, err := svc.Update(ctx, UpdateApplicationRequest{
-		ID: created.ID, Name: created.Name, OrderNotifyURL: "https://pay.example/paid", ActorID: 8,
+		ID: created.ID, Name: created.Name, OrderNotifyURL: &paid, ActorID: 8,
 	})
 	if err != nil {
 		t.Fatalf("set payment address: %v", err)
@@ -259,10 +260,11 @@ func TestPayApplicationAddressesStartEmptyAndEitherChanges(t *testing.T) {
 	if withOrder.OrderNotifyURL != "https://pay.example/paid" || withOrder.RefundNotifyURL != "" || withOrder.MerchantID != 42 {
 		t.Fatalf("after payment address = %+v", withOrder)
 	}
+	refunded := "https://pay.example/refunded"
 	withBoth, err := svc.Update(ctx, UpdateApplicationRequest{
 		ID: created.ID, Name: created.Name,
-		OrderNotifyURL:  "https://pay.example/paid",
-		RefundNotifyURL: "https://pay.example/refunded",
+		OrderNotifyURL:  &paid,
+		RefundNotifyURL: &refunded,
 		ActorID:         8,
 	})
 	if err != nil {
@@ -270,6 +272,23 @@ func TestPayApplicationAddressesStartEmptyAndEitherChanges(t *testing.T) {
 	}
 	if withBoth.OrderNotifyURL != "https://pay.example/paid" || withBoth.RefundNotifyURL != "https://pay.example/refunded" || withBoth.ID != created.ID {
 		t.Fatalf("after refund address = %+v", withBoth)
+	}
+	renamed, err := svc.Update(ctx, UpdateApplicationRequest{ID: created.ID, Name: "新收银台", ActorID: 8})
+	if err != nil {
+		t.Fatalf("rename: %v", err)
+	}
+	if renamed.Name != "新收银台" || renamed.OrderNotifyURL != paid || renamed.RefundNotifyURL != refunded {
+		t.Fatalf("omitted addresses = %+v, want both kept", renamed)
+	}
+	cleared := ""
+	afterClear, err := svc.Update(ctx, UpdateApplicationRequest{
+		ID: created.ID, Name: renamed.Name, OrderNotifyURL: &cleared, ActorID: 8,
+	})
+	if err != nil {
+		t.Fatalf("clear payment address: %v", err)
+	}
+	if afterClear.OrderNotifyURL != "" || afterClear.RefundNotifyURL != refunded {
+		t.Fatalf("after clear = %+v, want only the payment address cleared", afterClear)
 	}
 }
 
@@ -292,7 +311,7 @@ func TestPayApplicationRejectsOverlongAddress(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 	_, err = svc.Update(ctx, UpdateApplicationRequest{
-		ID: created.ID, Name: created.Name, RefundNotifyURL: long, ActorID: 8,
+		ID: created.ID, Name: created.Name, RefundNotifyURL: &long, ActorID: 8,
 	})
 	if !errors.Is(err, pay.ErrApplicationInvalid) {
 		t.Fatalf("update err = %v, want ErrApplicationInvalid", err)
@@ -411,5 +430,71 @@ func TestPayApplicationListOmitsWithdrawn(t *testing.T) {
 	}
 	if len(listed) != 1 || listed[0].ID != kept.ID {
 		t.Fatalf("listed = %+v, want only %d", listed, kept.ID)
+	}
+}
+
+func TestPayApplicationChangeStatusRefusesWithdrawn(t *testing.T) {
+	merchants := newFakeMerchantRepo(nil)
+	merchants.m[42] = &payentity.MerchantAccount{
+		ID: 42, Name: "主店", Status: payentity.MerchantEnabled,
+	}
+	svc := NewApplicationService(newFakePayApplicationRepo(), merchants, slog.New(slog.DiscardHandler))
+	ctx := context.Background()
+	created, err := svc.Create(ctx, CreateApplicationRequest{Name: "收银台", MerchantID: 42, ActorID: 7})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if err := svc.Withdraw(ctx, WithdrawApplicationRequest{ID: created.ID, ActorID: 9}); err != nil {
+		t.Fatalf("withdraw: %v", err)
+	}
+	_, err = svc.ChangeStatus(ctx, ChangeApplicationStatusRequest{
+		ID: created.ID, Status: payentity.ApplicationDisabled, ActorID: 9,
+	})
+	if !errors.Is(err, pay.ErrApplicationNotFound) {
+		t.Fatalf("err = %v, want ErrApplicationNotFound", err)
+	}
+}
+
+func TestPayApplicationRejectsNonPublicNotifyURL(t *testing.T) {
+	merchants := newFakeMerchantRepo(nil)
+	merchants.m[42] = &payentity.MerchantAccount{
+		ID: 42, Name: "主店", Status: payentity.MerchantEnabled,
+	}
+	svc := NewApplicationService(newFakePayApplicationRepo(), merchants, slog.New(slog.DiscardHandler))
+	ctx := context.Background()
+	bad := []string{
+		"not a url",
+		"ftp://pay.example/hook",
+		"https://localhost/hook",
+		"http://127.0.0.1/hook",
+		"http://[::1]/hook",
+		"https://10.1.2.3/hook",
+		"https://192.168.0.8/hook",
+		"http://169.254.169.254/latest",
+		"https://user:secret@pay.example/hook",
+	}
+	for _, raw := range bad {
+		_, err := svc.Create(ctx, CreateApplicationRequest{
+			Name: "收银台", MerchantID: 42, OrderNotifyURL: raw, ActorID: 7,
+		})
+		if !errors.Is(err, pay.ErrApplicationInvalid) {
+			t.Fatalf("create %q err = %v, want ErrApplicationInvalid", raw, err)
+		}
+	}
+	created, err := svc.Create(ctx, CreateApplicationRequest{
+		Name: "收银台", MerchantID: 42, OrderNotifyURL: "https://pay.example/paid", ActorID: 7,
+	})
+	if err != nil {
+		t.Fatalf("public address: %v", err)
+	}
+	loopback := "http://127.0.0.1/hook"
+	_, err = svc.Update(ctx, UpdateApplicationRequest{
+		ID: created.ID, Name: created.Name, RefundNotifyURL: &loopback, ActorID: 8,
+	})
+	if !errors.Is(err, pay.ErrApplicationInvalid) {
+		t.Fatalf("update err = %v, want ErrApplicationInvalid", err)
+	}
+	if got, err := svc.Get(ctx, created.ID); err != nil || got.OrderNotifyURL != "https://pay.example/paid" || got.RefundNotifyURL != "" {
+		t.Fatalf("after refused update = %+v err=%v, want the stored address kept", got, err)
 	}
 }

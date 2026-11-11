@@ -2129,8 +2129,9 @@ paths:
             tags:
                 - PayService
             description: |-
-                UpdatePayApplication changes the display name and either result
-                 address. The number and the Merchant Account binding stay fixed.
+                UpdatePayApplication changes the display name. A result address that
+                 is absent stays as stored. A present address replaces it, and empty
+                 clears it. The number and the Merchant Account binding stay fixed.
             operationId: PayService_UpdatePayApplication
             parameters:
                 - name: applicationId
@@ -4588,10 +4589,14 @@ components:
                          withdrawn. The binding cannot be changed later.
                 orderNotifyUrl:
                     type: string
-                    description: Optional. Payment result address, ≤ 512 chars. Empty is allowed.
+                    description: |-
+                        Optional. Payment result address, ≤ 512 chars. Empty is allowed.
+                         A non-empty value is an absolute http or https URL with a public host.
                 refundNotifyUrl:
                     type: string
-                    description: Optional. Refund result address, ≤ 512 chars. Empty is allowed.
+                    description: |-
+                        Optional. Refund result address, ≤ 512 chars. Empty is allowed.
+                         Same address rules as order_notify_url.
         pay.v1.CreatePaymentRequest:
             required:
                 - applicationId
@@ -5032,10 +5037,15 @@ components:
                     description: Required. New display name.
                 orderNotifyUrl:
                     type: string
-                    description: Optional. New payment result address. Empty clears it.
+                    description: |-
+                        Optional. New payment result address. Absent leaves it unchanged.
+                         Present and empty clears it. An absolute http or https URL with a
+                         public host; other values are refused.
                 refundNotifyUrl:
                     type: string
-                    description: Optional. New refund result address. Empty clears it.
+                    description: |-
+                        Optional. New refund result address. Absent leaves it unchanged.
+                         Present and empty clears it. Same address rules as order_notify_url.
         user.v1.CurrentUser:
             type: object
             properties:

@@ -24,7 +24,6 @@ func toBizPayApplication(po *ent.PayApplication) *payentity.PayApplication {
 		Status:          payentity.ApplicationStatus(po.Status),
 		OrderNotifyURL:  po.OrderNotifyURL,
 		RefundNotifyURL: po.RefundNotifyURL,
-		Remark:          po.Remark,
 		CreateBy:        po.CreateBy,
 		UpdateBy:        po.UpdateBy,
 		CreatedAt:       po.CreatedAt,
@@ -107,7 +106,6 @@ func (r *payApplicationRepo) Create(ctx context.Context, app *payentity.PayAppli
 		SetStatus(int16(app.Status)).
 		SetOrderNotifyURL(app.OrderNotifyURL).
 		SetRefundNotifyURL(app.RefundNotifyURL).
-		SetRemark(app.Remark).
 		SetCreateBy(app.CreateBy).
 		SetUpdateBy(app.UpdateBy).
 		Save(ctx)
@@ -122,34 +120,36 @@ func (r *payApplicationRepo) Create(ctx context.Context, app *payentity.PayAppli
 
 func (r *payApplicationRepo) Update(ctx context.Context, req payrepo.UpdatePayApplicationRequest) (*payentity.PayApplication, error) {
 	app := req.App
-	po, err := r.data.DB.PayApplication(ctx).UpdateOneID(app.ID).
+	n, err := r.data.DB.PayApplication(ctx).Update().
+		Where(entapp.IDEQ(app.ID), entapp.DeletedAtIsNil()).
 		SetName(app.Name).
 		SetOrderNotifyURL(app.OrderNotifyURL).
 		SetRefundNotifyURL(app.RefundNotifyURL).
 		SetUpdateBy(req.ActorID).
 		Save(ctx)
 	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, pay.ErrApplicationNotFound
-		}
 		if ent.IsConstraintError(err) {
 			return nil, pay.ErrApplicationDuplicate
 		}
 		return nil, r.storeError(ctx, "pay.application.update", err)
 	}
-	return toBizPayApplication(po), nil
+	if n == 0 {
+		return nil, pay.ErrApplicationNotFound
+	}
+	return r.FindByID(ctx, app.ID)
 }
 
 func (r *payApplicationRepo) UpdateStatus(ctx context.Context, req payrepo.UpdatePayApplicationStatusRequest) error {
-	err := r.data.DB.PayApplication(ctx).UpdateOneID(req.ID).
+	n, err := r.data.DB.PayApplication(ctx).Update().
+		Where(entapp.IDEQ(req.ID), entapp.DeletedAtIsNil()).
 		SetStatus(int16(req.Status)).
 		SetUpdateBy(req.ActorID).
-		Exec(ctx)
-	if ent.IsNotFound(err) {
-		return pay.ErrApplicationNotFound
-	}
+		Save(ctx)
 	if err != nil {
 		return r.storeError(ctx, "pay.application.update_status", err)
+	}
+	if n == 0 {
+		return pay.ErrApplicationNotFound
 	}
 	return nil
 }

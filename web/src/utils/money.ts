@@ -47,6 +47,15 @@ export const REFUND_STATUS: Record<number, { label: string; color: string }> = {
   3: { label: "退款失败", color: "error" },
 };
 
+/** Business Notification kind — mirrors pay_business_notice.kind. */
+export const NOTICE_KIND_PAYMENT = 1;
+export const NOTICE_KIND_REFUND = 2;
+
+/** Business Notification status — mirrors pay_business_notice.status. */
+export const NOTICE_STATUS_WAITING = 1;
+export const NOTICE_STATUS_ACCEPTED = 2;
+export const NOTICE_STATUS_EXHAUSTED = 3;
+
 /** Merchant account status — RuoYi convention (0 enabled, 1 disabled). */
 export const MERCHANT_STATUS: Record<number, { label: string; color: string }> = {
   0: { label: "启用", color: "success" },

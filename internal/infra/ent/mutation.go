@@ -11879,7 +11879,6 @@ type PayApplicationMutation struct {
 	addstatus         *int16
 	order_notify_url  *string
 	refund_notify_url *string
-	remark            *string
 	clearedFields     map[string]struct{}
 	done              bool
 	oldValue          func(context.Context) (*PayApplication, error)
@@ -12471,42 +12470,6 @@ func (m *PayApplicationMutation) ResetRefundNotifyURL() {
 	m.refund_notify_url = nil
 }
 
-// SetRemark sets the "remark" field.
-func (m *PayApplicationMutation) SetRemark(s string) {
-	m.remark = &s
-}
-
-// Remark returns the value of the "remark" field in the mutation.
-func (m *PayApplicationMutation) Remark() (r string, exists bool) {
-	v := m.remark
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldRemark returns the old "remark" field's value of the PayApplication entity.
-// If the PayApplication object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *PayApplicationMutation) OldRemark(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldRemark is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldRemark requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldRemark: %w", err)
-	}
-	return oldValue.Remark, nil
-}
-
-// ResetRemark resets all changes to the "remark" field.
-func (m *PayApplicationMutation) ResetRemark() {
-	m.remark = nil
-}
-
 // Where appends a list predicates to the PayApplicationMutation builder.
 func (m *PayApplicationMutation) Where(ps ...predicate.PayApplication) {
 	m.predicates = append(m.predicates, ps...)
@@ -12541,7 +12504,7 @@ func (m *PayApplicationMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PayApplicationMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 10)
 	if m.create_by != nil {
 		fields = append(fields, payapplication.FieldCreateBy)
 	}
@@ -12572,9 +12535,6 @@ func (m *PayApplicationMutation) Fields() []string {
 	if m.refund_notify_url != nil {
 		fields = append(fields, payapplication.FieldRefundNotifyURL)
 	}
-	if m.remark != nil {
-		fields = append(fields, payapplication.FieldRemark)
-	}
 	return fields
 }
 
@@ -12603,8 +12563,6 @@ func (m *PayApplicationMutation) Field(name string) (ent.Value, bool) {
 		return m.OrderNotifyURL()
 	case payapplication.FieldRefundNotifyURL:
 		return m.RefundNotifyURL()
-	case payapplication.FieldRemark:
-		return m.Remark()
 	}
 	return nil, false
 }
@@ -12634,8 +12592,6 @@ func (m *PayApplicationMutation) OldField(ctx context.Context, name string) (ent
 		return m.OldOrderNotifyURL(ctx)
 	case payapplication.FieldRefundNotifyURL:
 		return m.OldRefundNotifyURL(ctx)
-	case payapplication.FieldRemark:
-		return m.OldRemark(ctx)
 	}
 	return nil, fmt.Errorf("unknown PayApplication field %s", name)
 }
@@ -12714,13 +12670,6 @@ func (m *PayApplicationMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRefundNotifyURL(v)
-		return nil
-	case payapplication.FieldRemark:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetRemark(v)
 		return nil
 	}
 	return fmt.Errorf("unknown PayApplication field %s", name)
@@ -12872,9 +12821,6 @@ func (m *PayApplicationMutation) ResetField(name string) error {
 		return nil
 	case payapplication.FieldRefundNotifyURL:
 		m.ResetRefundNotifyURL()
-		return nil
-	case payapplication.FieldRemark:
-		m.ResetRemark()
 		return nil
 	}
 	return fmt.Errorf("unknown PayApplication field %s", name)

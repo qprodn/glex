@@ -109,11 +109,11 @@ func (s *noticeDeskImpl) Resend(ctx context.Context, req ResendNoticeRequest) (*
 	}
 	url, ok := currentResultAddress(app, n.Kind)
 	if !ok {
-		s.logger.Error("business notice kind is unknown",
+		s.logger.Warn("business notice kind is unknown",
 			slog.String("operation", "pay.svc.notice.resend"),
 			slog.Int64("notice_id", n.ID),
 			slog.Int64("kind", int64(n.Kind)))
-		return nil, pay.ErrPayStoreUnavailable
+		return nil, pay.ErrBusinessNoticeInconsistent
 	}
 	if url == "" {
 		logx.Propagate(ctx, s.logger, "pay.svc.notice.resend", pay.ErrBusinessNoticeAddressEmpty)
@@ -125,17 +125,16 @@ func (s *noticeDeskImpl) Resend(ctx context.Context, req ResendNoticeRequest) (*
 			slog.String("operation", "pay.svc.notice.resend"),
 			slog.Int64("notice_id", n.ID),
 			slog.Any("error", err))
-		return nil, pay.ErrPayStoreUnavailable
+		return nil, pay.ErrBusinessNoticeInconsistent
 	}
 	if err := ctx.Err(); err != nil {
 		logx.Propagate(ctx, s.logger, "pay.svc.notice.resend", err)
 		return nil, err
 	}
 	result, postErr := s.poster.Post(ctx, NoticePost{URL: url, Body: body})
-	if err := ctx.Err(); err != nil {
-		logx.Propagate(ctx, s.logger, "pay.svc.notice.resend", err)
-		return nil, err
-	}
+	// The POST already finished. Record it even when the caller context
+	// has ended, so a delivered attempt is not left unrecorded.
+	recordCtx := context.WithoutCancel(ctx)
 	attempt := &payentity.BusinessNoticeAttempt{
 		ID:        s.notices.NextID(),
 		NoticeID:  n.ID,
@@ -152,7 +151,7 @@ func (s *noticeDeskImpl) Resend(ctx context.Context, req ResendNoticeRequest) (*
 	if attempt.Accepted {
 		n.Status = payentity.NoticeAccepted
 	}
-	if err := s.notices.RecordManualAttempt(ctx, payrepo.RecordManualAttemptRequest{
+	if err := s.notices.RecordManualAttempt(recordCtx, payrepo.RecordManualAttemptRequest{
 		Notice:  n,
 		Attempt: attempt,
 		ActorID: req.ActorID,

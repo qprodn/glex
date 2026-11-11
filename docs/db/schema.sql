@@ -554,11 +554,52 @@ comment on column pay_merchant_account.created_at is '创建时间';
 comment on column pay_merchant_account.updated_at is '更新时间';
 comment on column pay_merchant_account.deleted_at is '软删除时间；NULL=未删除';
 
+create table if not exists pay_application (
+    id                 bigint       not null,             -- 支付应用编号；创建后不变
+    name               varchar(64)  not null,             -- 显示名；未撤除行内唯一
+    merchant_id        bigint       not null,             -- 创建时绑定的商户账号（引用，无 FK）；绑定不变
+    status             smallint     not null default 0,   -- 0 启用 1 停用
+    order_notify_url   varchar(512) not null default '',  -- 支付结果地址；空表示之后的支付单不发业务通知
+    refund_notify_url  varchar(512) not null default '',  -- 退款结果地址；空表示之后的退款单不发业务通知
+    create_by          bigint       not null default 0,
+    update_by          bigint       not null default 0,
+    created_at         timestamptz  not null default now(),
+    updated_at         timestamptz  not null default now(),
+    deleted_at         timestamptz,                       -- 软删除；NULL=未删除
+    constraint pay_application_pkey primary key (id)
+);
+
+create unique index if not exists application_name
+    on pay_application (name)
+    where deleted_at is null;
+create index if not exists application_merchant_id
+    on pay_application (merchant_id)
+    where deleted_at is null;
+
+-- 支付应用没有备注。已按旧草案建出 remark 的库删掉这一列。
+alter table pay_application drop column if exists remark;
+
+comment on table pay_application is '支付应用表（调用方身份；绑定一个商户账号，ADR 0030）';
+
+comment on column pay_application.id is '支付应用编号（雪花）；创建后不变';
+comment on column pay_application.name is '显示名；未撤除行内唯一（部分唯一索引）';
+comment on column pay_application.merchant_id is '绑定的商户账号ID（pay_merchant_account 引用）；创建后不变';
+comment on column pay_application.status is '状态：0启用 1停用（停用仅禁止新支付和新退款）';
+comment on column pay_application.order_notify_url is '支付结果地址；创建支付单时复制，空则该单不发业务通知';
+comment on column pay_application.refund_notify_url is '退款结果地址；创建退款单时复制，空则该单不发业务通知';
+comment on column pay_application.create_by is '创建者用户ID';
+comment on column pay_application.update_by is '更新者用户ID';
+comment on column pay_application.created_at is '创建时间';
+comment on column pay_application.updated_at is '更新时间';
+comment on column pay_application.deleted_at is '软删除时间；NULL=未删除';
+
 create table if not exists pay_payment (
     id                bigint       not null,             -- 即支付单号，字符串形式作渠道 out_trade_no
-    merchant_id       bigint       not null,             -- 收款商户账号（引用，无 FK）
+    application_id    bigint       not null,             -- 支付应用（引用，无 FK）
+    merchant_id       bigint       not null,             -- 收款商户账号（引用，无 FK）；发起时从支付应用复制
     channel           smallint     not null,             -- 发起时商户渠道快照
-    biz_no            varchar(64)  not null,             -- 业务单号（引用，不唯一）
+    notify_url        varchar(512) not null default '',  -- 支付结果地址；发起时从支付应用复制，空则不发业务通知
+    biz_no            varchar(64)  not null,             -- 业务单号；同一支付应用的未撤除行内至多一笔
     subject           varchar(256) not null,
     amount            bigint       not null,             -- 金额，最小单位（分），ADR 0019
     currency          char(3)      not null default 'CNY',
@@ -579,7 +620,12 @@ create table if not exists pay_payment (
     constraint pay_payment_pkey primary key (id)
 );
 
--- 惰性过期结算路径与列表过滤的检索索引；均不唯一 —— 重复发起保留历史。
+-- 旧库的 pay_payment 没有这两列。新库建表已包含，IF NOT EXISTS 为空操作。
+alter table pay_payment add column if not exists application_id bigint;
+alter table pay_payment add column if not exists notify_url varchar(512) not null default '';
+
+-- 同一商户的业务单号不唯一：两个支付应用可以各有一笔。(application_id, biz_no)
+-- 的部分唯一索引在下方升级块里创建，避免旧行尚未回填时建索引失败。
 create index if not exists payment_merchant_biz_no
     on pay_payment (merchant_id, biz_no)
     where deleted_at is null;
@@ -597,9 +643,11 @@ create index if not exists payment_expire_pending
 comment on table pay_payment is '支付单表（统一收单；状态推进一律 CAS，终态不可逆）';
 
 comment on column pay_payment.id is '支付单号（雪花）；同时是渠道商户订单号 out_trade_no';
+comment on column pay_payment.application_id is '支付应用ID（pay_application 引用）；与业务单号在未撤除行内唯一';
 comment on column pay_payment.merchant_id is '收款商户账号ID（pay_merchant_account 引用）';
 comment on column pay_payment.channel is '支付渠道（发起时快照）';
-comment on column pay_payment.biz_no is '业务单号；调用方引用材料，同一商户可多笔';
+comment on column pay_payment.notify_url is '支付结果地址；发起时从支付应用复制，空则不发业务通知，事后补地址不回填';
+comment on column pay_payment.biz_no is '业务单号；同一支付应用的未撤除行内至多一笔，含已关闭、已过期、已失败';
 comment on column pay_payment.subject is '商品主题';
 comment on column pay_payment.amount is '支付金额（最小单位：分），ADR 0019';
 comment on column pay_payment.currency is '币种（ISO 4217）；MVP 渠道仅 CNY';
@@ -618,11 +666,66 @@ comment on column pay_payment.created_at is '创建时间';
 comment on column pay_payment.updated_at is '更新时间';
 comment on column pay_payment.deleted_at is '软删除时间；NULL=未删除';
 
+-- 存量回填：旧支付单没有支付应用。每个仍有未撤除支付单的商户账号，先建一个
+-- 支付应用，再把该商户的支付单指过去（一个商户有多个应用时要人工指定）：
+--   update pay_payment p
+--   set application_id = a.id
+--   from pay_application a
+--   where p.application_id is null
+--     and p.deleted_at is null
+--     and a.deleted_at is null
+--     and a.merchant_id = p.merchant_id;
+-- 回填后重跑本文件：非已支付的重复行会被撤除；同一对上有两笔已支付时中止，
+-- 留给人工决定保留哪一笔。空库和已回填的库会建上部分唯一索引并设 NOT NULL。
+do $$
+begin
+  if exists (
+    select 1 from pay_payment
+    where deleted_at is null and application_id is null
+  ) then
+    raise notice 'pay_payment: live rows have no application_id; unique index waits for the backfill above';
+    return;
+  end if;
+
+  with ranked as (
+    select id,
+           row_number() over (
+             partition by application_id, biz_no
+             order by case when status = 2 then 0 else 1 end, created_at desc, id desc
+           ) as rn
+    from pay_payment
+    where deleted_at is null
+      and application_id is not null
+  )
+  update pay_payment as p
+  set deleted_at = now(),
+      update_by = 0
+  from ranked as r
+  where p.id = r.id
+    and r.rn > 1
+    and p.status <> 2;
+
+  if exists (
+    select 1
+    from pay_payment
+    where deleted_at is null
+      and application_id is not null
+    group by application_id, biz_no
+    having count(*) > 1
+  ) then
+    raise exception 'pay_payment: more than one live paid row shares a pay application and business order number';
+  end if;
+
+  execute 'create unique index if not exists payment_application_biz_no on pay_payment (application_id, biz_no) where deleted_at is null';
+  alter table pay_payment alter column application_id set not null;
+end $$;
+
 create table if not exists pay_refund (
     id                bigint       not null,             -- 即退款单号，作渠道 out_refund_no
     payment_id        bigint       not null,             -- 原支付单（引用，无 FK）
     merchant_id       bigint       not null,
     channel           smallint     not null,             -- 沿支付单渠道
+    notify_url        varchar(512) not null default '',  -- 退款结果地址；发起时从支付应用复制，空则不发业务通知
     amount            bigint       not null,             -- 本次退款金额（分），ADR 0019
     reason            varchar(256) not null default '',
     status            smallint     not null default 1,   -- 1 处理中 2 成功 3 失败
@@ -637,6 +740,8 @@ create table if not exists pay_refund (
     constraint pay_refund_pkey primary key (id)
 );
 
+alter table pay_refund add column if not exists notify_url varchar(512) not null default '';
+
 create index if not exists refund_payment_id
     on pay_refund (payment_id);
 
@@ -646,6 +751,7 @@ comment on column pay_refund.id is '退款单号（雪花）；同时是渠道�
 comment on column pay_refund.payment_id is '原支付单ID（pay_payment 引用）';
 comment on column pay_refund.merchant_id is '商户账号ID（沿支付单）';
 comment on column pay_refund.channel is '支付渠道（沿支付单）';
+comment on column pay_refund.notify_url is '退款结果地址；发起时从支付应用复制，空则不发业务通知，事后补地址不回填';
 comment on column pay_refund.amount is '本次退款金额（分），ADR 0019';
 comment on column pay_refund.reason is '退款原因';
 comment on column pay_refund.status is '状态：1处理中 2成功 3失败（CAS 推进）';
@@ -703,6 +809,86 @@ comment on column pay_notify_log.update_by is '更新者用户ID';
 comment on column pay_notify_log.created_at is '创建时间';
 comment on column pay_notify_log.updated_at is '更新时间';
 comment on column pay_notify_log.deleted_at is '软删除时间；NULL=未删除';
+
+create table if not exists pay_business_notice (
+    id               bigint       not null,
+    application_id   bigint       not null,              -- 记录时支付单所属的支付应用
+    kind             smallint     not null,              -- 1 支付 2 退款
+    payment_id       bigint       not null,
+    refund_id        bigint,                             -- kind = 2 时填写
+    biz_no           varchar(64)  not null default '',   -- 业务单号，支付通知正文用
+    notify_url       varchar(512) not null,              -- 自动投递地址；空地址不插行
+    status           smallint     not null default 1,    -- 1 等待 2 已接受 3 已耗尽
+    attempt_count    int          not null default 0,    -- 已完成的自动尝试次数
+    next_attempt_at  timestamptz,                        -- 下次自动尝试；离开等待后为空
+    create_by        bigint       not null default 0,
+    update_by        bigint       not null default 0,
+    created_at       timestamptz  not null default now(),
+    updated_at       timestamptz  not null default now(),
+    deleted_at       timestamptz,
+    constraint pay_business_notice_pkey primary key (id)
+);
+
+create unique index if not exists business_notice_payment
+    on pay_business_notice (kind, payment_id)
+    where deleted_at is null and kind = 1;
+create unique index if not exists business_notice_refund
+    on pay_business_notice (kind, refund_id)
+    where deleted_at is null and kind = 2;
+create index if not exists business_notice_due
+    on pay_business_notice (next_attempt_at)
+    where deleted_at is null and status = 1;
+
+comment on table pay_business_notice is '业务通知表（支付首次已支付，或退款首次终态；不是渠道回调证据）';
+
+comment on column pay_business_notice.id is '主键ID（雪花）';
+comment on column pay_business_notice.application_id is '支付应用ID；记录时从支付单复制';
+comment on column pay_business_notice.kind is '类别：1支付 2退款';
+comment on column pay_business_notice.payment_id is '支付单ID';
+comment on column pay_business_notice.refund_id is '退款单ID；支付通知为空';
+comment on column pay_business_notice.biz_no is '业务单号；支付通知正文使用';
+comment on column pay_business_notice.notify_url is '自动投递地址；记录时复制，之后不随支付应用改址';
+comment on column pay_business_notice.status is '状态：1等待 2已接受 3已耗尽';
+comment on column pay_business_notice.attempt_count is '已完成的自动尝试次数；手工重发不增加';
+comment on column pay_business_notice.next_attempt_at is '下次自动尝试时间；非等待为空';
+comment on column pay_business_notice.create_by is '创建者用户ID（0=系统）';
+comment on column pay_business_notice.update_by is '更新者用户ID';
+comment on column pay_business_notice.created_at is '创建时间';
+comment on column pay_business_notice.updated_at is '更新时间';
+comment on column pay_business_notice.deleted_at is '软删除时间；NULL=未删除';
+
+create table if not exists pay_business_notice_attempt (
+    id          bigint       not null,
+    notice_id   bigint       not null,
+    manual      boolean      not null default false,    -- false 自动，true 手工重发
+    http_status int,                                    -- 无 HTTP 响应时为空
+    error       varchar(512) not null default '',
+    accepted    boolean      not null default false,    -- HTTP 2xx
+    create_by   bigint       not null default 0,
+    update_by   bigint       not null default 0,
+    created_at  timestamptz  not null default now(),
+    updated_at  timestamptz  not null default now(),
+    deleted_at  timestamptz,
+    constraint pay_business_notice_attempt_pkey primary key (id)
+);
+
+create index if not exists business_notice_attempt_notice
+    on pay_business_notice_attempt (notice_id)
+    where deleted_at is null;
+
+comment on table pay_business_notice_attempt is '业务通知投递记录（每次自动或手工尝试一行；不保存响应正文）';
+
+comment on column pay_business_notice_attempt.id is '主键ID（雪花）';
+comment on column pay_business_notice_attempt.notice_id is '业务通知ID';
+comment on column pay_business_notice_attempt.manual is '是否手工重发';
+comment on column pay_business_notice_attempt.http_status is 'HTTP 状态码；没有响应时为空';
+comment on column pay_business_notice_attempt.error is '连接或超时错误；有响应时为空';
+comment on column pay_business_notice_attempt.accepted is '响应是否为 HTTP 2xx';
+comment on column pay_business_notice_attempt.create_by is '创建者用户ID（自动尝试为 0）';
+comment on column pay_business_notice_attempt.update_by is '更新者用户ID';
+comment on column pay_business_notice_attempt.created_at is '创建时间';
+comment on column pay_business_notice_attempt.updated_at is '更新时间';
+comment on column pay_business_notice_attempt.deleted_at is '软删除时间；NULL=未删除';
 
 create table if not exists job (
     id              bigint        not null,

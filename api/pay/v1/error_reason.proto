@@ -58,8 +58,8 @@ enum ErrorReason {
   // The requested Pay Application does not exist (or is withdrawn).
   APPLICATION_NOT_FOUND = 15;
   // A Pay Application parameter is invalid: blank or over-length display
-  // name, over-length result address, or a status other than enabled or
-  // disabled.
+  // name, a result address that is not an absolute public http(s) URL,
+  // or a status other than enabled or disabled.
   APPLICATION_INVALID = 16;
   // The display name is already taken by a Pay Application that is not
   // withdrawn (HTTP 409).
@@ -75,4 +75,7 @@ enum ErrorReason {
   // The Pay Application's current result address of the matching kind is
   // empty, so there is nowhere to send.
   BUSINESS_NOTICE_ADDRESS_EMPTY = 21;
+  // A stored Business Notification has a kind other than payment or
+  // refund, or its body cannot be built (HTTP 500).
+  BUSINESS_NOTICE_INCONSISTENT = 22;
 }

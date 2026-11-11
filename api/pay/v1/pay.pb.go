@@ -1723,8 +1723,10 @@ type CreatePayApplicationRequest struct {
 	// withdrawn. The binding cannot be changed later.
 	MerchantId int64 `protobuf:"varint,2,opt,name=merchant_id,json=merchantId,proto3" json:"merchant_id,omitempty"`
 	// Optional. Payment result address, ≤ 512 chars. Empty is allowed.
+	// A non-empty value is an absolute http or https URL with a public host.
 	OrderNotifyUrl string `protobuf:"bytes,3,opt,name=order_notify_url,json=orderNotifyUrl,proto3" json:"order_notify_url,omitempty"`
 	// Optional. Refund result address, ≤ 512 chars. Empty is allowed.
+	// Same address rules as order_notify_url.
 	RefundNotifyUrl string `protobuf:"bytes,4,opt,name=refund_notify_url,json=refundNotifyUrl,proto3" json:"refund_notify_url,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
@@ -1916,10 +1918,13 @@ type UpdatePayApplicationRequest struct {
 	ApplicationId int64 `protobuf:"varint,1,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
 	// Required. New display name.
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// Optional. New payment result address. Empty clears it.
-	OrderNotifyUrl string `protobuf:"bytes,3,opt,name=order_notify_url,json=orderNotifyUrl,proto3" json:"order_notify_url,omitempty"`
-	// Optional. New refund result address. Empty clears it.
-	RefundNotifyUrl string `protobuf:"bytes,4,opt,name=refund_notify_url,json=refundNotifyUrl,proto3" json:"refund_notify_url,omitempty"`
+	// Optional. New payment result address. Absent leaves it unchanged.
+	// Present and empty clears it. An absolute http or https URL with a
+	// public host; other values are refused.
+	OrderNotifyUrl *string `protobuf:"bytes,3,opt,name=order_notify_url,json=orderNotifyUrl,proto3,oneof" json:"order_notify_url,omitempty"`
+	// Optional. New refund result address. Absent leaves it unchanged.
+	// Present and empty clears it. Same address rules as order_notify_url.
+	RefundNotifyUrl *string `protobuf:"bytes,4,opt,name=refund_notify_url,json=refundNotifyUrl,proto3,oneof" json:"refund_notify_url,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1969,15 +1974,15 @@ func (x *UpdatePayApplicationRequest) GetName() string {
 }
 
 func (x *UpdatePayApplicationRequest) GetOrderNotifyUrl() string {
-	if x != nil {
-		return x.OrderNotifyUrl
+	if x != nil && x.OrderNotifyUrl != nil {
+		return *x.OrderNotifyUrl
 	}
 	return ""
 }
 
 func (x *UpdatePayApplicationRequest) GetRefundNotifyUrl() string {
-	if x != nil {
-		return x.RefundNotifyUrl
+	if x != nil && x.RefundNotifyUrl != nil {
+		return *x.RefundNotifyUrl
 	}
 	return ""
 }
@@ -2086,7 +2091,7 @@ type CreatePaymentRequest struct {
 	// Required. The Pay Application to collect for. It and its Merchant
 	// Account must exist, be enabled, and not be withdrawn. The Channel is
 	// the one on that Merchant Account.
-	ApplicationId int64 `protobuf:"varint,1,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
+	ApplicationId int64 `protobuf:"varint,7,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
 	// Required. Business Order Number — opaque caller reference, ≤ 64 chars.
 	BizNo string `protobuf:"bytes,2,opt,name=biz_no,json=bizNo,proto3" json:"biz_no,omitempty"`
 	// Required. Display subject, ≤ 256 chars.
@@ -3152,25 +3157,27 @@ const file_pay_v1_pay_proto_rawDesc = "" +
 	"\x06filter\x18\x03 \x01(\tR\x06filter\x12\x19\n" +
 	"\border_by\x18\x04 \x01(\tR\aorderBy\"F\n" +
 	"\x18GetPayApplicationRequest\x12*\n" +
-	"\x0eapplication_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\rapplicationId\"\xb8\x01\n" +
+	"\x0eapplication_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\rapplicationId\"\xed\x01\n" +
 	"\x1bUpdatePayApplicationRequest\x12*\n" +
 	"\x0eapplication_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\rapplicationId\x12\x17\n" +
-	"\x04name\x18\x02 \x01(\tB\x03\xe0A\x02R\x04name\x12(\n" +
-	"\x10order_notify_url\x18\x03 \x01(\tR\x0eorderNotifyUrl\x12*\n" +
-	"\x11refund_notify_url\x18\x04 \x01(\tR\x0frefundNotifyUrl\"l\n" +
+	"\x04name\x18\x02 \x01(\tB\x03\xe0A\x02R\x04name\x12-\n" +
+	"\x10order_notify_url\x18\x03 \x01(\tH\x00R\x0eorderNotifyUrl\x88\x01\x01\x12/\n" +
+	"\x11refund_notify_url\x18\x04 \x01(\tH\x01R\x0frefundNotifyUrl\x88\x01\x01B\x13\n" +
+	"\x11_order_notify_urlB\x14\n" +
+	"\x12_refund_notify_url\"l\n" +
 	"!ChangePayApplicationStatusRequest\x12*\n" +
 	"\x0eapplication_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\rapplicationId\x12\x1b\n" +
 	"\x06status\x18\x02 \x01(\x05B\x03\xe0A\x02R\x06status\"K\n" +
 	"\x1dWithdrawPayApplicationRequest\x12*\n" +
-	"\x0eapplication_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\rapplicationId\"\xe0\x01\n" +
+	"\x0eapplication_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\rapplicationId\"\xf3\x01\n" +
 	"\x14CreatePaymentRequest\x12*\n" +
-	"\x0eapplication_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\rapplicationId\x12\x1a\n" +
+	"\x0eapplication_id\x18\a \x01(\x03B\x03\xe0A\x02R\rapplicationId\x12\x1a\n" +
 	"\x06biz_no\x18\x02 \x01(\tB\x03\xe0A\x02R\x05bizNo\x12\x1d\n" +
 	"\asubject\x18\x03 \x01(\tB\x03\xe0A\x02R\asubject\x12\x1b\n" +
 	"\x06amount\x18\x04 \x01(\x03B\x03\xe0A\x02R\x06amount\x12\x1d\n" +
 	"\n" +
 	"pay_method\x18\x05 \x01(\x05R\tpayMethod\x12%\n" +
-	"\x0eexpire_minutes\x18\x06 \x01(\x05R\rexpireMinutes\"7\n" +
+	"\x0eexpire_minutes\x18\x06 \x01(\x05R\rexpireMinutesJ\x04\b\x01\x10\x02R\vmerchant_id\"7\n" +
 	"\x11GetPaymentRequest\x12\"\n" +
 	"\n" +
 	"payment_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\tpaymentId\"\x84\x01\n" +
@@ -3412,6 +3419,7 @@ func file_pay_v1_pay_proto_init() {
 	if File_pay_v1_pay_proto != nil {
 		return
 	}
+	file_pay_v1_pay_proto_msgTypes[24].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

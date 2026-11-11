@@ -37,9 +37,7 @@ type PayApplication struct {
 	OrderNotifyURL string `json:"order_notify_url,omitempty"`
 	// RefundNotifyURL holds the value of the "refund_notify_url" field.
 	RefundNotifyURL string `json:"refund_notify_url,omitempty"`
-	// Remark holds the value of the "remark" field.
-	Remark       string `json:"remark,omitempty"`
-	selectValues sql.SelectValues
+	selectValues    sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -49,7 +47,7 @@ func (*PayApplication) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case payapplication.FieldID, payapplication.FieldCreateBy, payapplication.FieldUpdateBy, payapplication.FieldMerchantID, payapplication.FieldStatus:
 			values[i] = new(sql.NullInt64)
-		case payapplication.FieldName, payapplication.FieldOrderNotifyURL, payapplication.FieldRefundNotifyURL, payapplication.FieldRemark:
+		case payapplication.FieldName, payapplication.FieldOrderNotifyURL, payapplication.FieldRefundNotifyURL:
 			values[i] = new(sql.NullString)
 		case payapplication.FieldCreatedAt, payapplication.FieldUpdatedAt, payapplication.FieldDeletedAt:
 			values[i] = new(sql.NullTime)
@@ -135,12 +133,6 @@ func (_m *PayApplication) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.RefundNotifyURL = value.String
 			}
-		case payapplication.FieldRemark:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field remark", values[i])
-			} else if value.Valid {
-				_m.Remark = value.String
-			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -208,9 +200,6 @@ func (_m *PayApplication) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("refund_notify_url=")
 	builder.WriteString(_m.RefundNotifyURL)
-	builder.WriteString(", ")
-	builder.WriteString("remark=")
-	builder.WriteString(_m.Remark)
 	builder.WriteByte(')')
 	return builder.String()
 }

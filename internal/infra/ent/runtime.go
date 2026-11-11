@@ -659,12 +659,6 @@ func init() {
 	payapplication.DefaultRefundNotifyURL = payapplicationDescRefundNotifyURL.Default.(string)
 	// payapplication.RefundNotifyURLValidator is a validator for the "refund_notify_url" field. It is called by the builders before save.
 	payapplication.RefundNotifyURLValidator = payapplicationDescRefundNotifyURL.Validators[0].(func(string) error)
-	// payapplicationDescRemark is the schema descriptor for remark field.
-	payapplicationDescRemark := payapplicationFields[6].Descriptor()
-	// payapplication.DefaultRemark holds the default value on creation for the remark field.
-	payapplication.DefaultRemark = payapplicationDescRemark.Default.(string)
-	// payapplication.RemarkValidator is a validator for the "remark" field. It is called by the builders before save.
-	payapplication.RemarkValidator = payapplicationDescRemark.Validators[0].(func(string) error)
 	paybusinessnoticeMixin := schema.PayBusinessNotice{}.Mixin()
 	paybusinessnoticeMixinFields0 := paybusinessnoticeMixin[0].Fields()
 	_ = paybusinessnoticeMixinFields0

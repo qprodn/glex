@@ -65,8 +65,9 @@ type PayServiceClient interface {
 	ListPayApplications(ctx context.Context, in *ListPayApplicationsRequest, opts ...grpc.CallOption) (*PayApplicationSet, error)
 	// GetPayApplication retrieves one Pay Application that is not withdrawn.
 	GetPayApplication(ctx context.Context, in *GetPayApplicationRequest, opts ...grpc.CallOption) (*PayApplication, error)
-	// UpdatePayApplication changes the display name and either result
-	// address. The number and the Merchant Account binding stay fixed.
+	// UpdatePayApplication changes the display name. A result address that
+	// is absent stays as stored. A present address replaces it, and empty
+	// clears it. The number and the Merchant Account binding stay fixed.
 	UpdatePayApplication(ctx context.Context, in *UpdatePayApplicationRequest, opts ...grpc.CallOption) (*PayApplication, error)
 	// ChangePayApplicationStatus enables or disables a Pay Application.
 	// Disabling stops new Payments and Refunds; in-flight ones still settle.
@@ -419,8 +420,9 @@ type PayServiceServer interface {
 	ListPayApplications(context.Context, *ListPayApplicationsRequest) (*PayApplicationSet, error)
 	// GetPayApplication retrieves one Pay Application that is not withdrawn.
 	GetPayApplication(context.Context, *GetPayApplicationRequest) (*PayApplication, error)
-	// UpdatePayApplication changes the display name and either result
-	// address. The number and the Merchant Account binding stay fixed.
+	// UpdatePayApplication changes the display name. A result address that
+	// is absent stays as stored. A present address replaces it, and empty
+	// clears it. The number and the Merchant Account binding stay fixed.
 	UpdatePayApplication(context.Context, *UpdatePayApplicationRequest) (*PayApplication, error)
 	// ChangePayApplicationStatus enables or disables a Pay Application.
 	// Disabling stops new Payments and Refunds; in-flight ones still settle.

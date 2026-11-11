@@ -245,8 +245,9 @@ service PayService {
       get: "/pay/application/{application_id}"
     };
   }
-  // UpdatePayApplication changes the display name and either result
-  // address. The number and the Merchant Account binding stay fixed.
+  // UpdatePayApplication changes the display name. A result address that
+  // is absent stays as stored. A present address replaces it, and empty
+  // clears it. The number and the Merchant Account binding stay fixed.
   rpc UpdatePayApplication(UpdatePayApplicationRequest) returns (PayApplication) {
     option (google.api.http) = {
       patch: "/pay/application/{application_id}"
@@ -506,8 +507,10 @@ message CreatePayApplicationRequest {
   // withdrawn. The binding cannot be changed later.
   int64 merchant_id = 2 [(google.api.field_behavior) = REQUIRED];
   // Optional. Payment result address, ≤ 512 chars. Empty is allowed.
+  // A non-empty value is an absolute http or https URL with a public host.
   string order_notify_url = 3;
   // Optional. Refund result address, ≤ 512 chars. Empty is allowed.
+  // Same address rules as order_notify_url.
   string refund_notify_url = 4;
 }
 
@@ -537,10 +540,13 @@ message UpdatePayApplicationRequest {
   int64 application_id = 1 [(google.api.field_behavior) = REQUIRED];
   // Required. New display name.
   string name = 2 [(google.api.field_behavior) = REQUIRED];
-  // Optional. New payment result address. Empty clears it.
-  string order_notify_url = 3;
-  // Optional. New refund result address. Empty clears it.
-  string refund_notify_url = 4;
+  // Optional. New payment result address. Absent leaves it unchanged.
+  // Present and empty clears it. An absolute http or https URL with a
+  // public host; other values are refused.
+  optional string order_notify_url = 3;
+  // Optional. New refund result address. Absent leaves it unchanged.
+  // Present and empty clears it. Same address rules as order_notify_url.
+  optional string refund_notify_url = 4;
 }
 
 message ChangePayApplicationStatusRequest {
@@ -556,10 +562,13 @@ message WithdrawPayApplicationRequest {
 }
 
 message CreatePaymentRequest {
+  reserved 1;
+  reserved "merchant_id";
+
   // Required. The Pay Application to collect for. It and its Merchant
   // Account must exist, be enabled, and not be withdrawn. The Channel is
   // the one on that Merchant Account.
-  int64 application_id = 1 [(google.api.field_behavior) = REQUIRED];
+  int64 application_id = 7 [(google.api.field_behavior) = REQUIRED];
   // Required. Business Order Number — opaque caller reference, ≤ 64 chars.
   string biz_no = 2 [(google.api.field_behavior) = REQUIRED];
   // Required. Display subject, ≤ 256 chars.

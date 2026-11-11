@@ -21,7 +21,6 @@ type PayApplication struct {
 	Status          ApplicationStatus
 	OrderNotifyURL  string
 	RefundNotifyURL string
-	Remark          string
 	CreateBy        int64
 	UpdateBy        int64
 	CreatedAt       time.Time
