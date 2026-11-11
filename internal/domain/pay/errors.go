@@ -70,4 +70,13 @@ var (
 	// ErrApplicationDuplicate: the display name is already taken by a Pay
 	// Application that is not withdrawn.
 	ErrApplicationDuplicate = errors.Conflict("APPLICATION_DUPLICATE", "pay application name already exists")
+	// ErrBusinessNoticeNotFound: the requested Business Notification does
+	// not exist (or is withdrawn).
+	ErrBusinessNoticeNotFound = errors.NotFound("BUSINESS_NOTICE_NOT_FOUND", "business notice not found")
+	// ErrBusinessNoticeNotExhausted: manual send was asked for a notice
+	// that is still waiting or already accepted.
+	ErrBusinessNoticeNotExhausted = errors.Conflict("BUSINESS_NOTICE_NOT_EXHAUSTED", "business notice is not exhausted")
+	// ErrBusinessNoticeAddressEmpty: the Pay Application's current result
+	// address of the matching kind is empty, so there is nowhere to send.
+	ErrBusinessNoticeAddressEmpty = errors.BadRequest("BUSINESS_NOTICE_ADDRESS_EMPTY", "pay application result address is empty")
 )

@@ -13,6 +13,7 @@ import (
 	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
 	payrepo "glex/internal/domain/pay/repository"
+	"glex/pkg/listq"
 )
 
 // Channel Notification intake, through Accept (ADR 0027). A script gateway
@@ -625,6 +626,18 @@ func (m *memNotices) ListDue(context.Context, payrepo.ListDueNoticesRequest) ([]
 
 func (m *memNotices) ClaimDueNotice(context.Context, payrepo.ClaimDueNoticeRequest) (bool, error) {
 	return false, nil
+}
+
+func (m *memNotices) FindByID(context.Context, int64) (*payentity.BusinessNotice, error) {
+	return nil, pay.ErrBusinessNoticeNotFound
+}
+
+func (m *memNotices) RecordManualAttempt(context.Context, payrepo.RecordManualAttemptRequest) error {
+	return nil
+}
+
+func (m *memNotices) ListExhausted(context.Context, listq.Query) ([]*payrepo.ExhaustedBusinessNotice, error) {
+	return nil, nil
 }
 
 func (m *memNotices) RecordAutomaticAttempt(context.Context, payrepo.RecordAutomaticAttemptRequest) error {

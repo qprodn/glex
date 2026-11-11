@@ -12,5 +12,6 @@ var Module = fx.Module("pay-domain-service",
 		fx.Annotate(NewRefundService, fx.As(new(Refund))),
 		fx.Annotate(NewIntake, fx.As(new(Intake))),
 		fx.Annotate(NewDelivery, fx.As(new(Delivery))),
+		fx.Annotate(NewNoticeDesk, fx.As(new(NoticeDesk))),
 	),
 )

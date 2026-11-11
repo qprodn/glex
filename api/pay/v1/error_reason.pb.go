@@ -83,6 +83,14 @@ const (
 	// This Pay Application already has a Payment for the Business Order
 	// Number, and the amount or Pay Method differs (HTTP 409).
 	ErrorReason_PAYMENT_CONFLICT ErrorReason = 18
+	// The requested Business Notification does not exist (or is withdrawn).
+	ErrorReason_BUSINESS_NOTICE_NOT_FOUND ErrorReason = 19
+	// Manual send was asked for a notice that is still waiting or already
+	// accepted (HTTP 409).
+	ErrorReason_BUSINESS_NOTICE_NOT_EXHAUSTED ErrorReason = 20
+	// The Pay Application's current result address of the matching kind is
+	// empty, so there is nowhere to send.
+	ErrorReason_BUSINESS_NOTICE_ADDRESS_EMPTY ErrorReason = 21
 )
 
 // Enum value maps for ErrorReason.
@@ -107,27 +115,33 @@ var (
 		16: "APPLICATION_INVALID",
 		17: "APPLICATION_DUPLICATE",
 		18: "PAYMENT_CONFLICT",
+		19: "BUSINESS_NOTICE_NOT_FOUND",
+		20: "BUSINESS_NOTICE_NOT_EXHAUSTED",
+		21: "BUSINESS_NOTICE_ADDRESS_EMPTY",
 	}
 	ErrorReason_value = map[string]int32{
-		"ERROR_REASON_UNSPECIFIED": 0,
-		"MERCHANT_NOT_FOUND":       1,
-		"MERCHANT_INVALID":         2,
-		"MERCHANT_DUPLICATE":       3,
-		"CHANNEL_NOT_ADOPTED":      4,
-		"MASTER_KEY_MISSING":       5,
-		"CONFIG_CRYPTO_ERROR":      6,
-		"PAYMENT_NOT_FOUND":        7,
-		"PAYMENT_INVALID":          8,
-		"PAYMENT_NOT_PAID":         9,
-		"REFUND_NOT_FOUND":         10,
-		"REFUND_EXCEED_LIMIT":      11,
-		"CHANNEL_ERROR":            12,
-		"CHANNEL_NOTIFY_INVALID":   13,
-		"PAY_STORE_UNAVAILABLE":    14,
-		"APPLICATION_NOT_FOUND":    15,
-		"APPLICATION_INVALID":      16,
-		"APPLICATION_DUPLICATE":    17,
-		"PAYMENT_CONFLICT":         18,
+		"ERROR_REASON_UNSPECIFIED":      0,
+		"MERCHANT_NOT_FOUND":            1,
+		"MERCHANT_INVALID":              2,
+		"MERCHANT_DUPLICATE":            3,
+		"CHANNEL_NOT_ADOPTED":           4,
+		"MASTER_KEY_MISSING":            5,
+		"CONFIG_CRYPTO_ERROR":           6,
+		"PAYMENT_NOT_FOUND":             7,
+		"PAYMENT_INVALID":               8,
+		"PAYMENT_NOT_PAID":              9,
+		"REFUND_NOT_FOUND":              10,
+		"REFUND_EXCEED_LIMIT":           11,
+		"CHANNEL_ERROR":                 12,
+		"CHANNEL_NOTIFY_INVALID":        13,
+		"PAY_STORE_UNAVAILABLE":         14,
+		"APPLICATION_NOT_FOUND":         15,
+		"APPLICATION_INVALID":           16,
+		"APPLICATION_DUPLICATE":         17,
+		"PAYMENT_CONFLICT":              18,
+		"BUSINESS_NOTICE_NOT_FOUND":     19,
+		"BUSINESS_NOTICE_NOT_EXHAUSTED": 20,
+		"BUSINESS_NOTICE_ADDRESS_EMPTY": 21,
 	}
 )
 
@@ -162,7 +176,7 @@ var File_pay_v1_error_reason_proto protoreflect.FileDescriptor
 
 const file_pay_v1_error_reason_proto_rawDesc = "" +
 	"\n" +
-	"\x19pay/v1/error_reason.proto\x12\x06pay.v1*\xdb\x03\n" +
+	"\x19pay/v1/error_reason.proto\x12\x06pay.v1*\xc0\x04\n" +
 	"\vErrorReason\x12\x1c\n" +
 	"\x18ERROR_REASON_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12MERCHANT_NOT_FOUND\x10\x01\x12\x14\n" +
@@ -183,7 +197,10 @@ const file_pay_v1_error_reason_proto_rawDesc = "" +
 	"\x15APPLICATION_NOT_FOUND\x10\x0f\x12\x17\n" +
 	"\x13APPLICATION_INVALID\x10\x10\x12\x19\n" +
 	"\x15APPLICATION_DUPLICATE\x10\x11\x12\x14\n" +
-	"\x10PAYMENT_CONFLICT\x10\x12B\"\n" +
+	"\x10PAYMENT_CONFLICT\x10\x12\x12\x1d\n" +
+	"\x19BUSINESS_NOTICE_NOT_FOUND\x10\x13\x12!\n" +
+	"\x1dBUSINESS_NOTICE_NOT_EXHAUSTED\x10\x14\x12!\n" +
+	"\x1dBUSINESS_NOTICE_ADDRESS_EMPTY\x10\x15B\"\n" +
 	"\n" +
 	"api.pay.v1P\x01Z\x12glex/api/pay/v1;v1b\x06proto3"
 

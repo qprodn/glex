@@ -56,6 +56,15 @@ func (f *fakePayApplicationRepo) FindByID(ctx context.Context, id int64) (*payen
 	return &cp, nil
 }
 
+func (f *fakePayApplicationRepo) FindByIDAny(ctx context.Context, id int64) (*payentity.PayApplication, error) {
+	app, ok := f.m[id]
+	if !ok {
+		return nil, pay.ErrApplicationNotFound
+	}
+	cp := *app
+	return &cp, nil
+}
+
 func (f *fakePayApplicationRepo) Create(ctx context.Context, app *payentity.PayApplication) (*payentity.PayApplication, error) {
 	if f.nameTaken(app.Name, 0) {
 		return nil, pay.ErrApplicationDuplicate

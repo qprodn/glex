@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"glex/internal/domain/pay/entity"
+	"glex/pkg/listq"
 )
 
 // BusinessNoticeRepo stores Business Notifications. One Payment has at most
@@ -26,6 +27,23 @@ type BusinessNoticeRepo interface {
 	// RecordAutomaticAttempt stores one automatic attempt and the notice
 	// progress that follows it: count, status, and next time.
 	RecordAutomaticAttempt(ctx context.Context, req RecordAutomaticAttemptRequest) error
+	// FindByID resolves one Business Notification that is not withdrawn.
+	FindByID(ctx context.Context, id int64) (*entity.BusinessNotice, error)
+	// RecordManualAttempt stores one manual attempt and the notice status
+	// it leaves. The automatic attempt count and the next automatic time
+	// stay as they are.
+	RecordManualAttempt(ctx context.Context, req RecordManualAttemptRequest) error
+	// ListExhausted returns exhausted notices, each with its latest
+	// attempt. Waiting and accepted notices are not included. Attempt
+	// rows are not removed.
+	ListExhausted(ctx context.Context, q listq.Query) ([]*ExhaustedBusinessNotice, error)
+}
+
+// ExhaustedBusinessNotice is one exhausted notice and the latest attempt
+// recorded for it. Last is nil when the notice has no attempt row.
+type ExhaustedBusinessNotice struct {
+	Notice *entity.BusinessNotice
+	Last   *entity.BusinessNoticeAttempt
 }
 
 // ListDueNoticesRequest selects waiting notices due at Now.
@@ -46,4 +64,13 @@ type ClaimDueNoticeRequest struct {
 type RecordAutomaticAttemptRequest struct {
 	Notice  *entity.BusinessNotice
 	Attempt *entity.BusinessNoticeAttempt
+}
+
+// RecordManualAttemptRequest is one finished manual attempt plus the notice
+// status it leaves. AttemptCount and NextAttemptAt are not fields of this
+// write: a manual send does not restart the automatic schedule.
+type RecordManualAttemptRequest struct {
+	Notice  *entity.BusinessNotice
+	Attempt *entity.BusinessNoticeAttempt
+	ActorID int64
 }

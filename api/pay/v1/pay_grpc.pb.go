@@ -20,29 +20,31 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PayService_CreatePayApplication_FullMethodName        = "/pay.v1.PayService/CreatePayApplication"
-	PayService_ListPayApplications_FullMethodName         = "/pay.v1.PayService/ListPayApplications"
-	PayService_GetPayApplication_FullMethodName           = "/pay.v1.PayService/GetPayApplication"
-	PayService_UpdatePayApplication_FullMethodName        = "/pay.v1.PayService/UpdatePayApplication"
-	PayService_ChangePayApplicationStatus_FullMethodName  = "/pay.v1.PayService/ChangePayApplicationStatus"
-	PayService_WithdrawPayApplication_FullMethodName      = "/pay.v1.PayService/WithdrawPayApplication"
-	PayService_CreateMerchantAccount_FullMethodName       = "/pay.v1.PayService/CreateMerchantAccount"
-	PayService_ListMerchantAccounts_FullMethodName        = "/pay.v1.PayService/ListMerchantAccounts"
-	PayService_GetMerchantAccount_FullMethodName          = "/pay.v1.PayService/GetMerchantAccount"
-	PayService_UpdateMerchantAccount_FullMethodName       = "/pay.v1.PayService/UpdateMerchantAccount"
-	PayService_ChangeMerchantAccountStatus_FullMethodName = "/pay.v1.PayService/ChangeMerchantAccountStatus"
-	PayService_WithdrawMerchantAccount_FullMethodName     = "/pay.v1.PayService/WithdrawMerchantAccount"
-	PayService_ProbeMerchantAccount_FullMethodName        = "/pay.v1.PayService/ProbeMerchantAccount"
-	PayService_GetChannelSchemas_FullMethodName           = "/pay.v1.PayService/GetChannelSchemas"
-	PayService_CreatePayment_FullMethodName               = "/pay.v1.PayService/CreatePayment"
-	PayService_GetPayment_FullMethodName                  = "/pay.v1.PayService/GetPayment"
-	PayService_ListPayments_FullMethodName                = "/pay.v1.PayService/ListPayments"
-	PayService_QueryPayment_FullMethodName                = "/pay.v1.PayService/QueryPayment"
-	PayService_ClosePayment_FullMethodName                = "/pay.v1.PayService/ClosePayment"
-	PayService_CreateRefund_FullMethodName                = "/pay.v1.PayService/CreateRefund"
-	PayService_GetRefund_FullMethodName                   = "/pay.v1.PayService/GetRefund"
-	PayService_ListRefunds_FullMethodName                 = "/pay.v1.PayService/ListRefunds"
-	PayService_QueryRefund_FullMethodName                 = "/pay.v1.PayService/QueryRefund"
+	PayService_CreatePayApplication_FullMethodName         = "/pay.v1.PayService/CreatePayApplication"
+	PayService_ListPayApplications_FullMethodName          = "/pay.v1.PayService/ListPayApplications"
+	PayService_GetPayApplication_FullMethodName            = "/pay.v1.PayService/GetPayApplication"
+	PayService_UpdatePayApplication_FullMethodName         = "/pay.v1.PayService/UpdatePayApplication"
+	PayService_ChangePayApplicationStatus_FullMethodName   = "/pay.v1.PayService/ChangePayApplicationStatus"
+	PayService_WithdrawPayApplication_FullMethodName       = "/pay.v1.PayService/WithdrawPayApplication"
+	PayService_CreateMerchantAccount_FullMethodName        = "/pay.v1.PayService/CreateMerchantAccount"
+	PayService_ListMerchantAccounts_FullMethodName         = "/pay.v1.PayService/ListMerchantAccounts"
+	PayService_GetMerchantAccount_FullMethodName           = "/pay.v1.PayService/GetMerchantAccount"
+	PayService_UpdateMerchantAccount_FullMethodName        = "/pay.v1.PayService/UpdateMerchantAccount"
+	PayService_ChangeMerchantAccountStatus_FullMethodName  = "/pay.v1.PayService/ChangeMerchantAccountStatus"
+	PayService_WithdrawMerchantAccount_FullMethodName      = "/pay.v1.PayService/WithdrawMerchantAccount"
+	PayService_ProbeMerchantAccount_FullMethodName         = "/pay.v1.PayService/ProbeMerchantAccount"
+	PayService_GetChannelSchemas_FullMethodName            = "/pay.v1.PayService/GetChannelSchemas"
+	PayService_CreatePayment_FullMethodName                = "/pay.v1.PayService/CreatePayment"
+	PayService_GetPayment_FullMethodName                   = "/pay.v1.PayService/GetPayment"
+	PayService_ListPayments_FullMethodName                 = "/pay.v1.PayService/ListPayments"
+	PayService_QueryPayment_FullMethodName                 = "/pay.v1.PayService/QueryPayment"
+	PayService_ClosePayment_FullMethodName                 = "/pay.v1.PayService/ClosePayment"
+	PayService_CreateRefund_FullMethodName                 = "/pay.v1.PayService/CreateRefund"
+	PayService_GetRefund_FullMethodName                    = "/pay.v1.PayService/GetRefund"
+	PayService_ListRefunds_FullMethodName                  = "/pay.v1.PayService/ListRefunds"
+	PayService_QueryRefund_FullMethodName                  = "/pay.v1.PayService/QueryRefund"
+	PayService_ListExhaustedBusinessNotices_FullMethodName = "/pay.v1.PayService/ListExhaustedBusinessNotices"
+	PayService_ResendBusinessNotice_FullMethodName         = "/pay.v1.PayService/ResendBusinessNotice"
 )
 
 // PayServiceClient is the client API for PayService service.
@@ -128,6 +130,17 @@ type PayServiceClient interface {
 	// QueryRefund asks the Channel for the Refund's true state and advances
 	// it by CAS.
 	QueryRefund(ctx context.Context, in *QueryRefundRequest, opts ...grpc.CallOption) (*Refund, error)
+	// ListExhaustedBusinessNotices lists Business Notifications whose
+	// automatic delivery is exhausted, each with its latest attempt.
+	// Waiting and accepted notices are not included. Attempt rows stay
+	// stored.
+	ListExhaustedBusinessNotices(ctx context.Context, in *ListExhaustedBusinessNoticesRequest, opts ...grpc.CallOption) (*BusinessNoticeSet, error)
+	// ResendBusinessNotice delivers one exhausted notice once, to the Pay
+	// Application's current result address of the same kind. A notice that
+	// is still waiting or already accepted is refused. An empty current
+	// address is refused. HTTP 2xx accepts the notice. Any other outcome
+	// leaves it exhausted. The automatic schedule is not restarted.
+	ResendBusinessNotice(ctx context.Context, in *ResendBusinessNoticeRequest, opts ...grpc.CallOption) (*BusinessNotice, error)
 }
 
 type payServiceClient struct {
@@ -368,6 +381,26 @@ func (c *payServiceClient) QueryRefund(ctx context.Context, in *QueryRefundReque
 	return out, nil
 }
 
+func (c *payServiceClient) ListExhaustedBusinessNotices(ctx context.Context, in *ListExhaustedBusinessNoticesRequest, opts ...grpc.CallOption) (*BusinessNoticeSet, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BusinessNoticeSet)
+	err := c.cc.Invoke(ctx, PayService_ListExhaustedBusinessNotices_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *payServiceClient) ResendBusinessNotice(ctx context.Context, in *ResendBusinessNoticeRequest, opts ...grpc.CallOption) (*BusinessNotice, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BusinessNotice)
+	err := c.cc.Invoke(ctx, PayService_ResendBusinessNotice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PayServiceServer is the server API for PayService service.
 // All implementations must embed UnimplementedPayServiceServer
 // for forward compatibility.
@@ -451,6 +484,17 @@ type PayServiceServer interface {
 	// QueryRefund asks the Channel for the Refund's true state and advances
 	// it by CAS.
 	QueryRefund(context.Context, *QueryRefundRequest) (*Refund, error)
+	// ListExhaustedBusinessNotices lists Business Notifications whose
+	// automatic delivery is exhausted, each with its latest attempt.
+	// Waiting and accepted notices are not included. Attempt rows stay
+	// stored.
+	ListExhaustedBusinessNotices(context.Context, *ListExhaustedBusinessNoticesRequest) (*BusinessNoticeSet, error)
+	// ResendBusinessNotice delivers one exhausted notice once, to the Pay
+	// Application's current result address of the same kind. A notice that
+	// is still waiting or already accepted is refused. An empty current
+	// address is refused. HTTP 2xx accepts the notice. Any other outcome
+	// leaves it exhausted. The automatic schedule is not restarted.
+	ResendBusinessNotice(context.Context, *ResendBusinessNoticeRequest) (*BusinessNotice, error)
 	mustEmbedUnimplementedPayServiceServer()
 }
 
@@ -529,6 +573,12 @@ func (UnimplementedPayServiceServer) ListRefunds(context.Context, *ListRefundsRe
 }
 func (UnimplementedPayServiceServer) QueryRefund(context.Context, *QueryRefundRequest) (*Refund, error) {
 	return nil, status.Error(codes.Unimplemented, "method QueryRefund not implemented")
+}
+func (UnimplementedPayServiceServer) ListExhaustedBusinessNotices(context.Context, *ListExhaustedBusinessNoticesRequest) (*BusinessNoticeSet, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListExhaustedBusinessNotices not implemented")
+}
+func (UnimplementedPayServiceServer) ResendBusinessNotice(context.Context, *ResendBusinessNoticeRequest) (*BusinessNotice, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResendBusinessNotice not implemented")
 }
 func (UnimplementedPayServiceServer) mustEmbedUnimplementedPayServiceServer() {}
 func (UnimplementedPayServiceServer) testEmbeddedByValue()                    {}
@@ -965,6 +1015,42 @@ func _PayService_QueryRefund_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PayService_ListExhaustedBusinessNotices_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListExhaustedBusinessNoticesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PayServiceServer).ListExhaustedBusinessNotices(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PayService_ListExhaustedBusinessNotices_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PayServiceServer).ListExhaustedBusinessNotices(ctx, req.(*ListExhaustedBusinessNoticesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PayService_ResendBusinessNotice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResendBusinessNoticeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PayServiceServer).ResendBusinessNotice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PayService_ResendBusinessNotice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PayServiceServer).ResendBusinessNotice(ctx, req.(*ResendBusinessNoticeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PayService_ServiceDesc is the grpc.ServiceDesc for PayService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1063,6 +1149,14 @@ var PayService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "QueryRefund",
 			Handler:    _PayService_QueryRefund_Handler,
+		},
+		{
+			MethodName: "ListExhaustedBusinessNotices",
+			Handler:    _PayService_ListExhaustedBusinessNotices_Handler,
+		},
+		{
+			MethodName: "ResendBusinessNotice",
+			Handler:    _PayService_ResendBusinessNotice_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

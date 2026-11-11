@@ -34,6 +34,7 @@ export const componentRegistry: Record<string, React.ComponentType> = {
   "file/index": lazyPage(() => import("@/pages/file")),
   "pay/merchant/index": lazyPage(() => import("@/pages/pay/merchant")),
   "pay/application/index": lazyPage(() => import("@/pages/pay/application")),
+  "pay/business-notice/index": lazyPage(() => import("@/pages/pay/business-notice")),
   "pay/payment/index": lazyPage(() => import("@/pages/pay/payment")),
   "pay/refund/index": lazyPage(() => import("@/pages/pay/refund")),
   "wechat/platform/index": lazyPage(() => import("@/pages/wechat/platform")),

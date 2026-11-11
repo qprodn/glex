@@ -16,6 +16,7 @@ export default {
   "menu.pay.application": "Pay Applications",
   "menu.pay.payment": "Payments",
   "menu.pay.refund": "Refunds",
+  "menu.pay.business-notice": "Business Notifications",
   "menu.wechat": "WeChat",
   "menu.wechat.platform": "WeChat Platforms",
   "menu.wechat.app": "WeChat Apps",

@@ -2,13 +2,20 @@ package payinfra
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
+	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
 	payrepo "glex/internal/domain/pay/repository"
 	"glex/internal/infra/ent"
 	entnotice "glex/internal/infra/ent/paybusinessnotice"
+	entattempt "glex/internal/infra/ent/paybusinessnoticeattempt"
 	"glex/internal/infra/store"
+	"glex/pkg/listq"
+
+	"entgo.io/ent/dialect/sql"
+	"github.com/go-kratos/aip-go/ents"
 )
 
 type businessNoticeRepo struct {
@@ -146,6 +153,142 @@ func (r *businessNoticeRepo) RecordAutomaticAttempt(ctx context.Context, req pay
 	})
 	if txErr != nil {
 		return r.storeError(ctx, "pay.business_notice.record_attempt", txErr)
+	}
+	return nil
+}
+
+// ListExhausted returns exhausted notices with the latest attempt on each.
+func (r *businessNoticeRepo) ListExhausted(ctx context.Context, q listq.Query) ([]*payrepo.ExhaustedBusinessNotice, error) {
+	limit := q.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	rows, err := r.data.DB.PayBusinessNotice(ctx).Query().
+		Where(
+			entnotice.DeletedAtIsNil(),
+			entnotice.StatusEQ(int16(payentity.NoticeExhausted)),
+			ents.ApplyFilter(q.Filter),
+		).
+		Order(ents.ApplyOrderBy(q.OrderBy)).
+		Offset(q.Offset).
+		Limit(limit).
+		All(ctx)
+	if err != nil {
+		return nil, r.storeError(ctx, "pay.business_notice.list_exhausted", err)
+	}
+	ids := make([]int64, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.ID)
+	}
+	lastByNotice, err := r.latestAttempts(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*payrepo.ExhaustedBusinessNotice, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, &payrepo.ExhaustedBusinessNotice{
+			Notice: toBizNotice(row),
+			Last:   lastByNotice[row.ID],
+		})
+	}
+	return out, nil
+}
+
+func (r *businessNoticeRepo) latestAttempts(ctx context.Context, ids []int64) (map[int64]*payentity.BusinessNoticeAttempt, error) {
+	out := map[int64]*payentity.BusinessNoticeAttempt{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	rows, err := r.data.DB.PayBusinessNoticeAttempt(ctx).Query().
+		Where(
+			entattempt.DeletedAtIsNil(),
+			entattempt.NoticeIDIn(ids...),
+		).
+		Order(entattempt.ByCreatedAt(sql.OrderDesc()), entattempt.ByID(sql.OrderDesc())).
+		All(ctx)
+	if err != nil {
+		return nil, r.storeError(ctx, "pay.business_notice.list_exhausted", err)
+	}
+	for _, row := range rows {
+		if _, ok := out[row.NoticeID]; ok {
+			continue
+		}
+		out[row.NoticeID] = toBizAttempt(row)
+	}
+	return out, nil
+}
+
+func toBizAttempt(po *ent.PayBusinessNoticeAttempt) *payentity.BusinessNoticeAttempt {
+	attempt := &payentity.BusinessNoticeAttempt{
+		ID:        po.ID,
+		NoticeID:  po.NoticeID,
+		Manual:    po.Manual,
+		Error:     po.Error,
+		Accepted:  po.Accepted,
+		CreatedAt: po.CreatedAt,
+	}
+	if po.HTTPStatus != nil {
+		code := *po.HTTPStatus
+		attempt.HTTPStatus = &code
+	}
+	return attempt
+}
+
+// FindByID resolves one Business Notification that is not withdrawn.
+func (r *businessNoticeRepo) FindByID(ctx context.Context, id int64) (*payentity.BusinessNotice, error) {
+	po, err := r.data.DB.PayBusinessNotice(ctx).Query().
+		Where(entnotice.IDEQ(id), entnotice.DeletedAtIsNil()).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, pay.ErrBusinessNoticeNotFound
+		}
+		return nil, r.storeError(ctx, "pay.business_notice.find_by_id", err)
+	}
+	return toBizNotice(po), nil
+}
+
+// RecordManualAttempt stores the attempt and the notice status. The
+// automatic count and the next automatic time are not rewritten. A notice
+// that is no longer exhausted records nothing.
+func (r *businessNoticeRepo) RecordManualAttempt(ctx context.Context, req payrepo.RecordManualAttemptRequest) error {
+	txErr := r.data.DB.InTx(ctx, func(ctx context.Context) error {
+		n, err := r.data.DB.PayBusinessNotice(ctx).Update().
+			Where(
+				entnotice.IDEQ(req.Notice.ID),
+				entnotice.DeletedAtIsNil(),
+				entnotice.StatusEQ(int16(payentity.NoticeExhausted)),
+			).
+			SetStatus(int16(req.Notice.Status)).
+			SetUpdateBy(req.ActorID).
+			Save(ctx)
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return pay.ErrBusinessNoticeNotExhausted
+		}
+		create := r.data.DB.PayBusinessNoticeAttempt(ctx).Create().
+			SetID(req.Attempt.ID).
+			SetNoticeID(req.Attempt.NoticeID).
+			SetManual(req.Attempt.Manual).
+			SetError(req.Attempt.Error).
+			SetAccepted(req.Attempt.Accepted).
+			SetCreateBy(req.ActorID).
+			SetUpdateBy(req.ActorID)
+		if req.Attempt.HTTPStatus != nil {
+			create.SetHTTPStatus(*req.Attempt.HTTPStatus)
+		}
+		if !req.Attempt.CreatedAt.IsZero() {
+			create.SetCreatedAt(req.Attempt.CreatedAt)
+		}
+		return create.Exec(ctx)
+	})
+	if txErr != nil {
+		if errors.Is(txErr, pay.ErrBusinessNoticeNotExhausted) {
+			return pay.ErrBusinessNoticeNotExhausted
+		}
+		return r.storeError(ctx, "pay.business_notice.record_manual_attempt", txErr)
 	}
 	return nil
 }

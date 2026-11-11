@@ -30,6 +30,7 @@ const OperationPayServiceGetMerchantAccount = "/pay.v1.PayService/GetMerchantAcc
 const OperationPayServiceGetPayApplication = "/pay.v1.PayService/GetPayApplication"
 const OperationPayServiceGetPayment = "/pay.v1.PayService/GetPayment"
 const OperationPayServiceGetRefund = "/pay.v1.PayService/GetRefund"
+const OperationPayServiceListExhaustedBusinessNotices = "/pay.v1.PayService/ListExhaustedBusinessNotices"
 const OperationPayServiceListMerchantAccounts = "/pay.v1.PayService/ListMerchantAccounts"
 const OperationPayServiceListPayApplications = "/pay.v1.PayService/ListPayApplications"
 const OperationPayServiceListPayments = "/pay.v1.PayService/ListPayments"
@@ -37,6 +38,7 @@ const OperationPayServiceListRefunds = "/pay.v1.PayService/ListRefunds"
 const OperationPayServiceProbeMerchantAccount = "/pay.v1.PayService/ProbeMerchantAccount"
 const OperationPayServiceQueryPayment = "/pay.v1.PayService/QueryPayment"
 const OperationPayServiceQueryRefund = "/pay.v1.PayService/QueryRefund"
+const OperationPayServiceResendBusinessNotice = "/pay.v1.PayService/ResendBusinessNotice"
 const OperationPayServiceUpdateMerchantAccount = "/pay.v1.PayService/UpdateMerchantAccount"
 const OperationPayServiceUpdatePayApplication = "/pay.v1.PayService/UpdatePayApplication"
 const OperationPayServiceWithdrawMerchantAccount = "/pay.v1.PayService/WithdrawMerchantAccount"
@@ -83,6 +85,11 @@ type PayServiceHTTPServer interface {
 	GetPayment(context.Context, *GetPaymentRequest) (*Payment, error)
 	// GetRefund GetRefund retrieves one Refund.
 	GetRefund(context.Context, *GetRefundRequest) (*Refund, error)
+	// ListExhaustedBusinessNotices ListExhaustedBusinessNotices lists Business Notifications whose
+	// automatic delivery is exhausted, each with its latest attempt.
+	// Waiting and accepted notices are not included. Attempt rows stay
+	// stored.
+	ListExhaustedBusinessNotices(context.Context, *ListExhaustedBusinessNoticesRequest) (*BusinessNoticeSet, error)
 	// ListMerchantAccounts ListMerchantAccounts lists Merchant Accounts with AIP filter/order/
 	// page-token. Responses carry masked configs only.
 	ListMerchantAccounts(context.Context, *ListMerchantAccountsRequest) (*MerchantAccountSet, error)
@@ -104,6 +111,12 @@ type PayServiceHTTPServer interface {
 	// QueryRefund QueryRefund asks the Channel for the Refund's true state and advances
 	// it by CAS.
 	QueryRefund(context.Context, *QueryRefundRequest) (*Refund, error)
+	// ResendBusinessNotice ResendBusinessNotice delivers one exhausted notice once, to the Pay
+	// Application's current result address of the same kind. A notice that
+	// is still waiting or already accepted is refused. An empty current
+	// address is refused. HTTP 2xx accepts the notice. Any other outcome
+	// leaves it exhausted. The automatic schedule is not restarted.
+	ResendBusinessNotice(context.Context, *ResendBusinessNoticeRequest) (*BusinessNotice, error)
 	// UpdateMerchantAccount UpdateMerchantAccount replaces the display name, remark, and the whole
 	// config form; secret fields left blank keep their stored values
 	// (schema semantics, ADR 0021).
@@ -144,6 +157,8 @@ func RegisterPayServiceHTTPServer(s *http.Server, srv PayServiceHTTPServer) {
 	r.Handle("GET", "/pay/refund/{refund_id}", _PayService_GetRefund0_HTTP_Handler(srv))
 	r.Handle("GET", "/pay/refund", _PayService_ListRefunds0_HTTP_Handler(srv))
 	r.Handle("POST", "/pay/refund/{refund_id}/query", _PayService_QueryRefund0_HTTP_Handler(srv))
+	r.Handle("GET", "/pay/business-notice", _PayService_ListExhaustedBusinessNotices0_HTTP_Handler(srv))
+	r.Handle("POST", "/pay/business-notice/{id}/resend", _PayService_ResendBusinessNotice0_HTTP_Handler(srv))
 }
 
 func _PayService_CreatePayApplication0_HTTP_Handler(srv PayServiceHTTPServer) func(ctx http.Context) error {
@@ -625,6 +640,47 @@ func _PayService_QueryRefund0_HTTP_Handler(srv PayServiceHTTPServer) func(ctx ht
 	}
 }
 
+func _PayService_ListExhaustedBusinessNotices0_HTTP_Handler(srv PayServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListExhaustedBusinessNoticesRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationPayServiceListExhaustedBusinessNotices)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListExhaustedBusinessNotices(ctx, req.(*ListExhaustedBusinessNoticesRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*BusinessNoticeSet)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _PayService_ResendBusinessNotice0_HTTP_Handler(srv PayServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ResendBusinessNoticeRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationPayServiceResendBusinessNotice)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ResendBusinessNotice(ctx, req.(*ResendBusinessNoticeRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*BusinessNotice)
+		return ctx.Result(200, reply)
+	}
+}
+
 type PayServiceHTTPClient interface {
 	// ChangeMerchantAccountStatus ChangeMerchantAccountStatus enables or disables a Merchant Account.
 	// Disabling stops new Payments only; in-flight ones still settle.
@@ -666,6 +722,11 @@ type PayServiceHTTPClient interface {
 	GetPayment(ctx context.Context, req *GetPaymentRequest, opts ...http.CallOption) (rsp *Payment, err error)
 	// GetRefund GetRefund retrieves one Refund.
 	GetRefund(ctx context.Context, req *GetRefundRequest, opts ...http.CallOption) (rsp *Refund, err error)
+	// ListExhaustedBusinessNotices ListExhaustedBusinessNotices lists Business Notifications whose
+	// automatic delivery is exhausted, each with its latest attempt.
+	// Waiting and accepted notices are not included. Attempt rows stay
+	// stored.
+	ListExhaustedBusinessNotices(ctx context.Context, req *ListExhaustedBusinessNoticesRequest, opts ...http.CallOption) (rsp *BusinessNoticeSet, err error)
 	// ListMerchantAccounts ListMerchantAccounts lists Merchant Accounts with AIP filter/order/
 	// page-token. Responses carry masked configs only.
 	ListMerchantAccounts(ctx context.Context, req *ListMerchantAccountsRequest, opts ...http.CallOption) (rsp *MerchantAccountSet, err error)
@@ -687,6 +748,12 @@ type PayServiceHTTPClient interface {
 	// QueryRefund QueryRefund asks the Channel for the Refund's true state and advances
 	// it by CAS.
 	QueryRefund(ctx context.Context, req *QueryRefundRequest, opts ...http.CallOption) (rsp *Refund, err error)
+	// ResendBusinessNotice ResendBusinessNotice delivers one exhausted notice once, to the Pay
+	// Application's current result address of the same kind. A notice that
+	// is still waiting or already accepted is refused. An empty current
+	// address is refused. HTTP 2xx accepts the notice. Any other outcome
+	// leaves it exhausted. The automatic schedule is not restarted.
+	ResendBusinessNotice(ctx context.Context, req *ResendBusinessNoticeRequest, opts ...http.CallOption) (rsp *BusinessNotice, err error)
 	// UpdateMerchantAccount UpdateMerchantAccount replaces the display name, remark, and the whole
 	// config form; secret fields left blank keep their stored values
 	// (schema semantics, ADR 0021).
@@ -937,6 +1004,26 @@ func (c *PayServiceHTTPClientImpl) GetRefund(ctx context.Context, in *GetRefundR
 	return &out, nil
 }
 
+// ListExhaustedBusinessNotices ListExhaustedBusinessNotices lists Business Notifications whose
+// automatic delivery is exhausted, each with its latest attempt.
+// Waiting and accepted notices are not included. Attempt rows stay
+// stored.
+func (c *PayServiceHTTPClientImpl) ListExhaustedBusinessNotices(ctx context.Context, in *ListExhaustedBusinessNoticesRequest, opts ...http.CallOption) (*BusinessNoticeSet, error) {
+	var out BusinessNoticeSet
+	pattern := "/pay/business-notice"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationPayServiceListExhaustedBusinessNotices),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ListMerchantAccounts ListMerchantAccounts lists Merchant Accounts with AIP filter/order/
 // page-token. Responses carry masked configs only.
 func (c *PayServiceHTTPClientImpl) ListMerchantAccounts(ctx context.Context, in *ListMerchantAccountsRequest, opts ...http.CallOption) (*MerchantAccountSet, error) {
@@ -1057,6 +1144,28 @@ func (c *PayServiceHTTPClientImpl) QueryRefund(ctx context.Context, in *QueryRef
 		http.Accept("application/protojson"),
 		http.ContentType("application/protojson"),
 		http.Operation(OperationPayServiceQueryRefund),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ResendBusinessNotice ResendBusinessNotice delivers one exhausted notice once, to the Pay
+// Application's current result address of the same kind. A notice that
+// is still waiting or already accepted is refused. An empty current
+// address is refused. HTTP 2xx accepts the notice. Any other outcome
+// leaves it exhausted. The automatic schedule is not restarted.
+func (c *PayServiceHTTPClientImpl) ResendBusinessNotice(ctx context.Context, in *ResendBusinessNoticeRequest, opts ...http.CallOption) (*BusinessNotice, error) {
+	var out BusinessNotice
+	pattern := "/pay/business-notice/{id}/resend"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationPayServiceResendBusinessNotice),
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)

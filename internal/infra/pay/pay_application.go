@@ -53,6 +53,19 @@ func (r *payApplicationRepo) NextID() int64 {
 	return newSnowflakeID()
 }
 
+func (r *payApplicationRepo) FindByIDAny(ctx context.Context, id int64) (*payentity.PayApplication, error) {
+	po, err := r.data.DB.PayApplication(ctx).Query().
+		Where(entapp.IDEQ(id)).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, pay.ErrApplicationNotFound
+		}
+		return nil, r.storeError(ctx, "pay.application.find_by_id_any", err)
+	}
+	return toBizPayApplication(po), nil
+}
+
 func (r *payApplicationRepo) FindByID(ctx context.Context, id int64) (*payentity.PayApplication, error) {
 	po, err := r.data.DB.PayApplication(ctx).Query().
 		Where(entapp.IDEQ(id), entapp.DeletedAtIsNil()).

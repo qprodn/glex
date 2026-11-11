@@ -16,6 +16,7 @@ export default {
   "menu.pay.application": "支付应用",
   "menu.pay.payment": "支付单",
   "menu.pay.refund": "退款单",
+  "menu.pay.business-notice": "业务通知",
   "menu.wechat": "微信管理",
   "menu.wechat.platform": "微信平台",
   "menu.wechat.app": "微信应用",

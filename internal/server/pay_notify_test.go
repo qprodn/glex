@@ -363,6 +363,18 @@ func (goldNoticeRepo) ClaimDueNotice(context.Context, payrepo.ClaimDueNoticeRequ
 	return false, nil
 }
 
+func (goldNoticeRepo) FindByID(context.Context, int64) (*payentity.BusinessNotice, error) {
+	return nil, paydomain.ErrBusinessNoticeNotFound
+}
+
+func (goldNoticeRepo) RecordManualAttempt(context.Context, payrepo.RecordManualAttemptRequest) error {
+	return nil
+}
+
+func (goldNoticeRepo) ListExhausted(context.Context, listq.Query) ([]*payrepo.ExhaustedBusinessNotice, error) {
+	return nil, nil
+}
+
 func (goldNoticeRepo) RecordAutomaticAttempt(context.Context, payrepo.RecordAutomaticAttemptRequest) error {
 	return nil
 }
@@ -442,6 +454,7 @@ func newGoldFixture(t *testing.T) *goldFixture {
 		paymentSvc,
 		refundSvc,
 		intake,
+		nil,
 		nil,
 		nil, nil,
 		&conf.Pay{NotifyBaseUrl: "https://pay.example.com"},

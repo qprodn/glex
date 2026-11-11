@@ -34,6 +34,10 @@ type DeletePayApplicationRequest struct {
 type PayApplicationRepo interface {
 	// FindByID resolves one Pay Application that is not withdrawn.
 	FindByID(ctx context.Context, id int64) (*entity.PayApplication, error)
+	// FindByIDAny resolves the Pay Application regardless of withdrawal.
+	// Manual resend reads the current result address from a disabled or
+	// withdrawn row. A disabled row is still live for FindByID.
+	FindByIDAny(ctx context.Context, id int64) (*entity.PayApplication, error)
 	// List returns Pay Applications that are not withdrawn.
 	List(ctx context.Context, q listq.Query) ([]*entity.PayApplication, error)
 	// Create inserts the row. A display name already held by a Pay

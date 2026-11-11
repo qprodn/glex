@@ -70,6 +70,7 @@ func newTestPayApplication(locker *fakeLocker, payments *fakePaymentSvc) *PayApp
 		&fakeRefundSvc{},
 		nil,
 		nil,
+		nil,
 		&fakeTx{},
 		locker,
 		&conf.Pay{NotifyBaseUrl: "https://pay.example.com"},

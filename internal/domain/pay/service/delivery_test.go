@@ -8,8 +8,10 @@ import (
 	"testing"
 	"time"
 
+	pay "glex/internal/domain/pay"
 	payentity "glex/internal/domain/pay/entity"
 	payrepo "glex/internal/domain/pay/repository"
+	"glex/pkg/listq"
 )
 
 // Delivery is tested at the pay domain service. The notice store is in
@@ -373,6 +375,68 @@ func (m *memDeliveryNotices) ClaimDueNotice(_ context.Context, req payrepo.Claim
 	}
 	n.NextAttemptAt = req.Until
 	return true, nil
+}
+
+func (m *memDeliveryNotices) FindByID(_ context.Context, id int64) (*payentity.BusinessNotice, error) {
+	n := m.notice(id)
+	if n == nil {
+		return nil, pay.ErrBusinessNoticeNotFound
+	}
+	cp := *n
+	return &cp, nil
+}
+
+func (m *memDeliveryNotices) RecordManualAttempt(_ context.Context, req payrepo.RecordManualAttemptRequest) error {
+	if m.saveErr != nil {
+		return m.saveErr
+	}
+	n := m.notice(req.Notice.ID)
+	if n == nil || n.Status != payentity.NoticeExhausted {
+		return pay.ErrBusinessNoticeNotExhausted
+	}
+	n.Status = req.Notice.Status
+	cp := *req.Attempt
+	m.attempts = append(m.attempts, &cp)
+	return nil
+}
+
+func (m *memDeliveryNotices) ListExhausted(_ context.Context, q listq.Query) ([]*payrepo.ExhaustedBusinessNotice, error) {
+	var rows []*payrepo.ExhaustedBusinessNotice
+	for _, n := range m.notices {
+		if n.Status != payentity.NoticeExhausted {
+			continue
+		}
+		cp := *n
+		item := &payrepo.ExhaustedBusinessNotice{Notice: &cp}
+		var last *payentity.BusinessNoticeAttempt
+		for _, attempt := range m.attempts {
+			if attempt.NoticeID != n.ID {
+				continue
+			}
+			if last != nil && (attempt.CreatedAt.Before(last.CreatedAt) || (attempt.CreatedAt.Equal(last.CreatedAt) && attempt.ID <= last.ID)) {
+				continue
+			}
+			ac := *attempt
+			last = &ac
+		}
+		item.Last = last
+		rows = append(rows, item)
+	}
+	for i := 1; i < len(rows); i++ {
+		for j := i; j > 0 && rows[j].Notice.ID > rows[j-1].Notice.ID; j-- {
+			rows[j], rows[j-1] = rows[j-1], rows[j]
+		}
+	}
+	if q.Offset > 0 {
+		if q.Offset >= len(rows) {
+			return nil, nil
+		}
+		rows = rows[q.Offset:]
+	}
+	if q.Limit > 0 && len(rows) > q.Limit {
+		rows = rows[:q.Limit]
+	}
+	return rows, nil
 }
 
 func (m *memDeliveryNotices) RecordAutomaticAttempt(_ context.Context, req payrepo.RecordAutomaticAttemptRequest) error {

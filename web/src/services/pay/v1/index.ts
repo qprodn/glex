@@ -61,7 +61,15 @@ export type ErrorReason =
   | "APPLICATION_DUPLICATE"
   // This Pay Application already has a Payment for the Business Order
   // Number, and the amount or Pay Method differs (HTTP 409).
-  | "PAYMENT_CONFLICT";
+  | "PAYMENT_CONFLICT"
+  // The requested Business Notification does not exist (or is withdrawn).
+  | "BUSINESS_NOTICE_NOT_FOUND"
+  // Manual send was asked for a notice that is still waiting or already
+  // accepted (HTTP 409).
+  | "BUSINESS_NOTICE_NOT_EXHAUSTED"
+  // The Pay Application's current result address of the matching kind is
+  // empty, so there is nowhere to send.
+  | "BUSINESS_NOTICE_ADDRESS_EMPTY";
 // MerchantAccount is one Channel Merchant Account (商户账号): the platform's
 // own collecting account at one Channel. The credential config is never
 // served — every response carries only config_masked, the write-time masked
@@ -539,6 +547,63 @@ export type QueryRefundRequest = {
   refundId: number | undefined;
 };
 
+// BusinessNotice is one Business Notification on the exhausted-notice
+// queue, plus the latest attempt recorded for it. It is not a Channel
+// Notification. notify_url is the address copied at creation, which
+// automatic delivery uses. A manual send uses the Pay Application's
+// current address instead, and that address is not stored on this row.
+export type BusinessNotice = {
+  id: number | undefined;
+  applicationId: number | undefined;
+  // 1 payment, 2 refund.
+  kind: number | undefined;
+  paymentId: number | undefined;
+  refundId: number | undefined;
+  bizNo: string | undefined;
+  // Address copied at creation. Automatic delivery uses this. Manual
+  // send does not.
+  notifyUrl: string | undefined;
+  // 1 waiting, 2 accepted, 3 exhausted. This list returns exhausted.
+  status: number | undefined;
+  // Automatic attempts already made. A manual send does not change it.
+  attemptCount: number | undefined;
+  nextAttemptAt: wellKnownTimestamp | undefined;
+  // Latest attempt. has_last_attempt is false when no row exists.
+  hasLastAttempt: boolean | undefined;
+  lastManual: boolean | undefined;
+  // 0 when the latest attempt produced no HTTP response.
+  lastHttpStatus: number | undefined;
+  lastError: string | undefined;
+  lastAccepted: boolean | undefined;
+  lastAttemptAt: wellKnownTimestamp | undefined;
+};
+
+// BusinessNoticeSet is a page of exhausted Business Notifications.
+export type BusinessNoticeSet = {
+  notices: BusinessNotice[] | undefined;
+  nextPageToken: string | undefined;
+};
+
+export type ListExhaustedBusinessNoticesRequest = {
+  // Optional. Page size.
+  pageSize: number | undefined;
+  // Optional. Page token from a previous response.
+  pageToken: string | undefined;
+  // Optional. AIP-160 filter. No fields are declared; the queue is
+  // exhausted notices only.
+  filter: string | undefined;
+  // Optional. AIP-132 order on a pay_business_notice column, e.g.
+  // `id desc` (the default).
+  orderBy: string | undefined;
+};
+
+export type ResendBusinessNoticeRequest = {
+  // Required. The Business Notification to send again.
+  //
+  // Behaviors: REQUIRED
+  id: number | undefined;
+};
+
 // PayService is the payment module's management surface: Pay Application
 // lifecycle, Merchant Account configuration, unified Payment initiation,
 // and Refunds. Channel callbacks arrive on the auth-exempt notify route
@@ -618,6 +683,17 @@ export interface PayService {
   // QueryRefund asks the Channel for the Refund's true state and advances
   // it by CAS.
   QueryRefund(request: QueryRefundRequest): Promise<Refund>;
+  // ListExhaustedBusinessNotices lists Business Notifications whose
+  // automatic delivery is exhausted, each with its latest attempt.
+  // Waiting and accepted notices are not included. Attempt rows stay
+  // stored.
+  ListExhaustedBusinessNotices(request: ListExhaustedBusinessNoticesRequest): Promise<BusinessNoticeSet>;
+  // ResendBusinessNotice delivers one exhausted notice once, to the Pay
+  // Application's current result address of the same kind. A notice that
+  // is still waiting or already accepted is refused. An empty current
+  // address is refused. HTTP 2xx accepts the notice. Any other outcome
+  // leaves it exhausted. The automatic schedule is not restarted.
+  ResendBusinessNotice(request: ResendBusinessNoticeRequest): Promise<BusinessNotice>;
 }
 
 type RequestType = {
@@ -1112,6 +1188,55 @@ export function createPayServiceClient(
         service: "PayService",
         method: "QueryRefund",
       }) as Promise<Refund>;
+    },
+    ListExhaustedBusinessNotices(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      const path = `pay/business-notice`; // eslint-disable-line quotes
+      const body = null;
+      const queryParams: string[] = [];
+      if (request.pageSize) {
+        queryParams.push(`pageSize=${encodeURIComponent(request.pageSize.toString())}`)
+      }
+      if (request.pageToken) {
+        queryParams.push(`pageToken=${encodeURIComponent(request.pageToken.toString())}`)
+      }
+      if (request.filter) {
+        queryParams.push(`filter=${encodeURIComponent(request.filter.toString())}`)
+      }
+      if (request.orderBy) {
+        queryParams.push(`orderBy=${encodeURIComponent(request.orderBy.toString())}`)
+      }
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "GET",
+        body,
+      }, {
+        service: "PayService",
+        method: "ListExhaustedBusinessNotices",
+      }) as Promise<BusinessNoticeSet>;
+    },
+    ResendBusinessNotice(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      if (!request.id) {
+        throw new Error("missing required field request.id");
+      }
+      const path = `pay/business-notice/${request.id}/resend`; // eslint-disable-line quotes
+      const body = JSON.stringify(request);
+      const queryParams: string[] = [];
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join("&")}`
+      }
+      return handler({
+        path: uri,
+        method: "POST",
+        body,
+      }, {
+        service: "PayService",
+        method: "ResendBusinessNotice",
+      }) as Promise<BusinessNotice>;
     },
   };
 }

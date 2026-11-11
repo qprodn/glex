@@ -410,6 +410,29 @@ service PayService {
       body: "*"
     };
   }
+
+  // ---- Exhausted Business Notifications (perms pay:business-notice:*) ----
+
+  // ListExhaustedBusinessNotices lists Business Notifications whose
+  // automatic delivery is exhausted, each with its latest attempt.
+  // Waiting and accepted notices are not included. Attempt rows stay
+  // stored.
+  rpc ListExhaustedBusinessNotices(ListExhaustedBusinessNoticesRequest) returns (BusinessNoticeSet) {
+    option (google.api.http) = {
+      get: "/pay/business-notice"
+    };
+  }
+  // ResendBusinessNotice delivers one exhausted notice once, to the Pay
+  // Application's current result address of the same kind. A notice that
+  // is still waiting or already accepted is refused. An empty current
+  // address is refused. HTTP 2xx accepts the notice. Any other outcome
+  // leaves it exhausted. The automatic schedule is not restarted.
+  rpc ResendBusinessNotice(ResendBusinessNoticeRequest) returns (BusinessNotice) {
+    option (google.api.http) = {
+      post: "/pay/business-notice/{id}/resend"
+      body: "*"
+    };
+  }
 }
 
 message CreateMerchantAccountRequest {
@@ -616,4 +639,59 @@ message ListRefundsRequest {
 message QueryRefundRequest {
   // Required. The Refund number to query at the Channel.
   int64 refund_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// BusinessNotice is one Business Notification on the exhausted-notice
+// queue, plus the latest attempt recorded for it. It is not a Channel
+// Notification. notify_url is the address copied at creation, which
+// automatic delivery uses. A manual send uses the Pay Application's
+// current address instead, and that address is not stored on this row.
+message BusinessNotice {
+  int64 id = 1;
+  int64 application_id = 2;
+  // 1 payment, 2 refund.
+  int32 kind = 3;
+  int64 payment_id = 4;
+  int64 refund_id = 5;
+  string biz_no = 6;
+  // Address copied at creation. Automatic delivery uses this. Manual
+  // send does not.
+  string notify_url = 7;
+  // 1 waiting, 2 accepted, 3 exhausted. This list returns exhausted.
+  int32 status = 8;
+  // Automatic attempts already made. A manual send does not change it.
+  int32 attempt_count = 9;
+  google.protobuf.Timestamp next_attempt_at = 10;
+  // Latest attempt. has_last_attempt is false when no row exists.
+  bool has_last_attempt = 11;
+  bool last_manual = 12;
+  // 0 when the latest attempt produced no HTTP response.
+  int32 last_http_status = 13;
+  string last_error = 14;
+  bool last_accepted = 15;
+  google.protobuf.Timestamp last_attempt_at = 16;
+}
+
+// BusinessNoticeSet is a page of exhausted Business Notifications.
+message BusinessNoticeSet {
+  repeated BusinessNotice notices = 1;
+  string next_page_token = 2;
+}
+
+message ListExhaustedBusinessNoticesRequest {
+  // Optional. Page size.
+  int32 page_size = 1;
+  // Optional. Page token from a previous response.
+  string page_token = 2;
+  // Optional. AIP-160 filter. No fields are declared; the queue is
+  // exhausted notices only.
+  string filter = 3;
+  // Optional. AIP-132 order on a pay_business_notice column, e.g.
+  // `id desc` (the default).
+  string order_by = 4;
+}
+
+message ResendBusinessNoticeRequest {
+  // Required. The Business Notification to send again.
+  int64 id = 1 [(google.api.field_behavior) = REQUIRED];
 }

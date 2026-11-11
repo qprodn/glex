@@ -2618,6 +2618,354 @@ func (x *QueryRefundRequest) GetRefundId() int64 {
 	return 0
 }
 
+// BusinessNotice is one Business Notification on the exhausted-notice
+// queue, plus the latest attempt recorded for it. It is not a Channel
+// Notification. notify_url is the address copied at creation, which
+// automatic delivery uses. A manual send uses the Pay Application's
+// current address instead, and that address is not stored on this row.
+type BusinessNotice struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	ApplicationId int64                  `protobuf:"varint,2,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
+	// 1 payment, 2 refund.
+	Kind      int32  `protobuf:"varint,3,opt,name=kind,proto3" json:"kind,omitempty"`
+	PaymentId int64  `protobuf:"varint,4,opt,name=payment_id,json=paymentId,proto3" json:"payment_id,omitempty"`
+	RefundId  int64  `protobuf:"varint,5,opt,name=refund_id,json=refundId,proto3" json:"refund_id,omitempty"`
+	BizNo     string `protobuf:"bytes,6,opt,name=biz_no,json=bizNo,proto3" json:"biz_no,omitempty"`
+	// Address copied at creation. Automatic delivery uses this. Manual
+	// send does not.
+	NotifyUrl string `protobuf:"bytes,7,opt,name=notify_url,json=notifyUrl,proto3" json:"notify_url,omitempty"`
+	// 1 waiting, 2 accepted, 3 exhausted. This list returns exhausted.
+	Status int32 `protobuf:"varint,8,opt,name=status,proto3" json:"status,omitempty"`
+	// Automatic attempts already made. A manual send does not change it.
+	AttemptCount  int32                  `protobuf:"varint,9,opt,name=attempt_count,json=attemptCount,proto3" json:"attempt_count,omitempty"`
+	NextAttemptAt *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=next_attempt_at,json=nextAttemptAt,proto3" json:"next_attempt_at,omitempty"`
+	// Latest attempt. has_last_attempt is false when no row exists.
+	HasLastAttempt bool `protobuf:"varint,11,opt,name=has_last_attempt,json=hasLastAttempt,proto3" json:"has_last_attempt,omitempty"`
+	LastManual     bool `protobuf:"varint,12,opt,name=last_manual,json=lastManual,proto3" json:"last_manual,omitempty"`
+	// 0 when the latest attempt produced no HTTP response.
+	LastHttpStatus int32                  `protobuf:"varint,13,opt,name=last_http_status,json=lastHttpStatus,proto3" json:"last_http_status,omitempty"`
+	LastError      string                 `protobuf:"bytes,14,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	LastAccepted   bool                   `protobuf:"varint,15,opt,name=last_accepted,json=lastAccepted,proto3" json:"last_accepted,omitempty"`
+	LastAttemptAt  *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=last_attempt_at,json=lastAttemptAt,proto3" json:"last_attempt_at,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *BusinessNotice) Reset() {
+	*x = BusinessNotice{}
+	mi := &file_pay_v1_pay_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessNotice) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessNotice) ProtoMessage() {}
+
+func (x *BusinessNotice) ProtoReflect() protoreflect.Message {
+	mi := &file_pay_v1_pay_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessNotice.ProtoReflect.Descriptor instead.
+func (*BusinessNotice) Descriptor() ([]byte, []int) {
+	return file_pay_v1_pay_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *BusinessNotice) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *BusinessNotice) GetApplicationId() int64 {
+	if x != nil {
+		return x.ApplicationId
+	}
+	return 0
+}
+
+func (x *BusinessNotice) GetKind() int32 {
+	if x != nil {
+		return x.Kind
+	}
+	return 0
+}
+
+func (x *BusinessNotice) GetPaymentId() int64 {
+	if x != nil {
+		return x.PaymentId
+	}
+	return 0
+}
+
+func (x *BusinessNotice) GetRefundId() int64 {
+	if x != nil {
+		return x.RefundId
+	}
+	return 0
+}
+
+func (x *BusinessNotice) GetBizNo() string {
+	if x != nil {
+		return x.BizNo
+	}
+	return ""
+}
+
+func (x *BusinessNotice) GetNotifyUrl() string {
+	if x != nil {
+		return x.NotifyUrl
+	}
+	return ""
+}
+
+func (x *BusinessNotice) GetStatus() int32 {
+	if x != nil {
+		return x.Status
+	}
+	return 0
+}
+
+func (x *BusinessNotice) GetAttemptCount() int32 {
+	if x != nil {
+		return x.AttemptCount
+	}
+	return 0
+}
+
+func (x *BusinessNotice) GetNextAttemptAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.NextAttemptAt
+	}
+	return nil
+}
+
+func (x *BusinessNotice) GetHasLastAttempt() bool {
+	if x != nil {
+		return x.HasLastAttempt
+	}
+	return false
+}
+
+func (x *BusinessNotice) GetLastManual() bool {
+	if x != nil {
+		return x.LastManual
+	}
+	return false
+}
+
+func (x *BusinessNotice) GetLastHttpStatus() int32 {
+	if x != nil {
+		return x.LastHttpStatus
+	}
+	return 0
+}
+
+func (x *BusinessNotice) GetLastError() string {
+	if x != nil {
+		return x.LastError
+	}
+	return ""
+}
+
+func (x *BusinessNotice) GetLastAccepted() bool {
+	if x != nil {
+		return x.LastAccepted
+	}
+	return false
+}
+
+func (x *BusinessNotice) GetLastAttemptAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastAttemptAt
+	}
+	return nil
+}
+
+// BusinessNoticeSet is a page of exhausted Business Notifications.
+type BusinessNoticeSet struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Notices       []*BusinessNotice      `protobuf:"bytes,1,rep,name=notices,proto3" json:"notices,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BusinessNoticeSet) Reset() {
+	*x = BusinessNoticeSet{}
+	mi := &file_pay_v1_pay_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessNoticeSet) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessNoticeSet) ProtoMessage() {}
+
+func (x *BusinessNoticeSet) ProtoReflect() protoreflect.Message {
+	mi := &file_pay_v1_pay_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessNoticeSet.ProtoReflect.Descriptor instead.
+func (*BusinessNoticeSet) Descriptor() ([]byte, []int) {
+	return file_pay_v1_pay_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *BusinessNoticeSet) GetNotices() []*BusinessNotice {
+	if x != nil {
+		return x.Notices
+	}
+	return nil
+}
+
+func (x *BusinessNoticeSet) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+type ListExhaustedBusinessNoticesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional. Page size.
+	PageSize int32 `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	// Optional. Page token from a previous response.
+	PageToken string `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	// Optional. AIP-160 filter. No fields are declared; the queue is
+	// exhausted notices only.
+	Filter string `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty"`
+	// Optional. AIP-132 order on a pay_business_notice column, e.g.
+	// `id desc` (the default).
+	OrderBy       string `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListExhaustedBusinessNoticesRequest) Reset() {
+	*x = ListExhaustedBusinessNoticesRequest{}
+	mi := &file_pay_v1_pay_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListExhaustedBusinessNoticesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListExhaustedBusinessNoticesRequest) ProtoMessage() {}
+
+func (x *ListExhaustedBusinessNoticesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pay_v1_pay_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListExhaustedBusinessNoticesRequest.ProtoReflect.Descriptor instead.
+func (*ListExhaustedBusinessNoticesRequest) Descriptor() ([]byte, []int) {
+	return file_pay_v1_pay_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *ListExhaustedBusinessNoticesRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListExhaustedBusinessNoticesRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+func (x *ListExhaustedBusinessNoticesRequest) GetFilter() string {
+	if x != nil {
+		return x.Filter
+	}
+	return ""
+}
+
+func (x *ListExhaustedBusinessNoticesRequest) GetOrderBy() string {
+	if x != nil {
+		return x.OrderBy
+	}
+	return ""
+}
+
+type ResendBusinessNoticeRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The Business Notification to send again.
+	Id            int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResendBusinessNoticeRequest) Reset() {
+	*x = ResendBusinessNoticeRequest{}
+	mi := &file_pay_v1_pay_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResendBusinessNoticeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResendBusinessNoticeRequest) ProtoMessage() {}
+
+func (x *ResendBusinessNoticeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pay_v1_pay_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResendBusinessNoticeRequest.ProtoReflect.Descriptor instead.
+func (*ResendBusinessNoticeRequest) Descriptor() ([]byte, []int) {
+	return file_pay_v1_pay_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *ResendBusinessNoticeRequest) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
 var File_pay_v1_pay_proto protoreflect.FileDescriptor
 
 const file_pay_v1_pay_proto_rawDesc = "" +
@@ -2852,7 +3200,40 @@ const file_pay_v1_pay_proto_rawDesc = "" +
 	"\x06filter\x18\x03 \x01(\tR\x06filter\x12\x19\n" +
 	"\border_by\x18\x04 \x01(\tR\aorderBy\"6\n" +
 	"\x12QueryRefundRequest\x12 \n" +
-	"\trefund_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\brefundId2\xb3\x14\n" +
+	"\trefund_id\x18\x01 \x01(\x03B\x03\xe0A\x02R\brefundId\"\xcb\x04\n" +
+	"\x0eBusinessNotice\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12%\n" +
+	"\x0eapplication_id\x18\x02 \x01(\x03R\rapplicationId\x12\x12\n" +
+	"\x04kind\x18\x03 \x01(\x05R\x04kind\x12\x1d\n" +
+	"\n" +
+	"payment_id\x18\x04 \x01(\x03R\tpaymentId\x12\x1b\n" +
+	"\trefund_id\x18\x05 \x01(\x03R\brefundId\x12\x15\n" +
+	"\x06biz_no\x18\x06 \x01(\tR\x05bizNo\x12\x1d\n" +
+	"\n" +
+	"notify_url\x18\a \x01(\tR\tnotifyUrl\x12\x16\n" +
+	"\x06status\x18\b \x01(\x05R\x06status\x12#\n" +
+	"\rattempt_count\x18\t \x01(\x05R\fattemptCount\x12B\n" +
+	"\x0fnext_attempt_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\rnextAttemptAt\x12(\n" +
+	"\x10has_last_attempt\x18\v \x01(\bR\x0ehasLastAttempt\x12\x1f\n" +
+	"\vlast_manual\x18\f \x01(\bR\n" +
+	"lastManual\x12(\n" +
+	"\x10last_http_status\x18\r \x01(\x05R\x0elastHttpStatus\x12\x1d\n" +
+	"\n" +
+	"last_error\x18\x0e \x01(\tR\tlastError\x12#\n" +
+	"\rlast_accepted\x18\x0f \x01(\bR\flastAccepted\x12B\n" +
+	"\x0flast_attempt_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\rlastAttemptAt\"m\n" +
+	"\x11BusinessNoticeSet\x120\n" +
+	"\anotices\x18\x01 \x03(\v2\x16.pay.v1.BusinessNoticeR\anotices\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\x94\x01\n" +
+	"#ListExhaustedBusinessNoticesRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\x12\x16\n" +
+	"\x06filter\x18\x03 \x01(\tR\x06filter\x12\x19\n" +
+	"\border_by\x18\x04 \x01(\tR\aorderBy\"2\n" +
+	"\x1bResendBusinessNoticeRequest\x12\x13\n" +
+	"\x02id\x18\x01 \x01(\x03B\x03\xe0A\x02R\x02id2\xbd\x16\n" +
 	"\n" +
 	"PayService\x12p\n" +
 	"\x14CreatePayApplication\x12#.pay.v1.CreatePayApplicationRequest\x1a\x16.pay.v1.PayApplication\"\x1b\x82\xd3\xe4\x93\x02\x15:\x01*\"\x10/pay/application\x12n\n" +
@@ -2878,7 +3259,9 @@ const file_pay_v1_pay_proto_rawDesc = "" +
 	"\fCreateRefund\x12\x1b.pay.v1.CreateRefundRequest\x1a\x0e.pay.v1.Refund\"\x16\x82\xd3\xe4\x93\x02\x10:\x01*\"\v/pay/refund\x12V\n" +
 	"\tGetRefund\x12\x18.pay.v1.GetRefundRequest\x1a\x0e.pay.v1.Refund\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/pay/refund/{refund_id}\x12Q\n" +
 	"\vListRefunds\x12\x1a.pay.v1.ListRefundsRequest\x1a\x11.pay.v1.RefundSet\"\x13\x82\xd3\xe4\x93\x02\r\x12\v/pay/refund\x12c\n" +
-	"\vQueryRefund\x12\x1a.pay.v1.QueryRefundRequest\x1a\x0e.pay.v1.Refund\"(\x82\xd3\xe4\x93\x02\":\x01*\"\x1d/pay/refund/{refund_id}/queryB\"\n" +
+	"\vQueryRefund\x12\x1a.pay.v1.QueryRefundRequest\x1a\x0e.pay.v1.Refund\"(\x82\xd3\xe4\x93\x02\":\x01*\"\x1d/pay/refund/{refund_id}/query\x12\x84\x01\n" +
+	"\x1cListExhaustedBusinessNotices\x12+.pay.v1.ListExhaustedBusinessNoticesRequest\x1a\x19.pay.v1.BusinessNoticeSet\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/pay/business-notice\x12\x80\x01\n" +
+	"\x14ResendBusinessNotice\x12#.pay.v1.ResendBusinessNoticeRequest\x1a\x16.pay.v1.BusinessNotice\"+\x82\xd3\xe4\x93\x02%:\x01*\" /pay/business-notice/{id}/resendB\"\n" +
 	"\n" +
 	"api.pay.v1P\x01Z\x12glex/api/pay/v1;v1b\x06proto3"
 
@@ -2894,123 +3277,134 @@ func file_pay_v1_pay_proto_rawDescGZIP() []byte {
 	return file_pay_v1_pay_proto_rawDescData
 }
 
-var file_pay_v1_pay_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
+var file_pay_v1_pay_proto_msgTypes = make([]protoimpl.MessageInfo, 43)
 var file_pay_v1_pay_proto_goTypes = []any{
-	(*MerchantAccount)(nil),                    // 0: pay.v1.MerchantAccount
-	(*MerchantAccountSet)(nil),                 // 1: pay.v1.MerchantAccountSet
-	(*PayApplication)(nil),                     // 2: pay.v1.PayApplication
-	(*PayApplicationSet)(nil),                  // 3: pay.v1.PayApplicationSet
-	(*SchemaOption)(nil),                       // 4: pay.v1.SchemaOption
-	(*SchemaField)(nil),                        // 5: pay.v1.SchemaField
-	(*ChannelSchema)(nil),                      // 6: pay.v1.ChannelSchema
-	(*GetChannelSchemasResponse)(nil),          // 7: pay.v1.GetChannelSchemasResponse
-	(*ProbeResult)(nil),                        // 8: pay.v1.ProbeResult
-	(*Payment)(nil),                            // 9: pay.v1.Payment
-	(*PaymentSet)(nil),                         // 10: pay.v1.PaymentSet
-	(*Refund)(nil),                             // 11: pay.v1.Refund
-	(*RefundSet)(nil),                          // 12: pay.v1.RefundSet
-	(*CreateMerchantAccountRequest)(nil),       // 13: pay.v1.CreateMerchantAccountRequest
-	(*ListMerchantAccountsRequest)(nil),        // 14: pay.v1.ListMerchantAccountsRequest
-	(*GetMerchantAccountRequest)(nil),          // 15: pay.v1.GetMerchantAccountRequest
-	(*UpdateMerchantAccountRequest)(nil),       // 16: pay.v1.UpdateMerchantAccountRequest
-	(*ChangeMerchantAccountStatusRequest)(nil), // 17: pay.v1.ChangeMerchantAccountStatusRequest
-	(*WithdrawMerchantAccountRequest)(nil),     // 18: pay.v1.WithdrawMerchantAccountRequest
-	(*ProbeMerchantAccountRequest)(nil),        // 19: pay.v1.ProbeMerchantAccountRequest
-	(*GetChannelSchemasRequest)(nil),           // 20: pay.v1.GetChannelSchemasRequest
-	(*CreatePayApplicationRequest)(nil),        // 21: pay.v1.CreatePayApplicationRequest
-	(*ListPayApplicationsRequest)(nil),         // 22: pay.v1.ListPayApplicationsRequest
-	(*GetPayApplicationRequest)(nil),           // 23: pay.v1.GetPayApplicationRequest
-	(*UpdatePayApplicationRequest)(nil),        // 24: pay.v1.UpdatePayApplicationRequest
-	(*ChangePayApplicationStatusRequest)(nil),  // 25: pay.v1.ChangePayApplicationStatusRequest
-	(*WithdrawPayApplicationRequest)(nil),      // 26: pay.v1.WithdrawPayApplicationRequest
-	(*CreatePaymentRequest)(nil),               // 27: pay.v1.CreatePaymentRequest
-	(*GetPaymentRequest)(nil),                  // 28: pay.v1.GetPaymentRequest
-	(*ListPaymentsRequest)(nil),                // 29: pay.v1.ListPaymentsRequest
-	(*QueryPaymentRequest)(nil),                // 30: pay.v1.QueryPaymentRequest
-	(*ClosePaymentRequest)(nil),                // 31: pay.v1.ClosePaymentRequest
-	(*CreateRefundRequest)(nil),                // 32: pay.v1.CreateRefundRequest
-	(*GetRefundRequest)(nil),                   // 33: pay.v1.GetRefundRequest
-	(*ListRefundsRequest)(nil),                 // 34: pay.v1.ListRefundsRequest
-	(*QueryRefundRequest)(nil),                 // 35: pay.v1.QueryRefundRequest
-	nil,                                        // 36: pay.v1.MerchantAccount.ConfigMaskedEntry
-	nil,                                        // 37: pay.v1.CreateMerchantAccountRequest.ConfigEntry
-	nil,                                        // 38: pay.v1.UpdateMerchantAccountRequest.ConfigEntry
-	(*timestamppb.Timestamp)(nil),              // 39: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                      // 40: google.protobuf.Empty
+	(*MerchantAccount)(nil),                     // 0: pay.v1.MerchantAccount
+	(*MerchantAccountSet)(nil),                  // 1: pay.v1.MerchantAccountSet
+	(*PayApplication)(nil),                      // 2: pay.v1.PayApplication
+	(*PayApplicationSet)(nil),                   // 3: pay.v1.PayApplicationSet
+	(*SchemaOption)(nil),                        // 4: pay.v1.SchemaOption
+	(*SchemaField)(nil),                         // 5: pay.v1.SchemaField
+	(*ChannelSchema)(nil),                       // 6: pay.v1.ChannelSchema
+	(*GetChannelSchemasResponse)(nil),           // 7: pay.v1.GetChannelSchemasResponse
+	(*ProbeResult)(nil),                         // 8: pay.v1.ProbeResult
+	(*Payment)(nil),                             // 9: pay.v1.Payment
+	(*PaymentSet)(nil),                          // 10: pay.v1.PaymentSet
+	(*Refund)(nil),                              // 11: pay.v1.Refund
+	(*RefundSet)(nil),                           // 12: pay.v1.RefundSet
+	(*CreateMerchantAccountRequest)(nil),        // 13: pay.v1.CreateMerchantAccountRequest
+	(*ListMerchantAccountsRequest)(nil),         // 14: pay.v1.ListMerchantAccountsRequest
+	(*GetMerchantAccountRequest)(nil),           // 15: pay.v1.GetMerchantAccountRequest
+	(*UpdateMerchantAccountRequest)(nil),        // 16: pay.v1.UpdateMerchantAccountRequest
+	(*ChangeMerchantAccountStatusRequest)(nil),  // 17: pay.v1.ChangeMerchantAccountStatusRequest
+	(*WithdrawMerchantAccountRequest)(nil),      // 18: pay.v1.WithdrawMerchantAccountRequest
+	(*ProbeMerchantAccountRequest)(nil),         // 19: pay.v1.ProbeMerchantAccountRequest
+	(*GetChannelSchemasRequest)(nil),            // 20: pay.v1.GetChannelSchemasRequest
+	(*CreatePayApplicationRequest)(nil),         // 21: pay.v1.CreatePayApplicationRequest
+	(*ListPayApplicationsRequest)(nil),          // 22: pay.v1.ListPayApplicationsRequest
+	(*GetPayApplicationRequest)(nil),            // 23: pay.v1.GetPayApplicationRequest
+	(*UpdatePayApplicationRequest)(nil),         // 24: pay.v1.UpdatePayApplicationRequest
+	(*ChangePayApplicationStatusRequest)(nil),   // 25: pay.v1.ChangePayApplicationStatusRequest
+	(*WithdrawPayApplicationRequest)(nil),       // 26: pay.v1.WithdrawPayApplicationRequest
+	(*CreatePaymentRequest)(nil),                // 27: pay.v1.CreatePaymentRequest
+	(*GetPaymentRequest)(nil),                   // 28: pay.v1.GetPaymentRequest
+	(*ListPaymentsRequest)(nil),                 // 29: pay.v1.ListPaymentsRequest
+	(*QueryPaymentRequest)(nil),                 // 30: pay.v1.QueryPaymentRequest
+	(*ClosePaymentRequest)(nil),                 // 31: pay.v1.ClosePaymentRequest
+	(*CreateRefundRequest)(nil),                 // 32: pay.v1.CreateRefundRequest
+	(*GetRefundRequest)(nil),                    // 33: pay.v1.GetRefundRequest
+	(*ListRefundsRequest)(nil),                  // 34: pay.v1.ListRefundsRequest
+	(*QueryRefundRequest)(nil),                  // 35: pay.v1.QueryRefundRequest
+	(*BusinessNotice)(nil),                      // 36: pay.v1.BusinessNotice
+	(*BusinessNoticeSet)(nil),                   // 37: pay.v1.BusinessNoticeSet
+	(*ListExhaustedBusinessNoticesRequest)(nil), // 38: pay.v1.ListExhaustedBusinessNoticesRequest
+	(*ResendBusinessNoticeRequest)(nil),         // 39: pay.v1.ResendBusinessNoticeRequest
+	nil,                                         // 40: pay.v1.MerchantAccount.ConfigMaskedEntry
+	nil,                                         // 41: pay.v1.CreateMerchantAccountRequest.ConfigEntry
+	nil,                                         // 42: pay.v1.UpdateMerchantAccountRequest.ConfigEntry
+	(*timestamppb.Timestamp)(nil),               // 43: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                       // 44: google.protobuf.Empty
 }
 var file_pay_v1_pay_proto_depIdxs = []int32{
-	36, // 0: pay.v1.MerchantAccount.config_masked:type_name -> pay.v1.MerchantAccount.ConfigMaskedEntry
-	39, // 1: pay.v1.MerchantAccount.created_at:type_name -> google.protobuf.Timestamp
-	39, // 2: pay.v1.MerchantAccount.updated_at:type_name -> google.protobuf.Timestamp
+	40, // 0: pay.v1.MerchantAccount.config_masked:type_name -> pay.v1.MerchantAccount.ConfigMaskedEntry
+	43, // 1: pay.v1.MerchantAccount.created_at:type_name -> google.protobuf.Timestamp
+	43, // 2: pay.v1.MerchantAccount.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 3: pay.v1.MerchantAccountSet.merchants:type_name -> pay.v1.MerchantAccount
-	39, // 4: pay.v1.PayApplication.created_at:type_name -> google.protobuf.Timestamp
-	39, // 5: pay.v1.PayApplication.updated_at:type_name -> google.protobuf.Timestamp
+	43, // 4: pay.v1.PayApplication.created_at:type_name -> google.protobuf.Timestamp
+	43, // 5: pay.v1.PayApplication.updated_at:type_name -> google.protobuf.Timestamp
 	2,  // 6: pay.v1.PayApplicationSet.applications:type_name -> pay.v1.PayApplication
 	4,  // 7: pay.v1.SchemaField.choices:type_name -> pay.v1.SchemaOption
 	5,  // 8: pay.v1.ChannelSchema.fields:type_name -> pay.v1.SchemaField
 	6,  // 9: pay.v1.GetChannelSchemasResponse.schemas:type_name -> pay.v1.ChannelSchema
-	39, // 10: pay.v1.Payment.expire_time:type_name -> google.protobuf.Timestamp
-	39, // 11: pay.v1.Payment.paid_at:type_name -> google.protobuf.Timestamp
-	39, // 12: pay.v1.Payment.created_at:type_name -> google.protobuf.Timestamp
-	39, // 13: pay.v1.Payment.updated_at:type_name -> google.protobuf.Timestamp
+	43, // 10: pay.v1.Payment.expire_time:type_name -> google.protobuf.Timestamp
+	43, // 11: pay.v1.Payment.paid_at:type_name -> google.protobuf.Timestamp
+	43, // 12: pay.v1.Payment.created_at:type_name -> google.protobuf.Timestamp
+	43, // 13: pay.v1.Payment.updated_at:type_name -> google.protobuf.Timestamp
 	9,  // 14: pay.v1.PaymentSet.payments:type_name -> pay.v1.Payment
-	39, // 15: pay.v1.Refund.refunded_at:type_name -> google.protobuf.Timestamp
-	39, // 16: pay.v1.Refund.created_at:type_name -> google.protobuf.Timestamp
-	39, // 17: pay.v1.Refund.updated_at:type_name -> google.protobuf.Timestamp
+	43, // 15: pay.v1.Refund.refunded_at:type_name -> google.protobuf.Timestamp
+	43, // 16: pay.v1.Refund.created_at:type_name -> google.protobuf.Timestamp
+	43, // 17: pay.v1.Refund.updated_at:type_name -> google.protobuf.Timestamp
 	11, // 18: pay.v1.RefundSet.refunds:type_name -> pay.v1.Refund
-	37, // 19: pay.v1.CreateMerchantAccountRequest.config:type_name -> pay.v1.CreateMerchantAccountRequest.ConfigEntry
-	38, // 20: pay.v1.UpdateMerchantAccountRequest.config:type_name -> pay.v1.UpdateMerchantAccountRequest.ConfigEntry
-	21, // 21: pay.v1.PayService.CreatePayApplication:input_type -> pay.v1.CreatePayApplicationRequest
-	22, // 22: pay.v1.PayService.ListPayApplications:input_type -> pay.v1.ListPayApplicationsRequest
-	23, // 23: pay.v1.PayService.GetPayApplication:input_type -> pay.v1.GetPayApplicationRequest
-	24, // 24: pay.v1.PayService.UpdatePayApplication:input_type -> pay.v1.UpdatePayApplicationRequest
-	25, // 25: pay.v1.PayService.ChangePayApplicationStatus:input_type -> pay.v1.ChangePayApplicationStatusRequest
-	26, // 26: pay.v1.PayService.WithdrawPayApplication:input_type -> pay.v1.WithdrawPayApplicationRequest
-	13, // 27: pay.v1.PayService.CreateMerchantAccount:input_type -> pay.v1.CreateMerchantAccountRequest
-	14, // 28: pay.v1.PayService.ListMerchantAccounts:input_type -> pay.v1.ListMerchantAccountsRequest
-	15, // 29: pay.v1.PayService.GetMerchantAccount:input_type -> pay.v1.GetMerchantAccountRequest
-	16, // 30: pay.v1.PayService.UpdateMerchantAccount:input_type -> pay.v1.UpdateMerchantAccountRequest
-	17, // 31: pay.v1.PayService.ChangeMerchantAccountStatus:input_type -> pay.v1.ChangeMerchantAccountStatusRequest
-	18, // 32: pay.v1.PayService.WithdrawMerchantAccount:input_type -> pay.v1.WithdrawMerchantAccountRequest
-	19, // 33: pay.v1.PayService.ProbeMerchantAccount:input_type -> pay.v1.ProbeMerchantAccountRequest
-	20, // 34: pay.v1.PayService.GetChannelSchemas:input_type -> pay.v1.GetChannelSchemasRequest
-	27, // 35: pay.v1.PayService.CreatePayment:input_type -> pay.v1.CreatePaymentRequest
-	28, // 36: pay.v1.PayService.GetPayment:input_type -> pay.v1.GetPaymentRequest
-	29, // 37: pay.v1.PayService.ListPayments:input_type -> pay.v1.ListPaymentsRequest
-	30, // 38: pay.v1.PayService.QueryPayment:input_type -> pay.v1.QueryPaymentRequest
-	31, // 39: pay.v1.PayService.ClosePayment:input_type -> pay.v1.ClosePaymentRequest
-	32, // 40: pay.v1.PayService.CreateRefund:input_type -> pay.v1.CreateRefundRequest
-	33, // 41: pay.v1.PayService.GetRefund:input_type -> pay.v1.GetRefundRequest
-	34, // 42: pay.v1.PayService.ListRefunds:input_type -> pay.v1.ListRefundsRequest
-	35, // 43: pay.v1.PayService.QueryRefund:input_type -> pay.v1.QueryRefundRequest
-	2,  // 44: pay.v1.PayService.CreatePayApplication:output_type -> pay.v1.PayApplication
-	3,  // 45: pay.v1.PayService.ListPayApplications:output_type -> pay.v1.PayApplicationSet
-	2,  // 46: pay.v1.PayService.GetPayApplication:output_type -> pay.v1.PayApplication
-	2,  // 47: pay.v1.PayService.UpdatePayApplication:output_type -> pay.v1.PayApplication
-	2,  // 48: pay.v1.PayService.ChangePayApplicationStatus:output_type -> pay.v1.PayApplication
-	40, // 49: pay.v1.PayService.WithdrawPayApplication:output_type -> google.protobuf.Empty
-	0,  // 50: pay.v1.PayService.CreateMerchantAccount:output_type -> pay.v1.MerchantAccount
-	1,  // 51: pay.v1.PayService.ListMerchantAccounts:output_type -> pay.v1.MerchantAccountSet
-	0,  // 52: pay.v1.PayService.GetMerchantAccount:output_type -> pay.v1.MerchantAccount
-	0,  // 53: pay.v1.PayService.UpdateMerchantAccount:output_type -> pay.v1.MerchantAccount
-	0,  // 54: pay.v1.PayService.ChangeMerchantAccountStatus:output_type -> pay.v1.MerchantAccount
-	40, // 55: pay.v1.PayService.WithdrawMerchantAccount:output_type -> google.protobuf.Empty
-	8,  // 56: pay.v1.PayService.ProbeMerchantAccount:output_type -> pay.v1.ProbeResult
-	7,  // 57: pay.v1.PayService.GetChannelSchemas:output_type -> pay.v1.GetChannelSchemasResponse
-	9,  // 58: pay.v1.PayService.CreatePayment:output_type -> pay.v1.Payment
-	9,  // 59: pay.v1.PayService.GetPayment:output_type -> pay.v1.Payment
-	10, // 60: pay.v1.PayService.ListPayments:output_type -> pay.v1.PaymentSet
-	9,  // 61: pay.v1.PayService.QueryPayment:output_type -> pay.v1.Payment
-	9,  // 62: pay.v1.PayService.ClosePayment:output_type -> pay.v1.Payment
-	11, // 63: pay.v1.PayService.CreateRefund:output_type -> pay.v1.Refund
-	11, // 64: pay.v1.PayService.GetRefund:output_type -> pay.v1.Refund
-	12, // 65: pay.v1.PayService.ListRefunds:output_type -> pay.v1.RefundSet
-	11, // 66: pay.v1.PayService.QueryRefund:output_type -> pay.v1.Refund
-	44, // [44:67] is the sub-list for method output_type
-	21, // [21:44] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	41, // 19: pay.v1.CreateMerchantAccountRequest.config:type_name -> pay.v1.CreateMerchantAccountRequest.ConfigEntry
+	42, // 20: pay.v1.UpdateMerchantAccountRequest.config:type_name -> pay.v1.UpdateMerchantAccountRequest.ConfigEntry
+	43, // 21: pay.v1.BusinessNotice.next_attempt_at:type_name -> google.protobuf.Timestamp
+	43, // 22: pay.v1.BusinessNotice.last_attempt_at:type_name -> google.protobuf.Timestamp
+	36, // 23: pay.v1.BusinessNoticeSet.notices:type_name -> pay.v1.BusinessNotice
+	21, // 24: pay.v1.PayService.CreatePayApplication:input_type -> pay.v1.CreatePayApplicationRequest
+	22, // 25: pay.v1.PayService.ListPayApplications:input_type -> pay.v1.ListPayApplicationsRequest
+	23, // 26: pay.v1.PayService.GetPayApplication:input_type -> pay.v1.GetPayApplicationRequest
+	24, // 27: pay.v1.PayService.UpdatePayApplication:input_type -> pay.v1.UpdatePayApplicationRequest
+	25, // 28: pay.v1.PayService.ChangePayApplicationStatus:input_type -> pay.v1.ChangePayApplicationStatusRequest
+	26, // 29: pay.v1.PayService.WithdrawPayApplication:input_type -> pay.v1.WithdrawPayApplicationRequest
+	13, // 30: pay.v1.PayService.CreateMerchantAccount:input_type -> pay.v1.CreateMerchantAccountRequest
+	14, // 31: pay.v1.PayService.ListMerchantAccounts:input_type -> pay.v1.ListMerchantAccountsRequest
+	15, // 32: pay.v1.PayService.GetMerchantAccount:input_type -> pay.v1.GetMerchantAccountRequest
+	16, // 33: pay.v1.PayService.UpdateMerchantAccount:input_type -> pay.v1.UpdateMerchantAccountRequest
+	17, // 34: pay.v1.PayService.ChangeMerchantAccountStatus:input_type -> pay.v1.ChangeMerchantAccountStatusRequest
+	18, // 35: pay.v1.PayService.WithdrawMerchantAccount:input_type -> pay.v1.WithdrawMerchantAccountRequest
+	19, // 36: pay.v1.PayService.ProbeMerchantAccount:input_type -> pay.v1.ProbeMerchantAccountRequest
+	20, // 37: pay.v1.PayService.GetChannelSchemas:input_type -> pay.v1.GetChannelSchemasRequest
+	27, // 38: pay.v1.PayService.CreatePayment:input_type -> pay.v1.CreatePaymentRequest
+	28, // 39: pay.v1.PayService.GetPayment:input_type -> pay.v1.GetPaymentRequest
+	29, // 40: pay.v1.PayService.ListPayments:input_type -> pay.v1.ListPaymentsRequest
+	30, // 41: pay.v1.PayService.QueryPayment:input_type -> pay.v1.QueryPaymentRequest
+	31, // 42: pay.v1.PayService.ClosePayment:input_type -> pay.v1.ClosePaymentRequest
+	32, // 43: pay.v1.PayService.CreateRefund:input_type -> pay.v1.CreateRefundRequest
+	33, // 44: pay.v1.PayService.GetRefund:input_type -> pay.v1.GetRefundRequest
+	34, // 45: pay.v1.PayService.ListRefunds:input_type -> pay.v1.ListRefundsRequest
+	35, // 46: pay.v1.PayService.QueryRefund:input_type -> pay.v1.QueryRefundRequest
+	38, // 47: pay.v1.PayService.ListExhaustedBusinessNotices:input_type -> pay.v1.ListExhaustedBusinessNoticesRequest
+	39, // 48: pay.v1.PayService.ResendBusinessNotice:input_type -> pay.v1.ResendBusinessNoticeRequest
+	2,  // 49: pay.v1.PayService.CreatePayApplication:output_type -> pay.v1.PayApplication
+	3,  // 50: pay.v1.PayService.ListPayApplications:output_type -> pay.v1.PayApplicationSet
+	2,  // 51: pay.v1.PayService.GetPayApplication:output_type -> pay.v1.PayApplication
+	2,  // 52: pay.v1.PayService.UpdatePayApplication:output_type -> pay.v1.PayApplication
+	2,  // 53: pay.v1.PayService.ChangePayApplicationStatus:output_type -> pay.v1.PayApplication
+	44, // 54: pay.v1.PayService.WithdrawPayApplication:output_type -> google.protobuf.Empty
+	0,  // 55: pay.v1.PayService.CreateMerchantAccount:output_type -> pay.v1.MerchantAccount
+	1,  // 56: pay.v1.PayService.ListMerchantAccounts:output_type -> pay.v1.MerchantAccountSet
+	0,  // 57: pay.v1.PayService.GetMerchantAccount:output_type -> pay.v1.MerchantAccount
+	0,  // 58: pay.v1.PayService.UpdateMerchantAccount:output_type -> pay.v1.MerchantAccount
+	0,  // 59: pay.v1.PayService.ChangeMerchantAccountStatus:output_type -> pay.v1.MerchantAccount
+	44, // 60: pay.v1.PayService.WithdrawMerchantAccount:output_type -> google.protobuf.Empty
+	8,  // 61: pay.v1.PayService.ProbeMerchantAccount:output_type -> pay.v1.ProbeResult
+	7,  // 62: pay.v1.PayService.GetChannelSchemas:output_type -> pay.v1.GetChannelSchemasResponse
+	9,  // 63: pay.v1.PayService.CreatePayment:output_type -> pay.v1.Payment
+	9,  // 64: pay.v1.PayService.GetPayment:output_type -> pay.v1.Payment
+	10, // 65: pay.v1.PayService.ListPayments:output_type -> pay.v1.PaymentSet
+	9,  // 66: pay.v1.PayService.QueryPayment:output_type -> pay.v1.Payment
+	9,  // 67: pay.v1.PayService.ClosePayment:output_type -> pay.v1.Payment
+	11, // 68: pay.v1.PayService.CreateRefund:output_type -> pay.v1.Refund
+	11, // 69: pay.v1.PayService.GetRefund:output_type -> pay.v1.Refund
+	12, // 70: pay.v1.PayService.ListRefunds:output_type -> pay.v1.RefundSet
+	11, // 71: pay.v1.PayService.QueryRefund:output_type -> pay.v1.Refund
+	37, // 72: pay.v1.PayService.ListExhaustedBusinessNotices:output_type -> pay.v1.BusinessNoticeSet
+	36, // 73: pay.v1.PayService.ResendBusinessNotice:output_type -> pay.v1.BusinessNotice
+	49, // [49:74] is the sub-list for method output_type
+	24, // [24:49] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_pay_v1_pay_proto_init() }
@@ -3024,7 +3418,7 @@ func file_pay_v1_pay_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pay_v1_pay_proto_rawDesc), len(file_pay_v1_pay_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   39,
+			NumMessages:   43,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

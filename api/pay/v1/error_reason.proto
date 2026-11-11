@@ -67,4 +67,12 @@ enum ErrorReason {
   // This Pay Application already has a Payment for the Business Order
   // Number, and the amount or Pay Method differs (HTTP 409).
   PAYMENT_CONFLICT = 18;
+  // The requested Business Notification does not exist (or is withdrawn).
+  BUSINESS_NOTICE_NOT_FOUND = 19;
+  // Manual send was asked for a notice that is still waiting or already
+  // accepted (HTTP 409).
+  BUSINESS_NOTICE_NOT_EXHAUSTED = 20;
+  // The Pay Application's current result address of the matching kind is
+  // empty, so there is nowhere to send.
+  BUSINESS_NOTICE_ADDRESS_EMPTY = 21;
 }
