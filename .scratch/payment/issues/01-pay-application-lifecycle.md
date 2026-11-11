@@ -4,16 +4,16 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Creating a Pay Application binds it to exactly one Merchant Account that is enabled and not withdrawn.
-- [ ] Creation is refused when that Merchant Account is disabled or withdrawn.
-- [ ] Several Pay Applications may bind the same Merchant Account.
-- [ ] The Pay Application has its own number and a display name. The display name is unique among Pay Applications that are not withdrawn.
-- [ ] Changing the display name keeps the same number.
-- [ ] A withdrawn Pay Application's display name can be used by another Pay Application.
-- [ ] The Pay Application has a payment result address and a refund result address. Either address may be left empty at creation, and either may be changed later.
-- [ ] The Merchant Account binding cannot be changed after creation.
-- [ ] An operator can disable a Pay Application, and can withdraw it so it leaves the live set.
-- [ ] List, create, update, status, and withdraw are separate permissions, in the existing pay permission style.
-- [ ] Merchant Account credentials, masks, and the Connectivity Test stay where they are.
+- [x] Creating a Pay Application binds it to exactly one Merchant Account that is enabled and not withdrawn.
+- [x] Creation is refused when that Merchant Account is disabled or withdrawn.
+- [x] Several Pay Applications may bind the same Merchant Account.
+- [x] The Pay Application has its own number and a display name. The display name is unique among Pay Applications that are not withdrawn.
+- [x] Changing the display name keeps the same number.
+- [x] A withdrawn Pay Application's display name can be used by another Pay Application.
+- [x] The Pay Application has a payment result address and a refund result address. Either address may be left empty at creation, and either may be changed later.
+- [x] The Merchant Account binding cannot be changed after creation.
+- [x] An operator can disable a Pay Application, and can withdraw it so it leaves the live set.
+- [x] List, create, update, status, and withdraw are separate permissions, in the existing pay permission style.
+- [x] Merchant Account credentials, masks, and the Connectivity Test stay where they are.

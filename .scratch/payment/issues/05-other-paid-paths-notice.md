@@ -4,10 +4,10 @@
 
 **Blocked by:** 04 Channel Notification records the paid notice and names the Pay Application.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A read of an expired pending Payment, lookup by Business Order Number, an active query, the expiry sweep, and close each record one Business Notification when that path is what first moves the Payment to paid and the copied payment result address is non-empty.
-- [ ] None of those paths publish Payment Completed.
-- [ ] Close records that notice only when the Channel says the Payment is already paid.
-- [ ] An empty copied address records no notice, and a later fill-in of the Pay Application's payment result address does not create one for that Payment.
-- [ ] A Payment already started on a disabled or withdrawn Pay Application, or on a Pay Application whose Merchant Account is disabled or withdrawn, still settles through these paths.
+- [x] A read of an expired pending Payment, lookup by Business Order Number, an active query, the expiry sweep, and close each record one Business Notification when that path is what first moves the Payment to paid and the copied payment result address is non-empty.
+- [x] None of those paths publish Payment Completed.
+- [x] Close records that notice only when the Channel says the Payment is already paid.
+- [x] An empty copied address records no notice, and a later fill-in of the Pay Application's payment result address does not create one for that Payment.
+- [x] A Payment already started on a disabled or withdrawn Pay Application, or on a Pay Application whose Merchant Account is disabled or withdrawn, still settles through these paths.
